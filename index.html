@@ -3,10 +3,160 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HealthOS AI | Healthcare Management</title>
+    <meta name="theme-color" content="#102b46">
+    <title>HealthOS AI | Healthcare Intelligence</title>
+
     <link rel="stylesheet" href="styles.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js" defer></script>
+
+    <style>
+        [hidden] {
+            display: none !important;
+        }
+
+        .auth-screen {
+            max-width: 460px;
+            margin: 45px auto;
+            padding: 28px;
+            background: #ffffff;
+            border: 1px solid #e5eaf1;
+            border-radius: 14px;
+            box-shadow: 0 12px 35px rgba(16, 43, 70, 0.08);
+        }
+
+        .auth-screen h2 {
+            margin-top: 0;
+            color: #102b46;
+        }
+
+        .auth-screen p {
+            color: #64748b;
+            line-height: 1.6;
+        }
+
+        .auth-form {
+            display: grid;
+            gap: 15px;
+            margin-top: 22px;
+        }
+
+        .auth-form label {
+            display: grid;
+            gap: 7px;
+            color: #334155;
+            font-weight: 600;
+        }
+
+        .auth-form input {
+            width: 100%;
+            min-height: 44px;
+            padding: 11px;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            font: inherit;
+        }
+
+        .primary-button {
+            min-height: 45px;
+            padding: 12px 16px;
+            border: 0;
+            border-radius: 7px;
+            background: #1457d9;
+            color: #ffffff;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .primary-button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .text-button {
+            padding: 6px;
+            border: 0;
+            background: transparent;
+            color: #1457d9;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .message {
+            min-height: 20px;
+            margin-top: 12px;
+            font-size: 13px;
+            overflow-wrap: anywhere;
+        }
+
+        .message.error {
+            color: #b42318;
+        }
+
+        .message.success {
+            color: #087443;
+        }
+
+        .setup-screen {
+            max-width: 560px;
+        }
+
+        .connection-label {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 6px 10px;
+            border-radius: 20px;
+            background: #eaf1ff;
+            color: #1457d9;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .dashboard-message {
+            margin: 15px 0;
+            color: #475569;
+            line-height: 1.6;
+        }
+
+        .dashboard-message.error {
+            color: #b42318;
+        }
+
+        .dashboard-message.success {
+            color: #087443;
+        }
+
+        .topbar {
+            flex-wrap: wrap;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .logout-button {
+            padding: 8px 12px;
+            border: 1px solid #dbe2ea;
+            border-radius: 7px;
+            background: #ffffff;
+            color: #334155;
+            cursor: pointer;
+        }
+
+        @media (max-width: 600px) {
+            .auth-screen {
+                margin: 22px 12px;
+                padding: 20px;
+            }
+        }
+    </style>
 </head>
+
 <body>
 
     <header class="topbar">
@@ -17,123 +167,244 @@
                 <p>Healthcare Intelligence Platform</p>
             </div>
         </div>
+
         <div class="user-info">
             <span class="status-dot"></span>
-            Demo Workspace
+            <span id="currentUserLabel">Secure healthcare workspace</span>
+            <button id="logoutButton" class="logout-button" type="button" hidden>
+                Sign out
+            </button>
         </div>
     </header>
 
-    <div class="layout">
+    <main>
+        <section id="authPanel" class="auth-screen">
+            <h2 id="authHeading">Welcome to HealthOS AI</h2>
 
-        <aside class="sidebar">
-            <p class="menu-heading">MAIN MENU</p>
-            <a href="#" class="nav-item active">▦ Dashboard</a>
-            <a href="#" class="nav-item">♙ Patients</a>
-            <a href="#" class="nav-item">▣ Appointments</a>
-            <a href="#" class="nav-item">₦ Billing & Revenue</a>
-            <a href="#" class="nav-item">✚ Pharmacy</a>
-            <a href="#" class="nav-item">▤ Reports</a>
+            <p id="authDescription">
+                Sign in to access your healthcare operations workspace.
+            </p>
 
-            <div class="sidebar-note">
-                <strong>HealthOS AI</strong>
-                <p>Helping healthcare teams work smarter and protect revenue.</p>
-            </div>
-        </aside>
+            <span class="connection-label" id="connectionStatus">
+                Checking connection...
+            </span>
 
-        <main class="main-content">
-
-            <section class="welcome">
-                <div>
-                    <p class="eyebrow">OVERVIEW</p>
-                    <h2>Healthcare Dashboard</h2>
-                    <p class="muted">Monitor clinic activity and identify billing issues.</p>
-                </div>
-                <span class="demo-badge">DEMO DATA</span>
-            </section>
-
-            <section class="stats-grid">
-
-                <article class="stat-card">
-                    <p>Total Recorded Revenue</p>
-                    <h3>₦2,450,000</h3>
-                    <span class="stat-note">Illustrative demo figure</span>
-                </article>
-
-                <article class="stat-card">
-                    <p>Payments Awaiting Review</p>
-                    <h3>₦185,000</h3>
-                    <span class="stat-note">Illustrative demo figure</span>
-                </article>
-
-                <article class="stat-card">
-                    <p>Billing Exceptions</p>
-                    <h3>8</h3>
-                    <span class="stat-note">Sample records needing checks</span>
-                </article>
-
-                <article class="stat-card">
-                    <p>Recorded Transactions</p>
-                    <h3>126</h3>
-                    <span class="stat-note">Illustrative demo figure</span>
-                </article>
-
-            </section>
-
-            <section class="panel">
-                <div class="panel-heading">
-                    <div>
-                        <h2>Billing Review</h2>
-                        <p class="muted">Find sample transactions that may need attention.</p>
-                    </div>
-                </div>
-
-                <div class="filters">
+            <form id="authForm" class="auth-form">
+                <label id="nameField" hidden>
+                    Full name
                     <input
-                        type="search"
-                        id="searchInput"
-                        placeholder="Search transactions..."
-                        aria-label="Search transactions"
+                        type="text"
+                        id="fullName"
+                        name="fullName"
+                        autocomplete="name"
+                        placeholder="Enter your full name"
                     >
+                </label>
 
-                    <select id="statusFilter" aria-label="Filter by status">
-                        <option value="all">All transactions</option>
-                        <option value="Review needed">Review needed</option>
-                        <option value="Matched">Matched</option>
-                    </select>
-                </div>
+                <label>
+                    Email address
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        autocomplete="email"
+                        placeholder="you@example.com"
+                        required
+                    >
+                </label>
 
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Reference</th>
-                                <th>Service</th>
-                                <th>Review finding</th>
-                                <th>Amount</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="transactionsBody">
-                            <tr>
-                                <td colspan="5">Loading sample transactions...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                <label>
+                    Password
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        autocomplete="current-password"
+                        minlength="8"
+                        placeholder="At least 8 characters"
+                        required
+                    >
+                </label>
 
-                <p class="disclaimer">
-                    Demonstration only. All records and amounts are fictional.
-                    This prototype is not connected to a real hospital, database,
-                    payment system, or AI service.
-                </p>
-            </section>
+                <button id="authSubmit" class="primary-button" type="submit">
+                    Sign in
+                </button>
+            </form>
 
-            <footer>
-                HealthOS AI · Healthcare operations and revenue protection
-            </footer>
+            <p id="authMessage" class="message" role="status" aria-live="polite"></p>
 
-        </main>
-    </div>
+            <p>
+                <span id="authModeText">New to HealthOS AI?</span>
+                <button
+                    id="authModeToggle"
+                    class="text-button"
+                    type="button"
+                >
+                    Create an account
+                </button>
+            </p>
 
-</body>
-  </html>
+            <p class="stat-note">
+                Use fictional demonstration information only. Do not enter
+                real patient information into this prototype.
+            </p>
+        </section>
+
+        <section id="clinicSetup" class="auth-screen setup-screen" hidden>
+            <h2>Set up your clinic workspace</h2>
+
+            <p>
+                Create a workspace for your clinic. You must be signed in
+                before you can create one.
+            </p>
+
+            <form id="clinicForm" class="auth-form">
+                <label>
+                    Clinic or organisation name
+                    <input
+                        type="text"
+                        id="clinicName"
+                        name="clinicName"
+                        maxlength="150"
+                        placeholder="e.g. Example Community Clinic"
+                        required
+                    >
+                </label>
+
+                <button class="primary-button" type="submit">
+                    Create clinic workspace
+                </button>
+            </form>
+
+            <p
+                id="clinicMessage"
+                class="message"
+                role="status"
+                aria-live="polite"
+            ></p>
+        </section>
+
+        <section id="appPanel" hidden>
+            <div class="layout">
+
+                <aside class="sidebar">
+                    <p class="menu-heading">MAIN MENU</p>
+
+                    <a href="#dashboard" class="nav-item active">▦ Dashboard</a>
+                    <a href="#patients" class="nav-item">♙ Patients</a>
+                    <a href="#appointments" class="nav-item">▣ Appointments</a>
+                    <a href="#billing" class="nav-item">₦ Billing &amp; Revenue</a>
+                    <a href="#pharmacy" class="nav-item">✚ Pharmacy</a>
+                    <a href="#reports" class="nav-item">▤ Reports</a>
+
+                    <div class="sidebar-note">
+                        <strong>HealthOS AI</strong>
+                        <p>
+                            Helping healthcare teams work smarter,
+                            improve operations and protect revenue.
+                        </p>
+                    </div>
+                </aside>
+
+                <div class="main-content" id="dashboard">
+
+                    <section class="welcome">
+                        <div>
+                            <p class="eyebrow">OVERVIEW</p>
+                            <h2>Healthcare Dashboard</h2>
+                            <p class="muted">
+                                Review billing activity and monitor your
+                                healthcare operations.
+                            </p>
+                            <p class="muted">
+                                Workspace:
+                                <strong id="currentClinicLabel">Loading...</strong>
+                            </p>
+                        </div>
+
+                        <span class="demo-badge" id="dataModeBadge">
+                            DEMONSTRATION
+                        </span>
+                    </section>
+
+                    <p
+                        id="dashboardMessage"
+                        class="dashboard-message"
+                        role="status"
+                        aria-live="polite"
+                    ></p>
+
+                    <section class="stats-grid">
+
+                        <article class="stat-card">
+                            <p>Total Recorded Revenue</p>
+                            <h3 id="totalRevenue">₦0</h3>
+                            <span class="stat-note">
+                                Based on available workspace records
+                            </span>
+                        </article>
+
+                        <article class="stat-card">
+                            <p>Outstanding Balance</p>
+                            <h3 id="outstandingBalance">₦0</h3>
+                            <span class="stat-note">
+                                Requires recorded billing data
+                            </span>
+                        </article>
+
+                        <article class="stat-card">
+                            <p>Billing Findings</p>
+                            <h3 id="billingFindingCount">0</h3>
+                            <span class="stat-note">
+                                Findings recorded for review
+                            </span>
+                        </article>
+
+                        <article class="stat-card">
+                            <p>Recorded Transactions</p>
+                            <h3 id="transactionCount">0</h3>
+                            <span class="stat-note">
+                                Transactions in this workspace
+                            </span>
+                        </article>
+
+                    </section>
+
+                    <section class="panel" id="billing">
+                        <div class="panel-heading">
+                            <div>
+                                <h2>Billing Review</h2>
+                                <p class="muted">
+                                    Review recorded transactions and
+                                    investigate possible discrepancies.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="filters">
+                            <input
+                                type="search"
+                                id="searchInput"
+                                placeholder="Search transactions..."
+                                aria-label="Search transactions"
+                            >
+
+                            <select
+                                id="statusFilter"
+                                aria-label="Filter transactions by status"
+                            >
+                                <option value="all">All transactions</option>
+                                <option value="Review needed">Review needed</option>
+                                <option value="Matched">Matched</option>
+                            </select>
+                        </div>
+
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Reference</th>
+                                        <th>Service</th>
+                                        <th>Review finding</th>
+                                        <th>Amount</th>
+                                        <th>Status</th
