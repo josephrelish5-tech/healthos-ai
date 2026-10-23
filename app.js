@@ -147,9 +147,17 @@ async function openWorkspace(user) {
 
     showOnly("clinic");
 
-    showClinicMessage("Checking your clinic workspace...");
+    showClinicMessage(
+        "Sign-in successful. Checking your clinic workspace..."
+    );
 
     try {
+        if (!supabaseClient) {
+            throw new Error(
+                "Account service is not ready. Please refresh and sign in again."
+            );
+        }
+
         const { data: clinics, error } = await supabaseClient
             .from("clinics")
             .select("id, name")
@@ -163,18 +171,31 @@ async function openWorkspace(user) {
 
         if (clinics && clinics.length > 0) {
             showDashboard(clinics[0]);
-        } else {
-            clinicNameInput.value = "";
-            showOnly("clinic");
-            showClinicMessage(
-                "Welcome! Enter your clinic name to create your workspace.",
-                "success"
-            );
+            return;
         }
-    } catch (error) {
+
+        clinicNameInput.value = "";
+
         showOnly("clinic");
+
         showClinicMessage(
-            "Could not load your workspace: " + friendlyError(error),
+            "Your account is connected! Enter your clinic name below and click Create clinic workspace.",
+            "success"
+        );
+
+        clinicNameInput.focus();
+
+    } catch (error) {
+        console.error(
+            "HealthOS AI workspace lookup failed:",
+            error
+        );
+
+        showOnly("clinic");
+
+        showClinicMessage(
+            "Your account signed in, but we could not load your clinic workspace: " +
+            friendlyError(error),
             "error"
         );
     }
