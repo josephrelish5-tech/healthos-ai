@@ -1,5 +1,5 @@
 // HealthOS AI
-// Account creation and sign-in using Supabase.
+// Authentication and clinic workspace setup.
 // Use fictional demonstration information only.
 
 const SUPABASE_URL =
@@ -8,6 +8,8 @@ const SUPABASE_URL =
 const SUPABASE_PUBLISHABLE_KEY =
     "sb_publishable_UIhbdxfxl8jsU9KnIE93pg_HTEsU39C";
 
+// Authentication elements
+const authPanel = document.getElementById("authPanel");
 const authForm = document.getElementById("authForm");
 const authHeading = document.getElementById("authHeading");
 const authDescription = document.getElementById("authDescription");
@@ -20,16 +22,52 @@ const authModeText = document.getElementById("authModeText");
 const authModeToggle = document.getElementById("authModeToggle");
 const authMessage = document.getElementById("authMessage");
 const connectionStatus = document.getElementById("connectionStatus");
+
+// Clinic setup elements
+const clinicSetup = document.getElementById("clinicSetup");
+const clinicForm = document.getElementById("clinicForm");
+const clinicNameInput = document.getElementById("clinicName");
+const clinicMessage = document.getElementById("clinicMessage");
+
+// Dashboard elements
+const appPanel = document.getElementById("appPanel");
 const logoutButton = document.getElementById("logoutButton");
+const currentUserLabel = document.getElementById("currentUserLabel");
+const currentClinicLabel = document.getElementById("currentClinicLabel");
+const dashboardMessage = document.getElementById("dashboardMessage");
 
-let isSignUpMode = false;
 let supabaseClient = null;
+let isSignUpMode = false;
+let currentUser = null;
 
-// Display messages to the user.
-function showMessage(message, type = "") {
+// Show a message in the authentication area.
+function showAuthMessage(message, type = "") {
     authMessage.textContent = message;
     authMessage.className =
         "message" + (type ? " " + type : "");
+}
+
+// Show a message in the clinic setup area.
+function showClinicMessage(message, type = "") {
+    clinicMessage.textContent = message;
+    clinicMessage.className =
+        "message" + (type ? " " + type : "");
+}
+
+// Show a message in the dashboard.
+function showDashboardMessage(message, type = "") {
+    dashboardMessage.textContent = message;
+    dashboardMessage.className =
+        "dashboard-message" + (type ? " " + type : "");
+}
+
+// Display only the requested screen.
+function showOnly(screen) {
+    authPanel.hidden = screen !== "auth";
+    clinicSetup.hidden = screen !== "clinic";
+    appPanel.hidden = screen !== "dashboard";
+
+    logoutButton.hidden = !currentUser;
 }
 
 // Switch between sign-in and account creation.
@@ -41,7 +79,7 @@ function setMode(signUp) {
         : "Welcome to HealthOS AI";
 
     authDescription.textContent = signUp
-        ? "Create an account to begin setting up your healthcare workspace."
+        ? "Create an account to begin setting up your clinic workspace."
         : "Sign in to access your healthcare operations workspace.";
 
     nameField.hidden = !signUp;
@@ -63,20 +101,20 @@ function setMode(signUp) {
         ? "Sign in"
         : "Create an account";
 
-    showMessage("");
+    showAuthMessage("");
 }
 
-// Convert technical errors into clearer messages.
-function friendlyAuthError(error) {
+// Convert common authentication errors into clearer messages.
+function friendlyError(error) {
     const message = error?.message ||
         "Something went wrong. Please try again.";
 
     if (/invalid login credentials/i.test(message)) {
-        return "Email or password is incorrect. If you have no account, choose Create an account.";
+        return "Email or password is incorrect. Please try again.";
     }
 
     if (/user already registered/i.test(message)) {
-        return "This email may already be registered. Try signing in or use another email.";
+        return "This email is already registered. Please sign in.";
     }
 
     if (/password should be at least/i.test(message)) {
@@ -84,21 +122,76 @@ function friendlyAuthError(error) {
     }
 
     if (/email not confirmed/i.test(message)) {
-        return "Please check your email and confirm your account before signing in.";
+        return "Please confirm your email before signing in.";
     }
 
     if (/failed to fetch|networkerror|fetch failed/i.test(message)) {
-        return "Could not connect. Check your internet connection and try again.";
+        return "Connection failed. Check your internet and try again.";
     }
 
-    if (/email rate limit exceeded|rate limit/i.test(message)) {
-        return "Too many attempts. Please wait a while before trying again.";
+    if (/row-level security|permission denied|violates row-level security/i.test(message)) {
+        return "Database permission blocked this action. Please check the workspace database policies.";
     }
 
     return message;
 }
 
-// Connect the website to Supabase.
+// Find the signed-in user's clinic.
+async function openWorkspace(user) {
+    currentUser = user;
+
+    currentUserLabel.textContent =
+        user.email || "Signed-in user";
+
+    logoutButton.hidden = false;
+
+    showOnly("clinic");
+
+    showClinicMessage("Checking your clinic workspace...");
+
+    try {
+        const { data: clinics, error } = await supabaseClient
+            .from("clinics")
+            .select("id, name")
+            .eq("owner_user_id", user.id)
+            .order("created_at", { ascending: true })
+            .limit(1);
+
+        if (error) {
+            throw error;
+        }
+
+        if (clinics && clinics.length > 0) {
+            showDashboard(clinics[0]);
+        } else {
+            clinicNameInput.value = "";
+            showOnly("clinic");
+            showClinicMessage(
+                "Welcome! Enter your clinic name to create your workspace.",
+                "success"
+            );
+        }
+    } catch (error) {
+        showOnly("clinic");
+        showClinicMessage(
+            "Could not load your workspace: " + friendlyError(error),
+            "error"
+        );
+    }
+}
+
+// Open the dashboard after a clinic is found or created.
+function showDashboard(clinic) {
+    showOnly("dashboard");
+
+    currentClinicLabel.textContent = clinic.name;
+
+    showDashboardMessage(
+        "Your clinic workspace is connected. Dashboard features are still under development."
+    );
+}
+
+// Connect to Supabase.
 async function checkConnection() {
     try {
         if (
@@ -115,31 +208,38 @@ async function checkConnection() {
             SUPABASE_PUBLISHABLE_KEY
         );
 
-        const { error } =
-            await supabaseClient.auth.getSession();
-
-        if (error) {
-            throw error;
-        }
-
         connectionStatus.textContent =
             "Connected to account service";
 
         connectionStatus.classList.remove("error");
         connectionStatus.classList.add("success");
 
+        const { data, error } =
+            await supabaseClient.auth.getSession();
+
+        if (error) {
+            throw error;
+        }
+
+        if (data.session && data.session.user) {
+            await openWorkspace(data.session.user);
+        } else {
+            currentUser = null;
+            showOnly("auth");
+        }
     } catch (error) {
         connectionStatus.textContent =
             "Account connection needs attention";
 
-        showMessage(
-            friendlyAuthError(error),
-            "error"
-        );
+        connectionStatus.classList.remove("success");
+        connectionStatus.classList.add("error");
+
+        showOnly("auth");
+        showAuthMessage(friendlyError(error), "error");
     }
 }
 
-// Make Create an account / Sign in clickable.
+// Switch between sign-in and account creation.
 authModeToggle.addEventListener("click", function () {
     setMode(!isSignUpMode);
 });
@@ -149,8 +249,8 @@ authForm.addEventListener("submit", async function (event) {
     event.preventDefault();
 
     if (!supabaseClient) {
-        showMessage(
-            "The account service is not ready. Refresh the page and try again.",
+        showAuthMessage(
+            "The account service is not ready. Refresh the page.",
             "error"
         );
         return;
@@ -164,12 +264,6 @@ authForm.addEventListener("submit", async function (event) {
     authSubmit.textContent = isSignUpMode
         ? "Creating account..."
         : "Signing in...";
-
-    showMessage(
-        isSignUpMode
-            ? "Creating your account..."
-            : "Checking your sign-in details..."
-    );
 
     try {
         if (isSignUpMode) {
@@ -191,20 +285,21 @@ authForm.addEventListener("submit", async function (event) {
                 throw error;
             }
 
-            if (data.session) {
-                showMessage(
-                    "Your account has been created. Next, we will set up your clinic workspace.",
+            if (data.session && data.user) {
+                showAuthMessage(
+                    "Account created successfully. Opening your clinic setup...",
                     "success"
                 );
+
+                await openWorkspace(data.user);
             } else {
-                showMessage(
-                    "Your account request was received. Check your email for a confirmation link. Confirm your email, then return here to sign in.",
+                showAuthMessage(
+                    "Account request received. Check your email to confirm your account, then return here and sign in.",
                     "success"
                 );
             }
-
         } else {
-            const { error } =
+            const { data, error } =
                 await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
@@ -214,18 +309,11 @@ authForm.addEventListener("submit", async function (event) {
                 throw error;
             }
 
-            showMessage(
-                "Sign-in successful. Your account is connected.",
-                "success"
-            );
+            await openWorkspace(data.user);
         }
-
     } catch (error) {
-        showMessage(
-            friendlyAuthError(error),
-            "error"
-        );
-
+        showOnly("auth");
+        showAuthMessage(friendlyError(error), "error");
     } finally {
         authSubmit.disabled = false;
 
@@ -235,31 +323,119 @@ authForm.addEventListener("submit", async function (event) {
     }
 });
 
-// Sign out safely.
-logoutButton.addEventListener("click", async function () {
-    if (!supabaseClient) {
+// Create a clinic workspace.
+clinicForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    if (!supabaseClient || !currentUser) {
+        showClinicMessage(
+            "Please sign in before creating a clinic workspace.",
+            "error"
+        );
+
+        showOnly("auth");
         return;
     }
 
-    const { error } =
-        await supabaseClient.auth.signOut();
+    const clinicName = clinicNameInput.value.trim();
 
-    if (error) {
-        showMessage(
-            friendlyAuthError(error),
+    if (!clinicName) {
+        showClinicMessage(
+            "Please enter your clinic name.",
             "error"
         );
         return;
     }
 
-    showMessage(
-        "You have signed out. You can sign in again.",
-        "success"
+    const submitButton = clinicForm.querySelector(
+        'button[type="submit"]'
     );
 
-    setMode(false);
+    submitButton.disabled = true;
+    submitButton.textContent = "Creating workspace...";
+
+    showClinicMessage("Creating your clinic workspace...");
+
+    try {
+        // Create the clinic.
+        const { data: clinic, error: clinicError } =
+            await supabaseClient
+                .from("clinics")
+                .insert({
+                    name: clinicName,
+                    owner_user_id: currentUser.id
+                })
+                .select("id, name")
+                .single();
+
+        if (clinicError) {
+            throw clinicError;
+        }
+
+        // Add the signed-in user as the clinic owner.
+        const { error: membershipError } =
+            await supabaseClient
+                .from("clinic_memberships")
+                .insert({
+                    clinic_id: clinic.id,
+                    user_id: currentUser.id,
+                    role: "owner",
+                    status: "active"
+                });
+
+        if (membershipError) {
+            throw new Error(
+                "The clinic was created, but its owner membership could not be saved. " +
+                friendlyError(membershipError)
+            );
+        }
+
+        showDashboard(clinic);
+    } catch (error) {
+        showOnly("clinic");
+        showClinicMessage(friendlyError(error), "error");
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "Create clinic workspace";
+    }
 });
 
-// Start the website.
+// Sign out.
+logoutButton.addEventListener("click", async function () {
+    if (!supabaseClient) {
+        return;
+    }
+
+    logoutButton.disabled = true;
+
+    try {
+        const { error } =
+            await supabaseClient.auth.signOut();
+
+        if (error) {
+            throw error;
+        }
+
+        currentUser = null;
+
+        currentUserLabel.textContent =
+            "Secure healthcare workspace";
+
+        showOnly("auth");
+        setMode(false);
+
+        showAuthMessage(
+            "You have signed out successfully.",
+            "success"
+        );
+    } catch (error) {
+        showDashboardMessage(friendlyError(error), "error");
+    } finally {
+        logoutButton.disabled = false;
+    }
+});
+
+// Start HealthOS AI.
 setMode(false);
+showOnly("auth");
 checkConnection();
