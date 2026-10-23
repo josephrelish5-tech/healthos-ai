@@ -1,144 +1,265 @@
 // HealthOS AI
-// Demonstration only: fictional data, no real patient records.
+// Account creation and sign-in using Supabase.
+// Use fictional demonstration information only.
 
-const transactions = [
-    {
-        ref: "HOS-1001",
-        service: "Laboratory test",
-        detail: "Sample patient A",
-        finding: "Service record has no matching charge",
-        amount: 35000,
-        status: "Review needed"
-    },
-    {
-        ref: "HOS-1002",
-        service: "Pharmacy dispense",
-        detail: "Sample patient B",
-        finding: "Dispense and invoice amounts differ",
-        amount: 21500,
-        status: "Review needed"
-    },
-    {
-        ref: "HOS-1003",
-        service: "Consultation",
-        detail: "Sample patient C",
-        finding: "Service and payment records match",
-        amount: 15000,
-        status: "Matched"
-    },
-    {
-        ref: "HOS-1004",
-        service: "Imaging service",
-        detail: "Sample patient D",
-        finding: "Payment reference needs confirmation",
-        amount: 30000,
-        status: "Review needed"
-    },
-    {
-        ref: "HOS-1005",
-        service: "Follow-up visit",
-        detail: "Sample patient E",
-        finding: "Service and payment records match",
-        amount: 10000,
-        status: "Matched"
-    },
-    {
-        ref: "HOS-1006",
-        service: "Basic laboratory panel",
-        detail: "Sample patient F",
-        finding: "Service and payment records match",
-        amount: 12500,
-        status: "Matched"
+const SUPABASE_URL =
+    "https://berfmuhqfuwcgpnqxrtm.supabase.co";
+
+const SUPABASE_PUBLISHABLE_KEY =
+    "sb_publishable_UIhbdxfxl8jsU9KnIE93pg_HTEsU39C";
+
+const authForm = document.getElementById("authForm");
+const authHeading = document.getElementById("authHeading");
+const authDescription = document.getElementById("authDescription");
+const nameField = document.getElementById("nameField");
+const fullNameInput = document.getElementById("fullName");
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const authSubmit = document.getElementById("authSubmit");
+const authModeText = document.getElementById("authModeText");
+const authModeToggle = document.getElementById("authModeToggle");
+const authMessage = document.getElementById("authMessage");
+const connectionStatus = document.getElementById("connectionStatus");
+const logoutButton = document.getElementById("logoutButton");
+
+let isSignUpMode = false;
+let supabaseClient = null;
+
+// Display messages to the user.
+function showMessage(message, type = "") {
+    authMessage.textContent = message;
+    authMessage.className =
+        "message" + (type ? " " + type : "");
+}
+
+// Switch between sign-in and account creation.
+function setMode(signUp) {
+    isSignUpMode = signUp;
+
+    authHeading.textContent = signUp
+        ? "Create your HealthOS AI account"
+        : "Welcome to HealthOS AI";
+
+    authDescription.textContent = signUp
+        ? "Create an account to begin setting up your healthcare workspace."
+        : "Sign in to access your healthcare operations workspace.";
+
+    nameField.hidden = !signUp;
+    fullNameInput.required = signUp;
+
+    passwordInput.autocomplete = signUp
+        ? "new-password"
+        : "current-password";
+
+    authSubmit.textContent = signUp
+        ? "Create account"
+        : "Sign in";
+
+    authModeText.textContent = signUp
+        ? "Already have an account?"
+        : "New to HealthOS AI?";
+
+    authModeToggle.textContent = signUp
+        ? "Sign in"
+        : "Create an account";
+
+    showMessage("");
+}
+
+// Convert technical errors into clearer messages.
+function friendlyAuthError(error) {
+    const message = error?.message ||
+        "Something went wrong. Please try again.";
+
+    if (/invalid login credentials/i.test(message)) {
+        return "Email or password is incorrect. If you have no account, choose Create an account.";
     }
-];
 
-const body = document.getElementById("transactionsBody");
-const searchInput = document.getElementById("searchInput");
-const statusFilter = document.getElementById("statusFilter");
+    if (/user already registered/i.test(message)) {
+        return "This email may already be registered. Try signing in or use another email.";
+    }
 
-const naira = new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0
+    if (/password should be at least/i.test(message)) {
+        return "Please use a password with at least 8 characters.";
+    }
+
+    if (/email not confirmed/i.test(message)) {
+        return "Please check your email and confirm your account before signing in.";
+    }
+
+    if (/failed to fetch|networkerror|fetch failed/i.test(message)) {
+        return "Could not connect. Check your internet connection and try again.";
+    }
+
+    if (/email rate limit exceeded|rate limit/i.test(message)) {
+        return "Too many attempts. Please wait a while before trying again.";
+    }
+
+    return message;
+}
+
+// Connect the website to Supabase.
+async function checkConnection() {
+    try {
+        if (
+            !window.supabase ||
+            typeof window.supabase.createClient !== "function"
+        ) {
+            throw new Error(
+                "The Supabase library did not load. Refresh the page."
+            );
+        }
+
+        supabaseClient = window.supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_PUBLISHABLE_KEY
+        );
+
+        const { error } =
+            await supabaseClient.auth.getSession();
+
+        if (error) {
+            throw error;
+        }
+
+        connectionStatus.textContent =
+            "Connected to account service";
+
+        connectionStatus.classList.remove("error");
+        connectionStatus.classList.add("success");
+
+    } catch (error) {
+        connectionStatus.textContent =
+            "Account connection needs attention";
+
+        showMessage(
+            friendlyAuthError(error),
+            "error"
+        );
+    }
+}
+
+// Make Create an account / Sign in clickable.
+authModeToggle.addEventListener("click", function () {
+    setMode(!isSignUpMode);
 });
 
-function renderTransactions() {
-    const query = searchInput.value.trim().toLowerCase();
-    const selectedStatus = statusFilter.value;
+// Handle account creation and sign-in.
+authForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
 
-    const visibleTransactions = transactions.filter(function (item) {
-        const searchableText = [
-            item.ref,
-            item.service,
-            item.finding,
-            item.status
-        ].join(" ").toLowerCase();
-
-        const matchesSearch = searchableText.includes(query);
-
-        const matchesStatus =
-            selectedStatus === "all" ||
-            item.status === selectedStatus;
-
-        return matchesSearch && matchesStatus;
-    });
-
-    body.replaceChildren();
-
-    if (visibleTransactions.length === 0) {
-        const row = document.createElement("tr");
-        const cell = document.createElement("td");
-
-        cell.colSpan = 5;
-        cell.textContent = "No sample transactions match your search.";
-
-        row.appendChild(cell);
-        body.appendChild(row);
+    if (!supabaseClient) {
+        showMessage(
+            "The account service is not ready. Refresh the page and try again.",
+            "error"
+        );
         return;
     }
 
-    visibleTransactions.forEach(function (item) {
-        const row = document.createElement("tr");
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
 
-        const referenceCell = document.createElement("td");
-        referenceCell.textContent = item.ref;
+    authSubmit.disabled = true;
 
-        const detail = document.createElement("div");
-        detail.className = "stat-note";
-        detail.textContent = item.detail;
-        referenceCell.appendChild(detail);
+    authSubmit.textContent = isSignUpMode
+        ? "Creating account..."
+        : "Signing in...";
 
-        const serviceCell = document.createElement("td");
-        serviceCell.textContent = item.service;
+    showMessage(
+        isSignUpMode
+            ? "Creating your account..."
+            : "Checking your sign-in details..."
+    );
 
-        const findingCell = document.createElement("td");
-        findingCell.textContent = item.finding;
+    try {
+        if (isSignUpMode) {
+            const fullName = fullNameInput.value.trim();
 
-        const amountCell = document.createElement("td");
-        amountCell.textContent = naira.format(item.amount);
+            const { data, error } =
+                await supabaseClient.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            full_name: fullName
+                        },
+                        emailRedirectTo: window.location.origin
+                    }
+                });
 
-        const statusCell = document.createElement("td");
-        const statusBadge = document.createElement("span");
+            if (error) {
+                throw error;
+            }
 
-        statusBadge.className =
-            "pill " + (item.status === "Matched" ? "matched" : "review");
+            if (data.session) {
+                showMessage(
+                    "Your account has been created. Next, we will set up your clinic workspace.",
+                    "success"
+                );
+            } else {
+                showMessage(
+                    "Your account request was received. Check your email for a confirmation link. Confirm your email, then return here to sign in.",
+                    "success"
+                );
+            }
 
-        statusBadge.textContent = item.status;
-        statusCell.appendChild(statusBadge);
+        } else {
+            const { error } =
+                await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
 
-        row.append(
-            referenceCell,
-            serviceCell,
-            findingCell,
-            amountCell,
-            statusCell
+            if (error) {
+                throw error;
+            }
+
+            showMessage(
+                "Sign-in successful. Your account is connected.",
+                "success"
+            );
+        }
+
+    } catch (error) {
+        showMessage(
+            friendlyAuthError(error),
+            "error"
         );
 
-        body.appendChild(row);
-    });
-}
+    } finally {
+        authSubmit.disabled = false;
 
-searchInput.addEventListener("input", renderTransactions);
-statusFilter.addEventListener("change", renderTransactions);
+        authSubmit.textContent = isSignUpMode
+            ? "Create account"
+            : "Sign in";
+    }
+});
 
-renderTransactions();
+// Sign out safely.
+logoutButton.addEventListener("click", async function () {
+    if (!supabaseClient) {
+        return;
+    }
+
+    const { error } =
+        await supabaseClient.auth.signOut();
+
+    if (error) {
+        showMessage(
+            friendlyAuthError(error),
+            "error"
+        );
+        return;
+    }
+
+    showMessage(
+        "You have signed out. You can sign in again.",
+        "success"
+    );
+
+    setMode(false);
+});
+
+// Start the website.
+setMode(false);
+checkConnection();
