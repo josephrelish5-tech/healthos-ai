@@ -1,27 +1,57 @@
 :root {
-    font-family: Arial, sans-serif;
-    color: #182230;
-    background: #f5f7fb;
+    color-scheme: light;
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    color: #183247;
+    background: #f4f7fa;
+
+    --navy: #102a43;
+    --navy-deep: #0b1f33;
+    --medical-blue: #005eb8;
+    --blue-soft: #e8f1fa;
+    --page: #f4f7fa;
+    --border: #dbe4ec;
+    --muted: #607487;
 }
 
 * {
     box-sizing: border-box;
 }
 
+html {
+    min-height: 100%;
+    background: var(--page);
+}
+
 body {
     margin: 0;
+    min-height: 100vh;
+    background: var(--page);
+    color: #183247;
     font-size: 14px;
+    line-height: 1.5;
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
+
+:focus-visible {
+    outline: 3px solid #78b7f0;
+    outline-offset: 2px;
 }
 
 .topbar {
     min-height: 76px;
     background: #ffffff;
-    border-bottom: 1px solid #e5eaf1;
+    border-bottom: 1px solid var(--border);
     padding: 16px 28px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
+    flex-wrap: wrap;
 }
 
 .brand {
@@ -35,35 +65,40 @@ body {
     height: 42px;
     display: grid;
     place-items: center;
-    background: #1457d9;
-    color: white;
+    background: var(--navy);
+    color: #ffffff;
     font-size: 24px;
-    font-weight: bold;
-    border-radius: 12px;
+    font-weight: 800;
+    border-radius: 11px;
 }
 
 .brand h1 {
     margin: 0;
+    color: var(--navy);
     font-size: 21px;
+    letter-spacing: -0.3px;
 }
 
 .brand p {
     margin: 4px 0 0;
-    color: #718096;
+    color: var(--muted);
     font-size: 12px;
 }
 
 .user-info {
-    color: #475569;
+    color: #40586c;
     font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 .status-dot {
     display: inline-block;
     width: 8px;
     height: 8px;
-    margin-right: 5px;
-    background: #16a36a;
+    background: #16803c;
     border-radius: 50%;
 }
 
@@ -73,10 +108,10 @@ body {
 }
 
 .sidebar {
-    width: 230px;
+    width: 242px;
     flex-shrink: 0;
-    background: #ffffff;
-    border-right: 1px solid #e5eaf1;
+    background: var(--navy);
+    color: #ffffff;
     padding: 26px 16px;
     display: flex;
     flex-direction: column;
@@ -84,41 +119,49 @@ body {
 
 .menu-heading {
     margin: 0 12px 14px;
-    color: #94a3b8;
+    color: #b8c9d8;
     font-size: 11px;
-    font-weight: bold;
-    letter-spacing: 1px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
 }
 
 .nav-item {
     display: block;
     padding: 13px 12px;
     margin-bottom: 5px;
-    color: #475569;
+    color: #e4edf5;
     text-decoration: none;
+    border: 1px solid transparent;
     border-radius: 8px;
+    transition: background-color 150ms ease;
+}
+
+.nav-item:hover {
+    background: #1b405e;
+    color: #ffffff;
 }
 
 .nav-item.active {
-    background: #eaf1ff;
-    color: #1457d9;
-    font-weight: bold;
+    background: #ffffff;
+    color: var(--navy);
+    font-weight: 700;
 }
 
 .sidebar-note {
     margin-top: auto;
     padding: 16px 12px;
-    background: #f5f7fb;
+    background: #1b405e;
+    border: 1px solid #315571;
     border-radius: 10px;
     line-height: 1.6;
 }
 
 .sidebar-note strong {
-    color: #1457d9;
+    color: #ffffff;
 }
 
 .sidebar-note p {
-    color: #64748b;
+    color: #d4e1eb;
     font-size: 12px;
 }
 
@@ -137,29 +180,33 @@ body {
 }
 
 .eyebrow {
-    color: #1457d9;
+    color: var(--medical-blue);
     font-size: 11px;
-    font-weight: bold;
+    font-weight: 800;
     letter-spacing: 1.5px;
 }
 
 .welcome h2 {
     margin: 8px 0;
+    color: var(--navy);
     font-size: 27px;
+    letter-spacing: -0.5px;
 }
 
 .muted {
-    color: #718096;
+    color: var(--muted);
     line-height: 1.6;
 }
 
 .demo-badge {
     background: #fff3d6;
-    color: #8a5a00;
+    color: #754900;
     padding: 8px 12px;
+    border: 1px solid #f2d89d;
     border-radius: 6px;
     font-size: 11px;
-    font-weight: bold;
+    font-weight: 800;
+    white-space: nowrap;
 }
 
 .stats-grid {
@@ -172,29 +219,33 @@ body {
 .stat-card,
 .panel {
     background: #ffffff;
-    border: 1px solid #e5eaf1;
+    border: 1px solid var(--border);
     border-radius: 12px;
+    box-shadow: 0 3px 12px rgba(16, 42, 67, 0.035);
 }
 
 .stat-card {
     padding: 20px;
+    border-top: 3px solid #b9d5ec;
 }
 
 .stat-card p {
     margin: 0;
-    color: #64748b;
+    color: #526b7e;
     font-size: 13px;
 }
 
 .stat-card h3 {
     margin: 16px 0 10px;
+    color: var(--navy);
     font-size: 24px;
     overflow-wrap: anywhere;
 }
 
 .stat-note {
-    color: #8995a7;
+    color: #607487;
     font-size: 11px;
+    line-height: 1.5;
 }
 
 .panel {
@@ -203,6 +254,7 @@ body {
 
 .panel-heading h2 {
     margin: 0;
+    color: var(--navy);
     font-size: 20px;
 }
 
@@ -220,10 +272,16 @@ body {
 .filters select {
     min-height: 43px;
     padding: 10px 12px;
-    border: 1px solid #dbe2ea;
+    border: 1px solid #c6d3df;
     border-radius: 7px;
     background: #ffffff;
-    font: inherit;
+    color: #183247;
+}
+
+.filters input:focus,
+.filters select:focus {
+    border-color: var(--medical-blue);
+    outline: 3px solid #d8eafa;
 }
 
 .filters input {
@@ -248,8 +306,8 @@ table {
 
 th {
     padding: 14px 12px;
-    background: #f8fafc;
-    color: #64748b;
+    background: #edf3f8;
+    color: #40586c;
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.4px;
@@ -257,9 +315,13 @@ th {
 
 td {
     padding: 16px 12px;
-    border-bottom: 1px solid #edf0f5;
-    color: #334155;
+    border-bottom: 1px solid #e7edf2;
+    color: #294356;
     line-height: 1.5;
+}
+
+tbody tr:hover {
+    background: #f7fafc;
 }
 
 .pill {
@@ -267,7 +329,7 @@ td {
     padding: 6px 9px;
     border-radius: 20px;
     font-size: 11px;
-    font-weight: bold;
+    font-weight: 700;
     white-space: nowrap;
 }
 
@@ -278,14 +340,14 @@ td {
 
 .pill.review {
     background: #fff0d5;
-    color: #925c00;
+    color: #754900;
 }
 
 .disclaimer {
     margin-top: 22px;
     padding: 13px;
-    background: #f8fafc;
-    color: #64748b;
+    background: #f0f5f9;
+    color: #40586c;
     font-size: 12px;
     line-height: 1.7;
     border-radius: 7px;
@@ -293,7 +355,7 @@ td {
 
 footer {
     padding: 24px 0 4px;
-    color: #94a3b8;
+    color: #607487;
     font-size: 12px;
 }
 
@@ -328,7 +390,7 @@ footer {
         width: 100%;
         padding: 12px;
         border-right: 0;
-        border-bottom: 1px solid #e5eaf1;
+        border-bottom: 1px solid var(--border);
     }
 
     .menu-heading,
@@ -345,6 +407,11 @@ footer {
 
     .main-content {
         padding: 18px 12px;
+    }
+
+    .welcome {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .welcome h2 {
