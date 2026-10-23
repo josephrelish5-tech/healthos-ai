@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,16 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#102b46">
     <title>HealthOS AI | Healthcare Intelligence</title>
-
     <link rel="stylesheet" href="styles.css">
-
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js" defer></script>
-
     <style>
-        [hidden] {
-            display: none !important;
-        }
+        [hidden] { display: none !important; }
 
         .auth-screen {
             max-width: 460px;
@@ -26,15 +22,8 @@
             box-shadow: 0 12px 35px rgba(16, 43, 70, 0.08);
         }
 
-        .auth-screen h2 {
-            margin-top: 0;
-            color: #102b46;
-        }
-
-        .auth-screen p {
-            color: #64748b;
-            line-height: 1.6;
-        }
+        .auth-screen h2 { margin-top: 0; color: #102b46; }
+        .auth-screen p { color: #64748b; line-height: 1.6; }
 
         .auth-form {
             display: grid;
@@ -70,10 +59,7 @@
             cursor: pointer;
         }
 
-        .primary-button:disabled {
-            opacity: 0.6;
-            cursor: wait;
-        }
+        .primary-button:disabled { opacity: 0.6; cursor: wait; }
 
         .text-button {
             padding: 6px;
@@ -91,17 +77,10 @@
             overflow-wrap: anywhere;
         }
 
-        .message.error {
-            color: #b42318;
-        }
+        .message.error, .dashboard-message.error { color: #b42318; }
+        .message.success, .dashboard-message.success { color: #087443; }
 
-        .message.success {
-            color: #087443;
-        }
-
-        .setup-screen {
-            max-width: 560px;
-        }
+        .setup-screen { max-width: 560px; }
 
         .connection-label {
             display: inline-block;
@@ -120,17 +99,7 @@
             line-height: 1.6;
         }
 
-        .dashboard-message.error {
-            color: #b42318;
-        }
-
-        .dashboard-message.success {
-            color: #087443;
-        }
-
-        .topbar {
-            flex-wrap: wrap;
-        }
+        .topbar { flex-wrap: wrap; }
 
         .user-info {
             display: flex;
@@ -156,9 +125,7 @@
         }
     </style>
 </head>
-
 <body>
-
     <header class="topbar">
         <div class="brand">
             <div class="brand-icon">H</div>
@@ -167,7 +134,6 @@
                 <p>Healthcare Intelligence Platform</p>
             </div>
         </div>
-
         <div class="user-info">
             <span class="status-dot"></span>
             <span id="currentUserLabel">Secure healthcare workspace</span>
@@ -180,11 +146,9 @@
     <main>
         <section id="authPanel" class="auth-screen">
             <h2 id="authHeading">Welcome to HealthOS AI</h2>
-
             <p id="authDescription">
                 Sign in to access your healthcare operations workspace.
             </p>
-
             <span class="connection-label" id="connectionStatus">
                 Checking connection...
             </span>
@@ -235,11 +199,7 @@
 
             <p>
                 <span id="authModeText">New to HealthOS AI?</span>
-                <button
-                    id="authModeToggle"
-                    class="text-button"
-                    type="button"
-                >
+                <button id="authModeToggle" class="text-button" type="button">
                     Create an account
                 </button>
             </p>
@@ -252,7 +212,6 @@
 
         <section id="clinicSetup" class="auth-screen setup-screen" hidden>
             <h2>Set up your clinic workspace</h2>
-
             <p>
                 Create a workspace for your clinic. You must be signed in
                 before you can create one.
@@ -276,20 +235,13 @@
                 </button>
             </form>
 
-            <p
-                id="clinicMessage"
-                class="message"
-                role="status"
-                aria-live="polite"
-            ></p>
+            <p id="clinicMessage" class="message" role="status" aria-live="polite"></p>
         </section>
 
         <section id="appPanel" hidden>
             <div class="layout">
-
                 <aside class="sidebar">
                     <p class="menu-heading">MAIN MENU</p>
-
                     <a href="#dashboard" class="nav-item active">▦ Dashboard</a>
                     <a href="#patients" class="nav-item">♙ Patients</a>
                     <a href="#appointments" class="nav-item">▣ Appointments</a>
@@ -307,7 +259,6 @@
                 </aside>
 
                 <div class="main-content" id="dashboard">
-
                     <section class="welcome">
                         <div>
                             <p class="eyebrow">OVERVIEW</p>
@@ -321,7 +272,6 @@
                                 <strong id="currentClinicLabel">Loading...</strong>
                             </p>
                         </div>
-
                         <span class="demo-badge" id="dataModeBadge">
                             DEMONSTRATION
                         </span>
@@ -335,39 +285,29 @@
                     ></p>
 
                     <section class="stats-grid">
-
                         <article class="stat-card">
                             <p>Total Recorded Revenue</p>
                             <h3 id="totalRevenue">₦0</h3>
-                            <span class="stat-note">
-                                Based on available workspace records
-                            </span>
+                            <span class="stat-note">Based on available workspace records</span>
                         </article>
 
                         <article class="stat-card">
                             <p>Outstanding Balance</p>
                             <h3 id="outstandingBalance">₦0</h3>
-                            <span class="stat-note">
-                                Requires recorded billing data
-                            </span>
+                            <span class="stat-note">Requires recorded billing data</span>
                         </article>
 
                         <article class="stat-card">
                             <p>Billing Findings</p>
                             <h3 id="billingFindingCount">0</h3>
-                            <span class="stat-note">
-                                Findings recorded for review
-                            </span>
+                            <span class="stat-note">Findings recorded for review</span>
                         </article>
 
                         <article class="stat-card">
                             <p>Recorded Transactions</p>
                             <h3 id="transactionCount">0</h3>
-                            <span class="stat-note">
-                                Transactions in this workspace
-                            </span>
+                            <span class="stat-note">Transactions in this workspace</span>
                         </article>
-
                     </section>
 
                     <section class="panel" id="billing">
@@ -375,8 +315,8 @@
                             <div>
                                 <h2>Billing Review</h2>
                                 <p class="muted">
-                                    Review recorded transactions and
-                                    investigate possible discrepancies.
+                                    Review recorded transactions and investigate
+                                    possible discrepancies.
                                 </p>
                             </div>
                         </div>
@@ -388,7 +328,6 @@
                                 placeholder="Search transactions..."
                                 aria-label="Search transactions"
                             >
-
                             <select
                                 id="statusFilter"
                                 aria-label="Filter transactions by status"
@@ -407,4 +346,31 @@
                                         <th>Service</th>
                                         <th>Review finding</th>
                                         <th>Amount</th>
-                                        <th>Status</th
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transactionsBody">
+                                    <tr>
+                                        <td colspan="5">Preparing billing workspace...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <p class="disclaimer" id="dashboardDisclaimer">
+                            HealthOS AI is under development. Do not use this
+                            prototype to make clinical decisions or process real
+                            patient information. Billing findings must be reviewed
+                            by authorised staff.
+                        </p>
+                    </section>
+
+                    <footer>
+                        HealthOS AI · Healthcare operations and revenue protection
+                    </footer>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
