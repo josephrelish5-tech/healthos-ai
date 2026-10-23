@@ -1,1 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthOS AI | Healthcare Management</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+</head>
+<body>
 
+    <header class="topbar">
+        <div class="brand">
+            <div class="brand-icon">H</div>
+            <div>
+                <h1>HealthOS AI</h1>
+                <p>Healthcare Intelligence Platform</p>
+            </div>
+        </div>
+        <div class="user-info">
+            <span class="status-dot"></span>
+            Demo Workspace
+        </div>
+    </header>
+
+    <div class="layout">
+
+        <aside class="sidebar">
+            <p class="menu-heading">MAIN MENU</p>
+            <a href="#" class="nav-item active">▦ Dashboard</a>
+            <a href="#" class="nav-item">♙ Patients</a>
+            <a href="#" class="nav-item">▣ Appointments</a>
+            <a href="#" class="nav-item">₦ Billing & Revenue</a>
+            <a href="#" class="nav-item">✚ Pharmacy</a>
+            <a href="#" class="nav-item">▤ Reports</a>
+
+            <div class="sidebar-note">
+                <strong>HealthOS AI</strong>
+                <p>Helping healthcare teams work smarter and protect revenue.</p>
+            </div>
+        </aside>
+
+        <main class="main-content">
+
+            <section class="welcome">
+                <div>
+                    <p class="eyebrow">OVERVIEW</p>
+                    <h2>Healthcare Dashboard</h2>
+                    <p class="muted">Monitor clinic activity and identify billing issues.</p>
+                </div>
+                <span class="demo-badge">DEMO DATA</span>
+            </section>
+
+            <section class="stats-grid">
+
+                <article class="stat-card">
+                    <p>Total Recorded Revenue</p>
+                    <h3>₦2,450,000</h3>
+                    <span class="stat-note">Illustrative demo figure</span>
+                </article>
+
+                <article class="stat-card">
+                    <p>Payments Awaiting Review</p>
+                    <h3>₦185,000</h3>
+                    <span class="stat-note">Illustrative demo figure</span>
+                </article>
+
+                <article class="stat-card">
+                    <p>Billing Exceptions</p>
+                    <h3>8</h3>
+                    <span class="stat-note">Sample records needing checks</span>
+                </article>
+
+                <article class="stat-card">
+                    <p>Recorded Transactions</p>
+                    <h3>126</h3>
+                    <span class="stat-note">Illustrative demo figure</span>
+                </article>
+
+            </section>
+
+            <section class="panel">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Billing Review</h2>
+                        <p class="muted">Find sample transactions that may need attention.</p>
+                    </div>
+                </div>
+
+                <div class="filters">
+                    <input
+                        type="search"
+                        id="searchInput"
+                        placeholder="Search transactions..."
+                        aria-label="Search transactions"
+                    >
+
+                    <select id="statusFilter" aria-label="Filter by status">
+                        <option value="all">All transactions</option>
+                        <option value="Review needed">Review needed</option>
+                        <option value="Matched">Matched</option>
+                    </select>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Reference</th>
+                                <th>Service</th>
+                                <th>Review finding</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsBody">
+                            <tr>
+                                <td colspan="5">Loading sample transactions...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p class="disclaimer">
+                    Demonstration only. All records and amounts are fictional.
+                    This prototype is not connected to a real hospital, database,
+                    payment system, or AI service.
+                </p>
+            </section>
+
+            <footer>
+                HealthOS AI · Healthcare operations and revenue protection
+            </footer>
+
+        </main>
+    </div>
+
+</body>
+  </html>
