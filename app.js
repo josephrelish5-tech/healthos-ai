@@ -212,6 +212,7 @@ currentClinic = clinic;
     );
 
     loadBillingData(clinic);
+    loadServiceCaptureModule();
 }
 // Load billing transactions and revenue findings for this clinic.
 async function loadBillingData(clinic) {
