@@ -465,6 +465,41 @@ async function loadBillingData(clinic) {
             "error"
         );
     }
+}// Connect the transaction form controls.
+const toggleTransactionForm =
+    document.getElementById("toggleTransactionForm");
+
+const transactionForm =
+    document.getElementById("transactionForm");
+
+const transactionDate =
+    document.getElementById("transactionDate");
+
+if (toggleTransactionForm && transactionForm) {
+    toggleTransactionForm.addEventListener("click", function () {
+        transactionForm.hidden = !transactionForm.hidden;
+
+        toggleTransactionForm.setAttribute(
+            "aria-expanded",
+            String(!transactionForm.hidden)
+        );
+
+        toggleTransactionForm.textContent =
+            transactionForm.hidden
+                ? "+ Record transaction"
+                : "Cancel transaction";
+    });
+}
+
+if (transactionDate && !transactionDate.value) {
+    const today = new Date();
+
+    const localDate =
+        today.getFullYear() + "-" +
+        String(today.getMonth() + 1).padStart(2, "0") + "-" +
+        String(today.getDate()).padStart(2, "0");
+
+    transactionDate.value = localDate;
 }
 // Connect to Supabase.
 async function checkConnection() {
