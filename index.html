@@ -314,138 +314,157 @@
      HEALTHOS AI STAFF ASSISTANT
 =========================================== -->
 
-<section class="panel" id="staffAssistant">
+<!-- HEALTHOS AI FLOATING ASSISTANT -->
 
-    <div class="panel-heading">
-        <div>
-            <h2>HealthOS AI Assistant</h2>
+<button
+    type="button"
+    id="staffAssistantLauncher"
+    class="assistant-launcher"
+    aria-controls="staffAssistant"
+    aria-expanded="false"
+>
+    <span class="assistant-launcher-icon" aria-hidden="true">✦</span>
 
-            <p class="muted">
-                Tell HealthOS what you need help with.
-                We'll guide you to the right task.
+    <span class="assistant-launcher-text">
+        <strong>Ask HealthOS</strong>
+        <small>AI Staff Assistant</small>
+    </span>
+</button>
+
+<section
+    class="assistant-panel"
+    id="staffAssistant"
+    aria-label="HealthOS AI Assistant"
+    hidden
+>
+    <div class="assistant-panel-header">
+        <div class="assistant-brand">
+            <span class="assistant-brand-icon" aria-hidden="true">✦</span>
+
+            <div>
+                <h2>HealthOS AI</h2>
+                <p>Your healthcare operations assistant</p>
+            </div>
+        </div>
+
+        <button
+            type="button"
+            id="staffAssistantClose"
+            class="assistant-close"
+            aria-label="Close assistant"
+        >
+            &times;
+        </button>
+    </div>
+
+    <div class="assistant-panel-body">
+
+        <div class="assistant-welcome">
+            <span class="assistant-greeting">WELCOME TO HEALTHOS</span>
+
+            <h3>How can I help you today?</h3>
+
+            <p>
+                Choose a task below or describe what you need help with.
             </p>
         </div>
-    </div>
 
-    <div class="assistant-welcome">
-        <strong>How can I help you today?</strong>
+        <div class="assistant-quick-actions">
 
-        <p>
-            Describe your task in simple language or
-            choose one of the actions below.
-        </p>
-    </div>
+            <button
+                type="button"
+                class="assistant-action"
+                data-assistant-action="patient"
+            >
+                <span aria-hidden="true">＋</span>
+                <span>Register a patient</span>
+            </button>
 
-    <!-- QUICK ACTIONS -->
+            <button
+                type="button"
+                class="assistant-action"
+                data-assistant-action="appointment"
+            >
+                <span aria-hidden="true">▦</span>
+                <span>Manage appointments</span>
+            </button>
 
-    <div class="assistant-quick-actions">
+            <button
+                type="button"
+                class="assistant-action"
+                data-assistant-action="service"
+            >
+                <span aria-hidden="true">✓</span>
+                <span>Record a service</span>
+            </button>
 
-        <button
-            type="button"
-            class="assistant-action"
-            data-assistant-action="patient"
-        >
-            Register or find a patient
-        </button>
+            <button
+                type="button"
+                class="assistant-action"
+                data-assistant-action="billing"
+            >
+                <span aria-hidden="true">₦</span>
+                <span>Review billing</span>
+            </button>
 
-        <button
-            type="button"
-            class="assistant-action"
-            data-assistant-action="appointment"
-        >
-            Manage appointments
-        </button>
+        </div>
 
-        <button
-            type="button"
-            class="assistant-action"
-            data-assistant-action="service"
-        >
-            Record a performed service
-        </button>
+        <form id="staffAssistantForm" class="assistant-chat-form">
 
-        <button
-            type="button"
-            class="assistant-action"
-            data-assistant-action="billing"
-        >
-            Review billing
-        </button>
+            <label for="staffAssistantInput">
+                What do you need help with?
+            </label>
 
-        <button
-            type="button"
-            class="assistant-action"
-            data-assistant-action="help"
-        >
-            What can you help me do?
-        </button>
+            <textarea
+                id="staffAssistantInput"
+                rows="3"
+                maxlength="1000"
+                placeholder="Type your request here..."
+                required
+            ></textarea>
 
-    </div>
+            <button
+                type="submit"
+                id="staffAssistantSend"
+                class="primary-button assistant-send"
+            >
+                Get assistance
+            </button>
 
-    <!-- STAFF REQUEST -->
+        </form>
 
-    <form id="staffAssistantForm">
-
-        <label for="staffAssistantInput">
-            What do you need help with?
-        </label>
-
-        <textarea
-            id="staffAssistantInput"
-            rows="3"
-            maxlength="1000"
-            placeholder="Example: I need to record a service that was completed."
-            required
-        ></textarea>
-
-        <button
-            type="submit"
-            id="staffAssistantSend"
-            class="primary-button"
-        >
-            Get assistance
-        </button>
-
-    </form>
-
-    <!-- ASSISTANT RESPONSE -->
-
-    <div
-        id="staffAssistantResponse"
-        class="assistant-response"
-        role="status"
-        aria-live="polite"
-        hidden
-    >
-
-        <h3 id="staffAssistantResponseTitle">
-            HealthOS AI Assistant
-        </h3>
-
-        <p id="staffAssistantResponseText"></p>
-
-        <button
-            type="button"
-            id="staffAssistantActionButton"
-            class="primary-button"
+        <div
+            id="staffAssistantResponse"
+            class="assistant-response"
+            role="status"
+            aria-live="polite"
             hidden
         >
-            Open task
-        </button>
+            <h3 id="staffAssistantResponseTitle">
+                HealthOS AI Assistant
+            </h3>
+
+            <p id="staffAssistantResponseText"></p>
+
+            <button
+                type="button"
+                id="staffAssistantActionButton"
+                class="primary-button"
+                hidden
+            >
+                Open task
+            </button>
+        </div>
+
+        <p class="assistant-privacy-note">
+            Review and confirm changes before saving records.
+            Avoid entering unnecessary patient-identifying information.
+        </p>
 
     </div>
-
-    <p class="stat-note">
-        Staff must review and confirm changes to records.
-        Do not enter unnecessary patient-identifying
-        information into the assistant.
-    </p>
-
 </section>
 
-<!-- END HEALTHOS AI STAFF ASSISTANT -->     <!-- HEALTHOS AI: PATIENT REGISTRATION -->
-
-<section class="panel" id="patients">
+<!-- END HEALTHOS AI FLOATING ASSISTANT -->
 
     <div class="panel-heading">
         <div>
