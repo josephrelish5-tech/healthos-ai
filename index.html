@@ -320,7 +320,90 @@
                                 </p>
                             </div>
                         </div>
+<div class="billing-actions">
+    <button
+        id="toggleTransactionForm"
+        class="primary-button"
+        type="button"
+        aria-expanded="false"
+        aria-controls="transactionForm">
+        + Record transaction
+    </button>
+</div>
 
+<form id="transactionForm" class="auth-form" hidden>
+    <label>
+        Transaction reference
+        <input
+            id="transactionReference"
+            type="text"
+            maxlength="100"
+            placeholder="e.g. DEMO-0001"
+            required>
+    </label>
+
+    <label>
+        Service description
+        <input
+            id="transactionService"
+            type="text"
+            maxlength="200"
+            placeholder="e.g. Consultation (demo)"
+            required>
+    </label>
+
+    <label>
+        Invoice amount (₦)
+        <input
+            id="transactionInvoice"
+            type="number"
+            min="0.01"
+            step="0.01"
+            required>
+    </label>
+
+    <label>
+        Amount paid (₦)
+        <input
+            id="transactionPaid"
+            type="number"
+            min="0"
+            step="0.01"
+            value="0"
+            required>
+    </label>
+
+    <label>
+        Payment status
+        <select id="transactionStatus" required>
+            <option value="pending">Pending</option>
+            <option value="part_paid">Part paid</option>
+            <option value="paid">Paid</option>
+        </select>
+    </label>
+
+    <label>
+        Transaction date
+        <input
+            id="transactionDate"
+            type="date"
+            required>
+    </label>
+
+    <button
+        id="saveTransactionButton"
+        class="primary-button"
+        type="submit">
+        Save transaction
+    </button>
+
+    <p
+        id="transactionFormMessage"
+        class="message"
+        role="status"
+        aria-live="polite">
+    </p>
+</form>
                         <div class="filters">
                             <input
                                 type="search"
