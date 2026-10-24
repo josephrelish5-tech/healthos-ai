@@ -38,13 +38,15 @@ function showHealthOSView(viewId) {
 
     if (!mainContent) return;
 
-    const allowedViews = [
-        "dashboard",
-        "patients",
-        "appointments",
-        "serviceCapture",
-        "billing"
-    ];
+const allowedViews = [
+    "dashboard",
+    "patients",
+    "appointments",
+    "serviceCapture",
+    "billing",
+    "pharmacy",
+    "reports"
+];
 
     if (!allowedViews.includes(viewId)) {
         alert("This page is not available yet.");
