@@ -39,7 +39,7 @@ const dashboardMessage = document.getElementById("dashboardMessage");
 let supabaseClient = null;
 let isSignUpMode = false;
 let currentUser = null;
-
+let currentUser = null;
 // Show a message in the authentication area.
 function showAuthMessage(message, type = "") {
     authMessage.textContent = message;
