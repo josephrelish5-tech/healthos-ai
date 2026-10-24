@@ -900,3 +900,407 @@ logoutButton.addEventListener("click", async function () {
 setMode(false);
 showOnly("auth");
 checkConnection();
+// ============================================================
+// HEALTHOS AI: SERVICE CAPTURE AND REVENUE PROTECTION
+// ============================================================
+
+function serviceCaptureMessage(elementId, message, type = "") {
+    const element = document.getElementById(elementId);
+
+    if (!element) return;
+
+    element.textContent = message;
+    element.className = "message" + (type ? " " + type : "");
+}
+
+function serviceCaptureMoney(amount) {
+    return new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+        maximumFractionDigits: 2
+    }).format(Number(amount) || 0);
+}
+
+function serviceCaptureReady() {
+    if (!supabaseClient || !currentUser || !currentClinic) {
+        throw new Error(
+            "Your clinic session is not ready. Please sign in again."
+        );
+    }
+}
+
+// ------------------------------------------------------------
+// LOAD REGISTERED SERVICES
+// ------------------------------------------------------------
+
+async function loadServiceCatalogue() {
+    const select = document.getElementById("performedService");
+
+    if (!select) return;
+
+    try {
+        serviceCaptureReady();
+
+        const { data, error } = await supabaseClient
+            .from("service_catalogue")
+            .select("id, service_code, service_name, default_price")
+            .eq("clinic_id", currentClinic.id)
+            .eq("is_active", true)
+            .order("service_name");
+
+        if (error) throw error;
+
+        select.replaceChildren();
+
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "Select a service";
+        select.appendChild(placeholder);
+
+        (data || []).forEach(service => {
+            const option = document.createElement("option");
+
+            option.value = service.id;
+            option.textContent =
+                service.service_name + " — " +
+                serviceCaptureMoney(service.default_price);
+
+            select.appendChild(option);
+        });
+
+        if (!data || data.length === 0) {
+            placeholder.textContent = "Register a service first";
+        }
+
+    } catch (error) {
+        console.error("Service catalogue error:", error);
+
+        serviceCaptureMessage(
+            "serviceCatalogueMessage",
+            friendlyError(error),
+            "error"
+        );
+    }
+}
+
+// ------------------------------------------------------------
+// REGISTER A SERVICE
+// ------------------------------------------------------------
+
+const serviceCatalogueForm =
+    document.getElementById("serviceCatalogueForm");
+
+if (serviceCatalogueForm) {
+    serviceCatalogueForm.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const button = document.getElementById("saveServiceButton");
+
+        const code = document.getElementById("serviceCode")
+            .value.trim();
+
+        const name = document.getElementById("serviceName")
+            .value.trim();
+
+        const price = Number(
+            document.getElementById("servicePrice").value
+        );
+
+        serviceCaptureMessage("serviceCatalogueMessage", "");
+
+        try {
+            serviceCaptureReady();
+
+            if (!code || !name || !Number.isFinite(price) || price < 0) {
+                throw new Error(
+                    "Enter a valid service code, name and price."
+                );
+            }
+
+            button.disabled = true;
+            button.textContent = "Saving...";
+
+            const { data: existing, error: lookupError } =
+                await supabaseClient
+                    .from("service_catalogue")
+                    .select("id")
+                    .eq("clinic_id", currentClinic.id)
+                    .eq("service_code", code)
+                    .limit(1);
+
+            if (lookupError) throw lookupError;
+
+            if (existing && existing.length > 0) {
+                throw new Error(
+                    "This service code already exists."
+                );
+            }
+
+            const { error } = await supabaseClient
+                .from("service_catalogue")
+                .insert({
+                    clinic_id: currentClinic.id,
+                    service_code: code,
+                    service_name: name,
+                    default_price: price,
+                    currency: "NGN",
+                    is_active: true,
+                    created_by: currentUser.id
+                });
+
+            if (error) throw error;
+
+            serviceCatalogueForm.reset();
+
+            serviceCaptureMessage(
+                "serviceCatalogueMessage",
+                "Service registered successfully.",
+                "success"
+            );
+
+            await loadServiceCatalogue();
+
+        } catch (error) {
+            console.error("Register service error:", error);
+
+            serviceCaptureMessage(
+                "serviceCatalogueMessage",
+                friendlyError(error),
+                "error"
+            );
+
+        } finally {
+            button.disabled = false;
+            button.textContent = "Save Service";
+        }
+    });
+}
+
+// ------------------------------------------------------------
+// RECORD A PERFORMED SERVICE
+// ------------------------------------------------------------
+
+const serviceEventForm =
+    document.getElementById("serviceEventForm");
+
+if (serviceEventForm) {
+    serviceEventForm.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const button = document.getElementById("recordServiceButton");
+
+        const serviceId =
+            document.getElementById("performedService").value;
+
+        const quantity = Number(
+            document.getElementById("performedQuantity").value
+        );
+
+        const notes = document.getElementById("performedNotes")
+            .value.trim();
+
+        serviceCaptureMessage("serviceEventMessage", "");
+
+        try {
+            serviceCaptureReady();
+
+            if (
+                !serviceId ||
+                !Number.isInteger(quantity) ||
+                quantity < 1 ||
+                quantity > 1000
+            ) {
+                throw new Error(
+                    "Select a service and enter a valid quantity."
+                );
+            }
+
+            button.disabled = true;
+            button.textContent = "Recording...";
+
+            const { data: service, error: serviceError } =
+                await supabaseClient
+                    .from("service_catalogue")
+                    .select(
+                        "id, service_code, service_name, default_price"
+                    )
+                    .eq("id", serviceId)
+                    .eq("clinic_id", currentClinic.id)
+                    .eq("is_active", true)
+                    .single();
+
+            if (serviceError) throw serviceError;
+
+            const { error } = await supabaseClient
+                .from("service_events")
+                .insert({
+                    clinic_id: currentClinic.id,
+                    service_catalogue_id: service.id,
+                    service_code_snapshot: service.service_code,
+                    service_name_snapshot: service.service_name,
+                    unit_price: Number(service.default_price),
+                    quantity: quantity,
+                    currency: "NGN",
+                    event_status: "performed",
+                    performed_at: new Date().toISOString(),
+                    recorded_by: currentUser.id,
+                    notes: notes || null
+                });
+
+            if (error) throw error;
+
+            serviceEventForm.reset();
+
+            document.getElementById("performedQuantity").value = "1";
+
+            serviceCaptureMessage(
+                "serviceEventMessage",
+                "Service recorded. Billing review will now check for a linked transaction.",
+                "success"
+            );
+
+            await loadServiceAudit();
+
+        } catch (error) {
+            console.error("Record service error:", error);
+
+            serviceCaptureMessage(
+                "serviceEventMessage",
+                friendlyError(error),
+                "error"
+            );
+
+        } finally {
+            button.disabled = false;
+            button.textContent = "Record Service";
+        }
+    });
+}
+
+// ------------------------------------------------------------
+// REVIEW SERVICES WITHOUT LINKED BILLING TRANSACTIONS
+// ------------------------------------------------------------
+
+async function loadServiceAudit() {
+    const table = document.getElementById("serviceAuditBody");
+
+    if (!table) return;
+
+    table.replaceChildren();
+
+    try {
+        serviceCaptureReady();
+
+        const { data, error } = await supabaseClient
+            .from("service_events")
+            .select(
+                "id, service_name_snapshot, quantity, unit_price, event_status, billing_transaction_id, performed_at, created_at"
+            )
+            .eq("clinic_id", currentClinic.id)
+            .in("event_status", ["performed", "verified"])
+            .order("created_at", { ascending: false })
+            .limit(500);
+
+        if (error) throw error;
+
+        const candidates = (data || []).filter(
+            record => !record.billing_transaction_id
+        );
+
+        if (candidates.length === 0) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 5;
+            cell.textContent = "No unlinked services found.";
+
+            row.appendChild(cell);
+            table.appendChild(row);
+
+            serviceCaptureMessage(
+                "serviceAuditMessage",
+                "Review complete.",
+                "success"
+            );
+
+            return;
+        }
+
+        candidates.forEach(record => {
+            const row = document.createElement("tr");
+
+            const values = [
+                record.service_name_snapshot || "Unknown service",
+                String(record.quantity),
+                serviceCaptureMoney(
+                    Number(record.unit_price) *
+                    Number(record.quantity)
+                ),
+                record.performed_at
+                    ? new Date(record.performed_at).toLocaleString("en-NG")
+                    : new Date(record.created_at).toLocaleString("en-NG"),
+                "Needs human review"
+            ];
+
+            values.forEach(value => {
+                const cell = document.createElement("td");
+                cell.textContent = value;
+                row.appendChild(cell);
+            });
+
+            table.appendChild(row);
+        });
+
+        serviceCaptureMessage(
+            "serviceAuditMessage",
+            candidates.length +
+                " service record(s) need billing-link review. Verify before invoicing.",
+            "success"
+        );
+
+    } catch (error) {
+        console.error("Service billing review error:", error);
+
+        serviceCaptureMessage(
+            "serviceAuditMessage",
+            friendlyError(error),
+            "error"
+        );
+    }
+}
+
+// ------------------------------------------------------------
+// REFRESH REVIEW
+// ------------------------------------------------------------
+
+const refreshServiceAuditButton =
+    document.getElementById("refreshServiceAudit");
+
+if (refreshServiceAuditButton) {
+    refreshServiceAuditButton.addEventListener("click", async () => {
+        refreshServiceAuditButton.disabled = true;
+
+        try {
+            await loadServiceAudit();
+        } finally {
+            refreshServiceAuditButton.disabled = false;
+        }
+    });
+}
+
+// ------------------------------------------------------------
+// LOAD SERVICE MODULE WHEN THE DASHBOARD OPENS
+// ------------------------------------------------------------
+
+async function loadServiceCaptureModule() {
+    if (!currentUser || !currentClinic || !supabaseClient) return;
+
+    await Promise.all([
+        loadServiceCatalogue(),
+        loadServiceAudit()
+    ]);
+}
+
+// ============================================================
+// END SERVICE CAPTURE MODULE
+// ============================================================
