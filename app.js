@@ -1305,3 +1305,198 @@ async function loadServiceCaptureModule() {
 // ============================================================
 // END SERVICE CAPTURE MODULE
 // ============================================================
+// ============================================================
+// HEALTHOS AI STAFF ASSISTANT
+// Guided staff workflow — prototype version
+// ============================================================
+
+(function initializeHealthOSStaffAssistant() {
+    const form = document.getElementById("staffAssistantForm");
+    const input = document.getElementById("staffAssistantInput");
+    const response = document.getElementById("staffAssistantResponse");
+    const responseTitle = document.getElementById("staffAssistantResponseTitle");
+    const responseText = document.getElementById("staffAssistantResponseText");
+    const actionButton = document.getElementById("staffAssistantActionButton");
+
+    if (!form || !input || !response || !responseTitle || !responseText || !actionButton) {
+        console.warn("HealthOS Staff Assistant: Required HTML elements were not found.");
+        return;
+    }
+
+    let pendingSection = null;
+
+    function showResponse(title, message, sectionId = null, buttonLabel = "Open task") {
+        responseTitle.textContent = title;
+        responseText.textContent = message;
+        response.hidden = false;
+
+        pendingSection = sectionId;
+        actionButton.hidden = !sectionId;
+
+        if (sectionId) {
+            actionButton.textContent = buttonLabel;
+        }
+
+        response.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest"
+        });
+    }
+
+    function openSection(sectionId, sectionName) {
+        const section = document.getElementById(sectionId);
+
+        if (!section) {
+            showResponse(
+                "Task not available",
+                "I could not find the " + sectionName +
+                " section. Please refresh the dashboard and try again."
+            );
+            return;
+        }
+
+        section.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+
+        showResponse(
+            "Ready for the next step",
+            "The " + sectionName +
+            " section is now in view. Complete the required fields and review the information before saving."
+        );
+    }
+
+    function handleRequest(request) {
+        const text = request.toLowerCase().trim();
+
+        if (!text) {
+            showResponse(
+                "Tell me what you need",
+                "For example, ask me to record a completed service or review billing."
+            );
+            return;
+        }
+
+        if (
+            text.includes("service") ||
+            text.includes("procedure") ||
+            text.includes("treatment") ||
+            text.includes("consultation") ||
+            text.includes("record a performed")
+        ) {
+            openSection("serviceCapture", "Service Capture");
+            return;
+        }
+
+        if (
+            text.includes("billing") ||
+            text.includes("invoice") ||
+            text.includes("payment") ||
+            text.includes("unpaid") ||
+            text.includes("revenue")
+        ) {
+            openSection("billing", "Billing");
+            return;
+        }
+
+        if (
+            text.includes("patient") ||
+            text.includes("register") ||
+            text.includes("find a patient")
+        ) {
+            const patientForm = document.getElementById("patientForm");
+
+            if (patientForm) {
+                openSection("patientForm", "Patient Registration");
+            } else {
+                showResponse(
+                    "Patient management",
+                    "The patient registration workflow is not connected to this assistant yet. I will not claim a patient has been registered or found."
+                );
+            }
+            return;
+        }
+
+        if (
+            text.includes("appointment") ||
+            text.includes("schedule") ||
+            text.includes("booking")
+        ) {
+            const appointmentForm = document.getElementById("appointmentForm");
+
+            if (appointmentForm) {
+                openSection("appointmentForm", "Appointments");
+            } else {
+                showResponse(
+                    "Appointment management",
+                    "The appointment workflow is not connected to this assistant yet. No appointment has been created or changed."
+                );
+            }
+            return;
+        }
+
+        if (
+            text.includes("help") ||
+            text.includes("what can you do") ||
+            text.includes("how can you help")
+        ) {
+            showResponse(
+                "Here is how I can help",
+                "I can guide you to Service Capture and Billing. Patient registration and appointment management may not be connected yet. This prototype uses simple keyword matching; it is not yet a full AI system."
+            );
+            return;
+        }
+
+        showResponse(
+            "Let me guide you",
+            "I did not recognise that request. Try asking about recording a service, reviewing billing, registering a patient, or managing appointments."
+        );
+    }
+
+    form.addEventListener("submit", function(event) {
+        event.preventDefault();
+        handleRequest(input.value);
+    });
+
+    document.querySelectorAll("[data-assistant-action]").forEach(function(button) {
+        button.addEventListener("click", function() {
+            const task = button.dataset.assistantAction;
+
+            const requests = {
+                patient: "register a patient",
+                appointment: "manage appointments",
+                service: "record a performed service",
+                billing: "review billing",
+                help: "what can you help me do"
+            };
+
+            handleRequest(requests[task] || "help");
+        });
+    });
+
+    actionButton.addEventListener("click", function() {
+        if (!pendingSection) return;
+
+        const section = document.getElementById(pendingSection);
+
+        if (!section) {
+            showResponse(
+                "Task not available",
+                "That section could not be found. Please refresh the dashboard."
+            );
+            return;
+        }
+
+        section.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+    });
+
+    console.log("HealthOS Staff Assistant initialized successfully.");
+})();
+ 
+// ============================================================
+// END HEALTHOS AI STAFF ASSISTANT
+// ============================================================
