@@ -1344,6 +1344,7 @@ async function loadServiceCaptureModule() {
     }
 
     function openSection(sectionId, sectionName) {
+            function openSection(sectionId, sectionName) {
         const section = document.getElementById(sectionId);
 
         if (!section) {
@@ -1355,16 +1356,16 @@ async function loadServiceCaptureModule() {
             return;
         }
 
-        section.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-
         showResponse(
             "Ready for the next step",
             "The " + sectionName +
             " section is now in view. Complete the required fields and review the information before saving."
         );
+
+        section.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
     }
 
     function handleRequest(request) {
