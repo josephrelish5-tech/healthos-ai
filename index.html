@@ -443,7 +443,112 @@
 
 </section>
 
-<!-- END HEALTHOS AI STAFF ASSISTANT -->
+<!-- END HEALTHOS AI STAFF ASSISTANT -->     <!-- HEALTHOS AI: PATIENT REGISTRATION -->
+
+<section class="panel" id="patients">
+
+    <div class="panel-heading">
+        <div>
+            <h2>Patient Management</h2>
+            <p class="muted">
+                Register patients and manage authorised
+                administrative records.
+            </p>
+        </div>
+    </div>
+
+    <h3>Register a Patient</h3>
+
+    <form id="patientForm" class="auth-form">
+
+        <label>
+            First Name
+            <input
+                type="text"
+                id="patientFirstName"
+                maxlength="100"
+                autocomplete="off"
+                required
+            >
+        </label>
+
+        <label>
+            Last Name
+            <input
+                type="text"
+                id="patientLastName"
+                maxlength="100"
+                autocomplete="off"
+                required
+            >
+        </label>
+
+        <label>
+            Date of Birth (Optional)
+            <input
+                type="date"
+                id="patientDateOfBirth"
+            >
+        </label>
+
+        <label>
+            Sex (Optional)
+            <select id="patientSex">
+                <option value="">Not recorded</option>
+                <option value="female">Female</option>
+                <option value="male">Male</option>
+                <option value="intersex">Intersex</option>
+                <option value="unknown">Unknown</option>
+            </select>
+        </label>
+
+        <label>
+            Phone Number (Optional)
+            <input
+                type="tel"
+                id="patientPhone"
+                maxlength="30"
+                autocomplete="off"
+            >
+        </label>
+
+        <label>
+            Email Address (Optional)
+            <input
+                type="email"
+                id="patientEmail"
+                maxlength="254"
+                autocomplete="off"
+            >
+        </label>
+
+        <button
+            type="submit"
+            id="registerPatientButton"
+            class="primary-button"
+        >
+            Register Patient
+        </button>
+
+        <p
+            id="patientFormMessage"
+            class="message"
+            role="status"
+            aria-live="polite"
+        ></p>
+
+    </form>
+
+    <p class="disclaimer">
+        Patient records are sensitive. Only authorised staff
+        should access or modify them. Do not use real patient
+        information until the application has been fully
+        tested and approved for that purpose.
+    </p>
+
+</section>
+
+<!-- END PATIENT REGISTRATION --> 
 <section class="panel" id="serviceCapture">
 
     <div class="panel-heading">
