@@ -1443,7 +1443,49 @@ async function loadServiceCaptureModule() {
         console.warn("HealthOS Staff Assistant: Required HTML elements were not found.");
         return;
     }
+    // HEALTHOS AI: FLOATING ASSISTANT OPEN/CLOSE CONTROLS
 
+    const assistantPanel = document.getElementById("staffAssistant");
+    const assistantLauncher = document.getElementById("staffAssistantLauncher");
+    const assistantCloseButton = document.getElementById("staffAssistantClose");
+
+    function setAssistantOpen(isOpen) {
+        if (!assistantPanel || !assistantLauncher) {
+            console.warn("HealthOS AI: Assistant panel or launcher not found.");
+            return;
+        }
+
+        assistantPanel.hidden = !isOpen;
+        assistantLauncher.setAttribute("aria-expanded", String(isOpen));
+
+        if (isOpen && input) {
+            input.focus();
+        }
+
+        if (!isOpen) {
+            assistantLauncher.focus();
+        }
+    }
+
+    if (assistantLauncher) {
+        assistantLauncher.addEventListener("click", function() {
+            setAssistantOpen(true);
+        });
+    }
+
+    if (assistantCloseButton) {
+        assistantCloseButton.addEventListener("click", function() {
+            setAssistantOpen(false);
+        });
+    }
+
+    document.addEventListener("keydown", function(event) {
+        if (event.key === "Escape" && assistantPanel && !assistantPanel.hidden) {
+            setAssistantOpen(false);
+        }
+    });
+
+    // END FLOATING ASSISTANT CONTROLS
     let pendingSection = null;
 
     function showResponse(title, message, sectionId = null, buttonLabel = "Open task") {
