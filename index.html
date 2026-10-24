@@ -310,7 +310,140 @@
                         </article>
                     </section>
 <!-- HEALTHOS AI: SERVICE CAPTURE MODULE -->
+<!-- ==========================================
+     HEALTHOS AI STAFF ASSISTANT
+=========================================== -->
 
+<section class="panel" id="staffAssistant">
+
+    <div class="panel-heading">
+        <div>
+            <h2>HealthOS AI Assistant</h2>
+
+            <p class="muted">
+                Tell HealthOS what you need help with.
+                We'll guide you to the right task.
+            </p>
+        </div>
+    </div>
+
+    <div class="assistant-welcome">
+        <strong>How can I help you today?</strong>
+
+        <p>
+            Describe your task in simple language or
+            choose one of the actions below.
+        </p>
+    </div>
+
+    <!-- QUICK ACTIONS -->
+
+    <div class="assistant-quick-actions">
+
+        <button
+            type="button"
+            class="assistant-action"
+            data-assistant-action="patient"
+        >
+            Register or find a patient
+        </button>
+
+        <button
+            type="button"
+            class="assistant-action"
+            data-assistant-action="appointment"
+        >
+            Manage appointments
+        </button>
+
+        <button
+            type="button"
+            class="assistant-action"
+            data-assistant-action="service"
+        >
+            Record a performed service
+        </button>
+
+        <button
+            type="button"
+            class="assistant-action"
+            data-assistant-action="billing"
+        >
+            Review billing
+        </button>
+
+        <button
+            type="button"
+            class="assistant-action"
+            data-assistant-action="help"
+        >
+            What can you help me do?
+        </button>
+
+    </div>
+
+    <!-- STAFF REQUEST -->
+
+    <form id="staffAssistantForm">
+
+        <label for="staffAssistantInput">
+            What do you need help with?
+        </label>
+
+        <textarea
+            id="staffAssistantInput"
+            rows="3"
+            maxlength="1000"
+            placeholder="Example: I need to record a service that was completed."
+            required
+        ></textarea>
+
+        <button
+            type="submit"
+            id="staffAssistantSend"
+            class="primary-button"
+        >
+            Get assistance
+        </button>
+
+    </form>
+
+    <!-- ASSISTANT RESPONSE -->
+
+    <div
+        id="staffAssistantResponse"
+        class="assistant-response"
+        role="status"
+        aria-live="polite"
+        hidden
+    >
+
+        <h3 id="staffAssistantResponseTitle">
+            HealthOS AI Assistant
+        </h3>
+
+        <p id="staffAssistantResponseText"></p>
+
+        <button
+            type="button"
+            id="staffAssistantActionButton"
+            class="primary-button"
+            hidden
+        >
+            Open task
+        </button>
+
+    </div>
+
+    <p class="stat-note">
+        Staff must review and confirm changes to records.
+        Do not enter unnecessary patient-identifying
+        information into the assistant.
+    </p>
+
+</section>
+
+<!-- END HEALTHOS AI STAFF ASSISTANT -->
 <section class="panel" id="serviceCapture">
 
     <div class="panel-heading">
