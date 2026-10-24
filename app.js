@@ -204,7 +204,7 @@ async function openWorkspace(user) {
 // Open the dashboard after a clinic is found or created.
 function showDashboard(clinic) {
     showOnly("dashboard");
-
+currentClinic = clinic;
     currentClinicLabel.textContent = clinic.name;
 
     showDashboardMessage(
