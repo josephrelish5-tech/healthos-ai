@@ -33,20 +33,22 @@ const clinicMessage = document.getElementById("clinicMessage");
 const appPanel = document.getElementById("appPanel");
 // HEALTHOS AI: SEPARATE DASHBOARD VIEWS
 
+// HEALTHOS AI: SEPARATE DASHBOARD VIEWS
+
 function showHealthOSView(viewId) {
-    const mainContent = document.querySelector(".main-content");
+    const mainContent = document.getElementById("dashboard");
 
     if (!mainContent) return;
 
-const allowedViews = [
-    "dashboard",
-    "patients",
-    "appointments",
-    "serviceCapture",
-    "billing",
-    "pharmacy",
-    "reports"
-];
+    const allowedViews = [
+        "dashboard",
+        "patients",
+        "appointments",
+        "serviceCapture",
+        "billing",
+        "pharmacy",
+        "reports"
+    ];
 
     if (!allowedViews.includes(viewId)) {
         alert("This page is not available yet.");
@@ -55,6 +57,22 @@ const allowedViews = [
 
     const isDashboard = viewId === "dashboard";
 
+    // Check that the requested page exists before changing views.
+    const requestedPanel = isDashboard
+        ? mainContent
+        : document.getElementById(viewId);
+
+    if (!requestedPanel) {
+        alert(
+            viewId === "pharmacy"
+                ? "The Pharmacy page has not been created yet."
+                : viewId === "reports"
+                    ? "The Reports page has not been created yet."
+                    : "This page could not be found."
+        );
+        return;
+    }
+
     // Show the overview only on the Dashboard page.
     mainContent.querySelectorAll(
         ":scope > .welcome, :scope > .stats-grid, :scope > #dashboardMessage"
@@ -62,7 +80,7 @@ const allowedViews = [
         element.hidden = !isDashboard;
     });
 
-    // Show only the selected module.
+    // Hide every existing module except the selected page.
     allowedViews
         .filter(id => id !== "dashboard")
         .forEach(id => {
@@ -87,17 +105,11 @@ const allowedViews = [
         }
     });
 
-    // Move to the selected page.
-    const destination = isDashboard
-        ? mainContent.querySelector(".welcome")
-        : document.getElementById(viewId);
-
-    if (destination) {
-        destination.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-    }
+    // Display the selected page.
+    requestedPanel.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
 }
 
 // Connect the sidebar to the page navigation.
