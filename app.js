@@ -1507,28 +1507,30 @@ async function loadServiceCaptureModule() {
     }
 
     
-            function openSection(sectionId, sectionName) {
+    function openSection(sectionId, sectionName) {
         const section = document.getElementById(sectionId);
 
         if (!section) {
-            showResponse(
-                "Task not available",
-                "I could not find the " + sectionName +
-                " section. Please refresh the dashboard and try again."
+            setAssistantOpen(false);
+
+            alert(
+                sectionName +
+                " is not available yet. This section needs to be connected."
             );
+
             return;
         }
 
-        showResponse(
-            "Ready for the next step",
-            "The " + sectionName +
-            " section is now in view. Complete the required fields and review the information before saving."
-        );
+        // Close the floating assistant first.
+        setAssistantOpen(false);
 
+        // Scroll to the requested section.
         section.scrollIntoView({
             behavior: "smooth",
             block: "start"
         });
+
+        console.log("HealthOS AI opened: " + sectionName);
     }
 
     function handleRequest(request) {
