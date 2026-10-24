@@ -209,7 +209,7 @@ function showDashboard(clinic) {
 
     showDashboardMessage(
         "Your clinic workspace is connected. Dashboard features are still under development."
-    );
+    );        );
 }
 // Load billing transactions and revenue findings for this clinic.
 async function loadBillingData(clinic) {
