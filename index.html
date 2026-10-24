@@ -1010,6 +1010,69 @@
                     <footer>
                         HealthOS AI · Healthcare operations and revenue protection
                     </footer>
+                    <!-- HEALTHOS AI: PHARMACY MODULE -->
+<section class="panel" id="pharmacy" hidden>
+    <div class="panel-heading">
+        <div>
+            <h2>Pharmacy & Inventory</h2>
+            <p class="muted">
+                Monitor medicine stock, batch numbers, expiry dates,
+                and purchasing activity.
+            </p>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <article class="stat-card">
+            <p>Registered Medicines</p>
+            <h3 id="pharmacyMedicineCount">0</h3>
+        </article>
+
+        <article class="stat-card">
+            <p>Low-Stock Items</p>
+            <h3 id="pharmacyLowStockCount">0</h3>
+        </article>
+
+        <article class="stat-card">
+            <p>Expiring Medicines</p>
+            <h3 id="pharmacyExpiryCount">0</h3>
+        </article>
+    </div>
+
+    <h3>Inventory Workspace</h3>
+
+    <p class="muted">
+        Inventory recording and expiry monitoring will be connected
+        to the pharmacy database in a later development step.
+    </p>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Medicine</th>
+                    <th>Batch Number</th>
+                    <th>Quantity</th>
+                    <th>Expiry Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="pharmacyInventoryBody">
+                <tr>
+                    <td colspan="5">
+                        No pharmacy inventory has been loaded.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <p class="disclaimer">
+        Inventory features are under development. Staff must verify
+        medicine batches, quantities, and expiry dates before dispensing.
+    </p>
+</section>
+<!-- END HEALTHOS AI PHARMACY MODULE -->
                 </div>
             </div>
         </section>
