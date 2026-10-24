@@ -211,7 +211,259 @@ function showDashboard(clinic) {
         "Your clinic workspace is connected. Dashboard features are still under development."
     );
 }
+// Load billing transactions and revenue findings for this clinic.
+async function loadBillingData(clinic) {
+    const transactionsBody =
+        document.getElementById("transactionsBody");
 
+    const totalRevenueElement =
+        document.getElementById("totalRevenue");
+
+    const outstandingBalanceElement =
+        document.getElementById("outstandingBalance");
+
+    const billingFindingCountElement =
+        document.getElementById("billingFindingCount");
+
+    const transactionCountElement =
+        document.getElementById("transactionCount");
+
+    if (
+        !transactionsBody ||
+        !totalRevenueElement ||
+        !outstandingBalanceElement ||
+        !billingFindingCountElement ||
+        !transactionCountElement
+    ) {
+        console.error(
+            "HealthOS AI: Billing dashboard elements are missing."
+        );
+        return;
+    }
+
+    transactionsBody.replaceChildren();
+
+    const loadingRow = document.createElement("tr");
+    const loadingCell = document.createElement("td");
+
+    loadingCell.colSpan = 5;
+    loadingCell.textContent = "Loading billing records...";
+
+    loadingRow.appendChild(loadingCell);
+    transactionsBody.appendChild(loadingRow);
+
+    try {
+        if (!supabaseClient || !clinic || !clinic.id) {
+            throw new Error(
+                "The clinic workspace could not be identified."
+            );
+        }
+
+        const { data: transactions, error: transactionError } =
+            await supabaseClient
+                .from("billing_transactions")
+                .select(
+                    "id, clinic_id, reference, service_description, invoice_amount, amount_paid, payment_status, transaction_date"
+                )
+                .eq("clinic_id", clinic.id)
+                .order("transaction_date", {
+                    ascending: false
+                });
+
+        if (transactionError) {
+            throw transactionError;
+        }
+
+        const { data: findings, error: findingsError } =
+            await supabaseClient
+                .from("revenue_audit_findings")
+                .select(
+                    "transaction_id, finding_type, description, status"
+                )
+                .eq("clinic_id", clinic.id);
+
+        if (findingsError) {
+            throw findingsError;
+        }
+
+        const activeFindings = (findings || []).filter(
+            function (finding) {
+                return (
+                    finding.status === "open" ||
+                    finding.status === "investigating"
+                );
+            }
+        );
+
+        const findingsByTransaction = new Map();
+
+        activeFindings.forEach(function (finding) {
+            if (!finding.transaction_id) {
+                return;
+            }
+
+            if (
+                !findingsByTransaction.has(
+                    finding.transaction_id
+                )
+            ) {
+                findingsByTransaction.set(
+                    finding.transaction_id,
+                    []
+                );
+            }
+
+            findingsByTransaction
+                .get(finding.transaction_id)
+                .push(finding);
+        });
+
+        const money = new Intl.NumberFormat("en-NG", {
+            style: "currency",
+            currency: "NGN",
+            maximumFractionDigits: 2
+        });
+
+        let totalRevenue = 0;
+        let outstandingBalance = 0;
+
+        (transactions || []).forEach(function (transaction) {
+            const invoiceAmount =
+                Number(transaction.invoice_amount) || 0;
+
+            const amountPaid =
+                Number(transaction.amount_paid) || 0;
+
+            const status = transaction.payment_status;
+
+            if (
+                status !== "void" &&
+                status !== "refunded"
+            ) {
+                totalRevenue += amountPaid;
+            }
+
+            if (
+                status === "pending" ||
+                status === "part_paid"
+            ) {
+                outstandingBalance += Math.max(
+                    0,
+                    invoiceAmount - amountPaid
+                );
+            }
+        });
+
+        totalRevenueElement.textContent =
+            money.format(totalRevenue);
+
+        outstandingBalanceElement.textContent =
+            money.format(outstandingBalance);
+
+        billingFindingCountElement.textContent =
+            String(findings ? findings.length : 0);
+
+        transactionCountElement.textContent =
+            String((transactions || []).length);
+
+        transactionsBody.replaceChildren();
+
+        if (!transactions || transactions.length === 0) {
+            const emptyRow = document.createElement("tr");
+            const emptyCell = document.createElement("td");
+
+            emptyCell.colSpan = 5;
+            emptyCell.textContent =
+                "No billing transactions recorded for this clinic yet.";
+
+            emptyRow.appendChild(emptyCell);
+            transactionsBody.appendChild(emptyRow);
+
+            showDashboardMessage(
+                "Your clinic is connected. No billing transactions have been recorded yet."
+            );
+
+            return;
+        }
+
+        transactions.forEach(function (transaction) {
+            const row = document.createElement("tr");
+
+            const transactionFindings =
+                findingsByTransaction.get(transaction.id) || [];
+
+            let reviewText;
+
+            if (transactionFindings.length > 0) {
+                reviewText = transactionFindings
+                    .map(function (finding) {
+                        return finding.description ||
+                            finding.finding_type;
+                    })
+                    .join("; ");
+            } else {
+                reviewText = "No open finding recorded";
+            }
+
+            const statusText =
+                transactionFindings.length > 0
+                    ? "Review needed"
+                    : String(
+                        transaction.payment_status || "unknown"
+                    )
+                        .replace(/_/g, " ")
+                        .replace(/\b\w/g, function (letter) {
+                            return letter.toUpperCase();
+                        });
+
+            const values = [
+                transaction.reference || "No reference",
+                transaction.service_description || "Unspecified service",
+                reviewText,
+                money.format(
+                    Number(transaction.invoice_amount) || 0
+                ),
+                statusText
+            ];
+
+            values.forEach(function (value) {
+                const cell = document.createElement("td");
+                cell.textContent = value;
+                row.appendChild(cell);
+            });
+
+            transactionsBody.appendChild(row);
+        });
+
+        showDashboardMessage(
+            "Billing records loaded. Review any flagged findings before taking action."
+        );
+
+    } catch (error) {
+        console.error(
+            "HealthOS AI billing data loading failed:",
+            error
+        );
+
+        transactionsBody.replaceChildren();
+
+        const errorRow = document.createElement("tr");
+        const errorCell = document.createElement("td");
+
+        errorCell.colSpan = 5;
+        errorCell.textContent =
+            "Unable to load billing records. Please refresh and try again.";
+
+        errorRow.appendChild(errorCell);
+        transactionsBody.appendChild(errorRow);
+
+        showDashboardMessage(
+            "The dashboard opened, but billing data could not be loaded: " +
+            friendlyError(error),
+            "error"
+        );
+    }
+}
 // Connect to Supabase.
 async function checkConnection() {
     try {
