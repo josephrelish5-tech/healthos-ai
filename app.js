@@ -930,7 +930,128 @@ function serviceCaptureReady() {
     }
 }
 
-// ------------------------------------------------------------
+// ============================================================
+// HEALTHOS AI: PATIENT REGISTRATION
+// ============================================================
+
+const patientForm = document.getElementById("patientForm");
+
+if (patientForm) {
+    patientForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const button = document.getElementById(
+            "registerPatientButton"
+        );
+
+        const message = document.getElementById(
+            "patientFormMessage"
+        );
+
+        const firstName = document.getElementById(
+            "patientFirstName"
+        ).value.trim();
+
+        const lastName = document.getElementById(
+            "patientLastName"
+        ).value.trim();
+
+        const dateOfBirth = document.getElementById(
+            "patientDateOfBirth"
+        ).value;
+
+        const sex = document.getElementById(
+            "patientSex"
+        ).value;
+
+        const phone = document.getElementById(
+            "patientPhone"
+        ).value.trim();
+
+        const email = document.getElementById(
+            "patientEmail"
+        ).value.trim();
+
+        message.textContent = "";
+        message.className = "message";
+
+        try {
+            serviceCaptureReady();
+
+            if (!firstName || !lastName) {
+                throw new Error(
+                    "Enter the patient's first and last names."
+                );
+            }
+
+            if (firstName.length > 100 || lastName.length > 100) {
+                throw new Error(
+                    "Names must not exceed 100 characters."
+                );
+            }
+
+            if (dateOfBirth) {
+                const birthDate = new Date(
+                    dateOfBirth + "T00:00:00"
+                );
+
+                if (
+                    Number.isNaN(birthDate.getTime()) ||
+                    birthDate > new Date()
+                ) {
+                    throw new Error(
+                        "Enter a valid date of birth that is not in the future."
+                    );
+                }
+            }
+
+            button.disabled = true;
+            button.textContent = "Registering...";
+
+            const patientRecord = {
+                clinic_id: currentClinic.id,
+                first_name: firstName,
+                last_name: lastName,
+                date_of_birth: dateOfBirth || null,
+                sex: sex || null,
+                phone: phone || null,
+                email: email || null,
+                created_by: currentUser.id
+            };
+
+            const { data, error } = await supabaseClient
+                .from("patients")
+                .insert(patientRecord)
+                .select("id, first_name, last_name")
+                .single();
+
+            if (error) {
+                throw error;
+            }
+
+            patientForm.reset();
+
+            message.textContent =
+                "Patient registered successfully. Record ID: " +
+                data.id;
+
+            message.className = "message success";
+
+        } catch (error) {
+            console.error(
+                "Patient registration error:",
+                error
+            );
+
+            message.textContent = friendlyError(error);
+            message.className = "message error";
+
+        } finally {
+            button.disabled = false;
+            button.textContent = "Register Patient";
+        }
+    });
+            }------------------------------------------------------------
 // LOAD REGISTERED SERVICES
 // ------------------------------------------------------------
 
