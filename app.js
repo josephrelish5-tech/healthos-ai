@@ -1414,14 +1414,270 @@ if (refreshServiceAuditButton) {
 // LOAD SERVICE MODULE WHEN THE DASHBOARD OPENS
 // ------------------------------------------------------------
 
-async function loadServiceCaptureModule() {
-    if (!currentUser || !currentClinic || !supabaseClient) return;
+// ============================================================
+// HEALTHOS AI: APPOINTMENTS MODULE
+// ============================================================
 
-    await Promise.all([
-        loadServiceCatalogue(),
-        loadServiceAudit()
-    ]);
+const appointmentForm = document.getElementById("appointmentForm");
+const appointmentPatientSelect = document.getElementById("appointmentPatient");
+const appointmentDateTime = document.getElementById("appointmentDateTime");
+const appointmentReason = document.getElementById("appointmentReason");
+const appointmentNotes = document.getElementById("appointmentNotes");
+const appointmentMessage = document.getElementById("appointmentMessage");
+const appointmentsBody = document.getElementById("appointmentsBody");
+const saveAppointmentButton = document.getElementById("saveAppointmentButton");
+const refreshAppointmentsButton = document.getElementById("refreshAppointmentsButton");
+
+const appointmentPatientNames = new Map();
+
+function showAppointmentMessage(message, type = "") {
+    if (!appointmentMessage) return;
+
+    appointmentMessage.textContent = message;
+    appointmentMessage.className =
+        "message" + (type ? " " + type : "");
 }
+
+async function loadAppointmentPatients() {
+    if (!appointmentPatientSelect) return;
+
+    try {
+        serviceCaptureReady();
+
+        const { data, error } = await supabaseClient
+            .from("patients")
+            .select("id, first_name, last_name")
+            .eq("clinic_id", currentClinic.id)
+            .order("first_name");
+
+        if (error) throw error;
+
+        appointmentPatientNames.clear();
+        appointmentPatientSelect.replaceChildren();
+
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "Select a registered patient";
+        appointmentPatientSelect.appendChild(placeholder);
+
+        (data || []).forEach(patient => {
+            const fullName =
+                patient.first_name + " " + patient.last_name;
+
+            appointmentPatientNames.set(patient.id, fullName);
+
+            const option = document.createElement("option");
+            option.value = patient.id;
+            option.textContent = fullName;
+
+            appointmentPatientSelect.appendChild(option);
+        });
+
+        if (!data || data.length === 0) {
+            showAppointmentMessage(
+                "No registered patients were found for this clinic. Register a patient first.",
+                "error"
+            );
+        }
+    } catch (error) {
+        console.error("Appointment patient loading error:", error);
+
+        showAppointmentMessage(
+            friendlyError(error),
+            "error"
+        );
+    }
+}
+
+async function loadAppointments() {
+    if (!appointmentsBody) return;
+
+    try {
+        serviceCaptureReady();
+
+        appointmentsBody.replaceChildren();
+
+        const loadingRow = document.createElement("tr");
+        const loadingCell = document.createElement("td");
+
+        loadingCell.colSpan = 4;
+        loadingCell.textContent = "Loading appointments...";
+
+        loadingRow.appendChild(loadingCell);
+        appointmentsBody.appendChild(loadingRow);
+
+        const { data, error } = await supabaseClient
+            .from("appointments")
+            .select("id, patient_id, scheduled_at, reason, status")
+            .eq("clinic_id", currentClinic.id)
+            .order("scheduled_at", { ascending: true })
+            .limit(200);
+
+        if (error) throw error;
+
+        appointmentsBody.replaceChildren();
+
+        if (!data || data.length === 0) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 4;
+            cell.textContent = "No appointments have been scheduled yet.";
+
+            row.appendChild(cell);
+            appointmentsBody.appendChild(row);
+            return;
+        }
+
+        data.forEach(appointment => {
+            const row = document.createElement("tr");
+
+            const patientCell = document.createElement("td");
+            patientCell.textContent =
+                appointmentPatientNames.get(appointment.patient_id) ||
+                "Registered patient";
+
+            const dateCell = document.createElement("td");
+            const date = new Date(appointment.scheduled_at);
+
+            dateCell.textContent = Number.isNaN(date.getTime())
+                ? "Invalid date"
+                : date.toLocaleString();
+
+            const reasonCell = document.createElement("td");
+            reasonCell.textContent = appointment.reason || "Not specified";
+
+            const statusCell = document.createElement("td");
+            statusCell.textContent = appointment.status;
+
+            row.append(
+                patientCell,
+                dateCell,
+                reasonCell,
+                statusCell
+            );
+
+            appointmentsBody.appendChild(row);
+        });
+    } catch (error) {
+        console.error("Appointment loading error:", error);
+
+        appointmentsBody.replaceChildren();
+
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+
+        cell.colSpan = 4;
+        cell.textContent =
+            "Could not load appointments. Please refresh and try again.";
+
+        row.appendChild(cell);
+        appointmentsBody.appendChild(row);
+
+        showAppointmentMessage(
+            friendlyError(error),
+            "error"
+        );
+    }
+}
+
+if (appointmentForm) {
+    appointmentForm.addEventListener("submit", async function(event) {
+        event.preventDefault();
+
+        try {
+            serviceCaptureReady();
+
+            const patientId = appointmentPatientSelect.value;
+            const scheduledValue = appointmentDateTime.value;
+            const reason = appointmentReason.value.trim();
+            const notes = appointmentNotes.value.trim();
+
+            if (!patientId) {
+                throw new Error("Select a registered patient.");
+            }
+
+            if (!scheduledValue) {
+                throw new Error("Choose an appointment date and time.");
+            }
+
+            const scheduledDate = new Date(scheduledValue);
+
+            if (Number.isNaN(scheduledDate.getTime())) {
+                throw new Error("Enter a valid appointment date and time.");
+            }
+
+            if (!reason) {
+                throw new Error("Enter the reason for the visit.");
+            }
+
+            if (!appointmentPatientNames.has(patientId)) {
+                throw new Error(
+                    "Select a valid patient from this clinic."
+                );
+            }
+
+            saveAppointmentButton.disabled = true;
+            saveAppointmentButton.textContent = "Saving appointment...";
+
+            showAppointmentMessage("Saving appointment...");
+
+            const appointmentRecord = {
+                clinic_id: currentClinic.id,
+                patient_id: patientId,
+                scheduled_at: scheduledDate.toISOString(),
+                reason: reason,
+                notes: notes || null,
+                status: "scheduled",
+                created_by: currentUser.id
+            };
+
+            const { error } = await supabaseClient
+                .from("appointments")
+                .insert(appointmentRecord);
+
+            if (error) throw error;
+
+            appointmentForm.reset();
+
+            showAppointmentMessage(
+                "Appointment saved successfully.",
+                "success"
+            );
+
+            await loadAppointments();
+
+        } catch (error) {
+            console.error("Appointment saving error:", error);
+
+            showAppointmentMessage(
+                friendlyError(error),
+                "error"
+            );
+        } finally {
+            if (saveAppointmentButton) {
+                saveAppointmentButton.disabled = false;
+                saveAppointmentButton.textContent =
+                    "Schedule Appointment";
+            }
+        }
+    });
+}
+
+if (refreshAppointmentsButton) {
+    refreshAppointmentsButton.addEventListener("click", async function() {
+        refreshAppointmentsButton.disabled = true;
+
+        try {
+            await loadAppointmentPatients();
+            await loadAppointments();
+        } finally {
+            refreshAppointmentsButton.disabled = false;
+        }
+    });
+}
+
+// END HEALTHOS AI APPOINTMENTS MODULE
 
 // ============================================================
 // END SERVICE CAPTURE MODULE
