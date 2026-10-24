@@ -502,6 +502,156 @@ if (transactionDate && !transactionDate.value) {
 
     transactionDate.value = localDate;
 }
+// Save a billing transaction to Supabase.
+if (transactionForm) {
+    transactionForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const message =
+            document.getElementById("transactionFormMessage");
+
+        const saveButton =
+            document.getElementById("saveTransactionButton");
+
+        const reference =
+            document.getElementById("transactionReference")
+                .value.trim();
+
+        const service =
+            document.getElementById("transactionService")
+                .value.trim();
+
+        const invoiceAmount =
+            Number(document.getElementById("transactionInvoice").value);
+
+        const amountPaid =
+            Number(document.getElementById("transactionPaid").value);
+
+        const transactionStatus =
+            document.getElementById("transactionStatus");
+
+        const transactionDateValue =
+            document.getElementById("transactionDate").value;
+
+        message.textContent = "";
+        message.className = "message";
+
+        if (!supabaseClient || !currentClinic || !currentUser) {
+            message.textContent =
+                "Your clinic session is not ready. Please sign in again.";
+            message.className = "message error";
+            return;
+        }
+
+        if (
+            !reference ||
+            !service ||
+            !transactionDateValue ||
+            !Number.isFinite(invoiceAmount) ||
+            !Number.isFinite(amountPaid) ||
+            invoiceAmount <= 0 ||
+            amountPaid < 0 ||
+            amountPaid > invoiceAmount
+        ) {
+            message.textContent =
+                "Check the reference, service, date, and amounts. " +
+                "The amount paid cannot exceed the invoice.";
+            message.className = "message error";
+            return;
+        }
+
+        let paymentStatus = "pending";
+
+        if (amountPaid >= invoiceAmount) {
+            paymentStatus = "paid";
+        } else if (amountPaid > 0) {
+            paymentStatus = "part_paid";
+        }
+
+        transactionStatus.value = paymentStatus;
+
+        saveButton.disabled = true;
+        saveButton.textContent = "Saving...";
+
+        try {
+            const { data: existing, error: duplicateError } =
+                await supabaseClient
+                    .from("billing_transactions")
+                    .select("id")
+                    .eq("clinic_id", currentClinic.id)
+                    .eq("reference", reference)
+                    .limit(1);
+
+            if (duplicateError) {
+                throw duplicateError;
+            }
+
+            if (existing && existing.length > 0) {
+                throw new Error(
+                    "This transaction reference already exists " +
+                    "in this clinic. Please use another reference."
+                );
+            }
+
+            const { error: insertError } =
+                await supabaseClient
+                    .from("billing_transactions")
+                    .insert({
+                        clinic_id: currentClinic.id,
+                        reference: reference,
+                        service_description: service,
+                        invoice_amount: invoiceAmount,
+                        amount_paid: amountPaid,
+                        currency: "NGN",
+                        payment_status: paymentStatus,
+                        transaction_date: transactionDateValue,
+                        created_by: currentUser.id
+                    });
+
+            if (insertError) {
+                throw insertError;
+            }
+
+            message.textContent =
+                "Transaction saved successfully.";
+            message.className = "message success";
+
+            transactionForm.reset();
+
+            const today = new Date();
+
+            document.getElementById("transactionDate").value =
+                today.getFullYear() + "-" +
+                String(today.getMonth() + 1).padStart(2, "0") + "-" +
+                String(today.getDate()).padStart(2, "0");
+
+            transactionForm.hidden = true;
+
+            toggleTransactionForm.setAttribute(
+                "aria-expanded",
+                "false"
+            );
+
+            toggleTransactionForm.textContent =
+                "+ Record transaction";
+
+            await loadBillingData(currentClinic);
+
+        } catch (error) {
+            console.error(
+                "HealthOS AI transaction save failed:",
+                error
+            );
+
+            message.textContent = friendlyError(error);
+            message.className = "message error";
+
+        } finally {
+            saveButton.disabled = false;
+            saveButton.textContent = "Save transaction";
+        }
+    });
+}
 // Connect to Supabase.
 async function checkConnection() {
     try {
