@@ -1343,7 +1343,7 @@ async function loadServiceCaptureModule() {
         });
     }
 
-    function openSection(sectionId, sectionName) {
+    
             function openSection(sectionId, sectionName) {
         const section = document.getElementById(sectionId);
 
