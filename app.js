@@ -1413,7 +1413,17 @@ if (refreshServiceAuditButton) {
 // ------------------------------------------------------------
 // LOAD SERVICE MODULE WHEN THE DASHBOARD OPENS
 // ------------------------------------------------------------
+async function loadServiceCaptureModule() {
+    if (!currentUser || !currentClinic || !supabaseClient) return;
 
+    await Promise.all([
+        loadServiceCatalogue(),
+        loadServiceAudit(),
+        loadAppointmentPatients()
+    ]);
+
+    await loadAppointments();
+}
 // ============================================================
 // HEALTHOS AI: APPOINTMENTS MODULE
 // ============================================================
