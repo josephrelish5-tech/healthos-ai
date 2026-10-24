@@ -33,7 +33,7 @@ const clinicMessage = document.getElementById("clinicMessage");
 const appPanel = document.getElementById("appPanel");
 // HEALTHOS AI: SEPARATE DASHBOARD VIEWS
 
-// HEALTHOS AI: SEPARATE DASHBOARD VIEWS
+
 
 function showHealthOSView(viewId) {
     const mainContent = document.getElementById("dashboard");
