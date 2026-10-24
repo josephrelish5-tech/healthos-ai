@@ -202,7 +202,6 @@ async function openWorkspace(user) {
 }
 
 // Open the dashboard after a clinic is found or created.
-// Open the dashboard after a clinic is found or created.
 function showDashboard(clinic) {
     showOnly("dashboard");
 
