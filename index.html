@@ -309,7 +309,171 @@
                             <span class="stat-note">Transactions in this workspace</span>
                         </article>
                     </section>
+<!-- HEALTHOS AI: SERVICE CAPTURE MODULE -->
 
+<section class="panel" id="serviceCapture">
+
+    <div class="panel-heading">
+        <div>
+            <h2>Service Capture & Revenue Protection</h2>
+            <p class="muted">
+                Record services performed and identify services
+                that may require billing review.
+            </p>
+        </div>
+    </div>
+
+    <h3>1. Register a Clinic Service</h3>
+
+    <form id="serviceCatalogueForm" class="auth-form">
+
+        <label>
+            Service Code
+            <input
+                type="text"
+                id="serviceCode"
+                maxlength="60"
+                placeholder="e.g. CONSULT001"
+                required
+            >
+        </label>
+
+        <label>
+            Service Name
+            <input
+                type="text"
+                id="serviceName"
+                maxlength="200"
+                placeholder="e.g. General Consultation"
+                required
+            >
+        </label>
+
+        <label>
+            Standard Price (₦)
+            <input
+                type="number"
+                id="servicePrice"
+                min="0"
+                step="0.01"
+                required
+            >
+        </label>
+
+        <button
+            type="submit"
+            id="saveServiceButton"
+            class="primary-button"
+        >
+            Save Service
+        </button>
+
+        <p id="serviceCatalogueMessage"
+           class="message"
+           role="status"
+           aria-live="polite"></p>
+
+    </form>
+
+    <hr>
+
+    <h3>2. Record a Performed Service</h3>
+
+    <form id="serviceEventForm" class="auth-form">
+
+        <label>
+            Select Service
+            <select id="performedService" required>
+                <option value="">Loading services...</option>
+            </select>
+        </label>
+
+        <label>
+            Quantity
+            <input
+                type="number"
+                id="performedQuantity"
+                min="1"
+                max="1000"
+                value="1"
+                required
+            >
+        </label>
+
+        <label>
+            Notes
+            <input
+                type="text"
+                id="performedNotes"
+                maxlength="500"
+                placeholder="Optional operational note"
+            >
+        </label>
+
+        <button
+            type="submit"
+            id="recordServiceButton"
+            class="primary-button"
+        >
+            Record Service
+        </button>
+
+        <p id="serviceEventMessage"
+           class="message"
+           role="status"
+           aria-live="polite"></p>
+
+    </form>
+
+    <hr>
+
+    <h3>3. Services Requiring Billing Review</h3>
+
+    <button
+        type="button"
+        id="refreshServiceAudit"
+        class="primary-button"
+    >
+        Refresh Billing Review
+    </button>
+
+    <p id="serviceAuditMessage"
+       class="message"
+       role="status"
+       aria-live="polite"></p>
+
+    <div class="table-wrap">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th>Quantity</th>
+                    <th>Expected Amount</th>
+                    <th>Date Recorded</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+
+            <tbody id="serviceAuditBody">
+                <tr>
+                    <td colspan="5">
+                        No service review loaded yet.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+
+    <p class="disclaimer">
+        Potential billing gaps must be verified by authorised
+        staff. This module does not automatically charge patients.
+    </p>
+
+</section>
+
+<!-- END SERVICE CAPTURE MODULE -->
                     <section class="panel" id="billing">
                         <div class="panel-heading">
                             <div>
