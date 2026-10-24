@@ -31,6 +31,91 @@ const clinicMessage = document.getElementById("clinicMessage");
 
 // Dashboard elements
 const appPanel = document.getElementById("appPanel");
+// HEALTHOS AI: SEPARATE DASHBOARD VIEWS
+
+function showHealthOSView(viewId) {
+    const mainContent = document.querySelector(".main-content");
+
+    if (!mainContent) return;
+
+    const allowedViews = [
+        "dashboard",
+        "patients",
+        "appointments",
+        "serviceCapture",
+        "billing"
+    ];
+
+    if (!allowedViews.includes(viewId)) {
+        alert("This page is not available yet.");
+        return;
+    }
+
+    const isDashboard = viewId === "dashboard";
+
+    // Show the overview only on the Dashboard page.
+    mainContent.querySelectorAll(
+        ":scope > .welcome, :scope > .stats-grid, :scope > #dashboardMessage"
+    ).forEach(element => {
+        element.hidden = !isDashboard;
+    });
+
+    // Show only the selected module.
+    allowedViews
+        .filter(id => id !== "dashboard")
+        .forEach(id => {
+            const panel = document.getElementById(id);
+
+            if (panel) {
+                panel.hidden = id !== viewId;
+            }
+        });
+
+    // Highlight the selected sidebar link.
+    document.querySelectorAll(".sidebar .nav-item").forEach(link => {
+        const active =
+            link.getAttribute("href") === "#" + viewId;
+
+        link.classList.toggle("active", active);
+
+        if (active) {
+            link.setAttribute("aria-current", "page");
+        } else {
+            link.removeAttribute("aria-current");
+        }
+    });
+
+    // Move to the selected page.
+    const destination = isDashboard
+        ? mainContent.querySelector(".welcome")
+        : document.getElementById(viewId);
+
+    if (destination) {
+        destination.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+        });
+    }
+}
+
+// Connect the sidebar to the page navigation.
+document.querySelectorAll(".sidebar .nav-item").forEach(link => {
+    link.addEventListener("click", function(event) {
+        const viewId = (this.getAttribute("href") || "")
+            .replace(/^#/, "");
+
+        if (!viewId) return;
+
+        event.preventDefault();
+        showHealthOSView(viewId);
+
+        if (window.location.hash !== "#" + viewId) {
+            history.replaceState(null, "", "#" + viewId);
+        }
+    });
+});
+
+window.showHealthOSView = showHealthOSView;
 const logoutButton = document.getElementById("logoutButton");
 const currentUserLabel = document.getElementById("currentUserLabel");
 const currentClinicLabel = document.getElementById("currentClinicLabel");
