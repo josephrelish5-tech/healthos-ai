@@ -465,6 +465,7 @@ async function loadBillingData(clinic) {
             "error"
         );
     }
+}    
 // Connect the transaction form controls.
 const toggleTransactionForm =
     document.getElementById("toggleTransactionForm");
