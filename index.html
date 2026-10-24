@@ -570,6 +570,141 @@
 </section>
 
 <!-- END PATIENT REGISTRATION --> 
+    <!-- ==========================================
+     HEALTHOS AI — APPOINTMENTS MODULE
+=========================================== -->
+
+<section class="panel" id="appointments">
+
+    <div class="panel-heading">
+        <div>
+            <p class="eyebrow">CLINIC OPERATIONS</p>
+            <h2>Appointments</h2>
+            <p class="muted">
+                Schedule appointments and manage patient attendance.
+            </p>
+        </div>
+    </div>
+
+    <!-- Appointment registration form -->
+
+    <h3>Schedule an Appointment</h3>
+
+    <form id="appointmentForm" class="auth-form">
+
+        <label for="appointmentPatient">
+            Select Registered Patient
+
+            <select
+                id="appointmentPatient"
+                required
+            >
+                <option value="">Loading patients...</option>
+            </select>
+        </label>
+
+        <label for="appointmentDateTime">
+            Appointment Date and Time
+
+            <input
+                type="datetime-local"
+                id="appointmentDateTime"
+                required
+            >
+        </label>
+
+        <label for="appointmentReason">
+            Reason for Visit
+
+            <input
+                type="text"
+                id="appointmentReason"
+                maxlength="500"
+                placeholder="Enter the reason for the appointment"
+                required
+            >
+        </label>
+
+        <label for="appointmentNotes">
+            Additional Notes (Optional)
+
+            <textarea
+                id="appointmentNotes"
+                rows="3"
+                maxlength="2000"
+                placeholder="Enter relevant administrative notes"
+            ></textarea>
+        </label>
+
+        <button
+            type="submit"
+            id="saveAppointmentButton"
+            class="primary-button"
+        >
+            Schedule Appointment
+        </button>
+
+    </form>
+
+    <p
+        id="appointmentMessage"
+        class="message"
+        role="status"
+        aria-live="polite"
+    ></p>
+
+    <hr>
+
+    <!-- Appointment list -->
+
+    <div class="panel-heading">
+        <div>
+            <h3>Appointment Register</h3>
+            <p class="muted">
+                Review scheduled appointments and attendance status.
+            </p>
+        </div>
+
+        <button
+            type="button"
+            id="refreshAppointmentsButton"
+            class="logout-button"
+        >
+            Refresh
+        </button>
+    </div>
+
+    <div class="table-wrapper">
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Date and Time</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+
+            <tbody id="appointmentsBody">
+                <tr>
+                    <td colspan="4">
+                        Loading appointments...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+
+    <p class="disclaimer">
+        Confirm appointment details with authorised staff.
+        Use fictional records while testing this module.
+    </p>
+
+</section>
+
+<!-- END HEALTHOS AI — APPOINTMENTS MODULE -->                
 <section class="panel" id="serviceCapture">
 
     <div class="panel-heading">
