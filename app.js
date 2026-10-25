@@ -243,7 +243,66 @@ function friendlyError(error) {
 
     return message;
 }
+// HEALTHOS AI: VERIFY MANAGEMENT ACCESS
+async function verifyManagementAccess(password) {
+    if (!supabaseClient || !currentUser || !currentClinic) {
+        throw new Error(
+            "Your account or clinic workspace is not ready. Please sign in again."
+        );
+    }
 
+    if (!currentUser.email || !password) {
+        throw new Error(
+            "Enter your existing account password."
+        );
+    }
+
+    // Re-authenticate the existing account with Supabase.
+    const { data: authData, error: authError } =
+        await supabaseClient.auth.signInWithPassword({
+            email: currentUser.email,
+            password: password
+        });
+
+    if (authError) {
+        throw new Error(
+            "Password verification failed. Check your password and try again."
+        );
+    }
+
+    if (!authData.user || authData.user.id !== currentUser.id) {
+        throw new Error(
+            "The verified account does not match your signed-in account."
+        );
+    }
+
+    // Check the user's active management role in this clinic.
+    const { data: membership, error: membershipError } =
+        await supabaseClient
+            .from("clinic_memberships")
+            .select("role, status")
+            .eq("clinic_id", currentClinic.id)
+            .eq("user_id", currentUser.id)
+            .eq("status", "active")
+            .maybeSingle();
+
+    if (membershipError) {
+        throw new Error(
+            "We could not verify your clinic role. Please contact your administrator."
+        );
+    }
+
+    if (
+        !membership ||
+        !["owner", "admin"].includes(membership.role)
+    ) {
+        throw new Error(
+            "Access denied. Only authorised clinic owners and administrators can open management."
+        );
+    }
+
+    return true;
+}
 // Find the signed-in user's clinic.
 async function openWorkspace(user) {
     currentUser = user;
