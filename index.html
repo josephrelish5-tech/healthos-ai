@@ -237,7 +237,62 @@
 
             <p id="clinicMessage" class="message" role="status" aria-live="polite"></p>
         </section>
+<!-- HEALTHOS AI ADMIN VERIFICATION -->
+<section
+    id="adminVerification"
+    class="auth-screen"
+    hidden
+>
+    <h2>Management Dashboard Verification</h2>
 
+    <p>
+        This dashboard is restricted to authorised
+        hospital management personnel.
+    </p>
+
+    <p>
+        Verify your identity using your existing
+        HealthOS AI account password.
+    </p>
+
+    <form id="adminVerificationForm" class="auth-form">
+        <label>
+            Account password
+
+            <input
+                type="password"
+                id="adminVerificationPassword"
+                name="adminVerificationPassword"
+                autocomplete="current-password"
+                placeholder="Enter your account password"
+                required
+            >
+        </label>
+
+        <button
+            id="adminVerificationSubmit"
+            class="primary-button"
+            type="submit"
+        >
+            Verify and Continue
+        </button>
+    </form>
+
+    <p
+        id="adminVerificationMessage"
+        class="message"
+        role="status"
+        aria-live="polite"
+    ></p>
+
+    <button
+        id="adminVerificationCancel"
+        class="text-button"
+        type="button"
+    >
+        Cancel and return
+    </button>
+</section>
         <section id="appPanel" hidden>
                     <!-- HEALTHOS AI ADMIN VERIFICATION -->
         <section
