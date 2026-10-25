@@ -303,6 +303,76 @@ async function verifyManagementAccess(password) {
 
     return true;
 }
+// HEALTHOS AI: CONNECT ADMIN VERIFICATION FORM
+adminVerificationForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const password = adminVerificationPassword.value;
+
+    if (!currentUser || !currentClinic) {
+        adminVerificationMessage.textContent =
+            "Your session has expired. Please sign in again.";
+
+        adminVerificationMessage.className = "message error";
+        showOnly("auth");
+        return;
+    }
+
+    adminVerificationSubmit.disabled = true;
+    adminVerificationSubmit.textContent = "Verifying...";
+
+    adminVerificationMessage.textContent =
+        "Checking your password and management permissions...";
+
+    adminVerificationMessage.className = "message";
+
+    try {
+        await verifyManagementAccess(password);
+
+        adminVerificationMessage.textContent =
+            "Verification successful. Opening your dashboard...";
+
+        currentClinicLabel.textContent = currentClinic.name;
+
+        showOnly("dashboard");
+        showHealthOSView("dashboard");
+
+        await loadBillingData(currentClinic);
+
+    } catch (error) {
+        console.error(
+            "HealthOS AI management verification failed:",
+            error
+        );
+
+        adminVerificationMessage.textContent =
+            friendlyError(error);
+
+        adminVerificationMessage.className = "message error";
+
+        adminVerificationPassword.value = "";
+        adminVerificationPassword.focus();
+
+    } finally {
+        adminVerificationSubmit.disabled = false;
+        adminVerificationSubmit.textContent = "Verify and Continue";
+    }
+});
+
+// Return to sign-in when verification is cancelled.
+adminVerificationCancel.addEventListener("click", async function () {
+    adminVerificationPassword.value = "";
+    adminVerificationMessage.textContent = "";
+
+    if (supabaseClient) {
+        await supabaseClient.auth.signOut();
+    }
+
+    currentUser = null;
+    currentClinic = null;
+
+    showOnly("auth");
+});
 // Find the signed-in user's clinic.
 async function openWorkspace(user) {
     currentUser = user;
