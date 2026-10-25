@@ -427,13 +427,38 @@ async function loadBillingData(clinic) {
             maximumFractionDigits: 2
         });
 
-        let totalRevenue = 0;
+                let totalInvoiced = 0;
+        let totalPaymentsRecorded = 0;
         let outstandingBalance = 0;
 
         (transactions || []).forEach(function (transaction) {
             const invoiceAmount =
                 Number(transaction.invoice_amount) || 0;
 
+            const amountPaid =
+                Number(transaction.amount_paid) || 0;
+
+            const status = transaction.payment_status;
+
+            // Exclude void and refunded transactions from
+            // these basic operational totals.
+            if (status !== "void" && status !== "refunded") {
+                totalInvoiced += invoiceAmount;
+
+                totalPaymentsRecorded += amountPaid;
+            }
+
+            // Calculate unpaid balances for valid invoices.
+            if (
+                status === "pending" ||
+                status === "part_paid"
+            ) {
+                outstandingBalance += Math.max(
+                    0,
+                    invoiceAmount - amountPaid
+                );
+            }
+        });
             const amountPaid =
                 Number(transaction.amount_paid) || 0;
 
