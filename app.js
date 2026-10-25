@@ -457,6 +457,7 @@ async function openWorkspace(user) {
 // Open the dashboard after a clinic is found or created.
 // Open the dashboard only after management verification.
 function showDashboard(clinic) {
+    managementVerified = false;
     currentClinic = clinic;
     currentClinicLabel.textContent = clinic.name;
 
