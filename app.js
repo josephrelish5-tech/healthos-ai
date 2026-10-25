@@ -463,7 +463,8 @@ async function loadBillingData(clinic) {
                 );
             }
         });
-
+        totalInvoicedElement.textContent =
+            money.format(totalInvoiced);
         totalRevenueElement.textContent =
             money.format(totalPaymentsRecorded);
 
