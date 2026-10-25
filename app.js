@@ -377,7 +377,9 @@ adminVerificationForm.addEventListener("submit", async function (event) {
 adminVerificationCancel.addEventListener("click", async function () {
     adminVerificationPassword.value = "";
     adminVerificationMessage.textContent = "";
-
+    
+    managementVerified = false;
+    
     if (supabaseClient) {
         await supabaseClient.auth.signOut();
     }
