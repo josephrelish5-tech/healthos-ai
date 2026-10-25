@@ -335,9 +335,11 @@ async function loadBillingData(clinic) {
     if (
         !transactionsBody ||
         !totalRevenueElement ||
+        !totalInvoicedElement ||
         !outstandingBalanceElement ||
         !billingFindingCountElement ||
         !transactionCountElement
+    ) {
     ) {
         console.error(
             "HealthOS AI: Billing dashboard elements are missing."
