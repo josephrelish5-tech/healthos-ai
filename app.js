@@ -168,7 +168,7 @@ function showDashboardMessage(message, type = "") {
 }
 
 // Display only the requested screen.
-// Display only the requested screen.
+
 function showOnly(screen) {
     authPanel.hidden = screen !== "auth";
     clinicSetup.hidden = screen !== "clinic";
