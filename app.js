@@ -31,6 +31,13 @@ const clinicMessage = document.getElementById("clinicMessage");
 
 // Dashboard elements
 const appPanel = document.getElementById("appPanel");
+// HEALTHOS AI: ADMIN VERIFICATION ELEMENTS
+const adminVerification = document.getElementById("adminVerification");
+const adminVerificationForm = document.getElementById("adminVerificationForm");
+const adminVerificationPassword = document.getElementById("adminVerificationPassword");
+const adminVerificationMessage = document.getElementById("adminVerificationMessage");
+const adminVerificationSubmit = document.getElementById("adminVerificationSubmit");
+const adminVerificationCancel = document.getElementById("adminVerificationCancel");
 // HEALTHOS AI: SEPARATE DASHBOARD VIEWS
 
 
