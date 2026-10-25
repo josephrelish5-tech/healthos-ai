@@ -146,6 +146,8 @@ let supabaseClient = null;
 let isSignUpMode = false;
 let currentUser = null;
 let currentClinic = null;
+// Management access remains locked until verification succeeds.
+let managementVerified = false;
 // Show a message in the authentication area.
 function showAuthMessage(message, type = "") {
     authMessage.textContent = message;
