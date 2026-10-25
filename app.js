@@ -321,7 +321,8 @@ async function loadBillingData(clinic) {
 
     const totalRevenueElement =
         document.getElementById("totalRevenue");
-
+    const totalInvoicedElement =
+        document.getElementById("totalInvoiced");
     const outstandingBalanceElement =
         document.getElementById("outstandingBalance");
 
