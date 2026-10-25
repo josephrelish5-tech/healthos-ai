@@ -1873,31 +1873,46 @@ if (refreshAppointmentsButton) {
     }
 
     
-    function openSection(sectionId, sectionName) {
-        const section = document.getElementById(sectionId);
+function openSection(sectionId, sectionName) {
+    const section = document.getElementById(sectionId);
 
-        if (!section) {
-            setAssistantOpen(false);
-
-            alert(
-                sectionName +
-                " is not available yet. This section needs to be connected."
-            );
-
-            return;
-        }
-
-        // Close the floating assistant first.
+    if (!section) {
         setAssistantOpen(false);
 
-        // Scroll to the requested section.
+        alert(
+            sectionName +
+            " is not available yet. This section needs to be connected."
+        );
+
+        return;
+    }
+
+    // Find the page containing the requested section.
+    const targetPanel = section.closest(".panel");
+
+    // Open the correct dashboard page.
+    if (
+        targetPanel &&
+        typeof window.showHealthOSView === "function"
+    ) {
+        window.showHealthOSView(targetPanel.id);
+    }
+
+    // Close the floating assistant.
+    setAssistantOpen(false);
+
+    // Scroll to the requested section.
+    requestAnimationFrame(function() {
         section.scrollIntoView({
             behavior: "smooth",
             block: "start"
         });
+    });
 
-        console.log("HealthOS AI opened: " + sectionName);
-    }
+    console.log(
+        "HealthOS AI opened: " + sectionName
+    );
+}
 
     function handleRequest(request) {
         const text = request.toLowerCase().trim();
