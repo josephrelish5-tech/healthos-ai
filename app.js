@@ -369,18 +369,17 @@ async function openWorkspace(user) {
 }
 
 // Open the dashboard after a clinic is found or created.
+// Open the dashboard only after management verification.
 function showDashboard(clinic) {
-    showOnly("dashboard");
-    showHealthOSView("dashboard");
     currentClinic = clinic;
     currentClinicLabel.textContent = clinic.name;
 
-    showDashboardMessage(
-        "Your clinic workspace is connected. Dashboard features are still under development."
-    );
+    adminVerificationPassword.value = "";
+    adminVerificationMessage.textContent = "";
+    adminVerificationMessage.className = "message";
 
-    loadBillingData(clinic);
-    loadServiceCaptureModule();
+    showOnly("verification");
+    adminVerificationPassword.focus();
 }
 // Load billing transactions and revenue findings for this clinic.
 async function loadBillingData(clinic) {
