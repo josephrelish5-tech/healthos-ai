@@ -341,7 +341,8 @@ adminVerificationForm.addEventListener("submit", async function (event) {
 
     try {
         await verifyManagementAccess(password);
-managementVerified = true;
+        
+        managementVerified = true;
         adminVerificationMessage.textContent =
             "Verification successful. Opening your dashboard...";
 
