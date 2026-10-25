@@ -427,7 +427,7 @@ async function loadBillingData(clinic) {
             maximumFractionDigits: 2
         });
 
-                let totalInvoiced = 0;
+                   let totalInvoiced = 0;
         let totalPaymentsRecorded = 0;
         let outstandingBalance = 0;
 
@@ -440,37 +440,16 @@ async function loadBillingData(clinic) {
 
             const status = transaction.payment_status;
 
-            // Exclude void and refunded transactions from
-            // these basic operational totals.
-            if (status !== "void" && status !== "refunded") {
-                totalInvoiced += invoiceAmount;
-
-                totalPaymentsRecorded += amountPaid;
-            }
-
-            // Calculate unpaid balances for valid invoices.
-            if (
-                status === "pending" ||
-                status === "part_paid"
-            ) {
-                outstandingBalance += Math.max(
-                    0,
-                    invoiceAmount - amountPaid
-                );
-            }
-        });
-            const amountPaid =
-                Number(transaction.amount_paid) || 0;
-
-            const status = transaction.payment_status;
-
+            // Exclude void and refunded transactions.
             if (
                 status !== "void" &&
                 status !== "refunded"
             ) {
-                totalRevenue += amountPaid;
+                totalInvoiced += invoiceAmount;
+                totalPaymentsRecorded += amountPaid;
             }
 
+            // Calculate outstanding balances.
             if (
                 status === "pending" ||
                 status === "part_paid"
@@ -483,10 +462,10 @@ async function loadBillingData(clinic) {
         });
 
         totalRevenueElement.textContent =
-            money.format(totalRevenue);
+            money.format(totalPaymentsRecorded);
 
         outstandingBalanceElement.textContent =
-            money.format(outstandingBalance);
+            money.format(outstandingBalance); 
 
         billingFindingCountElement.textContent =
             String(findings ? findings.length : 0);
