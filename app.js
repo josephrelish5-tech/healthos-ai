@@ -70,7 +70,10 @@ function showHealthOSView(viewId) {
     }
 
     const isDashboard = viewId === "dashboard";
-
+  
+    if (viewId !== "dashboard") {
+        managementVerified = false;
+    }
     // Check that the requested page exists before changing views.
     const requestedPanel = isDashboard
         ? mainContent
