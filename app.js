@@ -411,20 +411,57 @@ async function openWorkspace(user) {
             );
         }
 
-        const { data: clinics, error } = await supabaseClient
-            .from("clinics")
-            .select("id, name")
-            .eq("owner_user_id", user.id)
-            .order("created_at", { ascending: true })
-            .limit(1);
+        // First, look for a clinic owned by this user.
+        const { data: ownedClinics, error: ownerLookupError } =
+            await supabaseClient
+                .from("clinics")
+                .select("id, name")
+                .eq("owner_user_id", user.id)
+                .order("created_at", { ascending: true })
+                .limit(1);
 
-        if (error) {
-            throw error;
+        if (ownerLookupError) {
+            throw ownerLookupError;
         }
 
-        if (clinics && clinics.length > 0) {
-            showDashboard(clinics[0]);
+        if (ownedClinics && ownedClinics.length > 0) {
+            showDashboard(ownedClinics[0]);
             return;
+        }
+
+        // If the user owns no clinic, find their active memberships.
+        const { data: memberships, error: membershipError } =
+            await supabaseClient
+                .from("clinic_memberships")
+                .select("clinic_id")
+                .eq("user_id", user.id)
+                .eq("status", "active");
+
+        if (membershipError) {
+            throw membershipError;
+        }
+
+        const clinicIds = [
+            ...new Set((memberships || []).map(item => item.clinic_id))
+        ];
+
+        if (clinicIds.length > 0) {
+            const { data: memberClinics, error: memberClinicsError } =
+                await supabaseClient
+                    .from("clinics")
+                    .select("id, name")
+                    .in("id", clinicIds)
+                    .order("created_at", { ascending: true })
+                    .limit(1);
+
+            if (memberClinicsError) {
+                throw memberClinicsError;
+            }
+
+            if (memberClinics && memberClinics.length > 0) {
+                showDashboard(memberClinics[0]);
+                return;
+            }
         }
 
         clinicNameInput.value = "";
