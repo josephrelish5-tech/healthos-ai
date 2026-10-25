@@ -430,7 +430,7 @@ async function loadBillingData(clinic) {
             maximumFractionDigits: 2
         });
 
-                   let totalInvoiced = 0;
+                    let totalInvoiced = 0;
         let totalPaymentsRecorded = 0;
         let outstandingBalance = 0;
 
