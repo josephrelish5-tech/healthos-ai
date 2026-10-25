@@ -43,6 +43,17 @@ const adminVerificationCancel = document.getElementById("adminVerificationCancel
 
 
 function showHealthOSView(viewId) {
+
+    // Block dashboard navigation until management verification succeeds.
+    if (!managementVerified) {
+        alert(
+            "Please verify your clinic management access before opening this page."
+        );
+
+        showOnly(currentUser ? "verification" : "auth");
+        return;
+    }
+
     const mainContent = document.getElementById("dashboard");
 
     if (!mainContent) return;
