@@ -1142,6 +1142,7 @@ logoutButton.addEventListener("click", async function () {
 
         currentUser = null;
         managementVerified = false;
+       
         currentUserLabel.textContent =
             "Secure healthcare workspace";
 
