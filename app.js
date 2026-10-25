@@ -1109,15 +1109,16 @@ if (patientForm) {
             button.textContent = "Registering...";
 
             const patientRecord = {
-                clinic_id: currentClinic.id,
-                first_name: firstName,
-                last_name: lastName,
-                date_of_birth: dateOfBirth || null,
-                sex: sex || null,
-                phone: phone || null,
-                email: email || null,
-                created_by: currentUser.id
-            };
+    clinic_id: currentClinic.id,
+    patient_number: "PAT-" + crypto.randomUUID(),
+    first_name: firstName,
+    last_name: lastName,
+    date_of_birth: dateOfBirth || null,
+    sex: sex || null,
+    phone: phone || null,
+    email: email || null,
+    created_by: currentUser.id
+};
 
             const { data, error } = await supabaseClient
                 .from("patients")
