@@ -1181,6 +1181,57 @@ if (staffRegistrationForm) {
     );
 }
 // END HEALTHOS AI: CONNECT STAFF REGISTRATION FORM
+// HEALTHOS AI: OPEN AND CLOSE STAFF REGISTRATION
+
+const openStaffRegistrationButton =
+    document.getElementById("openStaffRegistrationButton");
+
+const staffRegistrationPanel =
+    document.getElementById("staffRegistrationPanel");
+
+if (openStaffRegistrationButton) {
+    openStaffRegistrationButton.addEventListener("click", function () {
+        if (
+            !currentUser ||
+            !currentClinic ||
+            !managementVerified
+        ) {
+            showDashboardMessage(
+                "Please verify administrator access before registering staff.",
+                "error"
+            );
+            return;
+        }
+
+        showOnly("staffRegistration");
+
+        const staffEmail = document.getElementById("staffEmail");
+
+        if (staffEmail) {
+            staffEmail.focus();
+        }
+    });
+}
+
+if (staffRegistrationPanel) {
+    const backToDashboardButton = document.createElement("button");
+
+    backToDashboardButton.type = "button";
+    backToDashboardButton.className = "text-button";
+    backToDashboardButton.textContent = "← Back to Dashboard";
+    backToDashboardButton.id = "backToDashboardFromStaffRegistration";
+
+    staffRegistrationPanel.insertBefore(
+        backToDashboardButton,
+        staffRegistrationPanel.firstChild
+    );
+
+    backToDashboardButton.addEventListener("click", function () {
+        showOnly("dashboard");
+    });
+}
+
+// END HEALTHOS AI: OPEN AND CLOSE STAFF REGISTRATION
 // Connect to Supabase.
 async function checkConnection() {
     try {
