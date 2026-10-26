@@ -566,28 +566,125 @@ async function openWorkspace(user) {
             staff: ["Contact your administrator for assigned work areas"]
         };
 
-        const areas =
-            workAreas[staffProfile.professional_role] ||
-            ["Contact your administrator for assigned work areas"];
+    // ============================================================
+// HEALTHOS AI: CLINICIAN WORKSPACE NAVIGATION
+// ============================================================
 
-        areas.forEach(function (area) {
-            const card = document.createElement("article");
-            card.className = "stat-card";
+const areas =
+    workAreas[staffProfile.professional_role] ||
+    ["Contact your administrator for assigned work areas"];
 
-            const heading = document.createElement("h3");
-            heading.textContent = area;
+const workAreaRoutes = {
+    "Patients": {
+        sectionId: "patients",
+        description: "Register and access authorised patient records."
+    },
+    "Appointments": {
+        sectionId: "appointments",
+        description: "Schedule appointments and review the appointment register."
+    },
+    "Service Capture": {
+        sectionId: "serviceCapture",
+        description: "Access the clinic service catalogue and service capture tools."
+    }
+};
 
-            const description = document.createElement("p");
-            description.className = "muted";
-            description.textContent =
-                "Assigned work area. Access controls are being connected.";
+areas.forEach(function (area) {
+    const card = document.createElement("article");
+    card.className = "stat-card";
 
-            card.append(heading, description);
-            links.appendChild(card);
+    const heading = document.createElement("h3");
+    heading.textContent = area;
+
+    const description = document.createElement("p");
+    description.className = "muted";
+
+    const route = workAreaRoutes[area];
+
+    description.textContent = route
+        ? route.description
+        : "This work area is not connected yet. Contact your administrator.";
+
+    card.appendChild(heading);
+    card.appendChild(description);
+
+    if (route) {
+        const button = document.createElement("button");
+
+        button.type = "button";
+        button.className = "primary-button";
+        button.textContent = "Open " + area;
+
+        button.addEventListener("click", function () {
+            const permittedRoles = [
+                "clinician",
+                "doctor",
+                "surgeon",
+                "dentist",
+                "nurse"
+            ];
+
+            if (
+                !permittedRoles.includes(
+                    staffProfile.professional_role
+                )
+            ) {
+                message.textContent =
+                    "Your assigned role does not permit access to this work area.";
+
+                message.className = "message error";
+                return;
+            }
+
+            const targetSection = document.getElementById(
+                route.sectionId
+            );
+
+            if (!targetSection) {
+                message.textContent =
+                    "This work area is temporarily unavailable.";
+
+                message.className = "message error";
+                return;
+            }
+
+            // Open the existing application container.
+            showOnly("dashboard");
+
+            // Hide the dashboard overview and unrelated work areas.
+            const dashboard = document.getElementById("dashboard");
+
+            if (dashboard) {
+                dashboard.hidden = true;
+            }
+
+            document.querySelectorAll(
+                "#appPanel .main-content > section"
+            ).forEach(function (section) {
+                section.hidden = section.id !== route.sectionId;
+            });
+
+            // Hide the normal navigation while in this
+            // initial clinician work-area view.
+            document.querySelectorAll(
+                "#appPanel .sidebar .nav-item"
+            ).forEach(function (link) {
+                link.hidden = true;
+            });
+
+            targetSection.hidden = false;
+
+            targetSection.scrollIntoView({
+                behavior: "auto",
+                block: "start"
+            });
         });
 
-        currentClinic = clinic;
-        currentUserLabel.textContent = staffProfile.full_name;
+        card.appendChild(button);
+    }
+
+    links.appendChild(card);
+});
 
         showOnly("staff");
 
