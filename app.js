@@ -1452,12 +1452,7 @@ async function checkConnection() {
 
         connectionStatus.classList.remove("success");
         connectionStatus.classList.add("error");
-        connectionStatus.textContent = "Connection check failed";
-
-        showOnly("auth");
-        showAuthMessage(friendlyError(error), "error");
-    }
-}
+    
         connectionStatus.classList.add("error");
 
         showOnly("auth");
