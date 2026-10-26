@@ -2548,3 +2548,478 @@ function openSection(sectionId, sectionName) {
 // ============================================================
 // END HEALTHOS AI STAFF ASSISTANT
 // ============================================================
+// ============================================================
+// HEALTHOS AI: PHARMACY INVENTORY DATABASE CONNECTION
+// ============================================================
+
+(function () {
+    "use strict";
+
+    const pharmacyForm = document.getElementById(
+        "pharmacyInventoryForm"
+    );
+
+    const pharmacyMessage = document.getElementById(
+        "pharmacyFormMessage"
+    );
+
+    const pharmacyTableBody = document.getElementById(
+        "pharmacyInventoryBody"
+    );
+
+    function pharmacyToday() {
+        const now = new Date();
+
+        return [
+            now.getFullYear(),
+            String(now.getMonth() + 1).padStart(2, "0"),
+            String(now.getDate()).padStart(2, "0")
+        ].join("-");
+    }
+
+    function showPharmacyMessage(message, isError) {
+        if (!pharmacyMessage) return;
+
+        pharmacyMessage.textContent = message;
+        pharmacyMessage.style.color = isError
+            ? "#b42318"
+            : "#16794b";
+    }
+
+    function getPharmacyContext() {
+        if (
+            typeof supabaseClient === "undefined" ||
+            !supabaseClient
+        ) {
+            throw new Error(
+                "Database connection is not ready. Please sign in again."
+            );
+        }
+
+        if (
+            typeof currentUser === "undefined" ||
+            !currentUser ||
+            !currentUser.id
+        ) {
+            throw new Error(
+                "Please sign in before managing pharmacy inventory."
+            );
+        }
+
+        if (
+            typeof currentClinic === "undefined" ||
+            !currentClinic ||
+            !currentClinic.id
+        ) {
+            throw new Error(
+                "Select a clinic before managing pharmacy inventory."
+            );
+        }
+
+        return {
+            userId: currentUser.id,
+            clinicId: currentClinic.id
+        };
+    }
+
+    function formatNaira(value) {
+        return new Intl.NumberFormat("en-NG", {
+            style: "currency",
+            currency: "NGN",
+            maximumFractionDigits: 2
+        }).format(Number(value) || 0);
+    }
+
+    function addPharmacyCell(row, value) {
+        const cell = document.createElement("td");
+
+        // Use textContent to prevent database text being
+        // interpreted as executable HTML.
+        cell.textContent = String(value ?? "");
+
+        row.appendChild(cell);
+
+        return cell;
+    }
+
+    function getMedicineStatus(item) {
+        const today = pharmacyToday();
+
+        const expiry = item.expiry_date;
+
+        const futureDate = new Date(
+            today + "T00:00:00"
+        );
+
+        futureDate.setDate(futureDate.getDate() + 30);
+
+        const date30Days = [
+            futureDate.getFullYear(),
+            String(futureDate.getMonth() + 1).padStart(2, "0"),
+            String(futureDate.getDate()).padStart(2, "0")
+        ].join("-");
+
+        if (expiry < today) {
+            return "EXPIRED — DO NOT DISPENSE";
+        }
+
+        if (expiry <= date30Days) {
+            return "Expiring within 30 days";
+        }
+
+        if (
+            Number(item.quantity) <=
+            Number(item.reorder_level)
+        ) {
+            return "Low stock";
+        }
+
+        return "In stock";
+    }
+
+    async function loadPharmacyInventory() {
+        if (!pharmacyTableBody) return;
+
+        try {
+            const context = getPharmacyContext();
+
+            pharmacyTableBody.replaceChildren();
+
+            const loadingRow = document.createElement("tr");
+            const loadingCell = document.createElement("td");
+
+            loadingCell.colSpan = 5;
+            loadingCell.textContent = "Loading inventory...";
+
+            loadingRow.appendChild(loadingCell);
+            pharmacyTableBody.appendChild(loadingRow);
+
+            const { data, error } = await supabaseClient
+                .from("pharmacy_inventory")
+                .select(
+                    "id, medicine_name, batch_number, quantity, reorder_level, expiry_date, purchase_cost, supplier_name"
+                )
+                .eq("clinic_id", context.clinicId)
+                .order("expiry_date", { ascending: true });
+
+            if (error) throw error;
+
+            pharmacyTableBody.replaceChildren();
+
+            const inventory = data || [];
+
+            if (inventory.length === 0) {
+                const row = document.createElement("tr");
+                const cell = document.createElement("td");
+
+                cell.colSpan = 5;
+                cell.textContent =
+                    "No medicine batches registered for this clinic.";
+
+                row.appendChild(cell);
+                pharmacyTableBody.appendChild(row);
+            }
+
+            let lowStockCount = 0;
+            let expiringCount = 0;
+            let expiredCount = 0;
+
+            const today = pharmacyToday();
+
+            const dateLimit = new Date(
+                today + "T00:00:00"
+            );
+
+            dateLimit.setDate(dateLimit.getDate() + 30);
+
+            const dateLimitString = [
+                dateLimit.getFullYear(),
+                String(dateLimit.getMonth() + 1).padStart(2, "0"),
+                String(dateLimit.getDate()).padStart(2, "0")
+            ].join("-");
+
+            inventory.forEach(function (item) {
+                const expiry = item.expiry_date;
+                const quantity = Number(item.quantity);
+                const reorderLevel = Number(item.reorder_level);
+
+                if (expiry < today) {
+                    expiredCount++;
+                } else {
+                    if (expiry <= dateLimitString) {
+                        expiringCount++;
+                    }
+
+                    if (quantity <= reorderLevel) {
+                        lowStockCount++;
+                    }
+                }
+
+                const row = document.createElement("tr");
+
+                addPharmacyCell(row, item.medicine_name);
+                addPharmacyCell(row, item.batch_number);
+                addPharmacyCell(row, quantity);
+                addPharmacyCell(row, expiry);
+
+                const statusCell = addPharmacyCell(
+                    row,
+                    getMedicineStatus(item)
+                );
+
+                if (expiry < today) {
+                    statusCell.style.color = "#b42318";
+                    statusCell.style.fontWeight = "bold";
+                } else if (
+                    expiry <= dateLimitString ||
+                    quantity <= reorderLevel
+                ) {
+                    statusCell.style.fontWeight = "bold";
+                }
+
+                pharmacyTableBody.appendChild(row);
+            });
+
+            // Update existing pharmacy summary cards if present.
+            const pharmacyPanel = document.getElementById("pharmacy");
+
+            if (pharmacyPanel) {
+                const cards = pharmacyPanel.querySelectorAll(
+                    ".stats-grid .stat-card"
+                );
+
+                if (cards[0]) {
+                    const heading = cards[0].querySelector("h3");
+                    if (heading) {
+                        heading.textContent = String(inventory.length);
+                    }
+                }
+
+                if (cards[1]) {
+                    const heading = cards[1].querySelector("h3");
+                    if (heading) {
+                        heading.textContent = String(lowStockCount);
+                    }
+                }
+
+                if (cards[2]) {
+                    const heading = cards[2].querySelector("h3");
+                    if (heading) {
+                        heading.textContent = String(
+                            expiringCount + expiredCount
+                        );
+                    }
+                }
+            }
+
+            showPharmacyMessage(
+                "Inventory loaded successfully. " +
+                inventory.length + " batch(es), " +
+                lowStockCount + " low-stock batch(es), " +
+                expiringCount + " expiring batch(es), and " +
+                expiredCount + " expired batch(es).",
+                false
+            );
+
+        } catch (error) {
+            console.error(
+                "HealthOS Pharmacy inventory error:",
+                error
+            );
+
+            if (pharmacyTableBody) {
+                pharmacyTableBody.replaceChildren();
+
+                const row = document.createElement("tr");
+                const cell = document.createElement("td");
+
+                cell.colSpan = 5;
+                cell.textContent =
+                    "Inventory could not be loaded. Check your sign-in, clinic access, and database connection.";
+
+                row.appendChild(cell);
+                pharmacyTableBody.appendChild(row);
+            }
+
+            showPharmacyMessage(
+                error.message ||
+                "Unable to load pharmacy inventory.",
+                true
+            );
+        }
+    }
+
+    if (pharmacyForm) {
+        pharmacyForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            const saveButton = document.getElementById(
+                "pharmacySaveButton"
+            );
+
+            if (saveButton) {
+                saveButton.disabled = true;
+                saveButton.textContent = "Saving...";
+            }
+
+            try {
+                const context = getPharmacyContext();
+
+                const medicineName = document.getElementById(
+                    "pharmacyMedicineName"
+                ).value.trim();
+
+                const batchNumber = document.getElementById(
+                    "pharmacyBatchNumber"
+                ).value.trim();
+
+                const quantity = Number(
+                    document.getElementById(
+                        "pharmacyQuantity"
+                    ).value
+                );
+
+                const reorderLevel = Number(
+                    document.getElementById(
+                        "pharmacyReorderLevel"
+                    ).value
+                );
+
+                const expiryDate = document.getElementById(
+                    "pharmacyExpiryDate"
+                ).value;
+
+                const purchaseCost = Number(
+                    document.getElementById(
+                        "pharmacyPurchaseCost"
+                    ).value
+                );
+
+                const supplierName = document.getElementById(
+                    "pharmacySupplier"
+                ).value.trim();
+
+                if (!medicineName || !batchNumber || !expiryDate) {
+                    throw new Error(
+                        "Enter the medicine name, batch number, and expiry date."
+                    );
+                }
+
+                if (
+                    !Number.isInteger(quantity) ||
+                    quantity < 0
+                ) {
+                    throw new Error(
+                        "Quantity must be a whole number of zero or more."
+                    );
+                }
+
+                if (
+                    !Number.isInteger(reorderLevel) ||
+                    reorderLevel < 0
+                ) {
+                    throw new Error(
+                        "The low-stock threshold must be a whole number of zero or more."
+                    );
+                }
+
+                if (
+                    !Number.isFinite(purchaseCost) ||
+                    purchaseCost < 0
+                ) {
+                    throw new Error(
+                        "Enter a valid purchase cost of zero or more."
+                    );
+                }
+
+                const payload = {
+                    clinic_id: context.clinicId,
+                    medicine_name: medicineName,
+                    batch_number: batchNumber,
+                    quantity: quantity,
+                    reorder_level: reorderLevel,
+                    expiry_date: expiryDate,
+                    purchase_cost: purchaseCost,
+                    supplier_name: supplierName || null,
+                    created_by: context.userId
+                };
+
+                const { error } = await supabaseClient
+                    .from("pharmacy_inventory")
+                    .insert(payload);
+
+                if (error) {
+                    if (error.code === "23505") {
+                        throw new Error(
+                            "This medicine name and batch number are already registered for this clinic."
+                        );
+                    }
+
+                    throw error;
+                }
+
+                pharmacyForm.reset();
+
+                document.getElementById(
+                    "pharmacyQuantity"
+                ).value = "0";
+
+                document.getElementById(
+                    "pharmacyReorderLevel"
+                ).value = "10";
+
+                document.getElementById(
+                    "pharmacyPurchaseCost"
+                ).value = "0";
+
+                showPharmacyMessage(
+                    "Medicine batch saved successfully.",
+                    false
+                );
+
+                await loadPharmacyInventory();
+
+            } catch (error) {
+                console.error(
+                    "HealthOS Pharmacy save error:",
+                    error
+                );
+
+                showPharmacyMessage(
+                    error.message ||
+                    "Unable to save the medicine batch. Check your clinic permissions.",
+                    true
+                );
+
+            } finally {
+                if (saveButton) {
+                    saveButton.disabled = false;
+                    saveButton.textContent = "Save Medicine Batch";
+                }
+            }
+        });
+    }
+
+    // Reload inventory when the Pharmacy navigation item is selected.
+    document.querySelectorAll(".sidebar .nav-item").forEach(
+        function (link) {
+            link.addEventListener("click", function () {
+                const target = (
+                    link.getAttribute("href") || ""
+                ).replace(/^#/, "");
+
+                if (target === "pharmacy") {
+                    void loadPharmacyInventory();
+                }
+            });
+        }
+    );
+
+    // Make the loader available for controlled internal use.
+    window.loadHealthOSPharmacyInventory =
+        loadPharmacyInventory;
+
+    console.log(
+        "HealthOS Pharmacy inventory module initialized."
+    );
+})();
