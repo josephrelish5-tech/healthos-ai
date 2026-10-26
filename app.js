@@ -487,8 +487,9 @@ async function openWorkspace(user) {
             throw new Error(
                 "Your clinic could not be found. Contact your administrator."
             );
-        }
-
+        } 
+    // Store the verified clinic for staff operations.
+        currentClinic = clinic;
         // Owners and administrators must use the verified management
         // dashboard. The membership role, not a form selection, governs this.
         if (
