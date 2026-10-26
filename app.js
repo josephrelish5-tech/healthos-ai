@@ -1277,21 +1277,16 @@ if (staffRegistrationForm) {
             message.className = "message";
 
             try {
-                const { data, error } =
-                    await supabaseClient.functions.invoke(
-                        "register-staff",
-                        {
-                            body: {
-                                email: email,
-                                full_name: fullName,
-                                staff_id: staffId,
-                                department: department,
-                                professional_role: professionalRole,
-                                professional_registration_number:
-                                    registrationNumber
-                            }
-                        }
-                    );
+    body: {
+    clinic_id: currentClinic.id,
+    email: email,
+    full_name: fullName,
+    staff_id: staffId,
+    department: department,
+    professional_role: professionalRole,
+    professional_registration_number:
+        registrationNumber
+}               
 
                 if (error) {
                     throw error;
