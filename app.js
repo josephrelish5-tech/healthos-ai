@@ -1059,6 +1059,121 @@ if (transactionForm) {
         }
     });
 }
+// HEALTHOS AI: CONNECT STAFF REGISTRATION FORM
+const staffRegistrationForm =
+    document.getElementById("staffRegistrationForm");
+
+if (staffRegistrationForm) {
+    staffRegistrationForm.addEventListener(
+        "submit",
+        async function (event) {
+            event.preventDefault();
+
+            const message = document.getElementById(
+                "staffRegistrationMessage"
+            );
+
+            const submitButton = document.getElementById(
+                "staffRegistrationSubmit"
+            );
+
+            if (
+                !currentUser ||
+                !currentClinic ||
+                !managementVerified
+            ) {
+                message.textContent =
+                    "Please sign in and verify administrator access first.";
+
+                message.className = "message error";
+                return;
+            }
+
+            const email = document.getElementById(
+                "staffEmail"
+            ).value.trim();
+
+            const fullName = document.getElementById(
+                "staffFullName"
+            ).value.trim();
+
+            const staffId = document.getElementById(
+                "staffEmployeeId"
+            ).value.trim();
+
+            const department = document.getElementById(
+                "staffDepartment"
+            ).value;
+
+            const professionalRole = document.getElementById(
+                "staffProfessionalRole"
+            ).value;
+
+            const registrationNumber = document.getElementById(
+                "staffRegistrationNumber"
+            ).value.trim();
+
+            submitButton.disabled = true;
+            submitButton.textContent = "Registering...";
+
+            message.textContent =
+                "Checking permissions and sending staff invitation...";
+
+            message.className = "message";
+
+            try {
+                const { data, error } =
+                    await supabaseClient.functions.invoke(
+                        "register-staff",
+                        {
+                            body: {
+                                email: email,
+                                full_name: fullName,
+                                staff_id: staffId,
+                                department: department,
+                                professional_role: professionalRole,
+                                professional_registration_number:
+                                    registrationNumber
+                            }
+                        }
+                    );
+
+                if (error) {
+                    throw error;
+                }
+
+                if (data && data.error) {
+                    throw new Error(data.error);
+                }
+
+                message.textContent =
+                    data.message ||
+                    "Staff invitation submitted successfully.";
+
+                message.className = "message success";
+
+                staffRegistrationForm.reset();
+
+            } catch (error) {
+                console.error(
+                    "HealthOS AI staff registration failed:",
+                    error
+                );
+
+                message.textContent =
+                    error.message ||
+                    "Staff registration failed. Please try again.";
+
+                message.className = "message error";
+
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = "Register Staff";
+            }
+        }
+    );
+}
+// END HEALTHOS AI: CONNECT STAFF REGISTRATION FORM
 // Connect to Supabase.
 async function checkConnection() {
     try {
