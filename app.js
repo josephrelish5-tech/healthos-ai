@@ -1350,26 +1350,43 @@ authForm.addEventListener("submit", async function (event) {
                 throw error;
             }
 
-                        // Activate any staff invitation after authentication succeeds.
-            // The Edge Function verifies the signed-in user server-side.
-            const { data: activationData, error: activationError } =
-                await supabaseClient.functions.invoke(
+                        // Attempt to activate a pending staff invitation.
+            // A temporary function failure must not block existing users.
+            // Workspace access checks must still run before access is granted.
+            try {
+                const {
+                    data: activationData,
+                    error: activationError
+                } = await supabaseClient.functions.invoke(
                     "activate-staff-invitation",
-                    { body: {} }
+                    {
+                        body: {}
+                    }
                 );
 
-            if (activationError) {
-                throw activationError;
+                if (activationError) {
+                    console.error(
+                        "Staff invitation activation failed:",
+                        activationError
+                    );
+                } else if (
+                    activationData &&
+                    activationData.activated === 0 &&
+                    activationData.error
+                ) {
+                    console.warn(
+                        "Staff invitation was not activated:",
+                        activationData.error
+                    );
+                }
+            } catch (activationError) {
+                console.error(
+                    "Staff invitation activation request failed:",
+                    activationError
+                );
             }
 
-            if (
-                activationData &&
-                activationData.activated === 0 &&
-                activationData.error
-            ) {
-                throw new Error(activationData.error);
-            }
-
+            // Continue to the normal workspace access checks.
             await openWorkspace(data.user);
         }
     } catch (error) {
