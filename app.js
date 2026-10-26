@@ -754,7 +754,11 @@ areas.forEach(function (area) {
                 behavior: "auto",
                 block: "start"
             });
-
+            // Load appointment data when the Appointments area opens.
+            if (area === "Appointments") {
+                await loadAppointmentPatients();
+                await loadAppointments();
+            }
         
         });
 
