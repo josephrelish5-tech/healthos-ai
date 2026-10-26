@@ -648,31 +648,83 @@ areas.forEach(function (area) {
                 return;
             }
 
-            // Open the existing application container.
-            showOnly("dashboard");
+                        // HEALTHOS AI: OPEN CLINICIAN WORK AREA
 
-            // Hide the dashboard overview and unrelated work areas.
-            const dashboard = document.getElementById("dashboard");
+            const mainContent = document.getElementById("dashboard");
 
-            if (dashboard) {
-                dashboard.hidden = true;
+            if (!mainContent || !targetSection) {
+                message.textContent =
+                    "This work area is temporarily unavailable.";
+
+                message.className = "message error";
+                return;
             }
 
-            document.querySelectorAll(
-                "#appPanel .main-content > section"
-            ).forEach(function (section) {
-                section.hidden = section.id !== route.sectionId;
+            // Remember the existing visibility settings.
+            const previousContentVisibility = new Map(
+                Array.from(mainContent.children).map(function (element) {
+                    return [element, element.hidden];
+                })
+            );
+
+            const navigationLinks = Array.from(
+                document.querySelectorAll(
+                    "#appPanel .sidebar .nav-item"
+                )
+            );
+
+            const previousNavigationVisibility = new Map(
+                navigationLinks.map(function (link) {
+                    return [link, link.hidden];
+                })
+            );
+
+            // Reveal the application without hiding its main container.
+            showOnly("dashboard");
+
+            // Hide unrelated content, keeping the selected work area.
+            Array.from(mainContent.children).forEach(function (element) {
+                element.hidden = element !== targetSection;
             });
 
-            // Hide the normal navigation while in this
-            // initial clinician work-area view.
-            document.querySelectorAll(
-                "#appPanel .sidebar .nav-item"
-            ).forEach(function (link) {
+            // Keep the sidebar out of the initial clinician view.
+            navigationLinks.forEach(function (link) {
                 link.hidden = true;
             });
 
+            // Add a button to return to the staff workspace.
+            const backButton = document.createElement("button");
+
+            backButton.type = "button";
+            backButton.className = "primary-button";
+            backButton.textContent = "← Back to My Workspace";
+
+            backButton.addEventListener("click", function () {
+                // Restore the original visibility settings.
+                previousContentVisibility.forEach(function (wasHidden, element) {
+                    element.hidden = wasHidden;
+                });
+
+                previousNavigationVisibility.forEach(function (wasHidden, link) {
+                    link.hidden = wasHidden;
+                });
+
+                backButton.remove();
+
+                showOnly("staff");
+            });
+
+            targetSection.insertBefore(
+                backButton,
+                targetSection.firstChild
+            );
+
             targetSection.hidden = false;
+
+            targetSection.scrollIntoView({
+                behavior: "auto",
+                block: "start"
+            });
 
             targetSection.scrollIntoView({
                 behavior: "auto",
