@@ -583,9 +583,13 @@ const workAreaRoutes = {
         sectionId: "appointments",
         description: "Schedule appointments and review the appointment register."
     },
-    "Service Capture": {
+        "Service Capture": {
         sectionId: "serviceCapture",
         description: "Access the clinic service catalogue and service capture tools."
+    },
+    "Pharmacy": {
+        sectionId: "pharmacy",
+        description: "Manage pharmacy inventory, stock levels, and medicine expiry."
     }
 };
 
