@@ -1399,10 +1399,16 @@ async function checkConnection() {
             SUPABASE_PUBLISHABLE_KEY
         );
 
-        connectionStatus.textContent =
+                connectionStatus.textContent =
             "Connected to account service";
 
-                if (error) {
+        connectionStatus.classList.remove("error");
+        connectionStatus.classList.add("success");
+
+        const { data, error } =
+            await supabaseClient.auth.getSession();
+
+        if (error) {
             throw error;
         }
 
