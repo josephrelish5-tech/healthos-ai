@@ -293,6 +293,125 @@
         Cancel and return
     </button>
 </section>
+        <!-- HEALTHOS AI: STAFF REGISTRATION PANEL -->
+<section id="staffRegistrationPanel" class="panel" hidden>
+
+    <div class="panel-heading">
+        <div>
+            <p class="eyebrow">STAFF MANAGEMENT</p>
+            <h2>Register New Staff</h2>
+            <p class="muted">
+                Create a staff profile for an authorised member
+                of your healthcare facility.
+            </p>
+        </div>
+
+        <span class="demo-badge">ADMIN</span>
+    </div>
+
+    <form id="staffRegistrationForm" class="auth-form">
+
+        <label for="staffFullName">
+            Staff Full Name
+            <input
+                type="text"
+                id="staffFullName"
+                name="staffFullName"
+                minlength="2"
+                maxlength="150"
+                autocomplete="name"
+                placeholder="Enter staff member's full name"
+                required
+            >
+        </label>
+
+        <label for="staffEmployeeId">
+            Staff ID
+            <input
+                type="text"
+                id="staffEmployeeId"
+                name="staffEmployeeId"
+                maxlength="50"
+                placeholder="Enter a unique staff ID"
+                required
+            >
+        </label>
+
+        <label for="staffDepartment">
+            Department
+            <select
+                id="staffDepartment"
+                name="staffDepartment"
+                required
+            >
+                <option value="">Select department</option>
+                <option value="Administration">Administration</option>
+                <option value="Accounts and Billing">Accounts and Billing</option>
+                <option value="Clinical">Clinical</option>
+                <option value="Nursing">Nursing</option>
+                <option value="Pharmacy">Pharmacy</option>
+                <option value="Laboratory">Laboratory</option>
+                <option value="Reception">Reception</option>
+                <option value="Medical Records">Medical Records</option>
+                <option value="Other">Other</option>
+            </select>
+        </label>
+
+        <label for="staffProfessionalRole">
+            Professional Role
+            <select
+                id="staffProfessionalRole"
+                name="staffProfessionalRole"
+                required
+            >
+                <option value="">Select authorised role</option>
+                <option value="admin">Administrator</option>
+                <option value="finance_manager">Finance Manager</option>
+                <option value="doctor">Doctor</option>
+                <option value="nurse">Nurse</option>
+                <option value="pharmacy">Pharmacy Staff</option>
+                <option value="laboratory">Laboratory Staff</option>
+                <option value="reception">Reception Staff</option>
+                <option value="medical_records">Medical Records Staff</option>
+                <option value="staff">General Staff</option>
+            </select>
+        </label>
+
+        <label for="staffRegistrationNumber">
+            Professional Registration Number
+            <input
+                type="text"
+                id="staffRegistrationNumber"
+                name="staffRegistrationNumber"
+                maxlength="100"
+                placeholder="Optional, where applicable"
+            >
+        </label>
+
+        <button
+            id="staffRegistrationSubmit"
+            class="primary-button"
+            type="submit"
+        >
+            Register Staff
+        </button>
+
+    </form>
+
+    <p
+        id="staffRegistrationMessage"
+        class="message"
+        role="status"
+        aria-live="polite"
+    ></p>
+
+    <p class="disclaimer">
+        Staff registration must be authorised by the facility.
+        Access permissions must be verified by the server.
+    </p>
+
+</section>
+<!-- END HEALTHOS AI: STAFF REGISTRATION PANEL -->
         <!-- HEALTHOS AI: STAFF ACTIVITY WORKSPACE -->
 <section id="staffWorkspace" class="panel" hidden>
     <div class="panel-heading">
