@@ -397,29 +397,30 @@ adminVerificationCancel.addEventListener("click", async function () {
     showOnly("auth");
 });
 // Find the signed-in user's clinic.
+// Load the signed-in user's verified clinic workspace.
 async function openWorkspace(user) {
     currentUser = user;
-
     currentUserLabel.textContent =
         user.email || "Signed-in user";
 
     logoutButton.hidden = false;
+    managementVerified = false;
+    currentClinic = null;
 
     showOnly("clinic");
-
     showClinicMessage(
-        "Sign-in successful. Checking your clinic workspace..."
+        "Checking your account, clinic membership and staff profile..."
     );
 
     try {
         if (!supabaseClient) {
             throw new Error(
-                "Account service is not ready. Please refresh and sign in again."
+                "Account service is not ready. Refresh and sign in again."
             );
         }
 
-        // First, look for a clinic owned by this user.
-        const { data: ownedClinics, error: ownerLookupError } =
+        // Check whether this user owns a clinic.
+        const { data: ownedClinics, error: ownerError } =
             await supabaseClient
                 .from("clinics")
                 .select("id, name")
@@ -427,60 +428,159 @@ async function openWorkspace(user) {
                 .order("created_at", { ascending: true })
                 .limit(1);
 
-        if (ownerLookupError) {
-            throw ownerLookupError;
-        }
+        if (ownerError) throw ownerError;
 
+        // Clinic owners must pass the existing management verification.
         if (ownedClinics && ownedClinics.length > 0) {
             showDashboard(ownedClinics[0]);
             return;
         }
 
-        // If the user owns no clinic, find their active memberships.
+        // Find the user's active clinic memberships.
         const { data: memberships, error: membershipError } =
             await supabaseClient
                 .from("clinic_memberships")
-                .select("clinic_id")
+                .select("clinic_id, role")
                 .eq("user_id", user.id)
                 .eq("status", "active");
 
-        if (membershipError) {
-            throw membershipError;
+        if (membershipError) throw membershipError;
+
+        if (!memberships || memberships.length === 0) {
+            throw new Error(
+                "No active clinic membership was found for this account. " +
+                "Ask your clinic administrator to verify your access."
+            );
         }
 
-        const clinicIds = [
-            ...new Set((memberships || []).map(item => item.clinic_id))
-        ];
-
-        if (clinicIds.length > 0) {
-            const { data: memberClinics, error: memberClinicsError } =
-                await supabaseClient
-                    .from("clinics")
-                    .select("id, name")
-                    .in("id", clinicIds)
-                    .order("created_at", { ascending: true })
-                    .limit(1);
-
-            if (memberClinicsError) {
-                throw memberClinicsError;
-            }
-
-            if (memberClinics && memberClinics.length > 0) {
-                showDashboard(memberClinics[0]);
-                return;
-            }
+        // Avoid silently choosing a clinic if the account belongs to
+        // more than one clinic. Multi-clinic selection will be added later.
+        if (memberships.length > 1) {
+            throw new Error(
+                "Your account belongs to more than one clinic. " +
+                "Clinic selection must be completed before continuing."
+            );
         }
 
-        clinicNameInput.value = "";
+        const membership = memberships[0];
 
-        showOnly("clinic");
+        // Confirm the clinic exists and retrieve its name.
+        const { data: clinic, error: clinicError } =
+            await supabaseClient
+                .from("clinics")
+                .select("id, name")
+                .eq("id", membership.clinic_id)
+                .maybeSingle();
 
-        showClinicMessage(
-            "Your account is connected! Enter your clinic name below and click Create clinic workspace.",
-            "success"
-        );
+        if (clinicError) throw clinicError;
 
-        clinicNameInput.focus();
+        if (!clinic) {
+            throw new Error(
+                "Your clinic could not be found. Contact your administrator."
+            );
+        }
+
+        // Owners and administrators must use the verified management
+        // dashboard. The membership role, not a form selection, governs this.
+        if (
+            membership.role === "owner" ||
+            membership.role === "admin"
+        ) {
+            showDashboard(clinic);
+            return;
+        }
+
+        // Retrieve this user's staff profile for this specific clinic.
+        const { data: staffProfile, error: profileError } =
+            await supabaseClient
+                .from("staff_profiles")
+                .select(
+                    "staff_id, full_name, department, professional_role, employment_status"
+                )
+                .eq("user_id", user.id)
+                .eq("clinic_id", clinic.id)
+                .maybeSingle();
+
+        if (profileError) throw profileError;
+
+        if (!staffProfile) {
+            throw new Error(
+                "Your clinic membership exists, but your staff profile " +
+                "has not been registered. Ask your clinic administrator " +
+                "to create your staff profile."
+            );
+        }
+
+        if (staffProfile.employment_status !== "active") {
+            throw new Error(
+                "Your staff profile is not active. Contact your clinic administrator."
+            );
+        }
+
+        // Display only information retrieved from the verified database row.
+        document.getElementById("staffWorkspaceName").textContent =
+            staffProfile.full_name;
+
+        document.getElementById("staffWorkspaceId").textContent =
+            staffProfile.staff_id;
+
+        document.getElementById("staffWorkspaceDepartment").textContent =
+            staffProfile.department;
+
+        document.getElementById("staffWorkspaceRole").textContent =
+            staffProfile.professional_role.replace(/_/g, " ");
+
+        const links = document.getElementById("staffWorkspaceLinks");
+        links.replaceChildren();
+
+        const message =
+            document.getElementById("staffWorkspaceMessage");
+
+        message.textContent =
+            "Staff profile verified. Your work areas will be enabled " +
+            "according to your assigned permissions.";
+
+        message.className = "message success";
+
+        const workAreas = {
+            clinician: ["Patients", "Appointments", "Service Capture"],
+            doctor: ["Patients", "Appointments", "Service Capture"],
+            surgeon: ["Patients", "Appointments", "Service Capture"],
+            dentist: ["Patients", "Appointments", "Service Capture"],
+            nurse: ["Patients", "Appointments", "Service Capture"],
+            pharmacy: ["Pharmacy"],
+            laboratory: ["Service Capture"],
+            reception: ["Appointments"],
+            medical_records: ["Patients"],
+            finance_manager: ["Billing & Revenue"],
+            billing: ["Billing & Revenue"],
+            staff: ["Contact your administrator for assigned work areas"]
+        };
+
+        const areas =
+            workAreas[staffProfile.professional_role] ||
+            ["Contact your administrator for assigned work areas"];
+
+        areas.forEach(function (area) {
+            const card = document.createElement("article");
+            card.className = "stat-card";
+
+            const heading = document.createElement("h3");
+            heading.textContent = area;
+
+            const description = document.createElement("p");
+            description.className = "muted";
+            description.textContent =
+                "Assigned work area. Access controls are being connected.";
+
+            card.append(heading, description);
+            links.appendChild(card);
+        });
+
+        currentClinic = clinic;
+        currentUserLabel.textContent = staffProfile.full_name;
+
+        showOnly("staff");
 
     } catch (error) {
         console.error(
@@ -491,7 +591,7 @@ async function openWorkspace(user) {
         showOnly("clinic");
 
         showClinicMessage(
-            "Your account signed in, but we could not load your clinic workspace: " +
+            "We could not open your workspace: " +
             friendlyError(error),
             "error"
         );
