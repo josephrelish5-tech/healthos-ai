@@ -187,7 +187,14 @@ function showOnly(screen) {
     clinicSetup.hidden = screen !== "clinic";
     appPanel.hidden = screen !== "dashboard";
     adminVerification.hidden = screen !== "verification";
+    // HEALTHOS AI: STAFF REGISTRATION PANEL VISIBILITY
+    const staffRegistrationPanel =
+        document.getElementById("staffRegistrationPanel");
 
+    if (staffRegistrationPanel) {
+        staffRegistrationPanel.hidden =
+            screen !== "staffRegistration";
+    }
     const staffWorkspace =
         document.getElementById("staffWorkspace");
 
