@@ -1226,9 +1226,10 @@ if (staffRegistrationPanel) {
     staffRegistrationPanel.insertBefore(
         backToDashboardButton,
         staffRegistrationPanel.firstChild
-    );
-
-    backToDashboardButton.addEventListener("click", function () {
+backToDashboardButton.addEventListener("click", function () {
+    showOnly("dashboard");
+    showHealthOSView("dashboard");
+});
         showOnly("dashboard");
     });
 }
