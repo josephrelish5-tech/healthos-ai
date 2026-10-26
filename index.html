@@ -1427,31 +1427,51 @@
     </div>
 
     <div class="stats-grid">
-        <article class="stat-card">
-            <p>Appointments</p>
-            <h3>Reports</h3>
-            <p class="muted">Appointment activity summaries</p>
-        </article>
 
-        <article class="stat-card">
-            <p>Revenue</p>
-            <h3>Reports</h3>
-            <p class="muted">Billing and payment summaries</p>
-        </article>
+    <article class="stat-card">
+        <p>Appointments</p>
+        <h3 id="reportAppointmentCount">—</h3>
+        <p class="muted">Total recorded appointments</p>
+    </article>
 
-        <article class="stat-card">
-            <p>Inventory</p>
-            <h3>Reports</h3>
-            <p class="muted">Stock and expiry summaries</p>
-        </article>
-    </div>
+    <article class="stat-card">
+        <p>Outstanding Billing</p>
+        <h3 id="reportOutstandingAmount">—</h3>
+        <p class="muted">Unpaid invoice balances</p>
+    </article>
 
-    <h3>Reports Workspace</h3>
+    <article class="stat-card">
+        <p>Pharmacy Batches</p>
+        <h3 id="reportInventoryCount">—</h3>
+        <p class="muted">Registered medicine batches</p>
+    </article>
 
-    <p class="muted">
-        Report generation and live data summaries will be connected
-        in a later development step.
-    </p>
+</div>
+
+<h3>Reports Workspace</h3>
+
+<p id="reportsStatus" class="muted" role="status" aria-live="polite">
+    Reports are waiting for clinic data to load.
+</p>
+
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Metric</th>
+                <th>Current Value</th>
+            </tr>
+        </thead>
+
+        <tbody id="reportsDetailsBody">
+            <tr>
+                <td colspan="2">
+                    Open Reports to load clinic summaries.
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
     <p class="disclaimer">
         Reports must be checked by authorised staff before being
