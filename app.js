@@ -181,11 +181,19 @@ function showDashboardMessage(message, type = "") {
 
 // Display only the requested screen.
 
+// Display only the requested HealthOS AI workspace.
 function showOnly(screen) {
     authPanel.hidden = screen !== "auth";
     clinicSetup.hidden = screen !== "clinic";
     appPanel.hidden = screen !== "dashboard";
     adminVerification.hidden = screen !== "verification";
+
+    const staffWorkspace =
+        document.getElementById("staffWorkspace");
+
+    if (staffWorkspace) {
+        staffWorkspace.hidden = screen !== "staff";
+    }
 
     logoutButton.hidden = !currentUser;
 }
