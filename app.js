@@ -3023,3 +3023,262 @@ function openSection(sectionId, sectionName) {
         "HealthOS Pharmacy inventory module initialized."
     );
 })();
+// ============================================================
+// HEALTHOS AI: LIVE OPERATIONAL REPORTS
+// ============================================================
+
+(function () {
+    "use strict";
+
+    function setReportValue(id, value) {
+        const element = document.getElementById(id);
+
+        if (element) {
+            element.textContent = String(value);
+        }
+    }
+
+    function addReportRow(body, label, value) {
+        const row = document.createElement("tr");
+        const labelCell = document.createElement("td");
+        const valueCell = document.createElement("td");
+
+        labelCell.textContent = label;
+        valueCell.textContent = String(value);
+
+        row.appendChild(labelCell);
+        row.appendChild(valueCell);
+
+        body.appendChild(row);
+    }
+
+    function localDateString(date) {
+        return [
+            date.getFullYear(),
+            String(date.getMonth() + 1).padStart(2, "0"),
+            String(date.getDate()).padStart(2, "0")
+        ].join("-");
+    }
+
+    function formatNaira(amount) {
+        return new Intl.NumberFormat("en-NG", {
+            style: "currency",
+            currency: "NGN",
+            maximumFractionDigits: 2
+        }).format(amount);
+    }
+
+    async function loadOperationalReports() {
+        const status = document.getElementById("reportsStatus");
+        const body = document.getElementById("reportsDetailsBody");
+
+        if (!body) return;
+
+        try {
+            if (!supabaseClient || !currentUser) {
+                throw new Error(
+                    "Please sign in before loading operational reports."
+                );
+            }
+
+            if (!currentClinic || !currentClinic.id) {
+                throw new Error(
+                    "Select a clinic before loading operational reports."
+                );
+            }
+
+            if (status) {
+                status.textContent = "Loading live clinic data...";
+            }
+
+            body.replaceChildren();
+
+            const clinicId = currentClinic.id;
+
+            const results = await Promise.all([
+                supabaseClient
+                    .from("appointments")
+                    .select("id,status,scheduled_at")
+                    .eq("clinic_id", clinicId),
+
+                supabaseClient
+                    .from("billing_transactions")
+                    .select(
+                        "invoice_amount,amount_paid,payment_status"
+                    )
+                    .eq("clinic_id", clinicId),
+
+                supabaseClient
+                    .from("pharmacy_inventory")
+                    .select(
+                        "id,quantity,reorder_level,expiry_date"
+                    )
+                    .eq("clinic_id", clinicId)
+            ]);
+
+            const failedResult = results.find(
+                result => result.error
+            );
+
+            if (failedResult) {
+                throw failedResult.error;
+            }
+
+            const appointments = results[0].data || [];
+            const invoices = results[1].data || [];
+            const inventory = results[2].data || [];
+
+            const today = localDateString(new Date());
+
+            const dateLimit = new Date();
+            dateLimit.setHours(0, 0, 0, 0);
+            dateLimit.setDate(dateLimit.getDate() + 30);
+
+            const expiryLimit = localDateString(dateLimit);
+
+            const todayAppointments = appointments.filter(item =>
+                item.scheduled_at &&
+                String(item.scheduled_at).slice(0, 10) === today
+            ).length;
+
+            const outstandingInvoices = invoices.filter(item =>
+                !["void", "refunded"].includes(item.payment_status) &&
+                Number(item.invoice_amount || 0) >
+                Number(item.amount_paid || 0)
+            );
+
+            const outstandingAmount = outstandingInvoices.reduce(
+                (total, item) => {
+                    if (
+                        ["void", "refunded"].includes(
+                            item.payment_status
+                        )
+                    ) {
+                        return total;
+                    }
+
+                    return total + Math.max(
+                        0,
+                        Number(item.invoice_amount || 0) -
+                        Number(item.amount_paid || 0)
+                    );
+                },
+                0
+            );
+
+            const expiredItems = inventory.filter(item =>
+                item.expiry_date < today
+            );
+
+            const expiringItems = inventory.filter(item =>
+                item.expiry_date >= today &&
+                item.expiry_date <= expiryLimit
+            );
+
+            const lowStockItems = inventory.filter(item =>
+                item.expiry_date >= today &&
+                Number(item.quantity) <=
+                Number(item.reorder_level)
+            );
+
+            setReportValue(
+                "reportAppointmentCount",
+                appointments.length
+            );
+
+            setReportValue(
+                "reportOutstandingAmount",
+                formatNaira(outstandingAmount)
+            );
+
+            setReportValue(
+                "reportInventoryCount",
+                inventory.length
+            );
+
+            addReportRow(
+                body,
+                "Appointments scheduled today",
+                todayAppointments
+            );
+
+            addReportRow(
+                body,
+                "Total recorded appointments",
+                appointments.length
+            );
+
+            addReportRow(
+                body,
+                "Invoices with outstanding balances",
+                outstandingInvoices.length
+            );
+
+            addReportRow(
+                body,
+                "Total outstanding billing",
+                formatNaira(outstandingAmount)
+            );
+
+            addReportRow(
+                body,
+                "Registered pharmacy batches",
+                inventory.length
+            );
+
+            addReportRow(
+                body,
+                "Low-stock medicine batches",
+                lowStockItems.length
+            );
+
+            addReportRow(
+                body,
+                "Batches expiring within 30 days",
+                expiringItems.length
+            );
+
+            addReportRow(
+                body,
+                "Expired medicine batches — do not dispense",
+                expiredItems.length
+            );
+
+            if (status) {
+                status.textContent =
+                    "Reports loaded successfully for the selected clinic.";
+            }
+
+        } catch (error) {
+            console.error(
+                "HealthOS operational reports error:",
+                error
+            );
+
+            body.replaceChildren();
+
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 2;
+            cell.textContent =
+                "Reports could not load. Check your sign-in, clinic access, and database permissions.";
+
+            row.appendChild(cell);
+            body.appendChild(row);
+
+            if (status) {
+                status.textContent =
+                    error.message ||
+                    "Unable to load operational reports.";
+            }
+        }
+    }
+
+    window.loadHealthOSOperationalReports =
+        loadOperationalReports;
+
+    console.log(
+        "HealthOS operational reports module initialized."
+    );
+})();
