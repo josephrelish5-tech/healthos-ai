@@ -620,13 +620,37 @@ areas.forEach(function (area) {
         button.textContent = "Open " + area;
 
         button.addEventListener("click", function () {
-            const permittedRoles = [
-                "clinician",
-                "doctor",
-                "surgeon",
-                "dentist",
-                "nurse"
-            ];
+                        const permittedRolesByArea = {
+                "Patients": [
+                    "clinician",
+                    "doctor",
+                    "surgeon",
+                    "dentist",
+                    "nurse",
+                    "medical_records"
+                ],
+                "Appointments": [
+                    "clinician",
+                    "doctor",
+                    "surgeon",
+                    "dentist",
+                    "nurse",
+                    "reception"
+                ],
+                "Service Capture": [
+                    "clinician",
+                    "doctor",
+                    "surgeon",
+                    "dentist",
+                    "nurse",
+                    "laboratory"
+                ],
+                "Pharmacy": [
+                    "pharmacy"
+                ]
+            };
+
+            const permittedRoles = permittedRolesByArea[area] || [];
 
             if (
                 !permittedRoles.includes(
