@@ -620,7 +620,7 @@ areas.forEach(function (area) {
         button.className = "primary-button";
         button.textContent = "Open " + area;
 
-        button.addEventListener("click", function () {
+        button.addEventListener("click", async function () {
      const permittedRolesByArea = {
                 "Patients": [
                     "clinician",
