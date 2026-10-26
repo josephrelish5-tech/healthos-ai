@@ -3264,27 +3264,30 @@ function openSection(sectionId, sectionName) {
             cell.textContent =
                 "Reports could not load. Check your sign-in, clinic access, and database permissions.";
 
-            row.appendChild(cell);
+                    row.appendChild(cell);
             body.appendChild(row);
-
-            window.loadHealthOSOperationalReports =
-    loadOperationalReports;
-
-// Load reports when the Reports navigation item is tapped.
-document.querySelectorAll(".sidebar .nav-item").forEach(
-    function (link) {
-        link.addEventListener("click", function () {
-            const target = (
-                link.getAttribute("href") || ""
-            ).replace(/^#/, "");
-
-            if (target === "reports") {
-                void loadOperationalReports();
-            }
-        });
+        }
     }
-);
 
-console.log(
-    "HealthOS operational reports module initialized."
-);
+    // Make the report loader available for internal use.
+    window.loadHealthOSOperationalReports = loadOperationalReports;
+
+    // Load reports when the Reports navigation item is selected.
+    document.querySelectorAll(".sidebar .nav-item").forEach(
+        function (link) {
+            link.addEventListener("click", function () {
+                const target = (
+                    link.getAttribute("href") || ""
+                ).replace(/^#/, "");
+
+                if (target === "reports") {
+                    void loadOperationalReports();
+                }
+            });
+        }
+    );
+
+    console.log(
+        "HealthOS operational reports module initialized."
+    );
+})();
