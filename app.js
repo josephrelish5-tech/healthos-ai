@@ -726,10 +726,7 @@ areas.forEach(function (area) {
                 block: "start"
             });
 
-            targetSection.scrollIntoView({
-                behavior: "auto",
-                block: "start"
-            });
+        
         });
 
         card.appendChild(button);
