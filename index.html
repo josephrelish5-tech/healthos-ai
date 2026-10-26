@@ -1312,10 +1312,80 @@
 
     <h3>Inventory Workspace</h3>
 
-    <p class="muted">
-        Inventory recording and expiry monitoring will be connected
-        to the pharmacy database in a later development step.
-    </p>
+<form id="pharmacyInventoryForm">
+
+    <label for="pharmacyMedicineName">Medicine Name</label>
+    <input
+        id="pharmacyMedicineName"
+        type="text"
+        required
+        minlength="2"
+        maxlength="200"
+    >
+
+    <label for="pharmacyBatchNumber">Batch Number</label>
+    <input
+        id="pharmacyBatchNumber"
+        type="text"
+        required
+        maxlength="100"
+    >
+
+    <label for="pharmacyQuantity">Quantity in Stock</label>
+    <input
+        id="pharmacyQuantity"
+        type="number"
+        min="0"
+        step="1"
+        required
+        value="0"
+    >
+
+    <label for="pharmacyReorderLevel">Low-Stock Threshold</label>
+    <input
+        id="pharmacyReorderLevel"
+        type="number"
+        min="0"
+        step="1"
+        required
+        value="10"
+    >
+
+    <label for="pharmacyExpiryDate">Expiry Date</label>
+    <input
+        id="pharmacyExpiryDate"
+        type="date"
+        required
+    >
+
+    <label for="pharmacyPurchaseCost">Purchase Cost (NGN)</label>
+    <input
+        id="pharmacyPurchaseCost"
+        type="number"
+        min="0"
+        step="0.01"
+        required
+        value="0"
+    >
+
+    <label for="pharmacySupplier">Supplier</label>
+    <input
+        id="pharmacySupplier"
+        type="text"
+        maxlength="200"
+    >
+
+    <button type="submit" id="pharmacySaveButton">
+        Save Medicine Batch
+    </button>
+
+</form>
+
+<p
+    id="pharmacyFormMessage"
+    role="status"
+    aria-live="polite"
+></p>
 
     <div class="table-wrap">
         <table>
