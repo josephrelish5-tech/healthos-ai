@@ -1404,18 +1404,42 @@ async function checkConnection() {
 
         if (error) {
             throw error;
-        }
-
         if (data.session && data.session.user) {
-            await openWorkspace(data.session.user);
-        } else {
-            currentUser = null;
-            showOnly("auth");
-        }
-    } catch (error) {
-        connectionStatus.textContent =
-            "Account connection needs attention";
 
+    // Activate pending invitations after an email-link
+    // redirect restores the user's session.
+    try {
+        const {
+            error: activationError
+        } = await supabaseClient.functions.invoke(
+            "activate-staff-invitation",
+            {
+                body: {}
+            }
+        );
+
+        if (activationError) {
+            console.error(
+                "Staff invitation activation after session restore failed:",
+                activationError
+            );
+        }
+
+    } catch (activationError) {
+        console.error(
+            "Staff invitation activation after session restore failed:",
+            activationError
+        );
+    }
+
+    // Continue with the normal membership and
+    // staff-profile authorisation checks.
+    await openWorkspace(data.session.user);
+
+} else {
+    currentUser = null;
+    showOnly("auth");
+}
         connectionStatus.classList.remove("success");
         connectionStatus.classList.add("error");
 
