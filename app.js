@@ -70,10 +70,12 @@ function showHealthOSView(viewId) {
     }
 
     const isDashboard = viewId === "dashboard";
-  
-    if (viewId !== "dashboard") {
-        managementVerified = false;
-    }
+
+// Keep management verification active while the authorised user
+// navigates between modules. Verification is reset on sign-out,
+// workspace re-entry, or when verification is explicitly cancelled.
+
+// Check that the requested page exists before changing views.
     // Check that the requested page exists before changing views.
     const requestedPanel = isDashboard
         ? mainContent
