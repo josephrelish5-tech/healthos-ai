@@ -1350,6 +1350,26 @@ authForm.addEventListener("submit", async function (event) {
                 throw error;
             }
 
+                        // Activate any staff invitation after authentication succeeds.
+            // The Edge Function verifies the signed-in user server-side.
+            const { data: activationData, error: activationError } =
+                await supabaseClient.functions.invoke(
+                    "activate-staff-invitation",
+                    { body: {} }
+                );
+
+            if (activationError) {
+                throw activationError;
+            }
+
+            if (
+                activationData &&
+                activationData.activated === 0 &&
+                activationData.error
+            ) {
+                throw new Error(activationData.error);
+            }
+
             await openWorkspace(data.user);
         }
     } catch (error) {
