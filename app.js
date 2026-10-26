@@ -1402,51 +1402,56 @@ async function checkConnection() {
         connectionStatus.textContent =
             "Connected to account service";
 
-        connectionStatus.classList.remove("error");
-        connectionStatus.classList.add("success");
-
-        const { data, error } =
-            await supabaseClient.auth.getSession();
-
-        if (error) {
+                if (error) {
             throw error;
-        if (data.session && data.session.user) {
-
-    // Activate pending invitations after an email-link
-    // redirect restores the user's session.
-    try {
-        const {
-            error: activationError
-        } = await supabaseClient.functions.invoke(
-            "activate-staff-invitation",
-            {
-                body: {}
-            }
-        );
-
-        if (activationError) {
-            console.error(
-                "Staff invitation activation after session restore failed:",
-                activationError
-            );
         }
 
-    } catch (activationError) {
+        if (data.session && data.session.user) {
+            // Activate pending invitations after an email-link
+            // redirect restores the user's session.
+            try {
+                const {
+                    error: activationError
+                } = await supabaseClient.functions.invoke(
+                    "activate-staff-invitation",
+                    {
+                        body: {}
+                    }
+                );
+
+                if (activationError) {
+                    console.error(
+                        "Staff invitation activation after session restore failed:",
+                        activationError
+                    );
+                }
+            } catch (activationError) {
+                console.error(
+                    "Staff invitation activation after session restore failed:",
+                    activationError
+                );
+            }
+
+            // Continue with normal membership and staff-profile checks.
+            await openWorkspace(data.session.user);
+        } else {
+            currentUser = null;
+            showOnly("auth");
+        }
+    } catch (error) {
         console.error(
-            "Staff invitation activation after session restore failed:",
-            activationError
+            "HealthOS AI connection check failed:",
+            error
         );
-    }
 
-    // Continue with the normal membership and
-    // staff-profile authorisation checks.
-    await openWorkspace(data.session.user);
-
-} else {
-    currentUser = null;
-    showOnly("auth");
-}
         connectionStatus.classList.remove("success");
+        connectionStatus.classList.add("error");
+        connectionStatus.textContent = "Connection check failed";
+
+        showOnly("auth");
+        showAuthMessage(friendlyError(error), "error");
+    }
+}
         connectionStatus.classList.add("error");
 
         showOnly("auth");
