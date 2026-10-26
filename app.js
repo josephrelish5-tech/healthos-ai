@@ -2323,8 +2323,18 @@ async function loadAppointmentPatients() {
     } catch (error) {
         console.error("Appointment patient loading error:", error);
 
+        appointmentPatientNames.clear();
+        appointmentPatientSelect.replaceChildren();
+
+        const errorOption = document.createElement("option");
+        errorOption.value = "";
+        errorOption.textContent =
+            "Could not load patients — try Refresh";
+
+        appointmentPatientSelect.appendChild(errorOption);
+
         showAppointmentMessage(
-            friendlyError(error),
+            "Patient loading failed: " + friendlyError(error),
             "error"
         );
     }
