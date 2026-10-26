@@ -3267,18 +3267,24 @@ function openSection(sectionId, sectionName) {
             row.appendChild(cell);
             body.appendChild(row);
 
-            if (status) {
-                status.textContent =
-                    error.message ||
-                    "Unable to load operational reports.";
+            window.loadHealthOSOperationalReports =
+    loadOperationalReports;
+
+// Load reports when the Reports navigation item is tapped.
+document.querySelectorAll(".sidebar .nav-item").forEach(
+    function (link) {
+        link.addEventListener("click", function () {
+            const target = (
+                link.getAttribute("href") || ""
+            ).replace(/^#/, "");
+
+            if (target === "reports") {
+                void loadOperationalReports();
             }
-        }
+        });
     }
+);
 
-    window.loadHealthOSOperationalReports =
-        loadOperationalReports;
-
-    console.log(
-        "HealthOS operational reports module initialized."
-    );
-})();
+console.log(
+    "HealthOS operational reports module initialized."
+);
