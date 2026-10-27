@@ -1655,6 +1655,9 @@ if (staffRegistrationPanel) {
 // END HEALTHOS AI: OPEN AND CLOSE STAFF REGISTRATION
 // Connect to Supabase.
 async function checkConnection() {
+        const isPasswordRecoveryRedirect =
+        window.location.hash.includes("type=recovery") ||
+        new URLSearchParams(window.location.search).get("type") === "recovery";
     try {
         if (
             !window.supabase ||
