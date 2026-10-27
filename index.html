@@ -177,18 +177,33 @@
                     >
                 </label>
 
-                <label>
+                                <label>
                     Password
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        autocomplete="current-password"
-                        minlength="8"
-                        placeholder="At least 8 characters"
-                        required
-                    >
+                    <span class="password-field">
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            autocomplete="current-password"
+                            minlength="8"
+                            placeholder="At least 8 characters"
+                            required
+                        >
+                        <button
+                            type="button"
+                            class="password-toggle"
+                            data-password-target="password"
+                            aria-label="Show password"
+                            aria-pressed="false"
+                        >Show</button>
+                    </span>
                 </label>
+
+                <button
+                    id="forgotPasswordButton"
+                    class="text-button"
+                    type="button"
+                >Forgot password?</button>
 
                 <button id="authSubmit" class="primary-button" type="submit">
                     Sign in
