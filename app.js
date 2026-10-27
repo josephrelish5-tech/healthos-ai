@@ -1750,7 +1750,61 @@ document.querySelectorAll(".password-toggle").forEach(function (button) {
 authModeToggle.addEventListener("click", function () {
     setMode(!isSignUpMode);
 });
+// HEALTHOS AI: SEND PASSWORD RESET EMAIL
+const forgotPasswordButton =
+    document.getElementById("forgotPasswordButton");
 
+if (forgotPasswordButton) {
+    forgotPasswordButton.addEventListener("click", async function () {
+        const email = emailInput.value.trim();
+
+        if (!email) {
+            showAuthMessage(
+                "Enter your email address first, then select Forgot password again.",
+                "error"
+            );
+            emailInput.focus();
+            return;
+        }
+
+        if (!supabaseClient) {
+            showAuthMessage(
+                "The account service is not ready. Refresh the page and try again.",
+                "error"
+            );
+            return;
+        }
+
+        forgotPasswordButton.disabled = true;
+        forgotPasswordButton.textContent = "Sending reset email...";
+
+        try {
+            const { error } =
+                await supabaseClient.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin
+                });
+
+            if (error) {
+                throw error;
+            }
+
+            showAuthMessage(
+                "If an account exists for this email, a password-reset email has been requested. Check your inbox and spam folder.",
+                "success"
+            );
+        } catch (error) {
+            console.error("Password reset request failed:", error);
+
+            showAuthMessage(
+                friendlyError(error),
+                "error"
+            );
+        } finally {
+            forgotPasswordButton.disabled = false;
+            forgotPasswordButton.textContent = "Forgot password?";
+        }
+    });
+}
 // Handle account creation and sign-in.
 authForm.addEventListener("submit", async function (event) {
     event.preventDefault();
