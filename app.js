@@ -1827,9 +1827,7 @@ if (forgotPasswordButton) {
                 await supabaseClient.auth.resetPasswordForEmail(email, {
                     redirectTo: window.location.origin + "/?type=recovery"
                 });
-                await supabaseClient.auth.resetPasswordForEmail(email, {
-                    redirectTo: window.location.origin + "/?type=recovery"
-                });
+
 
             if (error) {
                 throw error;
