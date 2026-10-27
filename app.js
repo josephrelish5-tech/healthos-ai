@@ -1823,9 +1823,12 @@ if (forgotPasswordButton) {
         forgotPasswordButton.textContent = "Sending reset email...";
 
         try {
-            const { error } =
+                        const { error } =
                 await supabaseClient.auth.resetPasswordForEmail(email, {
-                    redirectTo: window.location.origin
+                    redirectTo: window.location.origin + "/?type=recovery"
+                });
+                await supabaseClient.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + "/?type=recovery"
                 });
 
             if (error) {
