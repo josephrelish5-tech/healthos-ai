@@ -1732,6 +1732,21 @@ async function checkConnection() {
 }
 
 // Switch between sign-in and account creation.
+// HEALTHOS AI: PASSWORD VISIBILITY TOGGLES
+document.querySelectorAll(".password-toggle").forEach(function (button) {
+    button.addEventListener("click", function () {
+        const targetId = button.dataset.passwordTarget;
+        const input = document.getElementById(targetId);
+
+        if (!input) return;
+
+        const showPassword = input.type === "password";
+        input.type = showPassword ? "text" : "password";
+        button.textContent = showPassword ? "Hide" : "Show";
+        button.setAttribute("aria-label", showPassword ? "Hide password" : "Show password");
+        button.setAttribute("aria-pressed", String(showPassword));
+    });
+});
 authModeToggle.addEventListener("click", function () {
     setMode(!isSignUpMode);
 });
