@@ -1669,7 +1669,21 @@ async function checkConnection() {
             SUPABASE_URL,
             SUPABASE_PUBLISHABLE_KEY
         );
+        // HEALTHOS AI: DETECT PASSWORD RECOVERY LINKS
+        supabaseClient.auth.onAuthStateChange(function (event) {
+            if (event === "PASSWORD_RECOVERY") {
+                showOnly("passwordRecovery");
 
+                const recoveryMessage =
+                    document.getElementById("passwordRecoveryMessage");
+
+                if (recoveryMessage) {
+                    recoveryMessage.textContent =
+                        "Choose a new password for your account.";
+                    recoveryMessage.className = "message";
+                }
+            }
+        });
                 connectionStatus.textContent =
             "Connected to account service";
 
