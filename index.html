@@ -246,7 +246,83 @@
                 real patient information into this prototype.
             </p>
         </section>
+        <section id="passwordRecoveryPanel" class="auth-screen" hidden>
+            <h2>Reset your password</h2>
 
+            <p>
+                Enter your new password below to regain access to your
+                HealthOS AI account.
+            </p>
+
+            <form id="passwordRecoveryForm" class="auth-form">
+                <label>
+                    New password
+                    <span class="password-field">
+                        <input
+                            type="password"
+                            id="newPassword"
+                            name="newPassword"
+                            autocomplete="new-password"
+                            minlength="8"
+                            placeholder="At least 8 characters"
+                            required
+                        >
+                        <button
+                            type="button"
+                            class="password-toggle"
+                            data-password-target="newPassword"
+                            aria-label="Show password"
+                            aria-pressed="false"
+                        >Show</button>
+                    </span>
+                </label>
+
+                <label>
+                    Confirm new password
+                    <span class="password-field">
+                        <input
+                            type="password"
+                            id="confirmNewPassword"
+                            name="confirmNewPassword"
+                            autocomplete="new-password"
+                            minlength="8"
+                            placeholder="Enter your password again"
+                            required
+                        >
+                        <button
+                            type="button"
+                            class="password-toggle"
+                            data-password-target="confirmNewPassword"
+                            aria-label="Show password"
+                            aria-pressed="false"
+                        >Show</button>
+                    </span>
+                </label>
+
+                <button
+                    id="passwordRecoverySubmit"
+                    class="primary-button"
+                    type="submit"
+                >
+                    Save new password
+                </button>
+
+                <button
+                    id="passwordRecoveryCancel"
+                    class="text-button"
+                    type="button"
+                >
+                    Return to sign in
+                </button>
+            </form>
+
+            <p
+                id="passwordRecoveryMessage"
+                class="message"
+                role="status"
+                aria-live="polite"
+            ></p>
+        </section>
         <section id="clinicSetup" class="auth-screen setup-screen" hidden>
             <h2>Set up your clinic workspace</h2>
             <p>
