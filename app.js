@@ -1699,7 +1699,21 @@ async function checkConnection() {
         if (error) {
             throw error;
         }
+        // Keep password recovery separate from normal workspace login.
+        if (isPasswordRecoveryRedirect && data.session && data.session.user) {
+            showOnly("passwordRecovery");
 
+            const recoveryMessage =
+                document.getElementById("passwordRecoveryMessage");
+
+            if (recoveryMessage) {
+                recoveryMessage.textContent =
+                    "Choose a new password for your account.";
+                recoveryMessage.className = "message";
+            }
+
+            return;
+        }
         if (data.session && data.session.user) {
             // Activate pending invitations after an email-link
             // redirect restores the user's session.
