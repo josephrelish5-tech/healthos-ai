@@ -1805,6 +1805,94 @@ if (forgotPasswordButton) {
         }
     });
 }
+// HEALTHOS AI: SAVE RECOVERED PASSWORD
+const passwordRecoveryForm =
+    document.getElementById("passwordRecoveryForm");
+
+const passwordRecoveryMessage =
+    document.getElementById("passwordRecoveryMessage");
+
+const passwordRecoveryCancel =
+    document.getElementById("passwordRecoveryCancel");
+
+if (passwordRecoveryForm) {
+    passwordRecoveryForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const newPassword =
+            document.getElementById("newPassword").value;
+
+        const confirmNewPassword =
+            document.getElementById("confirmNewPassword").value;
+
+        if (newPassword.length < 8) {
+            passwordRecoveryMessage.textContent =
+                "Your password must contain at least 8 characters.";
+            passwordRecoveryMessage.className = "message error";
+            return;
+        }
+
+        if (newPassword !== confirmNewPassword) {
+            passwordRecoveryMessage.textContent =
+                "The passwords do not match. Please try again.";
+            passwordRecoveryMessage.className = "message error";
+            return;
+        }
+
+        if (!supabaseClient) {
+            passwordRecoveryMessage.textContent =
+                "The account service is unavailable. Refresh and try again.";
+            passwordRecoveryMessage.className = "message error";
+            return;
+        }
+
+        const submitButton =
+            document.getElementById("passwordRecoverySubmit");
+
+        submitButton.disabled = true;
+        submitButton.textContent = "Saving password...";
+
+        try {
+            const { error } = await supabaseClient.auth.updateUser({
+                password: newPassword
+            });
+
+            if (error) {
+                throw error;
+            }
+
+            passwordRecoveryMessage.textContent =
+                "Your password has been changed successfully. You can now sign in with your new password.";
+            passwordRecoveryMessage.className = "message success";
+
+            passwordRecoveryForm.reset();
+            await supabaseClient.auth.signOut();
+            currentUser = null;
+            showOnly("auth");
+
+            showAuthMessage(
+                "Password changed successfully. Please sign in with your new password.",
+                "success"
+            );
+        } catch (error) {
+            console.error("Password update failed:", error);
+
+            passwordRecoveryMessage.textContent =
+                friendlyError(error);
+            passwordRecoveryMessage.className = "message error";
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = "Save new password";
+        }
+    });
+}
+
+if (passwordRecoveryCancel) {
+    passwordRecoveryCancel.addEventListener("click", function () {
+        passwordRecoveryForm.reset();
+        showOnly("auth");
+    });
+}
 // Handle account creation and sign-in.
 authForm.addEventListener("submit", async function (event) {
     event.preventDefault();
