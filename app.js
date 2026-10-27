@@ -752,12 +752,10 @@ async function openWorkspace(user) {
         if (profileError) throw profileError;
 
         if (!staffProfile) {
-            throw new Error(
-                "Your clinic membership exists, but your staff profile " +
-                "has not been registered. Ask your clinic administrator " +
-                "to create your staff profile."
-            );
-        }
+    showOnly("staff");
+    await showStaffProfileSubmission(user, clinic);
+    return;
+}
 
         if (staffProfile.employment_status !== "active") {
             throw new Error(
