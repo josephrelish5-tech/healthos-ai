@@ -1672,9 +1672,11 @@ async function checkConnection() {
             SUPABASE_URL,
             SUPABASE_PUBLISHABLE_KEY
         );
-        // HEALTHOS AI: DETECT PASSWORD RECOVERY LINKS
-        supabaseClient.auth.onAuthStateChange(function (event) {
+            // HEALTHOS AI: HANDLE PASSWORD RECOVERY
+        supabaseClient.auth.onAuthStateChange(function (event, session) {
             if (event === "PASSWORD_RECOVERY") {
+                window.healthOSPasswordRecoveryActive = true;
+
                 showOnly("passwordRecovery");
 
                 const recoveryMessage =
@@ -1685,6 +1687,15 @@ async function checkConnection() {
                         "Choose a new password for your account.";
                     recoveryMessage.className = "message";
                 }
+
+                return;
+            }
+
+            if (
+                window.healthOSPasswordRecoveryActive &&
+                session
+            ) {
+                showOnly("passwordRecovery");
             }
         });
                 connectionStatus.textContent =
