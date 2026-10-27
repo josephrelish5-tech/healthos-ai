@@ -405,6 +405,244 @@ adminVerificationCancel.addEventListener("click", async function () {
 
     showOnly("auth");
 });
+// HEALTHOS AI: STAFF SELF-SERVICE PROFILE SUBMISSION
+async function showStaffProfileSubmission(user, clinic) {
+    const workspace = document.getElementById("staffWorkspace");
+
+    if (!workspace) {
+        throw new Error(
+            "Staff profile form is unavailable. Refresh and try again."
+        );
+    }
+
+    Array.from(workspace.children).forEach(function (child, index) {
+        if (index > 0) {
+            child.hidden = true;
+        }
+    });
+
+    let panel = document.getElementById(
+        "staffProfileSubmissionPanel"
+    );
+
+    if (!panel) {
+        panel = document.createElement("section");
+        panel.id = "staffProfileSubmissionPanel";
+        panel.className = "panel";
+        workspace.appendChild(panel);
+    }
+
+    panel.hidden = false;
+    panel.replaceChildren();
+
+    const heading = document.createElement("h3");
+    heading.textContent = "Complete Your Staff Profile";
+    panel.appendChild(heading);
+
+    const intro = document.createElement("p");
+    intro.className = "muted";
+    intro.textContent =
+        "Enter your real hospital details. Your submission will remain pending until an authorised clinic administrator verifies it. Selecting a role does not grant access or permissions.";
+    panel.appendChild(intro);
+
+    const { data: pending, error: pendingError } =
+        await supabaseClient
+            .from("staff_profile_submissions")
+            .select("id, status, submitted_at")
+            .eq("user_id", user.id)
+            .eq("clinic_id", clinic.id)
+            .eq("status", "pending")
+            .limit(1);
+
+    if (pendingError) {
+        throw pendingError;
+    }
+
+    if (pending && pending.length > 0) {
+        const status = document.createElement("p");
+        status.className = "message";
+        status.setAttribute("role", "status");
+        status.textContent =
+            "Your staff details have been submitted and are awaiting administrator verification. Staff work areas will remain locked until approval.";
+        panel.appendChild(status);
+        return;
+    }
+
+    const form = document.createElement("form");
+    form.id = "staffProfileSubmissionForm";
+
+    function addField(labelText, id, required, placeholder) {
+        const label = document.createElement("label");
+        label.htmlFor = id;
+        label.textContent = labelText;
+
+        const input = document.createElement("input");
+        input.id = id;
+        input.name = id;
+        input.type = "text";
+        input.required = required;
+        input.maxLength = 120;
+
+        if (placeholder) {
+            input.placeholder = placeholder;
+        }
+
+        label.appendChild(input);
+        form.appendChild(label);
+
+        return input;
+    }
+
+    addField(
+        "Full legal name",
+        "staffSelfFullName",
+        true,
+        "Enter your full name"
+    );
+
+    addField(
+        "Hospital-issued staff ID",
+        "staffSelfId",
+        true,
+        "Enter the ID issued by your hospital"
+    );
+
+    addField(
+        "Department",
+        "staffSelfDepartment",
+        true,
+        "e.g. Clinical Services or Pharmacy"
+    );
+
+    const roleLabel = document.createElement("label");
+    roleLabel.htmlFor = "staffSelfRole";
+    roleLabel.textContent = "Professional role (for verification)";
+
+    const roleSelect = document.createElement("select");
+    roleSelect.id = "staffSelfRole";
+    roleSelect.name = "staffSelfRole";
+    roleSelect.required = true;
+
+    [
+        ["", "Select your role"],
+        ["clinician", "Clinician"],
+        ["doctor", "Doctor"],
+        ["surgeon", "Surgeon"],
+        ["dentist", "Dentist"],
+        ["nurse", "Nurse"],
+        ["pharmacy", "Pharmacy"],
+        ["laboratory", "Laboratory"],
+        ["reception", "Reception"],
+        ["medical_records", "Medical Records"],
+        ["finance_manager", "Finance Manager"],
+        ["billing", "Billing"],
+        ["staff", "Other / General Staff"]
+    ].forEach(function (choice) {
+        const option = document.createElement("option");
+        option.value = choice[0];
+        option.textContent = choice[1];
+        roleSelect.appendChild(option);
+    });
+
+    roleLabel.appendChild(roleSelect);
+    form.appendChild(roleLabel);
+
+    addField(
+        "Professional registration number (if applicable)",
+        "staffSelfRegistration",
+        false,
+        "Optional"
+    );
+
+    const submit = document.createElement("button");
+    submit.type = "submit";
+    submit.className = "primary-button";
+    submit.textContent = "Submit for Verification";
+    form.appendChild(submit);
+
+    const message = document.createElement("p");
+    message.className = "message";
+    message.setAttribute("role", "status");
+    message.setAttribute("aria-live", "polite");
+    form.appendChild(message);
+
+    panel.appendChild(form);
+
+    form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        if (
+            !currentUser ||
+            currentUser.id !== user.id ||
+            !currentClinic ||
+            currentClinic.id !== clinic.id
+        ) {
+            message.textContent =
+                "Your session or clinic selection changed. Please sign in again.";
+            message.className = "message error";
+            return;
+        }
+
+        submit.disabled = true;
+        submit.textContent = "Submitting...";
+        message.textContent =
+            "Saving your details for administrator review...";
+        message.className = "message";
+
+        try {
+            const payload = {
+                clinic_id: clinic.id,
+                user_id: user.id,
+                full_name: document
+                    .getElementById("staffSelfFullName")
+                    .value.trim(),
+                staff_id: document
+                    .getElementById("staffSelfId")
+                    .value.trim(),
+                department: document
+                    .getElementById("staffSelfDepartment")
+                    .value.trim(),
+                professional_role: roleSelect.value,
+                professional_registration_number:
+                    document
+                        .getElementById("staffSelfRegistration")
+                        .value.trim() || null
+            };
+
+            const { error } = await supabaseClient
+                .from("staff_profile_submissions")
+                .insert(payload);
+
+            if (error) {
+                throw error;
+            }
+
+            form.replaceChildren();
+
+            const confirmation = document.createElement("p");
+            confirmation.className = "message success";
+            confirmation.setAttribute("role", "status");
+            confirmation.textContent =
+                "Submission received. Your profile is pending administrator verification. Staff work areas will remain locked until approval.";
+
+            form.appendChild(confirmation);
+        } catch (error) {
+            console.error(
+                "Staff profile submission failed:",
+                error
+            );
+
+            message.textContent =
+                error.code === "23505"
+                    ? "A pending submission already exists for your account. Refresh to check its status."
+                    : friendlyError(error);
+
+            message.className = "message error";
+            submit.disabled = false;
+            submit.textContent = "Submit for Verification";
+        }
+    });
+}
 // Find the signed-in user's clinic.
 // Load the signed-in user's verified clinic workspace.
 async function openWorkspace(user) {
