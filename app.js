@@ -1988,7 +1988,7 @@ async function loadStaffActivityTable(clinic) {
 
             const row = document.createElement("tr");
 
-            const values = [
+                       const values = [
                 person.full_name || "Unnamed staff",
                 person.department || "—",
                 person.professional_role || "—",
@@ -1998,6 +1998,14 @@ async function loadStaffActivityTable(clinic) {
                 ),
                 formatStaffTime(
                     record ? record.last_sign_out_at : null
+                ),
+                formatStaffTime(
+                    record ? record.last_clock_in_at : null
+                ),
+                formatStaffTime(
+                    record ? record.last_clock_out_at : null
+                )
+            ]; 
                 )
             ];
 
