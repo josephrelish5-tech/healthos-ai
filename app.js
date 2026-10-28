@@ -2006,8 +2006,7 @@ async function loadStaffActivityTable(clinic) {
                     record ? record.last_clock_out_at : null
                 )
             ]; 
-                )
-            ];
+            
 
             values.forEach(function (value, index) {
                 const cell = document.createElement("td");
