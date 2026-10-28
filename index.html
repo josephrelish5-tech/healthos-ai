@@ -766,7 +766,102 @@
                             </article>
 
                         </div>
+<!-- HEALTHOS AI: STAFF SHIFT ASSIGNMENT -->
+<div class="panel-heading">
+    <div>
+        <p class="eyebrow">SHIFT MANAGEMENT</p>
+        <h3>Assign a Staff Shift</h3>
+        <p class="muted">
+            Assign an active staff member to a dated shift.
+        </p>
+    </div>
+</div>
 
+<form id="staffShiftAssignmentForm" class="auth-form">
+
+    <label for="shiftStaffProfile">
+        Staff Member
+        <select
+            id="shiftStaffProfile"
+            name="staff_profile_id"
+            required
+        >
+            <option value="">Loading active staff...</option>
+        </select>
+    </label>
+
+    <label for="staffShiftDate">
+        Shift Date
+        <input
+            id="staffShiftDate"
+            name="shift_date"
+            type="date"
+            required
+        >
+    </label>
+
+    <label for="staffShiftType">
+        Shift Type
+        <select
+            id="staffShiftType"
+            name="shift_type"
+            required
+        >
+            <option value="">Select shift</option>
+            <option value="morning">Morning</option>
+            <option value="afternoon">Afternoon</option>
+            <option value="night">Night</option>
+        </select>
+    </label>
+
+    <label for="staffShiftStartTime">
+        Start Time
+        <input
+            id="staffShiftStartTime"
+            name="starts_at"
+            type="time"
+            required
+        >
+    </label>
+
+    <label for="staffShiftEndTime">
+        End Time
+        <input
+            id="staffShiftEndTime"
+            name="ends_at"
+            type="time"
+            required
+        >
+    </label>
+
+    <label for="staffShiftNotes">
+        Notes (optional)
+        <input
+            id="staffShiftNotes"
+            name="notes"
+            type="text"
+            maxlength="500"
+            placeholder="Optional handover or shift notes"
+        >
+    </label>
+
+    <button
+        id="saveStaffShiftButton"
+        class="primary-button"
+        type="submit"
+    >
+        Assign Shift
+    </button>
+
+</form>
+
+<p
+    id="staffShiftAssignmentMessage"
+    class="message"
+    role="status"
+    aria-live="polite"
+></p>
+<!-- END HEALTHOS AI: STAFF SHIFT ASSIGNMENT -->
                         <p class="disclaimer">
                             Staff statistics will be calculated from
                             authorised clinic records. Online presence
