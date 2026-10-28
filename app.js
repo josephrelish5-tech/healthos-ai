@@ -919,7 +919,6 @@ async function startStaffPresenceTracking(
                 presence_status: "online",
                 last_seen_at: now,
                 last_login_at: now,
-                last_sign_out_at: null,
                 updated_at: now
             },
             {
