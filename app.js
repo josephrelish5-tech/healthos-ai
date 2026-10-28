@@ -852,7 +852,7 @@ async function openWorkspace(user) {
             await supabaseClient
                 .from("staff_profiles")
                 .select(
-                    "staff_id, full_name, department, professional_role, employment_status"
+                "id, staff_id, full_name, department, professional_role, employment_status"
                 )
                 .eq("user_id", user.id)
                 .eq("clinic_id", clinic.id)
