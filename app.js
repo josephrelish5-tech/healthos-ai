@@ -871,7 +871,12 @@ async function openWorkspace(user) {
                 "Your staff profile is not active. Contact your clinic administrator."
             );
         }
-
+// HEALTHOS AI: START VERIFIED STAFF PRESENCE
+await startStaffPresenceTracking(
+    staffProfile.id,
+    clinic.id
+);
+// END HEALTHOS AI: START VERIFIED STAFF PRESENCE
         // Display only information retrieved from the verified database row.
         document.getElementById("staffWorkspaceName").textContent =
             staffProfile.full_name;
