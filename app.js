@@ -1122,6 +1122,11 @@ await startStaffPresenceTracking(
     staffProfile.id,
     clinic.id
 );
+        await loadStaffAttendanceWorkspace(
+    staffProfile.id,
+    clinic.id
+);
+        
 // END HEALTHOS AI: START VERIFIED STAFF PRESENCE
         // Display only information retrieved from the verified database row.
         document.getElementById("staffWorkspaceName").textContent =
