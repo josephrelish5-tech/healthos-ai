@@ -1041,6 +1041,272 @@ function showDashboard(clinic) {
     showOnly("verification");
     adminVerificationPassword.focus();
 }
+// HEALTHOS AI: STAFF SHIFT ASSIGNMENT LOGIC
+
+async function loadStaffShiftOptions(clinic) {
+    const select = document.getElementById("shiftStaffProfile");
+
+    if (!select) return;
+
+    if (
+        !currentUser ||
+        !currentClinic ||
+        !managementVerified ||
+        clinic.id !== currentClinic.id
+    ) {
+        select.innerHTML =
+            '<option value="">Administrator verification required</option>';
+        return;
+    }
+
+    select.innerHTML =
+        '<option value="">Loading active staff...</option>';
+
+    const { data: staff, error } = await supabaseClient
+        .from("staff_profiles")
+        .select("id, full_name, staff_id, department")
+        .eq("clinic_id", clinic.id)
+        .eq("employment_status", "active")
+        .order("full_name");
+
+    if (error) {
+        console.error("Staff list loading failed:", error);
+
+        select.innerHTML =
+            '<option value="">Unable to load staff</option>';
+
+        return;
+    }
+
+    select.innerHTML =
+        '<option value="">Select staff member</option>';
+
+    (staff || []).forEach(function (person) {
+        const option = document.createElement("option");
+
+        option.value = person.id;
+
+        option.textContent =
+            person.full_name +
+            " (" + person.staff_id + ")" +
+            (person.department ? " - " + person.department : "");
+
+        select.appendChild(option);
+    });
+
+    if (!staff || staff.length === 0) {
+        select.innerHTML =
+            '<option value="">No active staff available</option>';
+    }
+}
+
+
+// Set the date field to today's local date.
+(function initialiseStaffShiftForm() {
+    const form = document.getElementById(
+        "staffShiftAssignmentForm"
+    );
+
+    const dateInput = document.getElementById("staffShiftDate");
+
+    if (!form || !dateInput) return;
+
+    const now = new Date();
+
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+
+    dateInput.value = `${year}-${month}-${day}`;
+
+    form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const message = document.getElementById(
+            "staffShiftAssignmentMessage"
+        );
+
+        const saveButton = document.getElementById(
+            "saveStaffShiftButton"
+        );
+
+        function showShiftMessage(text, type) {
+            if (message) {
+                message.textContent = text;
+                message.className = "message " + type;
+            }
+        }
+
+        if (
+            !currentUser ||
+            !currentClinic ||
+            !managementVerified
+        ) {
+            showShiftMessage(
+                "Please verify administrator access first.",
+                "error"
+            );
+            return;
+        }
+
+        const staffProfileId = document.getElementById(
+            "shiftStaffProfile"
+        ).value;
+
+        const shiftDate = dateInput.value;
+
+        const shiftType = document.getElementById(
+            "staffShiftType"
+        ).value;
+
+        const startTime = document.getElementById(
+            "staffShiftStartTime"
+        ).value;
+
+        const endTime = document.getElementById(
+            "staffShiftEndTime"
+        ).value;
+
+        const notes = document.getElementById(
+            "staffShiftNotes"
+        ).value.trim();
+
+        if (
+            !staffProfileId ||
+            !shiftDate ||
+            !shiftType ||
+            !startTime ||
+            !endTime
+        ) {
+            showShiftMessage(
+                "Complete all required shift fields.",
+                "error"
+            );
+            return;
+        }
+
+        const startsAt = new Date(
+            `${shiftDate}T${startTime}`
+        );
+
+        const endsAt = new Date(
+            `${shiftDate}T${endTime}`
+        );
+
+        // Allow overnight shifts, such as 7:00 PM to 7:00 AM.
+        if (endsAt <= startsAt) {
+            endsAt.setDate(endsAt.getDate() + 1);
+        }
+
+        if (
+            Number.isNaN(startsAt.getTime()) ||
+            Number.isNaN(endsAt.getTime()) ||
+            endsAt <= startsAt
+        ) {
+            showShiftMessage(
+                "Enter a valid shift date and time.",
+                "error"
+            );
+            return;
+        }
+
+        if (saveButton) {
+            saveButton.disabled = true;
+            saveButton.textContent = "Saving Shift...";
+        }
+
+        showShiftMessage("Checking staff details...", "");
+
+        try {
+            // Confirm that the selected staff member is active
+            // and belongs to the administrator's clinic.
+            const { data: staffMember, error: staffError } =
+                await supabaseClient
+                    .from("staff_profiles")
+                    .select("id")
+                    .eq("id", staffProfileId)
+                    .eq("clinic_id", currentClinic.id)
+                    .eq("employment_status", "active")
+                    .maybeSingle();
+
+            if (staffError) throw staffError;
+
+            if (!staffMember) {
+                throw new Error(
+                    "The selected staff member is not active " +
+                    "in this clinic."
+                );
+            }
+
+            const { error: insertError } =
+                await supabaseClient
+                    .from("staff_shifts")
+                    .insert({
+                        clinic_id: currentClinic.id,
+                        staff_profile_id: staffProfileId,
+                        shift_date: shiftDate,
+                        shift_type: shiftType,
+                        starts_at: startsAt.toISOString(),
+                        ends_at: endsAt.toISOString(),
+                        attendance_status: "scheduled",
+                        created_by: currentUser.id,
+                        notes: notes || null
+                    });
+
+            if (insertError) {
+                if (insertError.code === "23505") {
+                    throw new Error(
+                        "This staff member already has an " +
+                        "assignment for that date and shift type."
+                    );
+                }
+
+                throw insertError;
+            }
+
+            showShiftMessage(
+                "Shift assigned successfully.",
+                "success"
+            );
+
+            document.getElementById(
+                "staffShiftStartTime"
+            ).value = "";
+
+            document.getElementById(
+                "staffShiftEndTime"
+            ).value = "";
+
+            document.getElementById(
+                "staffShiftNotes"
+            ).value = "";
+
+            await loadAdminStaffDashboard(currentClinic);
+
+            await loadStaffShiftOptions(currentClinic);
+
+        } catch (error) {
+            console.error(
+                "Staff shift assignment failed:",
+                error
+            );
+
+            showShiftMessage(
+                error.message ||
+                "Unable to assign this shift. Please try again.",
+                "error"
+            );
+
+        } finally {
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.textContent = "Assign Shift";
+            }
+        }
+    });
+})();
+
+// END HEALTHOS AI: STAFF SHIFT ASSIGNMENT LOGIC
 // HEALTHOS AI: ADMIN STAFF DASHBOARD STATISTICS
 async function loadAdminStaffDashboard(clinic) {
     const message = document.getElementById(
