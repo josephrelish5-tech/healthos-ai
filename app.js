@@ -671,6 +671,7 @@ async function startStaffPresenceTracking(
     const now = new Date().toISOString();
 
     // Record the staff member's successful portal login.
+    console.info("PRESENCE DEBUG: attempting database upsert");
     const { error } = await supabaseClient
         .from("staff_presence")
         .upsert(
