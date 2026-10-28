@@ -1924,9 +1924,10 @@ async function loadStaffActivityTable(clinic) {
             await supabaseClient
                 .from("staff_presence")
                 .select(
-                    "staff_profile_id, presence_status, " +
-                    "last_seen_at, last_login_at, last_sign_out_at"
-                )
+                           "staff_profile_id, presence_status, " +
+                "last_seen_at, last_login_at, last_sign_out_at, " +
+                "last_clock_in_at, last_clock_out_at"
+            ) 
                 .eq("clinic_id", clinic.id);
 
         if (presenceError) {
