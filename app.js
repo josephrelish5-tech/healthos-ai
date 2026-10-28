@@ -656,6 +656,12 @@ async function startStaffPresenceTracking(
     staffProfileId,
     clinicId
 ) {
+       console.info("PRESENCE DEBUG: tracking function entered", {
+        supabaseReady: Boolean(supabaseClient),
+        userReady: Boolean(currentUser),
+        staffProfileIdPresent: Boolean(staffProfileId),
+        clinicIdPresent: Boolean(clinicId)
+    }); 
     if (!supabaseClient || !currentUser) {
         throw new Error(
             "Staff session is unavailable. Please sign in again."
