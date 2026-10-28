@@ -369,9 +369,12 @@ adminVerificationForm.addEventListener("submit", async function (event) {
         showOnly("dashboard");
         showHealthOSView("dashboard");
 
-        await loadBillingData(currentClinic);
+               await loadBillingData(currentClinic);
 
-    } catch (error) {
+        // HEALTHOS AI: LOAD ADMIN STAFF DASHBOARD
+        await loadAdminStaffDashboard(currentClinic);
+
+    } catch (error) { 
         console.error(
             "HealthOS AI management verification failed:",
             error
