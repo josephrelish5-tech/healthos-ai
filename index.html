@@ -676,7 +676,105 @@
                         role="status"
                         aria-live="polite"
                     ></p>
+                    <!-- HEALTHOS AI: ADMIN STAFF DASHBOARD -->
+                    <section
+                        id="adminStaffDashboard"
+                        class="panel"
+                        aria-labelledby="adminStaffDashboardHeading"
+                    >
 
+                        <div class="panel-heading">
+                            <div>
+                                <p class="eyebrow">STAFF MANAGEMENT</p>
+
+                                <h2 id="adminStaffDashboardHeading">
+                                    Staff Dashboard
+                                </h2>
+
+                                <p class="muted">
+                                    Monitor staffing, attendance,
+                                    shift coverage and staff availability.
+                                </p>
+                            </div>
+                        </div>
+
+                        <p
+                            id="staffDashboardMessage"
+                            class="message"
+                            role="status"
+                            aria-live="polite"
+                        >
+                            Staff statistics are waiting for database data.
+                        </p>
+
+                        <div class="stats-grid">
+
+                            <article class="stat-card">
+                                <p>Total Staff</p>
+                                <h3 id="totalStaffCount">—</h3>
+                                <p class="muted">
+                                    Registered active staff
+                                </p>
+                            </article>
+
+                            <article class="stat-card">
+                                <p>On Duty</p>
+                                <h3 id="onDutyStaffCount">—</h3>
+                                <p class="muted">
+                                    Staff currently working an assigned shift
+                                </p>
+                            </article>
+
+                            <article class="stat-card">
+                                <p>Off Duty</p>
+                                <h3 id="offDutyStaffCount">—</h3>
+                                <p class="muted">
+                                    Active staff not currently on duty
+                                </p>
+                            </article>
+
+                            <article class="stat-card">
+                                <p>Currently Online</p>
+                                <h3 id="onlineStaffCount">—</h3>
+                                <p class="muted">
+                                    Staff with a recent connection
+                                </p>
+                            </article>
+
+                            <article class="stat-card">
+                                <p>Morning Shift</p>
+                                <h3 id="morningShiftCount">—</h3>
+                                <p class="muted">
+                                    Staff scheduled for the morning
+                                </p>
+                            </article>
+
+                            <article class="stat-card">
+                                <p>Afternoon Shift</p>
+                                <h3 id="afternoonShiftCount">—</h3>
+                                <p class="muted">
+                                    Staff scheduled for the afternoon
+                                </p>
+                            </article>
+
+                            <article class="stat-card">
+                                <p>Night Shift</p>
+                                <h3 id="nightShiftCount">—</h3>
+                                <p class="muted">
+                                    Staff scheduled for the night
+                                </p>
+                            </article>
+
+                        </div>
+
+                        <p class="disclaimer">
+                            Staff statistics will be calculated from
+                            authorised clinic records. Online presence
+                            and shift attendance are separate measures.
+                        </p>
+
+                    </section>
+                    <!-- END HEALTHOS AI: ADMIN STAFF DASHBOARD -->
                     <section class="stats-grid">
                         <article class="stat-card">
                     
