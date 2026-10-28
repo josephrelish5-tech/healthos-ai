@@ -650,6 +650,108 @@ async function showStaffProfileSubmission(user, clinic) {
         }
     });
 }
+// HEALTHOS AI: STAFF LOGIN AND ONLINE PRESENCE
+
+async function startStaffPresenceTracking(
+    staffProfileId,
+    clinicId
+) {
+    if (!supabaseClient || !currentUser) {
+        throw new Error(
+            "Staff session is unavailable. Please sign in again."
+        );
+    }
+
+    const now = new Date().toISOString();
+
+    // Record the staff member's successful portal login.
+    const { error } = await supabaseClient
+        .from("staff_presence")
+        .upsert(
+            {
+                staff_profile_id: staffProfileId,
+                clinic_id: clinicId,
+                presence_status: "online",
+                last_seen_at: now,
+                last_login_at: now,
+                last_sign_out_at: null,
+                updated_at: now
+            },
+            {
+                onConflict: "staff_profile_id"
+            }
+        );
+
+    if (error) {
+        console.error(
+            "Staff login presence could not be recorded:",
+            error
+        );
+
+        throw new Error(
+            "Your portal opened, but your online status could not " +
+            "be recorded. Please refresh and try again."
+        );
+    }
+
+    // Remember which staff member owns this active session.
+    window.healthOSActiveStaffPresence = {
+        staffProfileId: staffProfileId,
+        clinicId: clinicId
+    };
+
+    // Clear any previous heartbeat timer.
+    if (window.healthOSPresenceHeartbeat) {
+        clearInterval(window.healthOSPresenceHeartbeat);
+    }
+
+    // Refresh online presence every minute while the portal is active.
+    window.healthOSPresenceHeartbeat = setInterval(
+        async function () {
+            const active =
+                window.healthOSActiveStaffPresence;
+
+            if (
+                !active ||
+                active.staffProfileId !== staffProfileId ||
+                active.clinicId !== clinicId
+            ) {
+                return;
+            }
+
+            const heartbeatTime =
+                new Date().toISOString();
+
+            const { error: heartbeatError } =
+                await supabaseClient
+                    .from("staff_presence")
+                    .update({
+                        presence_status: "online",
+                        last_seen_at: heartbeatTime,
+                        updated_at: heartbeatTime
+                    })
+                    .eq(
+                        "staff_profile_id",
+                        staffProfileId
+                    )
+                    .eq("clinic_id", clinicId);
+
+            if (heartbeatError) {
+                console.error(
+                    "Staff online heartbeat failed:",
+                    heartbeatError
+                );
+            }
+        },
+        60 * 1000
+    );
+
+    console.log(
+        "HealthOS AI staff presence tracking started."
+    );
+}
+
+// END HEALTHOS AI: STAFF LOGIN AND ONLINE PRESENCE
 // Find the signed-in user's clinic.
 // Load the signed-in user's verified clinic workspace.
 async function openWorkspace(user) {
