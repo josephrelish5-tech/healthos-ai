@@ -702,6 +702,35 @@ async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
     messageElement.className = "message";
 
     try {
+                // HEALTHOS AI: LOAD LATEST STAFF ATTENDANCE TIMES
+        const {
+            data: latestAttendance,
+            error: latestAttendanceError
+        } = await supabaseClient
+            .from("staff_presence")
+            .select("last_clock_in_at, last_clock_out_at")
+            .eq("staff_profile_id", staffProfileId)
+            .eq("clinic_id", clinicId)
+            .maybeSingle();
+
+        if (latestAttendanceError) {
+            throw latestAttendanceError;
+        }
+
+        clockInTimeElement.textContent =
+            latestAttendance && latestAttendance.last_clock_in_at
+                ? new Date(
+                    latestAttendance.last_clock_in_at
+                ).toLocaleString()
+                : "—";
+
+        clockOutTimeElement.textContent =
+            latestAttendance && latestAttendance.last_clock_out_at
+                ? new Date(
+                    latestAttendance.last_clock_out_at
+                ).toLocaleString()
+                : "—";
+        // END HEALTHOS AI: LOAD LATEST STAFF ATTENDANCE TIMES
         const { data: shifts, error } = await supabaseClient
             .from("staff_shifts")
             .select(
