@@ -879,6 +879,7 @@ async function openWorkspace(user) {
             );
         }
 // HEALTHOS AI: START VERIFIED STAFF PRESENCE
+ console.info("PRESENCE DEBUG: verified staff profile reached");
 await startStaffPresenceTracking(
     staffProfile.id,
     clinic.id
