@@ -2718,8 +2718,7 @@ logoutButton.addEventListener("click", async function () {
     logoutButton.disabled = true;
 
     try {
-        const { error } =
-            await supabaseClient.auth.signOut();
+        
 // HEALTHOS AI: RECORD STAFF SIGN-OUT
 const activeStaffPresence =
     window.healthOSActiveStaffPresence;
@@ -2758,6 +2757,14 @@ if (activeStaffPresence && currentUser) {
     }
 
     window.healthOSActiveStaffPresence = null;
+}
+        // END HEALTHOS AI: RECORD STAFF SIGN-OUT
+
+const { error } =
+    await supabaseClient.auth.signOut();
+
+if (error) {
+    throw error;
 }
 // END HEALTHOS AI: RECORD STAFF SIGN-OUT
         if (error) {
