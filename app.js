@@ -1557,6 +1557,7 @@ if (staffRegistrationForm) {
                             body: {
                                 clinic_id: currentClinic.id,
                                 email: email,
+                                                                initial_password: initialPassword,
                                 full_name: fullName,
                                 staff_id: staffId,
                                 department: department,
