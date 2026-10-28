@@ -1518,7 +1518,9 @@ if (staffRegistrationForm) {
             const email = document.getElementById(
                 "staffEmail"
             ).value.trim();
-
+            const initialPassword = document.getElementById(
+                "staffInitialPassword"
+            ).value;
             const fullName = document.getElementById(
                 "staffFullName"
             ).value.trim();
