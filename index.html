@@ -588,7 +588,63 @@
             <h3 id="staffWorkspaceRole">Loading...</h3>
         </article>
     </div>
+    <!-- HEALTHOS AI: STAFF ATTENDANCE SECTION -->
+    <div class="panel-heading">
+        <div>
+            <h3>My Attendance</h3>
+            <p class="muted">
+                View your assigned shift and record your working hours.
+            </p>
+        </div>
+    </div>
 
+    <div class="stats-grid">
+        <article class="stat-card">
+            <p>Attendance Status</p>
+            <h3 id="staffAttendanceStatus">Not Clocked In</h3>
+        </article>
+
+        <article class="stat-card">
+            <p>Assigned Shift</p>
+            <h3 id="staffAssignedShift">Loading...</h3>
+        </article>
+
+        <article class="stat-card">
+            <p>Clock-In Time</p>
+            <h3 id="staffClockInTime">—</h3>
+        </article>
+
+        <article class="stat-card">
+            <p>Clock-Out Time</p>
+            <h3 id="staffClockOutTime">—</h3>
+        </article>
+    </div>
+
+    <div class="button-row">
+        <button
+            id="staffClockInButton"
+            type="button"
+            disabled
+        >
+            Clock In
+        </button>
+
+        <button
+            id="staffClockOutButton"
+            type="button"
+            disabled
+        >
+            Clock Out
+        </button>
+    </div>
+
+    <p
+        id="staffAttendanceMessage"
+        class="message"
+        role="status"
+        aria-live="polite"
+    ></p>
+    <!-- END HEALTHOS AI: STAFF ATTENDANCE SECTION -->
     <div class="panel-heading">
         <div>
             <h3>My Work Areas</h3>
