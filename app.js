@@ -787,13 +787,6 @@ async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
                 minute: "2-digit"
             })})`;
 
-        clockInTimeElement.textContent = shift.clocked_in_at
-            ? new Date(shift.clocked_in_at).toLocaleString()
-            : "—";
-
-        clockOutTimeElement.textContent = shift.clocked_out_at
-            ? new Date(shift.clocked_out_at).toLocaleString()
-            : "—";
 
         statusElement.textContent =
             shift.attendance_status === "on_duty"
