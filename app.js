@@ -1587,7 +1587,7 @@ async function loadAdminStaffDashboard(clinic) {
             "nightShiftCount",
             shiftCounts.night.size
         );
-
+        await loadStaffActivityTable(clinic);
         if (message) {
             message.textContent =
                 "Staff statistics updated successfully. " +
