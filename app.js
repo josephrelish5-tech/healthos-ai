@@ -747,8 +747,7 @@ async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
         if (!shifts || shifts.length === 0) {
             statusElement.textContent = "Not Clocked In";
             shiftElement.textContent = "No shift assigned today";
-            clockInTimeElement.textContent = "—";
-            clockOutTimeElement.textContent = "—";
+        
 
             messageElement.textContent =
                 "You do not have an assigned shift for today. Contact your administrator.";
