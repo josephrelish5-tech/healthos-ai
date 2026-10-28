@@ -1038,6 +1038,203 @@ function showDashboard(clinic) {
     showOnly("verification");
     adminVerificationPassword.focus();
 }
+// HEALTHOS AI: ADMIN STAFF DASHBOARD STATISTICS
+async function loadAdminStaffDashboard(clinic) {
+    const message = document.getElementById(
+        "staffDashboardMessage"
+    );
+
+    const setCount = function (id, value) {
+        const element = document.getElementById(id);
+
+        if (element) {
+            element.textContent = String(value);
+        }
+    };
+
+    // Require a verified administrator session.
+    if (
+        !currentUser ||
+        !currentClinic ||
+        !managementVerified ||
+        clinic.id !== currentClinic.id
+    ) {
+        if (message) {
+            message.textContent =
+                "Administrator verification is required.";
+            message.className = "message error";
+        }
+
+        return;
+    }
+
+    if (message) {
+        message.textContent = "Loading staff statistics...";
+        message.className = "message";
+    }
+
+    try {
+        // Get active staff for this clinic.
+        const { data: staff, error: staffError } =
+            await supabaseClient
+                .from("staff_profiles")
+                .select("id")
+                .eq("clinic_id", clinic.id)
+                .eq("employment_status", "active");
+
+        if (staffError) throw staffError;
+
+        // Use the browser's local calendar date.
+        const now = new Date();
+
+        const year = now.getFullYear();
+        const month = String(
+            now.getMonth() + 1
+        ).padStart(2, "0");
+
+        const day = String(
+            now.getDate()
+        ).padStart(2, "0");
+
+        const today = `${year}-${month}-${day}`;
+
+        // Get today's shifts and actual attendance.
+        const { data: shifts, error: shiftsError } =
+            await supabaseClient
+                .from("staff_shifts")
+                .select(
+                    "staff_profile_id, shift_type, attendance_status, starts_at, ends_at, clocked_in_at, clocked_out_at"
+                )
+                .eq("clinic_id", clinic.id)
+                .eq("shift_date", today)
+                .neq("attendance_status", "cancelled");
+
+        if (shiftsError) throw shiftsError;
+
+        // Get staff presence separately from attendance.
+        const fiveMinutesAgo = new Date(
+            Date.now() - 5 * 60 * 1000
+        ).toISOString();
+
+        const { data: presence, error: presenceError } =
+            await supabaseClient
+                .from("staff_presence")
+                .select(
+                    "staff_profile_id, presence_status, last_seen_at"
+                )
+                .eq("clinic_id", clinic.id)
+                .eq("presence_status", "online")
+                .gte("last_seen_at", fiveMinutesAgo);
+
+        if (presenceError) throw presenceError;
+
+        // Count unique staff members, not duplicate shift rows.
+        const activeStaffIds = new Set(
+            (staff || []).map(function (person) {
+                return person.id;
+            })
+        );
+
+        const onDutyIds = new Set();
+
+        (shifts || []).forEach(function (shift) {
+            const currentlyWorking =
+                shift.attendance_status === "on_duty" &&
+                shift.clocked_in_at &&
+                !shift.clocked_out_at &&
+                new Date(shift.starts_at) <= now &&
+                new Date(shift.ends_at) > now;
+
+            if (
+                currentlyWorking &&
+                activeStaffIds.has(shift.staff_profile_id)
+            ) {
+                onDutyIds.add(shift.staff_profile_id);
+            }
+        });
+
+        const onlineIds = new Set(
+            (presence || [])
+                .filter(function (person) {
+                    return activeStaffIds.has(
+                        person.staff_profile_id
+                    );
+                })
+                .map(function (person) {
+                    return person.staff_profile_id;
+                })
+        );
+
+        // Count staff scheduled for each shift today.
+        const shiftCounts = {
+            morning: new Set(),
+            afternoon: new Set(),
+            night: new Set()
+        };
+
+        (shifts || []).forEach(function (shift) {
+            if (
+                shiftCounts[shift.shift_type] &&
+                activeStaffIds.has(shift.staff_profile_id)
+            ) {
+                shiftCounts[shift.shift_type].add(
+                    shift.staff_profile_id
+                );
+            }
+        });
+
+        // Update the seven dashboard cards.
+        setCount("totalStaffCount", activeStaffIds.size);
+
+        setCount("onDutyStaffCount", onDutyIds.size);
+
+        setCount(
+            "offDutyStaffCount",
+            Math.max(0, activeStaffIds.size - onDutyIds.size)
+        );
+
+        setCount("onlineStaffCount", onlineIds.size);
+
+        setCount(
+            "morningShiftCount",
+            shiftCounts.morning.size
+        );
+
+        setCount(
+            "afternoonShiftCount",
+            shiftCounts.afternoon.size
+        );
+
+        setCount(
+            "nightShiftCount",
+            shiftCounts.night.size
+        );
+
+        if (message) {
+            message.textContent =
+                "Staff statistics updated successfully. " +
+                "Online presence and shift attendance are " +
+                "counted separately.";
+
+            message.className = "message success";
+        }
+
+    } catch (error) {
+        console.error(
+            "HealthOS AI staff dashboard loading failed:",
+            error
+        );
+
+        if (message) {
+            message.textContent =
+                "Unable to load staff statistics. " +
+                "Check database permissions and try again.";
+
+            message.className = "message error";
+        }
+    }
+}
+// END HEALTHOS AI: ADMIN STAFF DASHBOARD STATISTICS
 // Load billing transactions and revenue findings for this clinic.
 async function loadBillingData(clinic) {
     const transactionsBody =
