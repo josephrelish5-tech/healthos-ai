@@ -1613,6 +1613,158 @@ async function loadAdminStaffDashboard(clinic) {
     }
 }
 // END HEALTHOS AI: ADMIN STAFF DASHBOARD STATISTICS
+// HEALTHOS AI: LOAD INDIVIDUAL STAFF ACTIVITY
+
+async function loadStaffActivityTable(clinic) {
+    const tableBody = document.getElementById(
+        "staffActivityTableBody"
+    );
+
+    if (!tableBody || !supabaseClient || !clinic) {
+        return;
+    }
+
+    tableBody.replaceChildren();
+
+    const loadingRow = document.createElement("tr");
+    const loadingCell = document.createElement("td");
+
+    loadingCell.colSpan = 6;
+    loadingCell.textContent = "Loading staff activity...";
+    loadingRow.appendChild(loadingCell);
+    tableBody.appendChild(loadingRow);
+
+    try {
+        const { data: staff, error: staffError } =
+            await supabaseClient
+                .from("staff_profiles")
+                .select(
+                    "id, full_name, department, professional_role"
+                )
+                .eq("clinic_id", clinic.id)
+                .eq("employment_status", "active")
+                .order("full_name");
+
+        if (staffError) {
+            throw staffError;
+        }
+
+        const { data: presence, error: presenceError } =
+            await supabaseClient
+                .from("staff_presence")
+                .select(
+                    "staff_profile_id, presence_status, " +
+                    "last_seen_at, last_login_at, last_sign_out_at"
+                )
+                .eq("clinic_id", clinic.id);
+
+        if (presenceError) {
+            throw presenceError;
+        }
+
+        const presenceByStaffId = new Map();
+
+        (presence || []).forEach(function (record) {
+            presenceByStaffId.set(
+                record.staff_profile_id,
+                record
+            );
+        });
+
+        tableBody.replaceChildren();
+
+        if (!staff || staff.length === 0) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+
+            cell.colSpan = 6;
+            cell.textContent =
+                "No active staff members are registered.";
+
+            row.appendChild(cell);
+            tableBody.appendChild(row);
+            return;
+        }
+
+        const fiveMinutesAgo =
+            Date.now() - 5 * 60 * 1000;
+
+        function formatStaffTime(value) {
+            if (!value) {
+                return "—";
+            }
+
+            const date = new Date(value);
+
+            if (Number.isNaN(date.getTime())) {
+                return "—";
+            }
+
+            return date.toLocaleString();
+        }
+
+        staff.forEach(function (person) {
+            const record = presenceByStaffId.get(person.id);
+
+            const isOnline = Boolean(
+                record &&
+                record.presence_status === "online" &&
+                record.last_seen_at &&
+                new Date(record.last_seen_at).getTime() >=
+                    fiveMinutesAgo
+            );
+
+            const row = document.createElement("tr");
+
+            const values = [
+                person.full_name || "Unnamed staff",
+                person.department || "—",
+                person.professional_role || "—",
+                isOnline ? "Online" : "Offline",
+                formatStaffTime(
+                    record ? record.last_login_at : null
+                ),
+                formatStaffTime(
+                    record ? record.last_sign_out_at : null
+                )
+            ];
+
+            values.forEach(function (value, index) {
+                const cell = document.createElement("td");
+
+                cell.textContent = value;
+
+                if (index === 3) {
+                    cell.style.fontWeight = "600";
+                }
+
+                row.appendChild(cell);
+            });
+
+            tableBody.appendChild(row);
+        });
+
+    } catch (error) {
+        console.error(
+            "HealthOS AI: Staff activity table failed:",
+            error
+        );
+
+        tableBody.replaceChildren();
+
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+
+        cell.colSpan = 6;
+        cell.textContent =
+            "Unable to load staff activity. Check database permissions.";
+
+        row.appendChild(cell);
+        tableBody.appendChild(row);
+    }
+}
+
+// END HEALTHOS AI: LOAD INDIVIDUAL STAFF ACTIVITY
 // Load billing transactions and revenue findings for this clinic.
 async function loadBillingData(clinic) {
     const transactionsBody =
