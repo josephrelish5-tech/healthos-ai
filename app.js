@@ -651,7 +651,245 @@ async function showStaffProfileSubmission(user, clinic) {
     });
 }
 // HEALTHOS AI: STAFF LOGIN AND ONLINE PRESENCE
+// HEALTHOS AI: STAFF ATTENDANCE WORKSPACE
+async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
+    const statusElement =
+        document.getElementById("staffAttendanceStatus");
 
+    const shiftElement =
+        document.getElementById("staffAssignedShift");
+
+    const clockInTimeElement =
+        document.getElementById("staffClockInTime");
+
+    const clockOutTimeElement =
+        document.getElementById("staffClockOutTime");
+
+    const clockInButton =
+        document.getElementById("staffClockInButton");
+
+    const clockOutButton =
+        document.getElementById("staffClockOutButton");
+
+    const messageElement =
+        document.getElementById("staffAttendanceMessage");
+
+    if (
+        !statusElement ||
+        !shiftElement ||
+        !clockInTimeElement ||
+        !clockOutTimeElement ||
+        !clockInButton ||
+        !clockOutButton ||
+        !messageElement
+    ) {
+        console.error("Staff attendance interface is incomplete.");
+        return;
+    }
+
+    clockInButton.disabled = true;
+    clockOutButton.disabled = true;
+
+    const now = new Date();
+
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+
+    const today = `${year}-${month}-${day}`;
+
+    messageElement.textContent = "Loading your assigned shift...";
+    messageElement.className = "message";
+
+    try {
+        const { data: shifts, error } = await supabaseClient
+            .from("staff_shifts")
+            .select(
+                "id, shift_date, shift_type, starts_at, ends_at, attendance_status, clocked_in_at, clocked_out_at"
+            )
+            .eq("staff_profile_id", staffProfileId)
+            .eq("clinic_id", clinicId)
+            .eq("shift_date", today)
+            .neq("attendance_status", "cancelled")
+            .order("starts_at", { ascending: true });
+
+        if (error) throw error;
+
+        if (!shifts || shifts.length === 0) {
+            statusElement.textContent = "Not Clocked In";
+            shiftElement.textContent = "No shift assigned today";
+            clockInTimeElement.textContent = "—";
+            clockOutTimeElement.textContent = "—";
+
+            messageElement.textContent =
+                "You do not have an assigned shift for today. Contact your administrator.";
+
+            messageElement.className = "message";
+            return;
+        }
+
+        const currentTime = new Date();
+
+        const activeShift = shifts.find(function (shift) {
+            return (
+                new Date(shift.starts_at) <= currentTime &&
+                new Date(shift.ends_at) > currentTime &&
+                shift.attendance_status !== "completed" &&
+                shift.attendance_status !== "absent"
+            );
+        });
+
+        const shift =
+            activeShift ||
+            shifts.find(function (item) {
+                return item.attendance_status === "on_duty";
+            }) ||
+            shifts[0];
+
+        const shiftName =
+            shift.shift_type.charAt(0).toUpperCase() +
+            shift.shift_type.slice(1);
+
+        shiftElement.textContent =
+            `${shiftName} (${new Date(shift.starts_at).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+            })} – ${new Date(shift.ends_at).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit"
+            })})`;
+
+        clockInTimeElement.textContent = shift.clocked_in_at
+            ? new Date(shift.clocked_in_at).toLocaleString()
+            : "—";
+
+        clockOutTimeElement.textContent = shift.clocked_out_at
+            ? new Date(shift.clocked_out_at).toLocaleString()
+            : "—";
+
+        statusElement.textContent =
+            shift.attendance_status === "on_duty"
+                ? "On Duty"
+                : shift.attendance_status === "completed"
+                ? "Shift Completed"
+                : shift.attendance_status === "absent"
+                ? "Absent"
+                : "Not Clocked In";
+
+        const shiftIsActive =
+            new Date(shift.starts_at) <= currentTime &&
+            new Date(shift.ends_at) > currentTime;
+
+        clockInButton.disabled = !(
+            shiftIsActive &&
+            shift.attendance_status === "scheduled" &&
+            !shift.clocked_in_at
+        );
+
+        clockOutButton.disabled = !(
+            shift.attendance_status === "on_duty" &&
+            Boolean(shift.clocked_in_at) &&
+            !shift.clocked_out_at
+        );
+
+        messageElement.textContent = clockInButton.disabled &&
+            clockOutButton.disabled
+            ? "Attendance actions are unavailable for this shift at the moment."
+            : "Your assigned shift is ready.";
+
+        messageElement.className = "message";
+
+        clockInButton.onclick = async function () {
+            clockInButton.disabled = true;
+            clockOutButton.disabled = true;
+
+            messageElement.textContent = "Recording your clock-in...";
+
+            try {
+                const { error: clockInError } =
+                    await supabaseClient.rpc(
+                        "staff_record_attendance",
+                        {
+                            p_shift_id: shift.id,
+                            p_action: "clock_in"
+                        }
+                    );
+
+                if (clockInError) throw clockInError;
+
+                messageElement.textContent =
+                    "Clock-in recorded successfully.";
+
+                messageElement.className = "message success";
+
+                await loadStaffAttendanceWorkspace(
+                    staffProfileId,
+                    clinicId
+                );
+            } catch (error) {
+                messageElement.textContent =
+                    error.message || "Clock-in could not be recorded.";
+
+                messageElement.className = "message error";
+
+                await loadStaffAttendanceWorkspace(
+                    staffProfileId,
+                    clinicId
+                );
+            }
+        };
+
+        clockOutButton.onclick = async function () {
+            clockInButton.disabled = true;
+            clockOutButton.disabled = true;
+
+            messageElement.textContent = "Recording your clock-out...";
+
+            try {
+                const { error: clockOutError } =
+                    await supabaseClient.rpc(
+                        "staff_record_attendance",
+                        {
+                            p_shift_id: shift.id,
+                            p_action: "clock_out"
+                        }
+                    );
+
+                if (clockOutError) throw clockOutError;
+
+                messageElement.textContent =
+                    "Clock-out recorded successfully.";
+
+                messageElement.className = "message success";
+
+                await loadStaffAttendanceWorkspace(
+                    staffProfileId,
+                    clinicId
+                );
+            } catch (error) {
+                messageElement.textContent =
+                    error.message || "Clock-out could not be recorded.";
+
+                messageElement.className = "message error";
+
+                await loadStaffAttendanceWorkspace(
+                    staffProfileId,
+                    clinicId
+                );
+            }
+        };
+    } catch (error) {
+        console.error("Staff attendance loading failed:", error);
+
+        statusElement.textContent = "Unavailable";
+        shiftElement.textContent = "Could not load shift";
+        messageElement.textContent =
+            error.message || "Could not load your assigned shift.";
+
+        messageElement.className = "message error";
+    }
+}
+// END HEALTHOS AI: STAFF ATTENDANCE WORKSPACE
 async function startStaffPresenceTracking(
     staffProfileId,
     clinicId
