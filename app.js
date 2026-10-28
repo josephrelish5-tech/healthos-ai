@@ -2720,7 +2720,46 @@ logoutButton.addEventListener("click", async function () {
     try {
         const { error } =
             await supabaseClient.auth.signOut();
+// HEALTHOS AI: RECORD STAFF SIGN-OUT
+const activeStaffPresence =
+    window.healthOSActiveStaffPresence;
 
+if (window.healthOSPresenceHeartbeat) {
+    clearInterval(window.healthOSPresenceHeartbeat);
+    window.healthOSPresenceHeartbeat = null;
+}
+
+if (activeStaffPresence && currentUser) {
+    const signOutTime = new Date().toISOString();
+
+    const { error: presenceSignOutError } =
+        await supabaseClient
+            .from("staff_presence")
+            .update({
+                presence_status: "offline",
+                last_sign_out_at: signOutTime,
+                last_seen_at: signOutTime,
+                updated_at: signOutTime
+            })
+            .eq(
+                "staff_profile_id",
+                activeStaffPresence.staffProfileId
+            )
+            .eq(
+                "clinic_id",
+                activeStaffPresence.clinicId
+            );
+
+    if (presenceSignOutError) {
+        console.error(
+            "Staff sign-out time could not be recorded:",
+            presenceSignOutError
+        );
+    }
+
+    window.healthOSActiveStaffPresence = null;
+}
+// END HEALTHOS AI: RECORD STAFF SIGN-OUT
         if (error) {
             throw error;
         }
