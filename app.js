@@ -662,7 +662,7 @@ async function showStaffProfileSubmission(user, clinic) {
 }
 // HEALTHOS AI: STAFF LOGIN AND ONLINE PRESENCE
 // HEALTHOS AI: STAFF ATTENDANCE WORKSPACE
-// HEALTHOS AI: STAFF ATTENDANCE WORKSPACE
+
 async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
     const statusElement =
         document.getElementById("staffAttendanceStatus");
@@ -917,7 +917,7 @@ async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
     }
 }
 // END HEALTHOS AI: STAFF ATTENDANCE WORKSPACE
-// END HEALTHOS AI: STAFF ATTENDANCE WORKSPACE
+
 async function startStaffPresenceTracking(
     staffProfileId,
     clinicId
