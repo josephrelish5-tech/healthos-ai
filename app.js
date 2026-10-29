@@ -3202,7 +3202,9 @@ logoutButton.addEventListener("click", async function () {
         
 // HEALTHOS AI: RECORD STAFF SIGN-OUT
 const activeStaffPresence =
-    // HEALTHOS AI: AUTOMATIC CLOCK-OUT BEFORE SIGN-OUT
+    window.healthOSActiveStaffPresence;
+
+// HEALTHOS AI: AUTOMATIC CLOCK-OUT BEFORE SIGN-OUT
 if (activeStaffPresence && currentUser) {
     const { data: activeShift, error: shiftLookupError } =
         await supabaseClient
@@ -3247,7 +3249,6 @@ if (activeStaffPresence && currentUser) {
     }
 }
 // END HEALTHOS AI: AUTOMATIC CLOCK-OUT BEFORE SIGN-OUT
-    window.healthOSActiveStaffPresence;
 
 if (window.healthOSPresenceHeartbeat) {
     clearInterval(window.healthOSPresenceHeartbeat);
