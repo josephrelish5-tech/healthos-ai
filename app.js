@@ -662,6 +662,7 @@ async function showStaffProfileSubmission(user, clinic) {
 }
 // HEALTHOS AI: STAFF LOGIN AND ONLINE PRESENCE
 // HEALTHOS AI: STAFF ATTENDANCE WORKSPACE
+// HEALTHOS AI: STAFF ATTENDANCE WORKSPACE
 async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
     const statusElement =
         document.getElementById("staffAttendanceStatus");
@@ -700,168 +701,130 @@ async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
     clockInButton.disabled = true;
     clockOutButton.disabled = true;
 
-    const now = new Date();
-
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-
-    const today = `${year}-${month}-${day}`;
-
-    messageElement.textContent = "Loading your assigned shift...";
+    messageElement.textContent = "Loading attendance...";
     messageElement.className = "message";
 
     try {
-                // HEALTHOS AI: LOAD LATEST STAFF ATTENDANCE TIMES
+        // Load attendance sessions independently of assigned shifts.
         const {
-            data: latestAttendance,
-            error: latestAttendanceError
+            data: sessions,
+            error: sessionsError
         } = await supabaseClient
-            .from("staff_presence")
-            .select("last_clock_in_at, last_clock_out_at")
+            .from("staff_attendance_sessions")
+            .select("id, clocked_in_at, clocked_out_at")
             .eq("staff_profile_id", staffProfileId)
             .eq("clinic_id", clinicId)
-            .maybeSingle();
+            .order("clocked_in_at", { ascending: false })
+            .limit(100);
 
-        if (latestAttendanceError) {
-            throw latestAttendanceError;
+        if (sessionsError) {
+            throw sessionsError;
         }
 
+        const attendanceSessions = sessions || [];
+
+        const openSession = attendanceSessions.find(
+            function (session) {
+                return !session.clocked_out_at;
+            }
+        );
+
+        const latestClockInSession =
+            attendanceSessions[0] || null;
+
+        const latestClosedSession =
+            attendanceSessions.find(function (session) {
+                return Boolean(session.clocked_out_at);
+            }) || null;
+
+        // Display the latest recorded clock-in.
         clockInTimeElement.textContent =
-            latestAttendance && latestAttendance.last_clock_in_at
+            latestClockInSession
                 ? new Date(
-                    latestAttendance.last_clock_in_at
+                    latestClockInSession.clocked_in_at
                 ).toLocaleString()
                 : "—";
 
+        // Display the most recent completed clock-out.
         clockOutTimeElement.textContent =
-            latestAttendance && latestAttendance.last_clock_out_at
+            latestClosedSession
                 ? new Date(
-                    latestAttendance.last_clock_out_at
+                    latestClosedSession.clocked_out_at
                 ).toLocaleString()
                 : "—";
-        // END HEALTHOS AI: LOAD LATEST STAFF ATTENDANCE TIMES
-        const { data: shifts, error } = await supabaseClient
-            .from("staff_shifts")
-            .select(
-                "id, shift_date, shift_type, starts_at, ends_at, attendance_status, clocked_in_at, clocked_out_at"
-            )
-            .eq("staff_profile_id", staffProfileId)
-            .eq("clinic_id", clinicId)
-            .eq("shift_date", today)
-            .neq("attendance_status", "cancelled")
-            .order("starts_at", { ascending: true });
 
-        if (error) throw error;
-
-        if (!shifts || shifts.length === 0) {
-            statusElement.textContent = "Not Clocked In";
-            shiftElement.textContent = "No shift assigned today";
-        
-
-            messageElement.textContent =
-                "You do not have an assigned shift for today. Contact your administrator.";
-
-            messageElement.className = "message";
-            return;
-        }
-
-        const currentTime = new Date();
-
-        const activeShift = shifts.find(function (shift) {
-            return (
-                new Date(shift.starts_at) <= currentTime &&
-                new Date(shift.ends_at) > currentTime &&
-                shift.attendance_status !== "completed" &&
-                shift.attendance_status !== "absent"
-            );
-        });
-
-        const shift =
-            activeShift ||
-            shifts.find(function (item) {
-                return item.attendance_status === "on_duty";
-            }) ||
-            shifts[0];
-        
-        const shiftName =
-            shift.shift_type.charAt(0).toUpperCase() +
-            shift.shift_type.slice(1);
-
+        // Attendance does not require a scheduled shift.
         shiftElement.textContent =
-            `${shiftName} (${new Date(shift.starts_at).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit"
-            })} – ${new Date(shift.ends_at).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit"
-            })})`;
-
+            "Optional — not required to clock in";
 
         statusElement.textContent =
-            shift.attendance_status === "on_duty"
-                ? "On Duty"
-                : shift.attendance_status === "completed"
-                ? "Shift Completed"
-                : shift.attendance_status === "absent"
-                ? "Absent"
+            openSession
+                ? "Clocked In"
                 : "Not Clocked In";
 
-        const shiftIsActive =
-            new Date(shift.starts_at) <= currentTime &&
-            new Date(shift.ends_at) > currentTime;
+        // Enable only the action appropriate to the current session.
+        clockInButton.disabled = Boolean(openSession);
+        clockOutButton.disabled = !openSession;
 
-        clockInButton.disabled = !(
-            shiftIsActive &&
-            shift.attendance_status === "scheduled" &&
-            !shift.clocked_in_at
-        );
-
-        clockOutButton.disabled = !(
-            shift.attendance_status === "on_duty" &&
-            Boolean(shift.clocked_in_at) &&
-            !shift.clocked_out_at
-        );
-
-        messageElement.textContent = clockInButton.disabled &&
-            clockOutButton.disabled
-            ? "Attendance actions are unavailable for this shift at the moment."
-            : "Your assigned shift is ready.";
+        messageElement.textContent =
+            openSession
+                ? "Your attendance session is open. Clock out when your duties are complete."
+                : "You can clock in now. An assigned shift is not required.";
 
         messageElement.className = "message";
 
+        // CLOCK IN
         clockInButton.onclick = async function () {
             clockInButton.disabled = true;
             clockOutButton.disabled = true;
 
-            messageElement.textContent = "Recording your clock-in...";
+            messageElement.textContent =
+                "Recording your clock-in...";
+
+            messageElement.className = "message";
 
             try {
-                const { error: clockInError } =
-                    await supabaseClient.rpc(
-                        "staff_record_attendance",
-                        {
-                            p_shift_id: shift.id,
-                            p_action: "clock_in"
-                        }
-                    );
+                const {
+                    data: clockInResult,
+                    error: clockInError
+                } = await supabaseClient.rpc(
+                    "staff_record_attendance_session",
+                    {
+                        p_action: "clock_in"
+                    }
+                );
 
-                if (clockInError) throw clockInError;
+                if (clockInError) {
+                    throw clockInError;
+                }
+
+                console.info(
+                    "Staff clock-in recorded:",
+                    clockInResult
+                );
 
                 messageElement.textContent =
                     "Clock-in recorded successfully.";
 
-                messageElement.className = "message success";
+                messageElement.className =
+                    "message success";
 
                 await loadStaffAttendanceWorkspace(
                     staffProfileId,
                     clinicId
                 );
             } catch (error) {
-                messageElement.textContent =
-                    error.message || "Clock-in could not be recorded.";
+                console.error(
+                    "Staff clock-in failed:",
+                    error
+                );
 
-                messageElement.className = "message error";
+                messageElement.textContent =
+                    error.message ||
+                    "Clock-in could not be recorded.";
+
+                messageElement.className =
+                    "message error";
 
                 await loadStaffAttendanceWorkspace(
                     staffProfileId,
@@ -870,38 +833,58 @@ async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
             }
         };
 
+        // CLOCK OUT
         clockOutButton.onclick = async function () {
             clockInButton.disabled = true;
             clockOutButton.disabled = true;
 
-            messageElement.textContent = "Recording your clock-out...";
+            messageElement.textContent =
+                "Recording your clock-out...";
+
+            messageElement.className = "message";
 
             try {
-                const { error: clockOutError } =
-                    await supabaseClient.rpc(
-                        "staff_record_attendance",
-                        {
-                            p_shift_id: shift.id,
-                            p_action: "clock_out"
-                        }
-                    );
+                const {
+                    data: clockOutResult,
+                    error: clockOutError
+                } = await supabaseClient.rpc(
+                    "staff_record_attendance_session",
+                    {
+                        p_action: "clock_out"
+                    }
+                );
 
-                if (clockOutError) throw clockOutError;
+                if (clockOutError) {
+                    throw clockOutError;
+                }
+
+                console.info(
+                    "Staff clock-out recorded:",
+                    clockOutResult
+                );
 
                 messageElement.textContent =
                     "Clock-out recorded successfully.";
 
-                messageElement.className = "message success";
+                messageElement.className =
+                    "message success";
 
                 await loadStaffAttendanceWorkspace(
                     staffProfileId,
                     clinicId
                 );
             } catch (error) {
-                messageElement.textContent =
-                    error.message || "Clock-out could not be recorded.";
+                console.error(
+                    "Staff clock-out failed:",
+                    error
+                );
 
-                messageElement.className = "message error";
+                messageElement.textContent =
+                    error.message ||
+                    "Clock-out could not be recorded.";
+
+                messageElement.className =
+                    "message error";
 
                 await loadStaffAttendanceWorkspace(
                     staffProfileId,
@@ -910,16 +893,30 @@ async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
             }
         };
     } catch (error) {
-        console.error("Staff attendance loading failed:", error);
+        console.error(
+            "Staff attendance loading failed:",
+            error
+        );
 
         statusElement.textContent = "Unavailable";
-        shiftElement.textContent = "Could not load shift";
+
+        shiftElement.textContent =
+            "Attendance unavailable";
+
+        clockInTimeElement.textContent = "—";
+        clockOutTimeElement.textContent = "—";
+
+        clockInButton.disabled = true;
+        clockOutButton.disabled = true;
+
         messageElement.textContent =
-            error.message || "Could not load your assigned shift.";
+            error.message ||
+            "Could not load your attendance.";
 
         messageElement.className = "message error";
     }
 }
+// END HEALTHOS AI: STAFF ATTENDANCE WORKSPACE
 // END HEALTHOS AI: STAFF ATTENDANCE WORKSPACE
 async function startStaffPresenceTracking(
     staffProfileId,
