@@ -3202,6 +3202,51 @@ logoutButton.addEventListener("click", async function () {
         
 // HEALTHOS AI: RECORD STAFF SIGN-OUT
 const activeStaffPresence =
+    // HEALTHOS AI: AUTOMATIC CLOCK-OUT BEFORE SIGN-OUT
+if (activeStaffPresence && currentUser) {
+    const { data: activeShift, error: shiftLookupError } =
+        await supabaseClient
+            .from("staff_shifts")
+            .select("id")
+            .eq(
+                "staff_profile_id",
+                activeStaffPresence.staffProfileId
+            )
+            .eq(
+                "clinic_id",
+                activeStaffPresence.clinicId
+            )
+            .eq("attendance_status", "on_duty")
+            .is("clocked_out_at", null)
+            .order("starts_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+    if (shiftLookupError) {
+        throw shiftLookupError;
+    }
+
+    if (activeShift) {
+        const { error: automaticClockOutError } =
+            await supabaseClient.rpc(
+                "staff_record_attendance",
+                {
+                    p_shift_id: activeShift.id,
+                    p_action: "clock_out"
+                }
+            );
+
+        if (automaticClockOutError) {
+            console.error(
+                "Automatic clock-out failed:",
+                automaticClockOutError
+            );
+
+            throw automaticClockOutError;
+        }
+    }
+}
+// END HEALTHOS AI: AUTOMATIC CLOCK-OUT BEFORE SIGN-OUT
     window.healthOSActiveStaffPresence;
 
 if (window.healthOSPresenceHeartbeat) {
