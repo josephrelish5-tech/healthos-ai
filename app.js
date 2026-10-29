@@ -773,7 +773,57 @@ async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
                 return item.attendance_status === "on_duty";
             }) ||
             shifts[0];
+// HEALTHOS AI: AUTOMATIC STAFF CLOCK-IN
+const autoClockInTime = new Date();
 
+const shiftIsCurrentlyActive =
+    new Date(shift.starts_at) <= autoClockInTime &&
+    new Date(shift.ends_at) > autoClockInTime;
+
+if (
+    shiftIsCurrentlyActive &&
+    shift.attendance_status === "scheduled" &&
+    !shift.clocked_in_at
+) {
+    messageElement.textContent =
+        "Recording your automatic clock-in...";
+
+    try {
+        const { error: autoClockInError } =
+            await supabaseClient.rpc(
+                "staff_record_attendance",
+                {
+                    p_shift_id: shift.id,
+                    p_action: "clock_in"
+                }
+            );
+
+        if (autoClockInError) {
+            throw autoClockInError;
+        }
+
+        await loadStaffAttendanceWorkspace(
+            staffProfileId,
+            clinicId
+        );
+
+        return;
+    } catch (error) {
+        console.error(
+            "Automatic staff clock-in failed:",
+            error
+        );
+
+        messageElement.textContent =
+            error.message ||
+            "Automatic clock-in failed. Please contact your administrator.";
+
+        messageElement.className = "message error";
+
+        return;
+    }
+}
+// END HEALTHOS AI: AUTOMATIC STAFF CLOCK-IN
         const shiftName =
             shift.shift_type.charAt(0).toUpperCase() +
             shift.shift_type.slice(1);
