@@ -373,7 +373,17 @@ adminVerificationForm.addEventListener("submit", async function (event) {
 
         // HEALTHOS AI: LOAD ADMIN STAFF DASHBOARD
         await loadAdminStaffDashboard(currentClinic);
-        
+    // HEALTHOS AI: AUTOMATIC ADMIN STAFF DASHBOARD REFRESH
+if (window.healthOSAdminStaffRefresh) {
+    clearInterval(window.healthOSAdminStaffRefresh);
+}
+
+window.healthOSAdminStaffRefresh = setInterval(async function () {
+    if (currentUser && currentClinic && managementVerified) {
+        await loadAdminStaffDashboard(currentClinic);
+    }
+}, 15000);
+// END HEALTHOS AI: AUTOMATIC ADMIN STAFF DASHBOARD REFRESH    
 // HEALTHOS AI: LOAD STAFF SHIFT OPTIONS
 await loadStaffShiftOptions(currentClinic);
     } catch (error) { 
