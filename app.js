@@ -3647,19 +3647,21 @@ async function loadServiceAudit() {
     try {
         serviceCaptureReady();
 
-        const { data, error } = await supabaseClient
-            .from("service_events")
-            .select(
-                "id, service_name_snapshot, quantity, unit_price, event_status, billing_transaction_id, performed_at, created_at"
-            )
-            .eq("clinic_id", currentClinic.id)
-            .in("event_status", ["performed", "verified"])
-            .order("created_at", { ascending: false })
-            .limit(500);
+        // Load performed and verified services.
+        const { data: services, error: serviceError } =
+            await supabaseClient
+                .from("service_events")
+                .select(
+                    "id, service_name_snapshot, quantity, unit_price, event_status, billing_transaction_id, performed_at, created_at"
+                )
+                .eq("clinic_id", currentClinic.id)
+                .in("event_status", ["performed", "verified"])
+                .order("created_at", { ascending: false })
+                .limit(500);
 
-        if (error) throw error;
+        if (serviceError) throw serviceError;
 
-        const candidates = (data || []).filter(
+        const candidates = (services || []).filter(
             record => !record.billing_transaction_id
         );
 
@@ -3682,8 +3684,52 @@ async function loadServiceAudit() {
             return;
         }
 
+        // Load saved revenue audit findings.
+        const { data: findings, error: findingsError } =
+            await supabaseClient
+                .from("revenue_audit_findings")
+                .select(
+                    "service_event_id, finding_type, status, detected_at"
+                )
+                .eq("clinic_id", currentClinic.id)
+                .eq("finding_type", "missing_charge")
+                .order("detected_at", { ascending: false });
+
+        if (findingsError) throw findingsError;
+
+        // Match each service to its latest saved finding.
+        const findingsByService = new Map();
+
+        (findings || []).forEach(finding => {
+            if (
+                finding.service_event_id &&
+                !findingsByService.has(finding.service_event_id)
+            ) {
+                findingsByService.set(
+                    finding.service_event_id,
+                    finding
+                );
+            }
+        });
+
+        const statusLabels = {
+            open: "Open - Needs review",
+            investigating: "Under investigation",
+            resolved: "Resolved",
+            dismissed: "Dismissed"
+        };
+
         candidates.forEach(record => {
             const row = document.createElement("tr");
+
+            const finding = findingsByService.get(record.id);
+
+            const displayedStatus = finding
+                ? (
+                    statusLabels[finding.status] ||
+                    finding.status
+                )
+                : "Finding not recorded";
 
             const values = [
                 record.service_name_snapshot || "Unknown service",
@@ -3695,7 +3741,7 @@ async function loadServiceAudit() {
                 record.performed_at
                     ? new Date(record.performed_at).toLocaleString("en-NG")
                     : new Date(record.created_at).toLocaleString("en-NG"),
-                "Needs human review"
+                displayedStatus
             ];
 
             values.forEach(value => {
@@ -3710,7 +3756,7 @@ async function loadServiceAudit() {
         serviceCaptureMessage(
             "serviceAuditMessage",
             candidates.length +
-                " service record(s) need billing-link review. Verify before invoicing.",
+                " unlinked service(s) checked against saved audit findings.",
             "success"
         );
 
