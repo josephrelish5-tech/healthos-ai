@@ -4899,8 +4899,9 @@ function openSection(sectionId, sectionName) {
                     );
                 }
 
-                const payload = {
+                                const payload = {
                     clinic_id: context.clinicId,
+                    medicine_name: medicineName,
                     medicine_code: medicineCode || null,
                     batch_number: batchNumber,
                     quantity: quantity,
