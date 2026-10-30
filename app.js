@@ -4828,11 +4828,12 @@ function openSection(sectionId, sectionName) {
             try {
                 const context = getPharmacyContext();
 
-                const medicineName = document.getElementById(
+                        const medicineName = document.getElementById(
                     "pharmacyMedicineName"
-                    const medicineCode = document.getElementById(
-                "pharmacyMedicineCode"
                 ).value.trim();
+
+                const medicineCode = document.getElementById(
+                    "pharmacyMedicineCode"
                 ).value.trim();
 
                 const batchNumber = document.getElementById(
