@@ -129,6 +129,15 @@ function showHealthOSView(viewId) {
         behavior: "smooth",
         block: "start"
     });
+        // Load Service Capture data whenever its page opens.
+    if (viewId === "serviceCapture") {
+        loadServiceCaptureModule().catch(error => {
+            console.error(
+                "Service Capture module loading failed:",
+                error
+            );
+        });
+    }
 }
 
 // Connect the sidebar to the page navigation.
