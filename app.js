@@ -4651,7 +4651,7 @@ function openSection(sectionId, sectionName) {
             const loadingRow = document.createElement("tr");
             const loadingCell = document.createElement("td");
 
-            loadingCell.colSpan = 5;
+            loadingCell.colSpan = 6;
             loadingCell.textContent = "Loading inventory...";
 
             loadingRow.appendChild(loadingCell);
