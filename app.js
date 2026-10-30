@@ -4660,7 +4660,7 @@ function openSection(sectionId, sectionName) {
             const { data, error } = await supabaseClient
                 .from("pharmacy_inventory")
                 .select(
-                    "id, medicine_name, batch_number, quantity, reorder_level, expiry_date, purchase_cost, supplier_name"
+                "id, medicine_name, medicine_code, batch_number, quantity, reorder_level, expiry_date, purchase_cost, supplier_name"
                 )
                 .eq("clinic_id", context.clinicId)
                 .order("expiry_date", { ascending: true });
