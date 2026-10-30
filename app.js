@@ -3647,7 +3647,6 @@ async function loadServiceAudit() {
     try {
         serviceCaptureReady();
 
-        // Load performed and verified services.
         const { data: services, error: serviceError } =
             await supabaseClient
                 .from("service_events")
@@ -3669,7 +3668,7 @@ async function loadServiceAudit() {
             const row = document.createElement("tr");
             const cell = document.createElement("td");
 
-            cell.colSpan = 5;
+            cell.colSpan = 6;
             cell.textContent = "No unlinked services found.";
 
             row.appendChild(cell);
@@ -3684,12 +3683,11 @@ async function loadServiceAudit() {
             return;
         }
 
-        // Load saved revenue audit findings.
         const { data: findings, error: findingsError } =
             await supabaseClient
                 .from("revenue_audit_findings")
                 .select(
-                    "service_event_id, finding_type, status, detected_at"
+                    "id, service_event_id, finding_type, status, reviewed_by, reviewed_at, resolved_at, detected_at"
                 )
                 .eq("clinic_id", currentClinic.id)
                 .eq("finding_type", "missing_charge")
@@ -3697,7 +3695,6 @@ async function loadServiceAudit() {
 
         if (findingsError) throw findingsError;
 
-        // Match each service to its latest saved finding.
         const findingsByService = new Map();
 
         (findings || []).forEach(finding => {
@@ -3718,6 +3715,67 @@ async function loadServiceAudit() {
             resolved: "Resolved",
             dismissed: "Dismissed"
         };
+
+        const { data: userResult, error: userError } =
+            await supabaseClient.auth.getUser();
+
+        if (userError) throw userError;
+
+        const reviewerId = userResult?.user?.id;
+
+        if (!reviewerId) {
+            throw new Error(
+                "Unable to identify the signed-in reviewer."
+            );
+        }
+
+        async function updateFinding(findingId, action) {
+            const allowedActions = [
+                "investigating",
+                "resolved",
+                "dismissed"
+            ];
+
+            if (!allowedActions.includes(action)) {
+                throw new Error("Invalid review action.");
+            }
+
+            const reviewTime = new Date().toISOString();
+
+            const updateData = {
+                status: action,
+                reviewed_by: reviewerId,
+                reviewed_at: reviewTime,
+                resolved_at:
+                    action === "resolved"
+                        ? reviewTime
+                        : null
+            };
+
+            const { data: updatedRows, error: updateError } =
+                await supabaseClient
+                    .from("revenue_audit_findings")
+                    .update(updateData)
+                    .eq("id", findingId)
+                    .eq("clinic_id", currentClinic.id)
+                    .select("id");
+
+            if (updateError) throw updateError;
+
+            if (!updatedRows || updatedRows.length !== 1) {
+                throw new Error(
+                    "The audit finding was not updated. Check your clinic permissions and try again."
+                );
+            }
+
+            await loadServiceAudit();
+
+            serviceCaptureMessage(
+                "serviceAuditMessage",
+                "Audit finding successfully updated.",
+                "success"
+            );
+        }
 
         candidates.forEach(record => {
             const row = document.createElement("tr");
@@ -3750,6 +3808,83 @@ async function loadServiceAudit() {
                 row.appendChild(cell);
             });
 
+            const actionCell = document.createElement("td");
+
+            if (
+                finding &&
+                ["open", "investigating"].includes(finding.status)
+            ) {
+                const actions = [
+                    {
+                        label: "Investigate",
+                        status: "investigating"
+                    },
+                    {
+                        label: "Resolve",
+                        status: "resolved"
+                    },
+                    {
+                        label: "Dismiss",
+                        status: "dismissed"
+                    }
+                ];
+
+                actions.forEach(action => {
+                    const button =
+                        document.createElement("button");
+
+                    button.type = "button";
+                    button.textContent = action.label;
+
+                    button.addEventListener("click", async () => {
+                        if (
+                            !window.confirm(
+                                "Confirm action: " +
+                                action.label + "?"
+                            )
+                        ) {
+                            return;
+                        }
+
+                        const buttons =
+                            actionCell.querySelectorAll("button");
+
+                        buttons.forEach(item => {
+                            item.disabled = true;
+                        });
+
+                        try {
+                            await updateFinding(
+                                finding.id,
+                                action.status
+                            );
+                        } catch (error) {
+                            console.error(
+                                "Audit review action failed:",
+                                error
+                            );
+
+                            serviceCaptureMessage(
+                                "serviceAuditMessage",
+                                friendlyError(error),
+                                "error"
+                            );
+
+                            buttons.forEach(item => {
+                                item.disabled = false;
+                            });
+                        }
+                    });
+
+                    actionCell.appendChild(button);
+                });
+            } else {
+                actionCell.textContent = finding
+                    ? "Review completed"
+                    : "No finding available";
+            }
+
+            row.appendChild(actionCell);
             table.appendChild(row);
         });
 
@@ -3769,8 +3904,7 @@ async function loadServiceAudit() {
             "error"
         );
     }
-}
-
+            }
 // ------------------------------------------------------------
 // REFRESH REVIEW
 // ------------------------------------------------------------
