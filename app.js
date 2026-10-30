@@ -3730,52 +3730,41 @@ async function loadServiceAudit() {
         }
 
         async function updateFinding(findingId, action) {
-            const allowedActions = [
-                "investigating",
-                "resolved",
-                "dismissed"
-            ];
+    const allowedActions = [
+        "investigating",
+        "resolved",
+        "dismissed"
+    ];
 
-            if (!allowedActions.includes(action)) {
-                throw new Error("Invalid review action.");
-            }
+    if (!allowedActions.includes(action)) {
+        throw new Error("Invalid review action.");
+    }
 
-            const reviewTime = new Date().toISOString();
-
-            const updateData = {
-                status: action,
-                reviewed_by: reviewerId,
-                reviewed_at: reviewTime,
-                resolved_at:
-                    action === "resolved"
-                        ? reviewTime
-                        : null
-            };
-
-            const { data: updatedRows, error: updateError } =
-                await supabaseClient
-                    .from("revenue_audit_findings")
-                    .update(updateData)
-                    .eq("id", findingId)
-                    .eq("clinic_id", currentClinic.id)
-                    .select("id");
-
-            if (updateError) throw updateError;
-
-            if (!updatedRows || updatedRows.length !== 1) {
-                throw new Error(
-                    "The audit finding was not updated. Check your clinic permissions and try again."
-                );
-            }
-
-            await loadServiceAudit();
-
-            serviceCaptureMessage(
-                "serviceAuditMessage",
-                "Audit finding successfully updated.",
-                "success"
-            );
+    const { data, error } = await supabaseClient.rpc(
+        "review_revenue_audit_finding",
+        {
+            p_finding_id: findingId,
+            p_new_status: action,
+            p_notes: null
         }
+    );
+
+    if (error) throw error;
+
+    if (!data || data.success !== true) {
+        throw new Error(
+            "The database did not confirm the review action."
+        );
+    }
+
+    await loadServiceAudit();
+
+    serviceCaptureMessage(
+        "serviceAuditMessage",
+        "Audit finding successfully updated and history recorded.",
+        "success"
+    );
+}
 
         candidates.forEach(record => {
             const row = document.createElement("tr");
