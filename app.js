@@ -4675,7 +4675,7 @@ function openSection(sectionId, sectionName) {
                 const row = document.createElement("tr");
                 const cell = document.createElement("td");
 
-                cell.colSpan = 5;
+                cell.colSpan = 6;
                 cell.textContent =
                     "No medicine batches registered for this clinic.";
 
