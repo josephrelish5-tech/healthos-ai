@@ -3730,16 +3730,58 @@ async function loadServiceAudit() {
 // ------------------------------------------------------------
 
 const refreshServiceAuditButton =
-    document.getElementById("refreshServiceAudit");
+    document.getElementById("refreshServiceAudit")
 
 if (refreshServiceAuditButton) {
     refreshServiceAuditButton.addEventListener("click", async () => {
         refreshServiceAuditButton.disabled = true;
+        refreshServiceAuditButton.textContent = "Checking billing links...";
 
         try {
+            serviceCaptureReady();
+
+            const { data: auditResult, error: auditError } =
+                await supabaseClient.rpc(
+                    "detect_unlinked_performed_services",
+                    { p_clinic_id: currentClinic.id }
+                );
+
+            if (auditError) {
+                throw auditError;
+            }
+
             await loadServiceAudit();
+            await loadBillingData(currentClinic);
+
+            const candidateCount =
+                Number(auditResult?.unlinked_service_candidates || 0);
+
+            const createdCount =
+                Number(auditResult?.new_findings_created || 0);
+
+            serviceCaptureMessage(
+                "serviceAuditMessage",
+                candidateCount +
+                    " unlinked service candidate(s) checked; " +
+                    createdCount +
+                    " new finding(s) created. Review each candidate before taking action.",
+                "success"
+            );
+        } catch (error) {
+            console.error(
+                "Revenue discrepancy detector failed:",
+                error
+            );
+
+            serviceCaptureMessage(
+                "serviceAuditMessage",
+                friendlyError(error),
+                "error"
+            );
         } finally {
             refreshServiceAuditButton.disabled = false;
+            refreshServiceAuditButton.textContent =
+                "Refresh Billing Review";
         }
     });
 }
