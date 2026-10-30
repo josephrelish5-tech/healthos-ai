@@ -4721,6 +4721,7 @@ function openSection(sectionId, sectionName) {
                 const row = document.createElement("tr");
 
                 addPharmacyCell(row, item.medicine_name);
+                addPharmacyCell(row, item.medicine_code || "—");
                 addPharmacyCell(row, item.batch_number);
                 addPharmacyCell(row, quantity);
                 addPharmacyCell(row, expiry);
