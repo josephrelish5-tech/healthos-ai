@@ -4797,7 +4797,7 @@ function openSection(sectionId, sectionName) {
                 const row = document.createElement("tr");
                 const cell = document.createElement("td");
 
-                cell.colSpan = 5;
+                cell.colSpan = 6;
                 cell.textContent =
                     "Inventory could not be loaded. Check your sign-in, clinic access, and database connection.";
 
