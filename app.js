@@ -2110,7 +2110,24 @@ async function loadBillingData(clinic) {
                 "The clinic workspace could not be identified."
             );
         }
+        // HEALTHOS AI: AUTOMATIC REVENUE AUDIT
+        const { data: revenueAuditResult, error: revenueAuditError } =
+            await supabaseClient.rpc(
+                "detect_unlinked_performed_services",
+                {
+                    p_clinic_id: clinic.id
+                }
+            );
 
+        if (revenueAuditError) {
+            throw revenueAuditError;
+        }
+
+        console.log(
+            "Revenue audit completed:",
+            revenueAuditResult
+        );
+        // END AUTOMATIC REVENUE AUDIT
         const { data: transactions, error: transactionError } =
             await supabaseClient
                 .from("billing_transactions")
