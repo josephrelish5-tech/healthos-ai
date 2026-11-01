@@ -1179,6 +1179,81 @@ await startStaffPresenceTracking(
         document.getElementById("staffWorkspaceRole").textContent =
             staffProfile.professional_role.replace(/_/g, " ");
 
+        // HEALTHOS AI: LOAD VERIFIED MULTI-DEPARTMENT WORKSPACE ASSIGNMENTS
+        const assignmentPanel =
+            document.getElementById("staffWorkspaceAssignments");
+        if (assignmentPanel) {
+            assignmentPanel.replaceChildren();
+            const { data: workspaceContext, error: workspaceContextError } =
+                await supabaseClient.rpc(
+                    "get_my_staff_workspace_context",
+                    { p_clinic_id: clinic.id }
+                );
+
+            if (workspaceContextError) {
+                console.error(
+                    "Staff workspace assignment context unavailable:",
+                    workspaceContextError
+                );
+                const warning = document.createElement("p");
+                warning.className = "message error";
+                warning.textContent =
+                    "Your department assignments could not be loaded. " +
+                    "Your administrator should verify your active assignments.";
+                assignmentPanel.appendChild(warning);
+            } else {
+                const assignments = Array.isArray(workspaceContext?.assignments)
+                    ? workspaceContext.assignments
+                    : [];
+
+                assignments.forEach(function (assignment) {
+                    const card = document.createElement("article");
+                    card.className = "stat-card";
+
+                    const heading = document.createElement("h3");
+                    heading.textContent =
+                        assignment.department_name || "Assigned department";
+                    card.appendChild(heading);
+
+                    const unit = document.createElement("p");
+                    unit.className = "muted";
+                    unit.textContent =
+                        "Unit: " + (assignment.unit_name || "Department-wide");
+                    card.appendChild(unit);
+
+                    const roles = Array.isArray(assignment.roles)
+                        ? assignment.roles
+                        : [];
+                    const roleText = document.createElement("p");
+                    roleText.textContent = roles.length
+                        ? "Roles: " + roles.map(function (role) {
+                            return role.role_name;
+                        }).join(", ")
+                        : "Roles: Contact your administrator to complete role assignment.";
+                    card.appendChild(roleText);
+
+                    if (assignment.is_primary) {
+                        const primary = document.createElement("span");
+                        primary.className = "demo-badge";
+                        primary.textContent = "Primary assignment";
+                        card.appendChild(primary);
+                    }
+
+                    assignmentPanel.appendChild(card);
+                });
+
+                if (!assignments.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "message";
+                    empty.textContent =
+                        "No active department assignments are available.";
+                    assignmentPanel.appendChild(empty);
+                }
+            }
+        }
+        // END HEALTHOS AI: LOAD VERIFIED MULTI-DEPARTMENT WORKSPACE ASSIGNMENTS
+
+
         const links = document.getElementById("staffWorkspaceLinks");
         links.replaceChildren();
 
