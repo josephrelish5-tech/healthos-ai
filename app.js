@@ -2819,7 +2819,7 @@ const staffRegistrationPanel =
     document.getElementById("staffRegistrationPanel");
 
 if (openStaffRegistrationButton) {
-    openStaffRegistrationButton.addEventListener("click", function () {
+    openStaffRegistrationButton.addEventListener("click", async function () {
         if (
             !currentUser ||
             !currentClinic ||
