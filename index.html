@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261101-13" defer></script>
+    <script src="app.js?v=20261101-14" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -981,6 +981,39 @@
                         </p>
 
                     
+                        <!-- HEALTHOS AI: TASK ASSIGNMENT -->
+                        <div class="panel-heading">
+                            <div>
+                                <p class="eyebrow">WORKFLOW CONTROL</p>
+                                <h3>Assign Operational Task</h3>
+                                <p class="muted">Assign work to an active staff department assignment. Clinical duties appear only after hospital approval.</p>
+                            </div>
+                            <button type="button" class="secondary-button" id="refreshTaskAssignmentOptions">Refresh staff list</button>
+                        </div>
+                        <form id="taskAssignmentForm" class="form-grid">
+                            <label for="taskAssignee">Assign to staff member
+                                <select id="taskAssignee" required><option value="">Loading staff...</option></select>
+                            </label>
+                            <label for="taskDuty">Approved job duty (optional)
+                                <select id="taskDuty"><option value="">No approved duty linked</option></select>
+                            </label>
+                            <label for="taskTitle">Task title
+                                <input id="taskTitle" type="text" minlength="3" maxlength="200" required>
+                            </label>
+                            <label for="taskDescription">Instructions
+                                <textarea id="taskDescription" rows="3" maxlength="3000"></textarea>
+                            </label>
+                            <label for="taskPriority">Priority
+                                <select id="taskPriority"><option value="normal">Normal</option><option value="low">Low</option><option value="high">High</option><option value="urgent">Urgent</option></select>
+                            </label>
+                            <label for="taskDueAt">Deadline (optional)
+                                <input id="taskDueAt" type="datetime-local">
+                            </label>
+                            <button id="createStaffTaskButton" class="primary-button" type="submit">Assign Task</button>
+                        </form>
+                        <p id="taskAssignmentMessage" class="message" role="status" aria-live="polite">Task assignment is ready.</p>
+                        <!-- END HEALTHOS AI: TASK ASSIGNMENT -->
+
                         <!-- HEALTHOS AI: DEPARTMENT PERFORMANCE -->
                         <div class="panel-heading">
                             <div>
