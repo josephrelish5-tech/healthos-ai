@@ -396,6 +396,7 @@ window.healthOSAdminStaffRefresh = setInterval(async function () {
 }, 15000);
 // END HEALTHOS AI: AUTOMATIC ADMIN STAFF DASHBOARD REFRESH    
 // HEALTHOS AI: LOAD STAFF SHIFT OPTIONS
+await loadManagementAppointments(currentClinic);
 await loadTaskAssignmentOptions(currentClinic);
 await loadStaffShiftOptions(currentClinic);
     } catch (error) { 
@@ -2627,6 +2628,110 @@ if (refreshTaskAssignmentOptions) {
         if (currentClinic && managementVerified) loadTaskAssignmentOptions(currentClinic);
     });
 }
+
+ 
+// HEALTHOS AI: DEPARTMENT HEAD & SUPERVISOR APPOINTMENTS
+let managementAppointmentData = null;
+async function loadManagementAppointments(clinic) {
+    const message = document.getElementById("managementAppointmentMessage");
+    const department = document.getElementById("managementDepartment");
+    const unit = document.getElementById("managementUnit");
+    const manager = document.getElementById("managementStaffAssignment");
+    const list = document.getElementById("managementAppointmentList");
+    if (!message || !department || !unit || !manager || !list) return;
+    const { data, error } = await supabaseClient.rpc(
+        "get_management_appointment_options", { p_clinic_id: clinic.id }
+    );
+    if (error) {
+        message.textContent = "Only hospital owners and administrators can manage appointments.";
+        message.className = "message error";
+        return;
+    }
+    managementAppointmentData = data;
+    department.replaceChildren(new Option("Select department", ""));
+    (data.departments || []).forEach(x => department.add(new Option(x.name, x.id)));
+    unit.replaceChildren(new Option("Department-wide (no unit)", ""));
+    manager.replaceChildren(new Option("Select manager", ""));
+    renderManagementAppointmentOptions();
+    list.replaceChildren();
+    const appointments = data.appointments || [];
+    if (!appointments.length) {
+        const empty = document.createElement("p");
+        empty.className = "muted";
+        empty.textContent = "No department leadership appointments have been recorded.";
+        list.appendChild(empty);
+    } else {
+        appointments.forEach(function (item) {
+            const row = document.createElement("p");
+            row.textContent = item.department_name + (item.unit_name ? " / " + item.unit_name : "") +
+                " — " + item.role.replaceAll("_", " ") + ": " + item.manager_name +
+                " (" + item.status + ", " + item.effective_from +
+                (item.effective_to ? " to " + item.effective_to : " onward") + ")";
+            list.appendChild(row);
+        });
+    }
+    message.textContent = "Leadership appointments loaded. Choose the department or unit and an active staff assignment.";
+    message.className = "message success";
+}
+function renderManagementAppointmentOptions() {
+    if (!managementAppointmentData) return;
+    const deptId = document.getElementById("managementDepartment").value;
+    const unitSelect = document.getElementById("managementUnit");
+    const managerSelect = document.getElementById("managementStaffAssignment");
+    const selectedUnit = unitSelect.value;
+    unitSelect.replaceChildren(new Option("Department-wide (no unit)", ""));
+    (managementAppointmentData.units || []).filter(x => x.department_id === deptId)
+        .forEach(x => unitSelect.add(new Option(x.name, x.id)));
+    if ([...unitSelect.options].some(o => o.value === selectedUnit)) unitSelect.value = selectedUnit;
+    const unitId = unitSelect.value;
+    managerSelect.replaceChildren(new Option("Select manager", ""));
+    (managementAppointmentData.staff_assignments || []).filter(x =>
+        x.department_id === deptId && (unitId ? x.unit_id === unitId : true)
+    ).forEach(x => managerSelect.add(new Option(
+        x.name + " (" + x.staff_id + ") — " + x.department_name +
+        (x.unit_name ? " / " + x.unit_name : ""), x.assignment_id
+    )));
+    const roleSelect = document.getElementById("managementLeadershipRole");
+    const unitScoped = Boolean(unitId);
+    const roles = unitScoped
+        ? [["unit_head","Unit Head"],["unit_supervisor","Unit Supervisor"],["coordinator","Coordinator"]]
+        : [["department_head","Department Head"],["deputy_head","Deputy Head"],["department_supervisor","Department Supervisor"],["coordinator","Coordinator"]];
+    roleSelect.replaceChildren(new Option("Select leadership role", ""));
+    roles.forEach(x => roleSelect.add(new Option(x[1],x[0])));
+}
+const managementDepartment = document.getElementById("managementDepartment");
+if (managementDepartment) managementDepartment.addEventListener("change",renderManagementAppointmentOptions);
+const managementUnit = document.getElementById("managementUnit");
+if (managementUnit) managementUnit.addEventListener("change",renderManagementAppointmentOptions);
+const managementAppointmentForm = document.getElementById("managementAppointmentForm");
+if (managementAppointmentForm) managementAppointmentForm.addEventListener("submit",async function(event) {
+    event.preventDefault();
+    const button=document.getElementById("saveManagementAppointment");
+    const message=document.getElementById("managementAppointmentMessage");
+    button.disabled=true;
+    const {data,error}=await supabaseClient.rpc("appoint_clinic_department_manager",{
+        p_clinic_id:currentClinic.id,
+        p_department_id:document.getElementById("managementDepartment").value,
+        p_unit_id:document.getElementById("managementUnit").value||null,
+        p_manager_assignment_id:document.getElementById("managementStaffAssignment").value,
+        p_leadership_role:document.getElementById("managementLeadershipRole").value,
+        p_effective_from:document.getElementById("managementEffectiveFrom").value,
+        p_effective_to:document.getElementById("managementEffectiveTo").value||null,
+        p_notes:document.getElementById("managementAppointmentNotes").value.trim()||null
+    });
+    if(error){message.textContent=friendlyError(error);message.className="message error";button.disabled=false;return;}
+    message.textContent="Leadership appointment saved. Appointment ID: "+data.appointment_id;
+    message.className="message success";
+    managementAppointmentForm.reset();
+    button.disabled=false;
+    await loadManagementAppointments(currentClinic);
+});
+const refreshManagementAppointments=document.getElementById("refreshManagementAppointments");
+if(refreshManagementAppointments) refreshManagementAppointments.addEventListener("click",function(){
+    if(currentClinic&&managementVerified) loadManagementAppointments(currentClinic);
+});
+// END HEALTHOS AI: DEPARTMENT HEAD & SUPERVISOR APPOINTMENTS
+
 // END HEALTHOS AI: TASK ASSIGNMENT PANEL
 
 // END HEALTHOS AI: DEPARTMENT PERFORMANCE DASHBOARD
