@@ -1440,6 +1440,144 @@ await startStaffPresenceTracking(
         }
         // END HEALTHOS AI: LOAD HOSPITAL-APPROVED STAFF DUTIES
 
+        // HEALTHOS AI: MY TASKS WORKSPACE
+        const myTasksPanel = document.getElementById("staffWorkspaceTasks");
+        async function refreshMyStaffTasks() {
+            if (!myTasksPanel) return;
+            myTasksPanel.replaceChildren();
+            const loading = document.createElement("p");
+            loading.className = "muted";
+            loading.textContent = "Loading your assigned tasks...";
+            myTasksPanel.appendChild(loading);
+
+            const { data, error } = await supabaseClient.rpc(
+                "get_my_staff_tasks",
+                { p_clinic_id: clinic.id }
+            );
+            myTasksPanel.replaceChildren();
+
+            if (error) {
+                const failed = document.createElement("p");
+                failed.className = "message error";
+                failed.textContent = "Your tasks could not be loaded. Contact your supervisor.";
+                myTasksPanel.appendChild(failed);
+                console.error("My Tasks load failed:", error);
+                return;
+            }
+
+            const tasks = Array.isArray(data?.tasks) ? data.tasks : [];
+            if (!tasks.length) {
+                const empty = document.createElement("p");
+                empty.className = "message";
+                empty.textContent = "You have no tasks assigned at this time.";
+                myTasksPanel.appendChild(empty);
+                return;
+            }
+
+            tasks.forEach(function (task) {
+                const card = document.createElement("article");
+                card.className = "stat-card";
+                const title = document.createElement("h3");
+                title.textContent = task.task_title || "Assigned task";
+                card.appendChild(title);
+
+                const meta = document.createElement("p");
+                meta.className = "muted";
+                meta.textContent =
+                    (task.department_name || "Department") +
+                    (task.unit_name ? " / " + task.unit_name : "") +
+                    " • " + String(task.priority || "normal").toUpperCase() +
+                    " • " + String(task.task_status || "assigned").replace(/_/g, " ");
+                card.appendChild(meta);
+
+                if (task.task_description) {
+                    const description = document.createElement("p");
+                    description.textContent = task.task_description;
+                    card.appendChild(description);
+                }
+
+                const due = document.createElement("p");
+                due.textContent = task.due_at
+                    ? "Due: " + new Date(task.due_at).toLocaleString()
+                    : "No deadline set";
+                card.appendChild(due);
+
+                const requirements = [];
+                if (task.requires_evidence) requirements.push("Evidence required");
+                if (task.requires_supervisor_review) requirements.push("Supervisor review");
+                if (task.requires_separate_approval) requirements.push("Separate approval");
+                if (requirements.length) {
+                    const req = document.createElement("small");
+                    req.className = "muted";
+                    req.textContent = requirements.join(" • ") +
+                        " • Evidence attached: " + (task.evidence_count || 0);
+                    card.appendChild(req);
+                }
+
+                const actions = document.createElement("div");
+                actions.className = "button-group";
+                const available = [];
+                if (task.task_status === "assigned") {
+                    available.push(["accepted", "Accept task"]);
+                }
+                if (["assigned", "accepted"].includes(task.task_status)) {
+                    available.push(["in_progress", "Start task"]);
+                }
+                if (["accepted", "in_progress"].includes(task.task_status)) {
+                    available.push(["blocked", "Report blocked"]);
+                }
+                if (["accepted", "in_progress", "blocked"].includes(task.task_status)) {
+                    if (task.requires_evidence && !(task.evidence_count > 0)) {
+                        const note = document.createElement("p");
+                        note.className = "muted";
+                        note.textContent = "Add required evidence before submitting. Evidence capture is the next workflow layer.";
+                        card.appendChild(note);
+                    } else {
+                        available.push(["submitted", "Submit for review"]);
+                    }
+                }
+
+                available.forEach(function (action) {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = "btn btn-primary";
+                    button.textContent = action[1];
+                    button.addEventListener("click", async function () {
+                        button.disabled = true;
+                        const { error: actionError } = await supabaseClient.rpc(
+                            "update_my_staff_task_status",
+                            {
+                                p_clinic_id: clinic.id,
+                                p_task_id: task.id,
+                                p_new_status: action[0],
+                                p_notes: null
+                            }
+                        );
+                        if (actionError) {
+                            alert(friendlyError(actionError));
+                            button.disabled = false;
+                            return;
+                        }
+                        await refreshMyStaffTasks();
+                    });
+                    actions.appendChild(button);
+                });
+
+                if (available.length) card.appendChild(actions);
+                myTasksPanel.appendChild(card);
+            });
+        }
+
+        if (myTasksPanel) {
+            const refreshTasksButton = document.getElementById("refreshMyStaffTasks");
+            if (refreshTasksButton) {
+                refreshTasksButton.addEventListener("click", refreshMyStaffTasks);
+            }
+            await refreshMyStaffTasks();
+        }
+        // END HEALTHOS AI: MY TASKS WORKSPACE
+
+
 
 
         const links = document.getElementById("staffWorkspaceLinks");
