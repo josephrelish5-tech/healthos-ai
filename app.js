@@ -1804,11 +1804,44 @@ const workAreaRoutes = {
         sectionId: "pharmacy",
         description: "Manage pharmacy inventory, stock levels, and medicine expiry."
     },
-    "Transaction Capture": {
+    "Transaction Handling": {
         sectionId: "posReconciliation",
-        description: "Record payments received by your authorised department and attach receipt evidence."
+        description: "Capture, accept or review transactions according to your department permissions."
     }
 };
+
+// Financial work areas are permission-driven, not hard-coded to department names.
+// Hospital administrators can grant capture/accept/review/reconcile to any mapped role.
+let transactionCapabilities = {
+    can_capture: false,
+    can_accept: false,
+    can_review: false,
+    can_reconcile: false
+};
+
+try {
+    const capabilityResult = await supabaseClient.rpc(
+        "get_my_transaction_capabilities",
+        { p_clinic_id: currentClinic.id }
+    );
+    if (!capabilityResult.error && capabilityResult.data) {
+        transactionCapabilities = capabilityResult.data;
+        if (
+            transactionCapabilities.can_capture ||
+            transactionCapabilities.can_accept ||
+            transactionCapabilities.can_review ||
+            transactionCapabilities.can_reconcile
+        ) {
+            if (!areas.includes("Transaction Handling")) {
+                areas.push("Transaction Handling");
+            }
+        }
+    } else if (capabilityResult.error) {
+        console.warn("Transaction capabilities unavailable:", capabilityResult.error);
+    }
+} catch (capabilityError) {
+    console.warn("Could not load transaction capabilities:", capabilityError);
+}
 
 areas.forEach(function (area) {
     const card = document.createElement("article");
@@ -1865,18 +1898,23 @@ areas.forEach(function (area) {
                 "Pharmacy": [
                     "pharmacy"
                 ],
-                "Transaction Capture": [
-                    "pharmacy",
-                    "reception"
-                ]
+                "Transaction Handling": []
             };
 
             const permittedRoles = permittedRolesByArea[area] || [];
+            const transactionAccessAllowed =
+                area === "Transaction Handling" &&
+                (
+                    transactionCapabilities.can_capture ||
+                    transactionCapabilities.can_accept ||
+                    transactionCapabilities.can_review ||
+                    transactionCapabilities.can_reconcile
+                );
 
             if (
-                !permittedRoles.includes(
-                    staffProfile.professional_role
-                )
+                area === "Transaction Handling"
+                    ? !transactionAccessAllowed
+                    : !permittedRoles.includes(staffProfile.professional_role)
             ) {
                 message.textContent =
                     "Your assigned role does not permit access to this work area.";
@@ -1889,7 +1927,7 @@ areas.forEach(function (area) {
                 route.sectionId
             );
 
-            if (area === "Transaction Capture") {
+            if (area === "Transaction Handling") {
                 loadDepartmentTransactionCapture().catch(function (error) {
                     console.error("Transaction capture load failed:", error);
                 });
