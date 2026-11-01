@@ -1770,9 +1770,9 @@ await startStaffPresenceTracking(
             surgeon: ["Patients", "Appointments", "Service Capture"],
             dentist: ["Patients", "Appointments", "Service Capture"],
             nurse: ["Patients", "Appointments", "Service Capture"],
-            pharmacy: ["Pharmacy"],
+            pharmacy: ["Pharmacy", "Transaction Capture"],
             laboratory: ["Service Capture"],
-            reception: ["Appointments"],
+            reception: ["Appointments", "Transaction Capture"],
             medical_records: ["Patients"],
             finance_manager: ["Billing & Revenue"],
             billing: ["Billing & Revenue"],
@@ -1803,6 +1803,10 @@ const workAreaRoutes = {
     "Pharmacy": {
         sectionId: "pharmacy",
         description: "Manage pharmacy inventory, stock levels, and medicine expiry."
+    },
+    "Transaction Capture": {
+        sectionId: "posReconciliation",
+        description: "Record payments received by your authorised department and attach receipt evidence."
     }
 };
 
@@ -1860,6 +1864,10 @@ areas.forEach(function (area) {
                 ],
                 "Pharmacy": [
                     "pharmacy"
+                ],
+                "Transaction Capture": [
+                    "pharmacy",
+                    "reception"
                 ]
             };
 
@@ -1880,6 +1888,12 @@ areas.forEach(function (area) {
             const targetSection = document.getElementById(
                 route.sectionId
             );
+
+            if (area === "Transaction Capture") {
+                loadDepartmentTransactionCapture().catch(function (error) {
+                    console.error("Transaction capture load failed:", error);
+                });
+            }
 
             if (!targetSection) {
                 message.textContent =
@@ -6425,6 +6439,8 @@ function openSection(sectionId, sectionName) {
             rows.appendChild(tr);
         });
     }
+
+    window.loadDepartmentTransactionCapture = loadReceipts;
 
     form.addEventListener("submit", async event => {
         event.preventDefault();
