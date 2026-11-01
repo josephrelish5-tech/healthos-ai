@@ -4546,7 +4546,27 @@ function openSection(sectionId, sectionName) {
     const pharmacyTableBody = document.getElementById(
         "pharmacyInventoryBody"
     );
+    // HEALTHOS AI: PHARMACY INVENTORY SEARCH
+    const pharmacySearchInput = document.getElementById(
+        "pharmacyInventorySearch"
+    );
 
+    if (pharmacySearchInput && pharmacyTableBody) {
+        pharmacySearchInput.addEventListener("input", function () {
+            const searchTerm = this.value
+                .trim()
+                .toLowerCase();
+
+            const inventoryRows = pharmacyTableBody.querySelectorAll("tr");
+
+            inventoryRows.forEach(function (row) {
+                const rowText = row.textContent.toLowerCase();
+
+                row.hidden = !rowText.includes(searchTerm);
+            });
+        });
+    }
+    // END PHARMACY INVENTORY SEARCH
     function pharmacyToday() {
         const now = new Date();
 
