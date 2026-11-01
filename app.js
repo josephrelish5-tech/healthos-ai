@@ -2691,6 +2691,132 @@ async function loadStaffDepartmentOptions(clinic) {
 }
 // END HEALTHOS AI: LOAD LIVE HOSPITAL DEPARTMENT CATALOGUE
 
+// HEALTHOS AI: LOAD PROFESSIONAL ROLES FOR THE SELECTED DEPARTMENT
+async function loadStaffProfessionalRoleOptions(clinic, departmentId) {
+    const roleSelect = document.getElementById("staffProfessionalRole");
+    const registrationInput = document.getElementById("staffRegistrationNumber");
+    const message = document.getElementById("staffRegistrationMessage");
+
+    if (!roleSelect || !clinic || !clinic.id || !departmentId) {
+        if (roleSelect) {
+            roleSelect.replaceChildren();
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "Select a department first";
+            roleSelect.appendChild(option);
+            roleSelect.disabled = true;
+        }
+        if (registrationInput) {
+            registrationInput.required = false;
+        }
+        return;
+    }
+
+    roleSelect.replaceChildren();
+    const loading = document.createElement("option");
+    loading.value = "";
+    loading.textContent = "Loading department roles...";
+    roleSelect.appendChild(loading);
+    roleSelect.disabled = true;
+
+    const { data, error } = await supabaseClient.rpc(
+        "get_clinic_professional_roles",
+        {
+            p_clinic_id: clinic.id,
+            p_department_id: departmentId
+        }
+    );
+
+    if (error) {
+        roleSelect.replaceChildren();
+        const failed = document.createElement("option");
+        failed.value = "";
+        failed.textContent = "Roles could not be loaded";
+        roleSelect.appendChild(failed);
+        if (message) {
+            message.textContent =
+                "Could not load professional roles. " + friendlyError(error);
+            message.className = "message error";
+        }
+        throw error;
+    }
+
+    roleSelect.replaceChildren();
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = data && data.length
+        ? "Select professional role"
+        : "No roles configured for this department";
+    roleSelect.appendChild(placeholder);
+
+    (Array.isArray(data) ? data : []).forEach(function (role) {
+        const option = document.createElement("option");
+        option.value = role.role_code;
+        option.textContent = role.role_name;
+        option.dataset.roleId = role.id;
+        option.dataset.registrationRequired =
+            String(Boolean(role.registration_required));
+        option.dataset.registrationBody = role.registration_body || "";
+        option.dataset.clinicalRole = String(Boolean(role.clinical_role));
+        roleSelect.appendChild(option);
+    });
+
+    roleSelect.disabled = !Array.isArray(data) || data.length === 0;
+    if (registrationInput) {
+        registrationInput.required = false;
+        registrationInput.placeholder = "Optional, where applicable";
+    }
+    if (message && Array.isArray(data) && data.length) {
+        message.textContent = data.length + " professional role(s) available.";
+        message.className = "message";
+    }
+}
+
+const staffDepartmentRoleSelect =
+    document.getElementById("staffDepartment");
+const staffProfessionalRoleSelect =
+    document.getElementById("staffProfessionalRole");
+const staffRegistrationNumberInput =
+    document.getElementById("staffRegistrationNumber");
+
+if (staffDepartmentRoleSelect) {
+    staffDepartmentRoleSelect.addEventListener("change", async function () {
+        const selected = staffDepartmentRoleSelect.selectedOptions[0];
+        const departmentId = selected && selected.dataset.departmentId;
+
+        if (staffProfessionalRoleSelect) {
+            staffProfessionalRoleSelect.value = "";
+        }
+        if (staffRegistrationNumberInput) {
+            staffRegistrationNumberInput.value = "";
+            staffRegistrationNumberInput.required = false;
+        }
+
+        try {
+            await loadStaffProfessionalRoleOptions(currentClinic, departmentId);
+        } catch (error) {
+            console.error("Department professional roles failed to load:", error);
+        }
+    });
+}
+
+if (staffProfessionalRoleSelect) {
+    staffProfessionalRoleSelect.addEventListener("change", function () {
+        const selected = staffProfessionalRoleSelect.selectedOptions[0];
+        const registrationRequired =
+            selected && selected.dataset.registrationRequired === "true";
+
+        if (staffRegistrationNumberInput) {
+            staffRegistrationNumberInput.required = Boolean(registrationRequired);
+            staffRegistrationNumberInput.placeholder = registrationRequired
+                ? "Required for this professional role"
+                : "Optional, where applicable";
+        }
+    });
+}
+// END HEALTHOS AI: LOAD PROFESSIONAL ROLES FOR THE SELECTED DEPARTMENT
+
+
 // HEALTHOS AI: CONNECT STAFF REGISTRATION FORM
 const staffRegistrationForm =
     document.getElementById("staffRegistrationForm");
