@@ -396,6 +396,7 @@ window.healthOSAdminStaffRefresh = setInterval(async function () {
 }, 15000);
 // END HEALTHOS AI: AUTOMATIC ADMIN STAFF DASHBOARD REFRESH    
 // HEALTHOS AI: LOAD STAFF SHIFT OPTIONS
+await loadTaskAssignmentOptions(currentClinic);
 await loadStaffShiftOptions(currentClinic);
     } catch (error) { 
         console.error(
