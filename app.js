@@ -1627,7 +1627,124 @@ await startStaffPresenceTracking(
             }
             await refreshMyStaffTasks();
         }
-        // END HEALTHOS AI: MY TASKS WORKSPACE
+        
+        // HEALTHOS AI: SUPERVISOR REVIEW & APPROVAL
+        const supervisorReviewPanel = document.getElementById("supervisorTaskReviews");
+
+        async function refreshSupervisorTaskReviews() {
+            if (!supervisorReviewPanel) return;
+            supervisorReviewPanel.replaceChildren();
+            const loading = document.createElement("p");
+            loading.className = "muted";
+            loading.textContent = "Loading submitted work for your review...";
+            supervisorReviewPanel.appendChild(loading);
+
+            const { data, error } = await supabaseClient.rpc(
+                "get_supervisor_task_reviews",
+                { p_clinic_id: clinic.id }
+            );
+            supervisorReviewPanel.replaceChildren();
+            if (error) {
+                const message = document.createElement("p");
+                message.className = "muted";
+                message.textContent = "Supervisor review access is available only to authorised supervisors and hospital administrators.";
+                supervisorReviewPanel.appendChild(message);
+                return;
+            }
+
+            const tasks = data && Array.isArray(data.tasks) ? data.tasks : [];
+            if (!tasks.length) {
+                const empty = document.createElement("p");
+                empty.className = "muted";
+                empty.textContent = "No submitted tasks are waiting for your review.";
+                supervisorReviewPanel.appendChild(empty);
+                return;
+            }
+
+            tasks.forEach(function (task) {
+                const card = document.createElement("article");
+                card.className = "stat-card";
+                const title = document.createElement("h3");
+                title.textContent = task.task_title || "Submitted task";
+                card.appendChild(title);
+
+                const meta = document.createElement("p");
+                meta.className = "muted";
+                meta.textContent = (task.assignee_name || "Staff member") + " • " +
+                    (task.department_name || "Department") +
+                    (task.unit_name ? " / " + task.unit_name : "") +
+                    " • " + String(task.priority || "normal").toUpperCase();
+                card.appendChild(meta);
+
+                if (task.task_description) {
+                    const desc = document.createElement("p");
+                    desc.textContent = task.task_description;
+                    card.appendChild(desc);
+                }
+
+                const evidenceHeading = document.createElement("strong");
+                evidenceHeading.textContent = "Submitted evidence";
+                card.appendChild(evidenceHeading);
+                (Array.isArray(task.evidence) ? task.evidence : []).forEach(function (item) {
+                    const evidence = document.createElement("p");
+                    evidence.textContent = (item.type || "Evidence") + ": " +
+                        (item.text || item.reference || "File evidence recorded") +
+                        (item.submitted_by ? " — " + item.submitted_by : "");
+                    card.appendChild(evidence);
+                });
+
+                const reviewNotes = document.createElement("textarea");
+                reviewNotes.rows = 2;
+                reviewNotes.maxLength = 3000;
+                reviewNotes.placeholder = "Review notes (required when rejecting or requesting corrections)";
+                card.appendChild(reviewNotes);
+
+                const actions = document.createElement("div");
+                actions.className = "button-group";
+                [["approved", "Approve completion"], ["rejected", "Reject"], ["changes_requested", "Request corrections"]]
+                    .forEach(function (choice) {
+                        const button = document.createElement("button");
+                        button.type = "button";
+                        button.className = choice[0] === "approved" ? "btn btn-primary" : "btn btn-secondary";
+                        button.textContent = choice[1];
+                        button.addEventListener("click", async function () {
+                            if (choice[0] !== "approved" && reviewNotes.value.trim().length < 3) {
+                                alert("Please provide a clear reason before rejecting or requesting corrections.");
+                                return;
+                            }
+                            button.disabled = true;
+                            const { error: reviewError } = await supabaseClient.rpc(
+                                "review_supervisor_staff_task",
+                                {
+                                    p_clinic_id: clinic.id,
+                                    p_task_id: task.id,
+                                    p_decision: choice[0],
+                                    p_notes: reviewNotes.value.trim() || null
+                                }
+                            );
+                            if (reviewError) {
+                                alert(friendlyError(reviewError));
+                                button.disabled = false;
+                                return;
+                            }
+                            await refreshSupervisorTaskReviews();
+                            await refreshMyStaffTasks();
+                        });
+                        actions.appendChild(button);
+                    });
+                card.appendChild(actions);
+                supervisorReviewPanel.appendChild(card);
+            });
+        }
+
+        if (supervisorReviewPanel) {
+            const refreshReviewsButton = document.getElementById("refreshSupervisorTaskReviews");
+            if (refreshReviewsButton) refreshReviewsButton.addEventListener("click", refreshSupervisorTaskReviews);
+            await refreshSupervisorTaskReviews();
+        }
+        // END HEALTHOS AI: SUPERVISOR REVIEW & APPROVAL
+
+// END HEALTHOS AI: MY TASKS WORKSPACE
 
 
 
