@@ -1206,6 +1206,80 @@ await startStaffPresenceTracking(
                     ? workspaceContext.assignments
                     : [];
 
+
+                // HEALTHOS AI: STAFF DEPARTMENT CONTEXT SELECTOR
+                const contextLabel = document.createElement("label");
+                contextLabel.htmlFor = "staffDepartmentContextSelect";
+                contextLabel.textContent = "Current department context";
+                contextLabel.className = "form-label";
+                assignmentPanel.appendChild(contextLabel);
+
+                const contextSelect = document.createElement("select");
+                contextSelect.id = "staffDepartmentContextSelect";
+                contextSelect.name = "staffDepartmentContextSelect";
+                contextSelect.className = "form-control";
+                contextSelect.setAttribute("aria-label", "Select your assigned department context");
+
+                assignments.forEach(function (assignment, index) {
+                    const option = document.createElement("option");
+                    option.value = assignment.assignment_id;
+                    option.textContent =
+                        (assignment.department_name || "Department") +
+                        " — " + (assignment.unit_name || "All units") +
+                        (assignment.is_primary ? " (Primary)" : "");
+                    if (assignment.is_primary || index === 0) {
+                        option.selected = true;
+                    }
+                    contextSelect.appendChild(option);
+                });
+
+                assignmentPanel.appendChild(contextSelect);
+
+                const contextNotice = document.createElement("p");
+                contextNotice.className = "muted";
+                contextNotice.textContent =
+                    "Changing this selection changes the displayed department context only. " +
+                    "Access to records and actions remains controlled by server-side permissions.";
+                assignmentPanel.appendChild(contextNotice);
+
+                function displayStaffAssignmentContext(assignment) {
+                    if (!assignment) return;
+                    const departmentDisplay =
+                        document.getElementById("staffWorkspaceDepartment");
+                    const roleDisplay =
+                        document.getElementById("staffWorkspaceRole");
+
+                    if (departmentDisplay) {
+                        departmentDisplay.textContent =
+                            assignment.department_name || "Assigned department";
+                    }
+
+                    const roles = Array.isArray(assignment.roles)
+                        ? assignment.roles
+                        : [];
+                    if (roleDisplay) {
+                        roleDisplay.textContent = roles.length
+                            ? roles.map(function (role) {
+                                return role.role_name;
+                            }).join(", ")
+                            : "Role assignment pending";
+                    }
+                }
+
+                contextSelect.addEventListener("change", function () {
+                    const selectedAssignment = assignments.find(function (assignment) {
+                        return assignment.assignment_id === contextSelect.value;
+                    });
+                    displayStaffAssignmentContext(selectedAssignment);
+                });
+
+                const initialAssignment =
+                    assignments.find(function (assignment) {
+                        return assignment.assignment_id === contextSelect.value;
+                    }) || assignments[0];
+                displayStaffAssignmentContext(initialAssignment);
+                // END HEALTHOS AI: STAFF DEPARTMENT CONTEXT SELECTOR
+
                 assignments.forEach(function (assignment) {
                     const card = document.createElement("article");
                     card.className = "stat-card";
