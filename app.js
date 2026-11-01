@@ -2552,6 +2552,82 @@ async function loadDepartmentPerformanceDashboard(clinic) {
         message.className = "message error";
     }
 }
+
+ 
+// HEALTHOS AI: TASK ASSIGNMENT PANEL
+async function loadTaskAssignmentOptions(clinic) {
+    const form = document.getElementById("taskAssignmentForm");
+    const staffSelect = document.getElementById("taskAssignee");
+    const dutySelect = document.getElementById("taskDuty");
+    const message = document.getElementById("taskAssignmentMessage");
+    if (!form || !staffSelect || !dutySelect) return;
+    staffSelect.replaceChildren(new Option("Loading staff...", ""));
+    dutySelect.replaceChildren(new Option("No approved duty linked", ""));
+    const { data, error } = await supabaseClient.rpc(
+        "get_task_assignment_options", { p_clinic_id: clinic.id }
+    );
+    if (error) {
+        message.textContent = "Task assignment options could not be loaded. Check administrator access.";
+        message.className = "message error";
+        staffSelect.replaceChildren(new Option("Unable to load staff", ""));
+        return;
+    }
+    staffSelect.replaceChildren(new Option("Select staff member", ""));
+    (data.staff_assignments || []).forEach(function (item) {
+        const label = item.name + " (" + item.staff_id + ") — " +
+            item.department_name + (item.unit_name ? " / " + item.unit_name : "");
+        staffSelect.add(new Option(label, item.assignment_id));
+    });
+    dutySelect.replaceChildren(new Option("No approved duty linked", ""));
+    (data.approved_duties || []).forEach(function (duty) {
+        dutySelect.add(new Option(duty.department_name + " — " + duty.title, duty.id));
+    });
+    message.textContent = "Choose an active staff assignment. Only approved duties are available to link.";
+    message.className = "message";
+}
+
+const taskAssignmentForm = document.getElementById("taskAssignmentForm");
+if (taskAssignmentForm) {
+    taskAssignmentForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        if (!currentClinic || !managementVerified) {
+            alert("Administrator verification is required to assign tasks here.");
+            return;
+        }
+        const button = document.getElementById("createStaffTaskButton");
+        const message = document.getElementById("taskAssignmentMessage");
+        button.disabled = true;
+        const dueValue = document.getElementById("taskDueAt").value;
+        const { data, error } = await supabaseClient.rpc("create_supervised_staff_task", {
+            p_clinic_id: currentClinic.id,
+            p_assignment_id: document.getElementById("taskAssignee").value,
+            p_title: document.getElementById("taskTitle").value.trim(),
+            p_description: document.getElementById("taskDescription").value.trim() || null,
+            p_priority: document.getElementById("taskPriority").value,
+            p_due_at: dueValue ? new Date(dueValue).toISOString() : null,
+            p_duty_id: document.getElementById("taskDuty").value || null
+        });
+        if (error) {
+            message.textContent = friendlyError(error);
+            message.className = "message error";
+            button.disabled = false;
+            return;
+        }
+        message.textContent = "Task assigned successfully. Task ID: " + data.task_id;
+        message.className = "message success";
+        taskAssignmentForm.reset();
+        button.disabled = false;
+        await loadDepartmentPerformanceDashboard(currentClinic);
+    });
+}
+const refreshTaskAssignmentOptions = document.getElementById("refreshTaskAssignmentOptions");
+if (refreshTaskAssignmentOptions) {
+    refreshTaskAssignmentOptions.addEventListener("click", function () {
+        if (currentClinic && managementVerified) loadTaskAssignmentOptions(currentClinic);
+    });
+}
+// END HEALTHOS AI: TASK ASSIGNMENT PANEL
+
 // END HEALTHOS AI: DEPARTMENT PERFORMANCE DASHBOARD
 const departmentPerformanceRefreshButton = document.getElementById(
     "refreshDepartmentPerformanceButton"
