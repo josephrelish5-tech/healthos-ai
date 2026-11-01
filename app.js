@@ -1327,6 +1327,120 @@ await startStaffPresenceTracking(
         }
         // END HEALTHOS AI: LOAD VERIFIED MULTI-DEPARTMENT WORKSPACE ASSIGNMENTS
 
+        // HEALTHOS AI: LOAD HOSPITAL-APPROVED STAFF DUTIES
+        const dutiesPanel = document.getElementById("staffWorkspaceDuties");
+        if (dutiesPanel) {
+            dutiesPanel.replaceChildren();
+            const { data: dutiesResult, error: dutiesError } =
+                await supabaseClient.rpc(
+                    "get_my_staff_duties",
+                    { p_clinic_id: clinic.id }
+                );
+
+            if (dutiesError) {
+                console.error("Staff duties could not be loaded:", dutiesError);
+                const errorMessage = document.createElement("p");
+                errorMessage.className = "message error";
+                errorMessage.textContent =
+                    "Your approved duties could not be loaded. Please contact your supervisor.";
+                dutiesPanel.appendChild(errorMessage);
+            } else {
+                const jobProfiles = Array.isArray(dutiesResult?.job_profiles)
+                    ? dutiesResult.job_profiles
+                    : [];
+                let approvedDutyCount = 0;
+
+                jobProfiles.forEach(function (jobProfile) {
+                    const card = document.createElement("article");
+                    card.className = "stat-card";
+
+                    const title = document.createElement("h3");
+                    title.textContent =
+                        (jobProfile.job_title || jobProfile.role_name || "Job profile") +
+                        " — " + (jobProfile.department_name || "Department");
+                    card.appendChild(title);
+
+                    if (jobProfile.job_purpose) {
+                        const purpose = document.createElement("p");
+                        purpose.textContent = jobProfile.job_purpose;
+                        card.appendChild(purpose);
+                    }
+
+                    const duties = Array.isArray(jobProfile.duties)
+                        ? jobProfile.duties
+                        : [];
+                    approvedDutyCount += duties.length;
+
+                    if (duties.length) {
+                        const list = document.createElement("ul");
+                        duties.forEach(function (duty) {
+                            const item = document.createElement("li");
+                            const dutyTitle = document.createElement("strong");
+                            dutyTitle.textContent = duty.duty_title || "Duty";
+                            item.appendChild(dutyTitle);
+
+                            if (duty.duty_description) {
+                                item.appendChild(
+                                    document.createTextNode(
+                                        " — " + duty.duty_description
+                                    )
+                                );
+                            }
+
+                            const details = [];
+                            if (duty.expected_frequency) {
+                                details.push("Frequency: " + duty.expected_frequency);
+                            }
+                            if (duty.evidence_required) {
+                                details.push("Evidence required");
+                            }
+                            if (duty.supervisor_review_required) {
+                                details.push("Supervisor review required");
+                            }
+                            if (duty.separate_approval_required) {
+                                details.push("Separate approval required");
+                            }
+                            if (details.length) {
+                                const meta = document.createElement("small");
+                                meta.className = "muted";
+                                meta.textContent = details.join(" • ");
+                                item.appendChild(document.createElement("br"));
+                                item.appendChild(meta);
+                            }
+                            list.appendChild(item);
+                        });
+                        card.appendChild(list);
+                    } else {
+                        const pending = document.createElement("p");
+                        pending.className = "message";
+                        pending.textContent =
+                            jobProfile.validation_status === "hospital_approved"
+                                ? "No active duties have been published for this role yet."
+                                : "This job profile is awaiting hospital review and approval. No duties are being presented as authorised instructions.";
+                        card.appendChild(pending);
+                    }
+
+                    dutiesPanel.appendChild(card);
+                });
+
+                if (!jobProfiles.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "message";
+                    empty.textContent =
+                        "No job profile is linked to your active role yet. Ask your administrator to configure one.";
+                    dutiesPanel.appendChild(empty);
+                }
+
+                const summary = document.createElement("p");
+                summary.className = "muted";
+                summary.textContent =
+                    approvedDutyCount + " hospital-approved duty item(s) available.";
+                dutiesPanel.prepend(summary);
+            }
+        }
+        // END HEALTHOS AI: LOAD HOSPITAL-APPROVED STAFF DUTIES
+
+
 
         const links = document.getElementById("staffWorkspaceLinks");
         links.replaceChildren();
