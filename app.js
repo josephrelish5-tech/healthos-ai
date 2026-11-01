@@ -382,6 +382,7 @@ adminVerificationForm.addEventListener("submit", async function (event) {
 
         // HEALTHOS AI: LOAD ADMIN STAFF DASHBOARD
         await loadAdminStaffDashboard(currentClinic);
+        await loadDepartmentPerformanceDashboard(currentClinic);
     // HEALTHOS AI: AUTOMATIC ADMIN STAFF DASHBOARD REFRESH
 if (window.healthOSAdminStaffRefresh) {
     clearInterval(window.healthOSAdminStaffRefresh);
@@ -1899,6 +1900,89 @@ async function loadAdminStaffDashboard(clinic) {
         }
     }
 }
+
+// HEALTHOS AI: DEPARTMENT PERFORMANCE DASHBOARD
+async function loadDepartmentPerformanceDashboard(clinic) {
+    const message = document.getElementById("departmentPerformanceMessage");
+    const body = document.getElementById("departmentPerformanceTableBody");
+
+    if (!message || !body) return;
+
+    if (
+        !currentUser ||
+        !currentClinic ||
+        !managementVerified ||
+        clinic.id !== currentClinic.id
+    ) {
+        message.textContent = "Administrator verification is required.";
+        message.className = "message error";
+        return;
+    }
+
+    message.textContent = "Loading department performance...";
+    message.className = "message";
+    body.replaceChildren();
+
+    try {
+        const { data, error } = await supabaseClient.rpc(
+            "get_department_performance",
+            { p_clinic_id: clinic.id }
+        );
+
+        if (error) throw error;
+
+        const departments = data && Array.isArray(data.departments)
+            ? data.departments
+            : [];
+
+        if (departments.length === 0) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+            cell.colSpan = 8;
+            cell.textContent = "No active departments are available in this report.";
+            row.appendChild(cell);
+            body.appendChild(row);
+        } else {
+            departments.forEach(function (department) {
+                const row = document.createElement("tr");
+                const values = [
+                    department.department_name || "—",
+                    department.unit_name || "All units",
+                    department.active_staff ?? 0,
+                    department.tasks_assigned ?? 0,
+                    department.tasks_pending ?? 0,
+                    department.tasks_completed ?? 0,
+                    department.tasks_overdue ?? 0,
+                    (department.completion_rate_percent ?? 0) + "%"
+                ];
+
+                values.forEach(function (value) {
+                    const cell = document.createElement("td");
+                    cell.textContent = String(value);
+                    row.appendChild(cell);
+                });
+
+                body.appendChild(row);
+            });
+        }
+
+        message.textContent =
+            "Department report updated. Scope: " +
+            (data.scope === "hospital_wide"
+                ? "hospital-wide management"
+                : "authorised departments only") +
+            ". Task figures are based on tasks created within the last 30 days.";
+        message.className = "message success";
+    } catch (error) {
+        console.error("Department performance report failed:", error);
+        message.textContent =
+            error.message ||
+            "Department performance could not be loaded. Check the report permissions.";
+        message.className = "message error";
+    }
+}
+// END HEALTHOS AI: DEPARTMENT PERFORMANCE DASHBOARD
+
 // END HEALTHOS AI: ADMIN STAFF DASHBOARD STATISTICS
 // HEALTHOS AI: LOAD INDIVIDUAL STAFF ACTIVITY
 
