@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261101-14" defer></script>
+    <script src="app.js?v=20261101-15" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -1013,6 +1013,43 @@
                         </form>
                         <p id="taskAssignmentMessage" class="message" role="status" aria-live="polite">Task assignment is ready.</p>
                         <!-- END HEALTHOS AI: TASK ASSIGNMENT -->
+
+                        <!-- HEALTHOS AI: DEPARTMENT LEADERSHIP APPOINTMENTS -->
+                        <div class="panel-heading">
+                            <div>
+                                <p class="eyebrow">HOSPITAL STRUCTURE</p>
+                                <h3>Department Heads & Supervisors</h3>
+                                <p class="muted">Appoint department and unit leadership from active staff assignments.</p>
+                            </div>
+                            <button type="button" class="secondary-button" id="refreshManagementAppointments">Refresh appointments</button>
+                        </div>
+                        <form id="managementAppointmentForm" class="form-grid">
+                            <label for="managementDepartment">Department
+                                <select id="managementDepartment" required><option value="">Loading departments...</option></select>
+                            </label>
+                            <label for="managementUnit">Unit (optional)
+                                <select id="managementUnit"><option value="">Department-wide (no unit)</option></select>
+                            </label>
+                            <label for="managementLeadershipRole">Leadership role
+                                <select id="managementLeadershipRole" required><option value="">Select leadership role</option></select>
+                            </label>
+                            <label for="managementStaffAssignment">Appoint staff member
+                                <select id="managementStaffAssignment" required><option value="">Select manager</option></select>
+                            </label>
+                            <label for="managementEffectiveFrom">Effective from
+                                <input id="managementEffectiveFrom" type="date" required>
+                            </label>
+                            <label for="managementEffectiveTo">Effective to (optional)
+                                <input id="managementEffectiveTo" type="date">
+                            </label>
+                            <label for="managementAppointmentNotes">Appointment notes
+                                <textarea id="managementAppointmentNotes" rows="2" maxlength="2000"></textarea>
+                            </label>
+                            <button id="saveManagementAppointment" class="primary-button" type="submit">Save appointment</button>
+                        </form>
+                        <p id="managementAppointmentMessage" class="message" role="status" aria-live="polite">Leadership appointment manager is ready.</p>
+                        <div id="managementAppointmentList"></div>
+                        <!-- END HEALTHOS AI: DEPARTMENT LEADERSHIP APPOINTMENTS -->
 
                         <!-- HEALTHOS AI: DEPARTMENT PERFORMANCE -->
                         <div class="panel-heading">
