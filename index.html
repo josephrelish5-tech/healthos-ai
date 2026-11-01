@@ -960,7 +960,44 @@
                             and shift attendance are separate measures.
                         </p>
 
-                    </section>
+                    
+                        <!-- HEALTHOS AI: DEPARTMENT PERFORMANCE -->
+                        <div class="panel-heading">
+                            <div>
+                                <p class="eyebrow">OPERATIONS INTELLIGENCE</p>
+                                <h3>Department Performance</h3>
+                                <p class="muted">
+                                    Review staffing, task progress, overdue work and completion across authorised departments.
+                                </p>
+                            </div>
+                            <button type="button" class="secondary-button" id="refreshDepartmentPerformanceButton">
+                                Refresh Report
+                            </button>
+                        </div>
+                        <p id="departmentPerformanceMessage" class="message" role="status" aria-live="polite">
+                            Department performance is waiting for database data.
+                        </p>
+                        <div style="overflow-x:auto;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Department</th>
+                                        <th>Unit</th>
+                                        <th>Active Staff</th>
+                                        <th>Tasks Assigned</th>
+                                        <th>Pending</th>
+                                        <th>Completed</th>
+                                        <th>Overdue</th>
+                                        <th>Completion</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="departmentPerformanceTableBody">
+                                    <tr><td colspan="8">Department report will appear here.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- END HEALTHOS AI: DEPARTMENT PERFORMANCE -->
+</section>
                     <!-- END HEALTHOS AI: ADMIN STAFF DASHBOARD -->
                     <section class="stats-grid">
                         <article class="stat-card">
