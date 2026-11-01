@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261101-10" defer></script>
+    <script src="app.js?v=20261101-11" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -564,6 +564,16 @@
     </div>
     <div class="stats-grid" id="staffWorkspaceDuties">
         <p class="muted">Loading approved duties...</p>
+    </div>
+    <div class="panel-heading">
+        <div>
+            <h3>My Tasks</h3>
+            <p class="muted">Tasks assigned to your active department assignments, with deadlines and review requirements.</p>
+        </div>
+        <button type="button" class="btn btn-secondary" id="refreshMyStaffTasks">Refresh tasks</button>
+    </div>
+    <div class="stats-grid" id="staffWorkspaceTasks">
+        <p class="muted">Loading your assigned tasks...</p>
     </div>
 
     <div class="stats-grid">
