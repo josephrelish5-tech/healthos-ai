@@ -951,3 +951,26 @@ footer {
         animation: none;
     }
 }
+
+
+/* POS receipt capture */
+.pos-receipt-card {
+    max-width: 760px;
+    padding: 20px;
+    margin: 18px 0 28px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+#posReceiptUploadForm input[type="file"] {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    border: 1px dashed #9bb2c7;
+    border-radius: 8px;
+    background: #f8fbfe;
+}
+#posReceiptUploadButton:disabled {
+    opacity: .65;
+    cursor: wait;
+}
