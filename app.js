@@ -1983,19 +1983,17 @@ async function loadDepartmentPerformanceDashboard(clinic) {
     }
 }
 // END HEALTHOS AI: DEPARTMENT PERFORMANCE DASHBOARD
-document.addEventListener("DOMContentLoaded", function () {
-    const refreshButton = document.getElementById(
-        "refreshDepartmentPerformanceButton"
-    );
+const departmentPerformanceRefreshButton = document.getElementById(
+    "refreshDepartmentPerformanceButton"
+);
 
-    if (refreshButton) {
-        refreshButton.addEventListener("click", function () {
-            if (currentClinic && managementVerified) {
-                loadDepartmentPerformanceDashboard(currentClinic);
-            }
-        });
-    }
-});
+if (departmentPerformanceRefreshButton) {
+    departmentPerformanceRefreshButton.addEventListener("click", function () {
+        if (currentClinic && managementVerified) {
+            loadDepartmentPerformanceDashboard(currentClinic);
+        }
+    });
+}
 
 
 // END HEALTHOS AI: ADMIN STAFF DASHBOARD STATISTICS
