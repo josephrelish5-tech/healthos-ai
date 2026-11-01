@@ -2621,6 +2621,76 @@ if (transactionForm) {
         }
     });
 }
+// HEALTHOS AI: LOAD LIVE HOSPITAL DEPARTMENT CATALOGUE
+async function loadStaffDepartmentOptions(clinic) {
+    const select = document.getElementById("staffDepartment");
+    const message = document.getElementById("staffRegistrationMessage");
+
+    if (!select || !clinic || !clinic.id) {
+        throw new Error("Department selector or clinic context is unavailable.");
+    }
+
+    select.replaceChildren();
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Loading hospital departments...";
+    select.appendChild(placeholder);
+    select.disabled = true;
+
+    const { data, error } = await supabaseClient.rpc(
+        "get_clinic_departments",
+        { p_clinic_id: clinic.id }
+    );
+
+    if (error) {
+        select.replaceChildren();
+        const failed = document.createElement("option");
+        failed.value = "";
+        failed.textContent = "Departments could not be loaded";
+        select.appendChild(failed);
+        if (message) {
+            message.textContent = "Could not load the hospital department catalogue. " + friendlyError(error);
+            message.className = "message error";
+        }
+        throw error;
+    }
+
+    select.replaceChildren();
+    const first = document.createElement("option");
+    first.value = "";
+    first.textContent = "Select department";
+    select.appendChild(first);
+
+    const groups = new Map();
+    (Array.isArray(data) ? data : []).forEach(function (department) {
+        const groupName = department.department_group || "Other departments";
+        if (!groups.has(groupName)) {
+            const group = document.createElement("optgroup");
+            group.label = groupName;
+            groups.set(groupName, group);
+            select.appendChild(group);
+        }
+
+        const option = document.createElement("option");
+        option.value = department.department_name;
+        option.textContent = department.department_name;
+        option.dataset.departmentId = department.id;
+        option.dataset.departmentCode = department.department_code;
+        groups.get(groupName).appendChild(option);
+    });
+
+    if (!Array.isArray(data) || data.length === 0) {
+        first.textContent = "No active departments configured";
+    }
+
+    select.disabled = false;
+    if (message) {
+        message.textContent = data.length + " hospital departments loaded.";
+        message.className = "message";
+    }
+}
+// END HEALTHOS AI: LOAD LIVE HOSPITAL DEPARTMENT CATALOGUE
+
 // HEALTHOS AI: CONNECT STAFF REGISTRATION FORM
 const staffRegistrationForm =
     document.getElementById("staffRegistrationForm");
@@ -2763,6 +2833,12 @@ if (openStaffRegistrationButton) {
         }
 
         showOnly("staffRegistration");
+
+        try {
+            await loadStaffDepartmentOptions(currentClinic);
+        } catch (error) {
+            console.error("Department catalogue loading failed:", error);
+        }
 
         const staffEmail = document.getElementById("staffEmail");
 
