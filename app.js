@@ -6413,6 +6413,7 @@ function openSection(sectionId, sectionName) {
     const button = document.getElementById("posReceiptUploadButton");
     const rows = document.getElementById("posReceiptRows");
     const bucket = "pos-receipt-evidence";
+    let activeCapabilities = {};
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
     function setMessage(text, type) {
@@ -6427,6 +6428,8 @@ function openSection(sectionId, sectionName) {
     }
 
     async function loadReceipts(capabilities) {
+        if (capabilities) activeCapabilities = capabilities;
+        capabilities = activeCapabilities;
         if (!supabaseClient || !currentClinic || !currentUser) return;
         rows.replaceChildren();
         const { data, error } = await supabaseClient.from("pos_receipts")
@@ -6512,7 +6515,6 @@ function openSection(sectionId, sectionName) {
     }
 
     window.loadDepartmentTransactionCapture = loadReceipts;
-    window.healthosTransactionCapabilities = window.healthosTransactionCapabilities || {};
 
     form.addEventListener("submit", async event => {
         event.preventDefault();
@@ -6576,7 +6578,7 @@ function openSection(sectionId, sectionName) {
             if (insertError) throw insertError;
             form.reset();
             setMessage("Transaction recorded. It is awaiting Accounts verification; settlement is not confirmed.", "success");
-            await loadReceipts(window.healthosTransactionCapabilities || {});
+            await loadReceipts(activeCapabilities);
         } catch (error) {
             console.error("Department transaction capture failed:", error);
             setMessage("Could not record transaction: " + (error.message || "Check your department permission."), "error");
