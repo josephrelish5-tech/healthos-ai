@@ -6351,7 +6351,7 @@ function openSection(sectionId, sectionName) {
 })();
 
  
-// HEALTHOS AI: POS RECEIPT CAPTURE
+// HEALTHOS AI: DEPARTMENT TRANSACTION CAPTURE
 (function () {
     "use strict";
     const form = document.getElementById("posReceiptUploadForm");
@@ -6361,6 +6361,7 @@ function openSection(sectionId, sectionName) {
     const button = document.getElementById("posReceiptUploadButton");
     const rows = document.getElementById("posReceiptRows");
     const bucket = "pos-receipt-evidence";
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
     function setMessage(text, type) {
         message.textContent = text;
@@ -6375,45 +6376,51 @@ function openSection(sectionId, sectionName) {
 
     async function loadReceipts() {
         if (!supabaseClient || !currentClinic || !currentUser) return;
-        rows.textContent = "";
+        rows.replaceChildren();
         const { data, error } = await supabaseClient.from("pos_receipts")
-            .select("id,created_at,payment_provider,transaction_reference,amount,ocr_status,source_file_path")
+            .select("id,created_at,payment_provider,transaction_reference,amount,ocr_status,source_file_path,payment_method,invoice_reference,capture_channel")
             .eq("clinic_id", currentClinic.id)
             .order("created_at", { ascending: false }).limit(50);
         if (error) throw error;
         if (!data || !data.length) {
-            rows.innerHTML = '<tr><td colspan="6">No POS receipts uploaded yet.</td></tr>';
+            rows.innerHTML = '<tr><td colspan="6">No transactions recorded yet.</td></tr>';
             return;
         }
-        data.forEach(receipt => {
+        data.forEach(record => {
             const tr = document.createElement("tr");
             [
-                new Date(receipt.created_at).toLocaleString(),
-                receipt.payment_provider || "—",
-                receipt.transaction_reference || "—",
-                receipt.amount == null ? "—" : "₦" + Number(receipt.amount).toLocaleString(),
-                receipt.ocr_status || "—"
+                new Date(record.created_at).toLocaleString(),
+                record.payment_provider || "—",
+                record.transaction_reference || record.invoice_reference || "—",
+                record.amount == null ? "—" : "₦" + Number(record.amount).toLocaleString(),
+                record.payment_method || "—"
             ].forEach(value => {
                 const td = document.createElement("td");
                 td.textContent = String(value);
                 tr.appendChild(td);
             });
             const td = document.createElement("td");
-            const openButton = document.createElement("button");
-            openButton.type = "button";
-            openButton.className = "secondary-button";
-            openButton.textContent = "View evidence";
-            openButton.addEventListener("click", async () => {
-                const { data: signed, error: signedError } =
-                    await supabaseClient.storage.from(bucket)
-                        .createSignedUrl(receipt.source_file_path, 60);
-                if (signedError) {
-                    setMessage("Could not open evidence: " + signedError.message, "error");
-                    return;
-                }
-                window.open(signed.signedUrl, "_blank", "noopener,noreferrer");
-            });
-            td.appendChild(openButton);
+            if (record.source_file_path) {
+                const openButton = document.createElement("button");
+                openButton.type = "button";
+                openButton.className = "secondary-button";
+                openButton.textContent = "View evidence";
+                openButton.addEventListener("click", async () => {
+                    const { data: signed, error: signedError } =
+                        await supabaseClient.storage.from(bucket).createSignedUrl(record.source_file_path, 60);
+                    if (signedError) {
+                        setMessage("Could not open evidence: " + signedError.message, "error");
+                        return;
+                    }
+                    window.open(signed.signedUrl, "_blank", "noopener,noreferrer");
+                });
+                td.appendChild(openButton);
+                const status = document.createElement("small");
+                status.textContent = " OCR: " + (record.ocr_status || "pending");
+                td.appendChild(status);
+            } else {
+                td.textContent = "Evidence missing";
+            }
             tr.appendChild(td);
             rows.appendChild(tr);
         });
@@ -6426,55 +6433,65 @@ function openSection(sectionId, sectionName) {
             return;
         }
         const file = fileInput.files && fileInput.files[0];
-        const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-        if (!file || !allowedTypes.includes(file.type) || file.size > 10 * 1024 * 1024) {
-            setMessage("Choose a JPG, PNG, WebP or PDF file no larger than 10 MB.", "error");
+        if (file && (!allowedTypes.includes(file.type) || file.size > 10 * 1024 * 1024)) {
+            setMessage("Evidence must be JPG, PNG, WebP or PDF and no larger than 10 MB.", "error");
             return;
         }
+        const method = document.getElementById("posPaymentMethod").value;
         const amountText = document.getElementById("posReceiptAmount").value.trim();
         const amount = amountText === "" ? null : Number(amountText);
-        if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
-            setMessage("Enter a valid transaction amount.", "error");
+        if (!method || amount === null || !Number.isFinite(amount) || amount <= 0) {
+            setMessage("Select the payment method and enter the transaction amount.", "error");
             return;
         }
         button.disabled = true;
-        setMessage("Uploading receipt securely…");
+        setMessage("Recording transaction securely…");
         try {
             const { data: session, error: sessionError } = await supabaseClient.auth.getSession();
             if (sessionError || !session.session) throw new Error("Session expired. Sign in again.");
-            const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" }[file.type];
-            const path = currentClinic.id + "/" + currentUser.id + "/" + crypto.randomUUID() + "." + extension;
-            const digest = await hashFile(file);
-            const { error: uploadError } = await supabaseClient.storage.from(bucket)
-                .upload(path, file, { contentType: file.type, upsert: false });
-            if (uploadError) throw uploadError;
+            let path = null;
+            let digest = null;
+            if (file) {
+                const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" }[file.type];
+                path = currentClinic.id + "/" + currentUser.id + "/" + crypto.randomUUID() + "." + extension;
+                digest = await hashFile(file);
+                const { error: uploadError } = await supabaseClient.storage.from(bucket)
+                    .upload(path, file, { contentType: file.type, upsert: false });
+                if (uploadError) throw uploadError;
+            }
             const dateText = document.getElementById("posReceiptDate").value;
+            const provider = document.getElementById("posReceiptProvider").value.trim() || null;
             const record = {
                 clinic_id: currentClinic.id,
                 uploaded_by: currentUser.id,
                 source_file_path: path,
                 file_sha256: digest,
-                payment_provider: document.getElementById("posReceiptProvider").value.trim() || null,
+                payment_provider: provider,
                 transaction_reference: document.getElementById("posReceiptReference").value.trim() || null,
                 amount,
                 currency: "NGN",
-                transaction_at: dateText ? new Date(dateText).toISOString() : null,
-                ocr_status: "pending",
+                transaction_at: dateText ? new Date(dateText).toISOString() : new Date().toISOString(),
+                transaction_status: "reported_by_staff",
+                payment_method: method,
+                invoice_reference: document.getElementById("posInvoiceReference").value.trim() || null,
+                patient_reference: document.getElementById("posPatientReference").value.trim() || null,
+                capture_channel: file ? "receipt_upload" : "manual_entry",
+                ocr_status: file ? "pending" : "not_applicable",
                 ocr_raw: {
-                    capture_method: "manual_upload",
-                    original_file_name: file.name,
-                    mime_type: file.type,
-                    size_bytes: file.size
+                    capture_method: file ? "staff_receipt_upload" : "staff_manual_entry",
+                    original_file_name: file ? file.name : null,
+                    mime_type: file ? file.type : null,
+                    size_bytes: file ? file.size : null
                 }
             };
             const { error: insertError } = await supabaseClient.from("pos_receipts").insert(record);
             if (insertError) throw insertError;
             form.reset();
-            setMessage("Receipt saved. OCR is pending; bank settlement is NOT confirmed.", "success");
+            setMessage("Transaction recorded. It is awaiting Accounts verification; settlement is not confirmed.", "success");
             await loadReceipts();
         } catch (error) {
-            console.error("POS receipt capture failed:", error);
-            setMessage("Upload failed: " + (error.message || "Check billing access and try again."), "error");
+            console.error("Department transaction capture failed:", error);
+            setMessage("Could not record transaction: " + (error.message || "Check your department permission."), "error");
         } finally {
             button.disabled = false;
         }
@@ -6484,11 +6501,11 @@ function openSection(sectionId, sectionName) {
         link.addEventListener("click", () => {
             if (link.getAttribute("href") === "#posReconciliation") {
                 loadReceipts().catch(error => {
-                    console.error("POS receipt list failed:", error);
-                    setMessage("Receipts could not load. Check your billing access.", "error");
+                    console.error("Department transaction list failed:", error);
+                    setMessage("Transactions could not load. Check your access.", "error");
                 });
             }
         });
     });
-    console.log("HealthOS POS receipt capture initialized.");
+    console.log("HealthOS department transaction capture initialized.");
 })();
