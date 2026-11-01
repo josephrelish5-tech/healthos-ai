@@ -706,6 +706,7 @@
                     <a href="#appointments" class="nav-item">▣ Appointments</a>
                     <a href="#serviceCapture" class="nav-item">✚ Service Capture</a>
                     <a href="#billing" class="nav-item">₦ Billing &amp; Revenue</a>
+                    <a href="#posReconciliation" class="nav-item">▣ POS Reconciliation</a>
                     <a href="#pharmacy" class="nav-item">✚ Pharmacy</a>
                     <a href="#reports" class="nav-item">▤ Reports</a>
 
@@ -1825,6 +1826,41 @@
 
                     
                     <!-- HEALTHOS AI: PHARMACY MODULE -->
+
+<section class="panel" id="posReconciliation" hidden>
+    <div class="panel-heading">
+        <div>
+            <h2>POS Receipt Capture</h2>
+            <p class="muted">Upload POS receipts as evidence for later OCR extraction and bank settlement reconciliation.</p>
+        </div>
+    </div>
+    <div class="pos-receipt-card">
+        <form id="posReceiptUploadForm" class="auth-form">
+            <label for="posReceiptFile">POS receipt image or PDF</label>
+            <input id="posReceiptFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required>
+            <p class="muted">Maximum 10 MB. Accepted: JPG, PNG, WebP, PDF.</p>
+            <label for="posReceiptProvider">Payment provider / bank (optional)</label>
+            <input id="posReceiptProvider" type="text" maxlength="100" placeholder="e.g. Moniepoint, GTBank">
+            <label for="posReceiptReference">Transaction reference (optional)</label>
+            <input id="posReceiptReference" type="text" maxlength="150">
+            <label for="posReceiptAmount">Amount (₦) (optional)</label>
+            <input id="posReceiptAmount" type="number" min="0" step="0.01">
+            <label for="posReceiptDate">Transaction date and time (optional)</label>
+            <input id="posReceiptDate" type="datetime-local">
+            <button id="posReceiptUploadButton" class="primary-button" type="submit">Upload receipt evidence</button>
+            <p id="posReceiptUploadMessage" class="message" role="status" aria-live="polite"></p>
+        </form>
+    </div>
+    <h3>Recently uploaded receipts</h3>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Uploaded</th><th>Provider</th><th>Reference</th><th>Amount</th><th>OCR status</th><th>Evidence</th></tr></thead>
+            <tbody id="posReceiptRows"><tr><td colspan="6">Sign in with an authorised billing account to load receipts.</td></tr></tbody>
+        </table>
+    </div>
+    <p class="disclaimer">An uploaded receipt is supporting evidence only. It does not prove that funds reached the hospital bank account. OCR values require human verification; settlement requires a separate bank statement or authorised bank feed.</p>
+</section>
+
 <section class="panel" id="pharmacy" hidden>
     <div class="panel-heading">
         <div>
