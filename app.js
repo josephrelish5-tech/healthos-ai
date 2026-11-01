@@ -6438,7 +6438,7 @@ function openSection(sectionId, sectionName) {
             .order("created_at", { ascending: false }).limit(50);
         if (error) throw error;
         if (!data || !data.length) {
-            rows.innerHTML = '<tr><td colspan="6">No transactions recorded yet.</td></tr>';
+            rows.innerHTML = '<tr><td colspan="7">No transactions recorded yet.</td></tr>';
             return;
         }
         data.forEach(record => {
