@@ -6426,11 +6426,11 @@ function openSection(sectionId, sectionName) {
             .map(byte => byte.toString(16).padStart(2, "0")).join("");
     }
 
-    async function loadReceipts() {
+    async function loadReceipts(capabilities) {
         if (!supabaseClient || !currentClinic || !currentUser) return;
         rows.replaceChildren();
         const { data, error } = await supabaseClient.from("pos_receipts")
-            .select("id,created_at,payment_provider,transaction_reference,amount,ocr_status,source_file_path,payment_method,invoice_reference,capture_channel")
+            .select("id,created_at,payment_provider,transaction_reference,amount,ocr_status,source_file_path,payment_method,invoice_reference,capture_channel,acceptance_status")
             .eq("clinic_id", currentClinic.id)
             .order("created_at", { ascending: false }).limit(50);
         if (error) throw error;
@@ -6474,11 +6474,45 @@ function openSection(sectionId, sectionName) {
                 td.textContent = "Evidence missing";
             }
             tr.appendChild(td);
+
+            const acceptanceCell = document.createElement("td");
+            const statusText = document.createElement("span");
+            statusText.textContent = record.acceptance_status || "awaiting_acceptance";
+            acceptanceCell.appendChild(statusText);
+            if (capabilities && capabilities.can_accept &&
+                (record.acceptance_status || "awaiting_acceptance") === "awaiting_acceptance") {
+                const acceptButton = document.createElement("button");
+                acceptButton.type = "button";
+                acceptButton.className = "secondary-button";
+                acceptButton.textContent = "Accept transaction";
+                acceptButton.addEventListener("click", async () => {
+                    acceptButton.disabled = true;
+                    const { error: acceptError } = await supabaseClient.rpc(
+                        "accept_department_transaction",
+                        {
+                            p_clinic_id: currentClinic.id,
+                            p_transaction_id: record.id,
+                            p_notes: null
+                        }
+                    );
+                    if (acceptError) {
+                        setMessage("Transaction acceptance failed: " + acceptError.message, "error");
+                        acceptButton.disabled = false;
+                        return;
+                    }
+                    setMessage("Transaction accepted. Bank settlement still requires reconciliation.", "success");
+                    await loadReceipts(capabilities);
+                });
+                acceptanceCell.appendChild(document.createElement("br"));
+                acceptanceCell.appendChild(acceptButton);
+            }
+            tr.appendChild(acceptanceCell);
             rows.appendChild(tr);
         });
     }
 
     window.loadDepartmentTransactionCapture = loadReceipts;
+    window.healthosTransactionCapabilities = window.healthosTransactionCapabilities || {};
 
     form.addEventListener("submit", async event => {
         event.preventDefault();
@@ -6542,7 +6576,7 @@ function openSection(sectionId, sectionName) {
             if (insertError) throw insertError;
             form.reset();
             setMessage("Transaction recorded. It is awaiting Accounts verification; settlement is not confirmed.", "success");
-            await loadReceipts();
+            await loadReceipts(window.healthosTransactionCapabilities || {});
         } catch (error) {
             console.error("Department transaction capture failed:", error);
             setMessage("Could not record transaction: " + (error.message || "Check your department permission."), "error");
