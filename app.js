@@ -391,6 +391,7 @@ if (window.healthOSAdminStaffRefresh) {
 window.healthOSAdminStaffRefresh = setInterval(async function () {
     if (currentUser && currentClinic && managementVerified) {
         await loadAdminStaffDashboard(currentClinic);
+        await loadDepartmentPerformanceDashboard(currentClinic);
     }
 }, 15000);
 // END HEALTHOS AI: AUTOMATIC ADMIN STAFF DASHBOARD REFRESH    
@@ -1982,6 +1983,20 @@ async function loadDepartmentPerformanceDashboard(clinic) {
     }
 }
 // END HEALTHOS AI: DEPARTMENT PERFORMANCE DASHBOARD
+document.addEventListener("DOMContentLoaded", function () {
+    const refreshButton = document.getElementById(
+        "refreshDepartmentPerformanceButton"
+    );
+
+    if (refreshButton) {
+        refreshButton.addEventListener("click", function () {
+            if (currentClinic && managementVerified) {
+                loadDepartmentPerformanceDashboard(currentClinic);
+            }
+        });
+    }
+});
+
 
 // END HEALTHOS AI: ADMIN STAFF DASHBOARD STATISTICS
 // HEALTHOS AI: LOAD INDIVIDUAL STAFF ACTIVITY
