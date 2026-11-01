@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261101-15" defer></script>
+    <script src="app.js?v=20261102-02" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -1830,15 +1830,28 @@
 <section class="panel" id="posReconciliation" hidden>
     <div class="panel-heading">
         <div>
-            <h2>POS Receipt Capture</h2>
-            <p class="muted">Upload POS receipts as evidence for later OCR extraction and bank settlement reconciliation.</p>
+            <h2>Department Transaction Capture</h2>
+            <p class="muted">Record a payment when your authorised department receives it. Attach the POS receipt when available. Accounts verifies settlement; management monitors the full hospital.</p>
         </div>
     </div>
     <div class="pos-receipt-card">
         <form id="posReceiptUploadForm" class="auth-form">
-            <label for="posReceiptFile">POS receipt image or PDF</label>
-            <input id="posReceiptFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required>
-            <p class="muted">Maximum 10 MB. Accepted: JPG, PNG, WebP, PDF.</p>
+            <label for="posPaymentMethod">Payment method</label>
+            <select id="posPaymentMethod" required>
+                <option value="">Select payment method</option>
+                <option value="POS">POS</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cash">Cash</option>
+                <option value="Online Payment">Online Payment</option>
+                <option value="Other">Other</option>
+            </select>
+            <label for="posInvoiceReference">Invoice / service reference (optional)</label>
+            <input id="posInvoiceReference" type="text" maxlength="120" placeholder="Hospital invoice or service reference">
+            <label for="posPatientReference">Patient reference (optional; avoid full patient names)</label>
+            <input id="posPatientReference" type="text" maxlength="120" placeholder="Patient or visit ID">
+            <label for="posReceiptFile">Attach POS receipt or payment evidence (optional)</label>
+            <input id="posReceiptFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
+            <p class="muted">Evidence file maximum 10 MB. JPG, PNG, WebP or PDF. You can record a transaction without a receipt, but it will be marked as evidence missing.</p>
             <label for="posReceiptProvider">Payment provider / bank (optional)</label>
             <input id="posReceiptProvider" type="text" maxlength="100" placeholder="e.g. Moniepoint, GTBank">
             <label for="posReceiptReference">Transaction reference (optional)</label>
@@ -1847,18 +1860,18 @@
             <input id="posReceiptAmount" type="number" min="0" step="0.01">
             <label for="posReceiptDate">Transaction date and time (optional)</label>
             <input id="posReceiptDate" type="datetime-local">
-            <button id="posReceiptUploadButton" class="primary-button" type="submit">Upload receipt evidence</button>
+            <button id="posReceiptUploadButton" class="primary-button" type="submit">Record transaction</button>
             <p id="posReceiptUploadMessage" class="message" role="status" aria-live="polite"></p>
         </form>
     </div>
-    <h3>Recently uploaded receipts</h3>
+    <h3>Recent department transactions</h3>
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Uploaded</th><th>Provider</th><th>Reference</th><th>Amount</th><th>OCR status</th><th>Evidence</th></tr></thead>
+            <thead><tr><th>Uploaded</th><th>Provider</th><th>Reference</th><th>Amount</th><th>Payment method</th><th>Evidence / OCR</th></tr></thead>
             <tbody id="posReceiptRows"><tr><td colspan="6">Sign in with an authorised billing account to load receipts.</td></tr></tbody>
         </table>
     </div>
-    <p class="disclaimer">An uploaded receipt is supporting evidence only. It does not prove that funds reached the hospital bank account. OCR values require human verification; settlement requires a separate bank statement or authorised bank feed.</p>
+    <p class="disclaimer">Recording a payment is not proof of settlement. Receipt evidence and OCR values require verification. Accounts must match transactions against authorised bank statements or bank feeds before marking them reconciled.</p>
 </section>
 
 <section class="panel" id="pharmacy" hidden>
