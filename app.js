@@ -1514,6 +1514,58 @@ await startStaffPresenceTracking(
                     card.appendChild(req);
                 }
 
+
+                if (["assigned", "accepted", "in_progress", "blocked"].includes(task.task_status)) {
+                    const evidenceBox = document.createElement("div");
+                    evidenceBox.className = "form-group";
+
+                    const evidenceLabel = document.createElement("label");
+                    evidenceLabel.textContent = "Add completion evidence (note or reference)";
+                    evidenceBox.appendChild(evidenceLabel);
+
+                    const evidenceText = document.createElement("textarea");
+                    evidenceText.rows = 3;
+                    evidenceText.maxLength = 5000;
+                    evidenceText.placeholder = "Describe the work completed or evidence observed...";
+                    evidenceBox.appendChild(evidenceText);
+
+                    const evidenceReference = document.createElement("input");
+                    evidenceReference.type = "text";
+                    evidenceReference.maxLength = 1000;
+                    evidenceReference.placeholder = "Optional reference / record ID";
+                    evidenceBox.appendChild(evidenceReference);
+
+                    const saveEvidence = document.createElement("button");
+                    saveEvidence.type = "button";
+                    saveEvidence.className = "btn btn-secondary";
+                    saveEvidence.textContent = "Save evidence";
+                    saveEvidence.addEventListener("click", async function () {
+                        if (!evidenceText.value.trim() && !evidenceReference.value.trim()) {
+                            alert("Enter a note or reference before saving.");
+                            return;
+                        }
+                        saveEvidence.disabled = true;
+                        const { error: evidenceError } = await supabaseClient.rpc(
+                            "add_my_staff_task_evidence",
+                            {
+                                p_clinic_id: clinic.id,
+                                p_task_id: task.id,
+                                p_evidence_type: evidenceReference.value.trim() ? "reference" : "note",
+                                p_evidence_text: evidenceText.value.trim() || null,
+                                p_source_reference: evidenceReference.value.trim() || null
+                            }
+                        );
+                        if (evidenceError) {
+                            alert(friendlyError(evidenceError));
+                            saveEvidence.disabled = false;
+                            return;
+                        }
+                        await refreshMyStaffTasks();
+                    });
+                    evidenceBox.appendChild(saveEvidence);
+                    card.appendChild(evidenceBox);
+                }
+
                 const actions = document.createElement("div");
                 actions.className = "button-group";
                 const available = [];
