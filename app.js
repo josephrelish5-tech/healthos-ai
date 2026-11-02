@@ -9479,3 +9479,62 @@ function openSection(sectionId, sectionName) {
  window.loadAIAnalytics=loadAIAnalytics;
 })();
 
+
+
+// HEALTHOS AI: ENCRYPTED OFFLINE PATIENT DIRECTORY (MINIMUM IDENTIFIERS ONLY)
+(function initOfflinePatientDirectory(){
+ const $=id=>document.getElementById(id);
+ const DB="healthos_offline_directory_v1",STORE="secure_cache",KEY="patient_directory";
+ let cachedRows=[];
+ function status(text,error=false){const el=$("offlineDirectoryStatus");if(el){el.textContent=text;el.className="message"+(error?" error":" success");}}
+ function openDb(){return new Promise((resolve,reject)=>{const req=indexedDB.open(DB,1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE);};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+ async function put(value){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(value,KEY);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>{db.close();reject(tx.error);};});}
+ async function get(){const db=await openDb();return new Promise((resolve,reject)=>{const req=db.transaction(STORE).objectStore(STORE).get(KEY);req.onsuccess=()=>{db.close();resolve(req.result||null);};req.onerror=()=>{db.close();reject(req.error);};});}
+ async function clear(){const db=await openDb();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).delete(KEY);tx.oncomplete=()=>{db.close();resolve();};tx.onerror=()=>{db.close();reject(tx.error);};});}
+ function currentIdentity(){return currentUser&&currentClinic?{user:currentUser.id,clinic:currentClinic.id}:null;}
+ async function refresh(){
+  const identity=currentIdentity();if(!identity){status("Sign in to an authorised clinic workspace first.",true);return;}
+  if(!navigator.onLine){status("Connect to the internet before refreshing the encrypted directory.",true);return;}
+  status("Loading minimum patient identifiers securely…");
+  const {data,error}=await supabaseClient.from("patients").select("id,patient_number,first_name,last_name").eq("clinic_id",identity.clinic).order("first_name").limit(2000);
+  if(error){status("Directory refresh failed: "+error.message,true);return;}
+  try{
+   const key=await crypto.subtle.generateKey({name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+   const iv=crypto.getRandomValues(new Uint8Array(12));
+   const payload={owner:identity,expiresAt:Date.now()+8*60*60*1000,patients:(data||[]).map(p=>({id:p.id,patient_number:p.patient_number,first_name:p.first_name,last_name:p.last_name}))};
+   const encoded=new TextEncoder().encode(JSON.stringify(payload));
+   const ciphertext=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,encoded);
+   await put({key,iv:Array.from(iv),ciphertext,createdAt:Date.now()});
+   cachedRows=payload.patients;render();
+   status("Encrypted directory refreshed: "+cachedRows.length+" basic patient entries. Expires in 8 hours.");
+  }catch(e){status("Secure offline storage is unavailable on this browser.",true);console.error(e);}
+ }
+ async function unlock(){
+  const identity=currentIdentity();if(!identity){cachedRows=[];return false;}
+  try{
+   const record=await get();if(!record){cachedRows=[];return false;}
+   const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:new Uint8Array(record.iv)},record.key,record.ciphertext);
+   const payload=JSON.parse(new TextDecoder().decode(plain));
+   if(payload.owner.user!==identity.user||payload.owner.clinic!==identity.clinic||payload.expiresAt<Date.now()){
+    await clear();cachedRows=[];status("Offline directory expired or belongs to another session. Refresh it online.");return false;
+   }
+   cachedRows=payload.patients||[];return true;
+  }catch(e){cachedRows=[];status("Could not unlock the offline directory. Erase it and refresh while online.",true);return false;}
+ }
+ function render(){
+  const box=$("offlineDirectoryResults"),query=($("offlineDirectorySearch")?.value||"").trim().toLowerCase();if(!box)return;
+  box.replaceChildren();
+  const matches=cachedRows.filter(p=>[p.patient_number,p.first_name,p.last_name].filter(Boolean).join(" ").toLowerCase().includes(query)).slice(0,50);
+  if(!matches.length){box.textContent="No matching saved directory entries.";return;}
+  const list=document.createElement("ul");
+  matches.forEach(p=>{const li=document.createElement("li");li.textContent=[p.patient_number,p.first_name,p.last_name].filter(Boolean).join(" — ");list.appendChild(li);});
+  box.appendChild(list);
+ }
+ $("offlineDirectoryRefresh")?.addEventListener("click",refresh);
+ $("offlineDirectoryClear")?.addEventListener("click",async()=>{await clear();cachedRows=[];render();status("Offline directory erased from this browser.");});
+ $("offlineDirectorySearch")?.addEventListener("input",render);
+ window.addEventListener("online",()=>status("Internet connection restored. Refresh the offline directory when needed."));
+ window.addEventListener("offline",async()=>{const ok=await unlock();status(ok?"Offline mode: encrypted basic directory unlocked. Clinical records remain unavailable offline.":"Offline mode: no valid offline directory is available.",!ok);render();});
+ window.addEventListener("beforeunload",()=>{cachedRows=[];});
+ if(currentIdentity())unlock().then(ok=>{if(ok){render();status("Encrypted offline directory available for this signed-in clinic user.");}});
+})();
