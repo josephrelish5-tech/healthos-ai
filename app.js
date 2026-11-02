@@ -6319,7 +6319,7 @@ function openSection(sectionId, sectionName) {
         try {
             const context = getPharmacyContext();
             const supplierResult = await supabaseClient.from("pharmacy_suppliers")
-                .select("id,supplier_name,phone,email,is_active")
+                .select("id,supplier_name,contact_person,phone,email,is_active")
                 .eq("clinic_id", context.clinicId)
                 .order("supplier_name");
             if (supplierResult.error) throw supplierResult.error;
