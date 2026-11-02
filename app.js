@@ -9536,5 +9536,6 @@ function openSection(sectionId, sectionName) {
  window.addEventListener("online",()=>status("Internet connection restored. Refresh the offline directory when needed."));
  window.addEventListener("offline",async()=>{const ok=await unlock();status(ok?"Offline mode: encrypted basic directory unlocked. Clinical records remain unavailable offline.":"Offline mode: no valid offline directory is available.",!ok);render();});
  window.addEventListener("beforeunload",()=>{cachedRows=[];});
+ if(!navigator.onLine)unlock().then(ok=>{render();status(ok?"Offline mode: encrypted basic directory unlocked. Clinical records remain unavailable offline.":"Offline mode: no valid offline directory is available.",!ok);});
  if(currentIdentity())unlock().then(ok=>{if(ok){render();status("Encrypted offline directory available for this signed-in clinic user.");}});
 })();
