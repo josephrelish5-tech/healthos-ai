@@ -6708,3 +6708,208 @@ function openSection(sectionId, sectionName) {
     });
     console.log("HealthOS department transaction capture initialized.");
 })();
+
+ 
+// HEALTHOS AI: ACCOUNTS BANK STATEMENT IMPORT
+(function () {
+    "use strict";
+    const panel = document.getElementById("bankStatementImportPanel");
+    const form = document.getElementById("bankStatementImportForm");
+    if (!panel || !form) return;
+
+    const fileInput = document.getElementById("bankStatementFile");
+    const message = document.getElementById("bankStatementImportMessage");
+    const button = document.getElementById("bankStatementImportButton");
+    const historyRows = document.getElementById("bankStatementImportRows");
+    const transactionRows = document.getElementById("bankStatementTransactionRows");
+    const bucket = "bank-statement-evidence";
+    const allowedTypes = ["text/csv", "application/vnd.ms-excel", "application/csv"];
+
+    function setImportMessage(text, type) {
+        message.textContent = text;
+        message.className = "message" + (type ? " " + type : "");
+    }
+
+    function addCell(row, value) {
+        const cell = document.createElement("td");
+        cell.textContent = value == null || value === "" ? "—" : String(value);
+        row.appendChild(cell);
+    }
+
+    async function loadBankStatementData() {
+        if (!supabaseClient || !currentClinic || !currentUser) return;
+        const { data: imports, error: importError } = await supabaseClient
+            .from("bank_statement_imports")
+            .select("id,created_at,bank_or_provider,account_label,period_start,period_end,import_status,row_count")
+            .eq("clinic_id", currentClinic.id)
+            .order("created_at", { ascending: false })
+            .limit(20);
+        if (importError) throw importError;
+
+        historyRows.replaceChildren();
+        if (!imports || imports.length === 0) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+            cell.colSpan = 6;
+            cell.textContent = "No bank statements imported yet.";
+            row.appendChild(cell);
+            historyRows.appendChild(row);
+            transactionRows.replaceChildren();
+            const empty = document.createElement("tr");
+            const emptyCell = document.createElement("td");
+            emptyCell.colSpan = 6;
+            emptyCell.textContent = "No imported bank transactions yet.";
+            empty.appendChild(emptyCell);
+            transactionRows.appendChild(empty);
+            return;
+        }
+
+        imports.forEach(item => {
+            const row = document.createElement("tr");
+            addCell(row, new Date(item.created_at).toLocaleString());
+            addCell(row, item.bank_or_provider);
+            addCell(row, item.account_label);
+            addCell(row, [item.period_start || "", item.period_end || ""].filter(Boolean).join(" to ") || "—");
+            addCell(row, item.row_count == null ? "—" : item.row_count);
+            addCell(row, item.import_status);
+            historyRows.appendChild(row);
+        });
+
+        const importIds = imports.map(item => item.id);
+        const { data: transactions, error: transactionError } = await supabaseClient
+            .from("bank_statement_transactions")
+            .select("import_id,bank_reference,description,amount,currency,booked_at,transaction_type")
+            .eq("clinic_id", currentClinic.id)
+            .in("import_id", importIds)
+            .order("booked_at", { ascending: false })
+            .limit(100);
+        if (transactionError) throw transactionError;
+
+        transactionRows.replaceChildren();
+        if (!transactions || transactions.length === 0) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+            cell.colSpan = 6;
+            cell.textContent = "No transaction rows were returned for these imports.";
+            row.appendChild(cell);
+            transactionRows.appendChild(row);
+            return;
+        }
+        transactions.forEach(item => {
+            const row = document.createElement("tr");
+            addCell(row, item.booked_at ? new Date(item.booked_at).toLocaleString() : "—");
+            addCell(row, item.bank_reference);
+            addCell(row, item.description);
+            addCell(row, item.transaction_type);
+            addCell(row, item.amount == null ? "—" : Number(item.amount).toLocaleString());
+            addCell(row, item.currency || "NGN");
+            transactionRows.appendChild(row);
+        });
+    }
+
+    async function openBankStatementPanel() {
+        panel.hidden = true;
+        if (!supabaseClient || !currentClinic || !currentUser) return;
+        const { data: allowed, error } = await supabaseClient.rpc(
+            "can_import_bank_statements",
+            { p_clinic_id: currentClinic.id }
+        );
+        if (error) {
+            console.error("Bank statement import permission check failed:", error);
+            setImportMessage("Finance import permission could not be verified. Contact the administrator.", "error");
+            return;
+        }
+        if (allowed !== true) return;
+        panel.hidden = false;
+        try {
+            await loadBankStatementData();
+        } catch (loadError) {
+            console.error("Bank statement history load failed:", loadError);
+            setImportMessage("Import history or statement rows could not load. Confirm finance view permissions.", "error");
+        }
+    }
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (!supabaseClient || !currentClinic || !currentUser) {
+            setImportMessage("Sign in to your authorised clinic account first.", "error");
+            return;
+        }
+        const file = fileInput.files && fileInput.files[0];
+        const csvName = file ? file.name.toLowerCase() : "";
+        if (!file || (!allowedTypes.includes(file.type) && !csvName.endsWith(".csv")) ||
+            file.size === 0 || file.size > 10 * 1024 * 1024) {
+            setImportMessage("Choose a non-empty CSV file no larger than 10 MB.", "error");
+            return;
+        }
+        const provider = document.getElementById("bankStatementProvider").value.trim();
+        if (!provider) {
+            setImportMessage("Enter the bank or payment provider.", "error");
+            return;
+        }
+        const periodStart = document.getElementById("bankStatementPeriodStart").value || null;
+        const periodEnd = document.getElementById("bankStatementPeriodEnd").value || null;
+        if (periodStart && periodEnd && periodStart > periodEnd) {
+            setImportMessage("The statement period end must not be earlier than its start.", "error");
+            return;
+        }
+
+        button.disabled = true;
+        setImportMessage("Uploading private statement evidence…");
+        try {
+            const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+            if (sessionError || !sessionData.session) throw new Error("Your session has expired. Sign in again.");
+
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100) || "statement.csv";
+            const storagePath = currentClinic.id + "/" + currentUser.id + "/" +
+                crypto.randomUUID() + "-" + safeName;
+            const { error: uploadError } = await supabaseClient.storage
+                .from(bucket)
+                .upload(storagePath, file, { contentType: "text/csv", upsert: false });
+            if (uploadError) throw uploadError;
+
+            setImportMessage("Statement uploaded securely. Importing and validating CSV rows…");
+            const { data: importResult, error: functionError } = await supabaseClient.functions.invoke(
+                "import-bank-statement",
+                {
+                    body: {
+                        clinic_id: currentClinic.id,
+                        storage_path: storagePath,
+                        bank_or_provider: provider,
+                        account_label: document.getElementById("bankStatementAccount").value.trim() || null,
+                        period_start: periodStart,
+                        period_end: periodEnd
+                    }
+                }
+            );
+            if (functionError) throw functionError;
+            if (!importResult || !importResult.import_id) {
+                throw new Error(importResult && importResult.error ? importResult.error : "Import did not return an import reference.");
+            }
+            form.reset();
+            setImportMessage(
+                "Statement imported. " + Number(importResult.imported_rows || 0) +
+                " bank transaction row(s) saved. No hospital payment has been reconciled.",
+                "success"
+            );
+            await loadBankStatementData();
+        } catch (error) {
+            console.error("Bank statement import failed:", error);
+            setImportMessage("Bank statement import failed: " + (error.message || "Check the file and finance permissions."), "error");
+        } finally {
+            button.disabled = false;
+        }
+    });
+
+    document.querySelectorAll(".sidebar .nav-item").forEach(link => {
+        link.addEventListener("click", () => {
+            if (link.getAttribute("href") === "#posReconciliation") {
+                openBankStatementPanel().catch(error => {
+                    console.error("Bank statement panel failed:", error);
+                    setImportMessage("Bank statement panel could not load.", "error");
+                });
+            }
+        });
+    });
+    console.log("HealthOS Accounts bank statement import module initialized.");
+})();
