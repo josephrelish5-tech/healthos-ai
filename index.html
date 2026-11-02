@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261102-17" defer></script>
+    <script src="app.js?v=20261102-18" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -714,6 +714,7 @@
                     <a href="#patientRecordSharing" class="nav-item">▣ Patient Record Sharing</a>
                     <a href="#ussdDiagnostics" class="nav-item">⌘ USSD Diagnostics</a>
                     <a href="#multiFacilityManagement" class="nav-item">▦ Multi-Facility Management</a>
+                    <a href="#aiAnalytics" class="nav-item">◈ AI Intelligence &amp; Analytics</a>
                     <a href="#patientFlow" class="nav-item">⇄ Queue &amp; Beds</a>
                     <a href="#clinicalRecords" class="nav-item">✚ Clinical Records</a>
                     <a href="#clinicalScribe" class="nav-item">◉ AI Medical Scribe</a>
@@ -2678,6 +2679,32 @@
  <p class="disclaimer">This is the organisation and facility directory foundation. It does not yet combine financial, patient or operational records across facilities. Each clinic remains a separate data boundary; central consolidated reporting and controlled cross-facility staff assignments are planned as later implementation steps.</p>
 </section>
 <!-- END HEALTHOS AI: MULTI-FACILITY MANAGEMENT -->
+
+<!-- HEALTHOS AI: OPERATIONAL INTELLIGENCE & ANALYTICS -->
+<section id="aiAnalytics" class="panel" hidden>
+ <div class="panel-heading">
+  <div><p class="eyebrow">HOSPITAL INTELLIGENCE</p><h2>AI Intelligence &amp; Operational Analytics</h2>
+   <p class="muted">A live operational overview across revenue, appointments, patient flow, clinical activity and pharmacy risk for the active clinic.</p></div>
+  <button type="button" id="aiAnalyticsRefresh" class="primary-button">Refresh Intelligence</button>
+ </div>
+ <p id="aiAnalyticsMessage" class="message" role="status" aria-live="polite">Open this workspace to calculate current operational indicators.</p>
+ <div class="stats-grid">
+  <article class="stat-card"><p>Registered Patients</p><h3 id="aiPatientsTotal">—</h3><p class="muted">Patients in this clinic</p></article>
+  <article class="stat-card"><p>Appointments Today</p><h3 id="aiAppointmentsToday">—</h3><p class="muted">Scheduled for today</p></article>
+  <article class="stat-card"><p>Revenue Collected Today</p><h3 id="aiRevenueToday">—</h3><p class="muted">Recorded payment amounts</p></article>
+  <article class="stat-card"><p>Outstanding Billing</p><h3 id="aiOutstanding">—</h3><p class="muted">Invoice amount less amount paid</p></article>
+  <article class="stat-card"><p>Services Performed Today</p><h3 id="aiServicesToday">—</h3><p class="muted">Recorded performed / verified services</p></article>
+  <article class="stat-card"><p>Patients Waiting</p><h3 id="aiQueueWaiting">—</h3><p class="muted">Active queue awaiting next step</p></article>
+  <article class="stat-card"><p>Occupied Beds</p><h3 id="aiBedsOccupied">—</h3><p class="muted">Beds currently marked occupied</p></article>
+  <article class="stat-card"><p>Low / Reorder Stock</p><h3 id="aiLowStock">—</h3><p class="muted">Medicine batches at or below reorder level</p></article>
+ </div>
+ <h3>Revenue Collection — Last 7 Days</h3>
+ <div class="table-wrap"><table><thead><tr><th>Date</th><th>Transactions</th><th>Invoiced</th><th>Collected</th><th>Outstanding</th></tr></thead><tbody id="aiRevenueTrendBody"><tr><td colspan="5">Open this workspace to calculate the trend.</td></tr></tbody></table></div>
+ <h3>Operational Risk &amp; Attention List</h3>
+ <div id="aiOperationalInsights" class="stats-grid"><article class="stat-card"><p>Loading</p><h3>—</h3><p class="muted">Operational signals will appear here.</p></article></div>
+ <p class="disclaimer">These indicators are calculated from records currently available to your signed-in clinic account. They are operational summaries and rule-based alerts, not autonomous clinical decisions or a trained predictive AI model. Financial totals use the latest 5,000 billing records; confirm against the Finance and Revenue Audit workspaces before accounting decisions. Patient data remains clinic-scoped.</p>
+</section>
+<!-- END HEALTHOS AI: OPERATIONAL INTELLIGENCE & ANALYTICS -->
 
                     <footer>
     HealthOS AI · Healthcare operations and revenue protection
