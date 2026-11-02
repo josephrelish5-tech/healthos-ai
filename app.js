@@ -6204,8 +6204,13 @@ function openSection(sectionId, sectionName) {
                     );
                 }
 
-                                const payload = {
+                                const locationResult = await supabaseClient.from("pharmacy_stock_locations")
+                    .select("id").eq("clinic_id", context.clinicId).eq("is_default", true).eq("is_active", true).limit(1).maybeSingle();
+                if (locationResult.error) throw locationResult.error;
+                if (!locationResult.data) throw new Error("The main pharmacy stock location is not configured. Register it before adding stock.");
+                const payload = {
                     clinic_id: context.clinicId,
+                    location_id: locationResult.data.id,
                     medicine_name: medicineName,
                     medicine_code: medicineCode || null,
                     batch_number: batchNumber,
@@ -7648,4 +7653,215 @@ function openSection(sectionId, sectionName) {
         });
     });
     console.log("HealthOS Accounts bank statement import module initialized.");
+})();
+
+
+/* HEALTHOS AI: PHARMACY STOCK ADJUSTMENTS AND TRANSFERS */
+(function () {
+    "use strict";
+    const byId = id => document.getElementById(id);
+    const message = byId("pharmacyStockControlMessage");
+    const adjustmentForm = byId("pharmacyStockAdjustmentForm");
+    const locationForm = byId("pharmacyStockLocationForm");
+    const transferForm = byId("pharmacyStockTransferForm");
+    if (!adjustmentForm || !locationForm || !transferForm) return;
+
+    function context() {
+        if (!window.supabaseClient || !window.currentUser || !window.currentClinic) {
+            throw new Error("Sign in and select a clinic before managing pharmacy stock.");
+        }
+        return {clinicId: window.currentClinic.id, userId: window.currentUser.id};
+    }
+    function say(text, error) {
+        if (!message) return;
+        message.textContent = text;
+        message.style.color = error ? "#b42318" : "#16794b";
+    }
+    function cell(row, value) {
+        const td = document.createElement("td");
+        td.textContent = String(value ?? "—");
+        row.appendChild(td);
+        return td;
+    }
+    let inventoryRows = [];
+    let locations = [];
+
+    async function loadStockControl() {
+        try {
+            const c = context();
+            const [inventoryResult, locationResult, adjustmentResult, transferResult] = await Promise.all([
+                supabaseClient.from("pharmacy_inventory")
+                    .select("id,medicine_name,batch_number,quantity,expiry_date,location_id")
+                    .eq("clinic_id", c.clinicId).order("medicine_name"),
+                supabaseClient.from("pharmacy_stock_locations")
+                    .select("id,location_name,department_name,is_default,is_active")
+                    .eq("clinic_id", c.clinicId).eq("is_active", true).order("location_name"),
+                supabaseClient.from("pharmacy_stock_adjustment_requests")
+                    .select("id,inventory_id,quantity_before,quantity_after,reason_code,status,created_at")
+                    .eq("clinic_id", c.clinicId).order("created_at", {ascending:false}).limit(100),
+                supabaseClient.from("pharmacy_stock_transfers")
+                    .select("id,transfer_number,inventory_id,source_location_id,destination_location_id,medicine_name,batch_number,quantity,status")
+                    .eq("clinic_id", c.clinicId).order("created_at", {ascending:false}).limit(100)
+            ]);
+            for (const r of [inventoryResult,locationResult,adjustmentResult,transferResult]) if (r.error) throw r.error;
+            inventoryRows = inventoryResult.data || [];
+            locations = locationResult.data || [];
+            const locationMap = new Map(locations.map(x => [x.id, x.location_name]));
+            const inventoryMap = new Map(inventoryRows.map(x => [x.id,x]));
+
+            [byId("pharmacyAdjustmentBatch"),byId("pharmacyTransferBatch")].forEach(select => {
+                select.replaceChildren();
+                const placeholder = document.createElement("option");
+                placeholder.value = ""; placeholder.textContent = "Select medicine batch"; select.appendChild(placeholder);
+                inventoryRows.forEach(item => {
+                    const option = document.createElement("option");
+                    option.value = item.id;
+                    option.textContent = item.medicine_name + " | " + item.batch_number + " | Stock " + item.quantity +
+                        " | " + (locationMap.get(item.location_id) || "Store");
+                    select.appendChild(option);
+                });
+            });
+            const destination = byId("pharmacyTransferDestination");
+            destination.replaceChildren();
+            const dp = document.createElement("option"); dp.value=""; dp.textContent="Select destination"; destination.appendChild(dp);
+            locations.forEach(loc => {
+                const option=document.createElement("option"); option.value=loc.id;
+                option.textContent=loc.location_name + (loc.department_name ? " — "+loc.department_name : "");
+                destination.appendChild(option);
+            });
+
+            const adjustmentBody=byId("pharmacyAdjustmentRequestsBody");
+            adjustmentBody.replaceChildren();
+            if (!(adjustmentResult.data || []).length) {
+                const row=document.createElement("tr"); cell(row,"No adjustment requests."); adjustmentBody.appendChild(row);
+            }
+            (adjustmentResult.data || []).forEach(req => {
+                const item=inventoryMap.get(req.inventory_id); const row=document.createElement("tr");
+                cell(row,item ? item.medicine_name+" / "+item.batch_number : "Inventory batch");
+                cell(row,req.quantity_before+" → "+req.quantity_after);
+                cell(row,req.reason_code.replace(/_/g," "));
+                cell(row,new Date(req.created_at).toLocaleString());
+                cell(row,req.status);
+                const action=cell(row,"");
+                if(req.status==="pending") ["approved","rejected"].forEach(decision=>{
+                    const btn=document.createElement("button"); btn.type="button";
+                    btn.textContent=decision==="approved"?"Approve":"Reject";
+                    btn.dataset.adjustmentDecision=decision; btn.dataset.requestId=req.id;
+                    btn.style.marginRight="5px"; action.appendChild(btn);
+                });
+                adjustmentBody.appendChild(row);
+            });
+
+            const transferBody=byId("pharmacyStockTransfersBody");
+            transferBody.replaceChildren();
+            if (!(transferResult.data || []).length) {
+                const row=document.createElement("tr"); cell(row,"No stock transfers recorded."); transferBody.appendChild(row);
+            }
+            (transferResult.data || []).forEach(t=>{
+                const row=document.createElement("tr");
+                cell(row,t.transfer_number); cell(row,t.medicine_name+" / "+t.batch_number);
+                cell(row,locationMap.get(t.source_location_id)); cell(row,locationMap.get(t.destination_location_id));
+                cell(row,t.quantity); cell(row,t.status);
+                const action=cell(row,"");
+                const actions=t.status==="pending"?["approved","rejected"]:t.status==="approved"?["dispatch"]:t.status==="dispatched"?["receive"]:[];
+                actions.forEach(name=>{
+                    const btn=document.createElement("button"); btn.type="button";
+                    btn.textContent=name==="approved"?"Approve":name==="rejected"?"Reject":name==="dispatch"?"Dispatch":"Confirm Receipt";
+                    btn.dataset.transferAction=name; btn.dataset.transferId=t.id; btn.style.marginRight="5px"; action.appendChild(btn);
+                });
+                transferBody.appendChild(row);
+            });
+            say("Stock controls loaded. Existing batches are assigned to their stock locations.",false);
+        } catch(e) {
+            console.error("Pharmacy stock control load error:",e);
+            say(e.message || "Unable to load stock controls.",true);
+        }
+    }
+
+    adjustmentForm.addEventListener("submit",async event=>{
+        event.preventDefault();
+        const button=byId("pharmacyAdjustmentSubmit"); button.disabled=true;
+        try {
+            const c=context(); const qty=Number(byId("pharmacyAdjustmentQuantity").value);
+            if(!Number.isInteger(qty)||qty<0) throw new Error("Enter a whole-number stock count of zero or more.");
+            const result=await supabaseClient.rpc("request_pharmacy_stock_adjustment",{
+                p_clinic_id:c.clinicId,p_inventory_id:byId("pharmacyAdjustmentBatch").value,
+                p_quantity_after:qty,p_reason_code:byId("pharmacyAdjustmentReason").value,
+                p_reason_notes:byId("pharmacyAdjustmentNotes").value.trim()||null
+            });
+            if(result.error) throw result.error;
+            adjustmentForm.reset(); say("Adjustment submitted. Stock will change only after owner/admin approval.",false);
+            await loadStockControl();
+        } catch(e) { say(e.message||"Unable to submit adjustment.",true); }
+        finally { button.disabled=false; }
+    });
+
+    locationForm.addEventListener("submit",async event=>{
+        event.preventDefault(); const button=byId("pharmacyStockLocationSubmit"); button.disabled=true;
+        try {
+            const c=context();
+            const result=await supabaseClient.rpc("create_pharmacy_stock_location",{
+                p_clinic_id:c.clinicId,p_location_name:byId("pharmacyStockLocationName").value.trim(),
+                p_department_name:byId("pharmacyStockLocationDepartment").value.trim()||null
+            });
+            if(result.error) throw result.error;
+            locationForm.reset(); say("Stock location registered.",false); await loadStockControl();
+        } catch(e) { say(e.message||"Unable to register stock location.",true); }
+        finally { button.disabled=false; }
+    });
+
+    transferForm.addEventListener("submit",async event=>{
+        event.preventDefault(); const button=byId("pharmacyTransferSubmit"); button.disabled=true;
+        try {
+            const c=context(); const qty=Number(byId("pharmacyTransferQuantity").value);
+            if(!Number.isInteger(qty)||qty<1) throw new Error("Transfer quantity must be a whole number above zero.");
+            const result=await supabaseClient.rpc("request_pharmacy_stock_transfer",{
+                p_clinic_id:c.clinicId,p_transfer_number:byId("pharmacyTransferNumber").value.trim(),
+                p_inventory_id:byId("pharmacyTransferBatch").value,
+                p_destination_location_id:byId("pharmacyTransferDestination").value,
+                p_quantity:qty,p_notes:byId("pharmacyTransferNotes").value.trim()||null
+            });
+            if(result.error) throw result.error;
+            transferForm.reset(); say("Transfer request submitted for owner/admin approval. Source stock has not yet been deducted.",false);
+            await loadStockControl();
+        } catch(e) { say(e.message||"Unable to submit transfer.",true); }
+        finally { button.disabled=false; }
+    });
+
+    document.addEventListener("click",async event=>{
+        const adj=event.target.closest("button[data-adjustment-decision]");
+        const transfer=event.target.closest("button[data-transfer-action]");
+        if(!adj&&!transfer) return;
+        const button=adj||transfer; button.disabled=true;
+        try {
+            const c=context(); let result;
+            if(adj) {
+                result=await supabaseClient.rpc("review_pharmacy_stock_adjustment",{
+                    p_clinic_id:c.clinicId,p_request_id:adj.dataset.requestId,
+                    p_decision:adj.dataset.adjustmentDecision,p_review_notes:null
+                });
+            } else {
+                const action=transfer.dataset.transferAction;
+                const rpc=action==="dispatch"?"dispatch_pharmacy_stock_transfer":
+                    action==="receive"?"receive_pharmacy_stock_transfer":"review_pharmacy_stock_transfer";
+                const args={p_clinic_id:c.clinicId,p_transfer_id:transfer.dataset.transferId};
+                if(action==="approved"||action==="rejected") args.p_decision=action;
+                result=await supabaseClient.rpc(rpc,args);
+            }
+            if(result.error) throw result.error;
+            say(adj?"Stock adjustment "+adj.dataset.adjustmentDecision+".":
+                "Stock transfer "+transfer.dataset.transferAction+" action completed.",false);
+            if(window.loadHealthOSPharmacyInventory) await window.loadHealthOSPharmacyInventory();
+            await loadStockControl();
+        } catch(e) { say(e.message||"Unable to complete stock control action.",true); }
+        finally { button.disabled=false; }
+    });
+
+    document.querySelectorAll(".sidebar .nav-item").forEach(link=>{
+        link.addEventListener("click",()=>{
+            if((link.getAttribute("href")||"")==="#pharmacy") void loadStockControl();
+        });
+    });
+    window.loadHealthOSPharmacyStockControls=loadStockControl;
+    if(document.getElementById("pharmacy") && !document.getElementById("pharmacy").hidden) void loadStockControl();
 })();
