@@ -2022,6 +2022,7 @@
             <label for="posReceiptFile">Attach POS receipt or payment evidence (optional)</label>
             <input id="posReceiptFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
             <p class="muted">Evidence file maximum 10 MB. JPG, PNG, WebP or PDF. You can record a transaction without a receipt, but it will be marked as evidence missing.</p>
+            <p class="disclaimer">OCR provider connection is not active yet. Accounts can manually read the uploaded receipt and record the extracted amount, reference and provider for review. A field match verifies receipt details only; it does not prove bank settlement or replace bank reconciliation.</p>
             <label for="posReceiptProvider">Payment provider / bank (optional)</label>
             <input id="posReceiptProvider" type="text" maxlength="100" placeholder="e.g. Moniepoint, GTBank">
             <label for="posReceiptReference">Transaction reference (optional)</label>
