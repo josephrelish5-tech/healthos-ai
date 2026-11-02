@@ -1927,12 +1927,6 @@ areas.forEach(function (area) {
                 route.sectionId
             );
 
-            if (area === "Transaction Handling") {
-                loadDepartmentTransactionCapture().catch(function (error) {
-                    console.error("Transaction capture load failed:", error);
-                });
-            }
-
             if (!targetSection) {
                 message.textContent =
                     "This work area is temporarily unavailable.";
@@ -2013,6 +2007,24 @@ areas.forEach(function (area) {
             );
 
             targetSection.hidden = false;
+
+            // Load transaction rows only after the work area is visible.
+            // Use the explicit window export so navigation cannot fail on an
+            // unresolved bare global before the section opens.
+            if (area === "Transaction Handling") {
+                if (typeof window.loadDepartmentTransactionCapture === "function") {
+                    window.loadDepartmentTransactionCapture().catch(function (error) {
+                        console.error("Transaction capture load failed:", error);
+                        const status = document.getElementById("posReceiptUploadMessage");
+                        if (status) {
+                            status.textContent = "Transaction records could not load. Please refresh and try again.";
+                            status.className = "message error";
+                        }
+                    });
+                } else {
+                    console.error("Transaction handling module is not available.");
+                }
+            }
 
             targetSection.scrollIntoView({
                 behavior: "auto",
