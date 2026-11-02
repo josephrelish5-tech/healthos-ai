@@ -63,7 +63,7 @@ function showHealthOSView(viewId) {
     const mainContent = document.getElementById("dashboard");
     if (!mainContent) return;
 
-    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
+    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
     if (!allowedViews.includes(viewId)) {
         alert("This page is not available yet.");
         return;
@@ -79,7 +79,7 @@ function showHealthOSView(viewId) {
     const pageElements = mainContent.querySelectorAll(
         ":scope > .welcome, :scope > #dashboardMessage, :scope > .stats-grid, " +
         ":scope > #adminStaffDashboard, :scope > #patients, :scope > #appointments, " +
-        ":scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
+        ":scope > #whatsappIntake, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
         ":scope > #pharmacy, :scope > #reports"
     );
     pageElements.forEach(element => {
@@ -104,6 +104,7 @@ function showHealthOSView(viewId) {
     if (viewId === "serviceCapture") loadServiceCaptureModule().catch(error => console.error("Service Capture module loading failed:", error));
     if (viewId === "posReconciliation" && typeof window.loadBankStatementImports === "function") window.loadBankStatementImports().catch(error => console.error("Bank statement panel failed:", error));
     if (viewId === "billing" && currentClinic && managementVerified) loadBillingData(currentClinic).catch(error => console.error("Department payment review refresh failed:", error));
+    if (viewId === "whatsappIntake" && typeof window.loadWhatsappIntake === "function") window.loadWhatsappIntake().catch(error => console.error("WhatsApp intake refresh failed:", error));
 }
 
 document.querySelectorAll(".sidebar .nav-item").forEach(link => {
@@ -8440,4 +8441,80 @@ function openSection(sectionId, sectionName) {
                 .catch(error => console.warn("Offline shell registration unavailable:", error));
         });
     }
+})();
+
+
+// HEALTHOS AI: WHATSAPP AI TRIAGE & PATIENT INTAKE FOUNDATION
+(function initWhatsappPatientIntake() {
+ const $i = id => document.getElementById(id);
+ const form = $i("whatsappIntakeForm");
+ const body = $i("whatsappIntakeBody");
+ const message = (text, isError=false) => {
+  const el=$i("whatsappIntakeMessage");
+  if(el){el.textContent=text;el.className="message"+(isError?" error":" success");}
+ };
+ const cell = (row,value) => {const td=document.createElement("td");td.textContent=value==null||value===""?"—":String(value);row.appendChild(td);return td;};
+ const stamp = value => value ? new Date(value).toLocaleString() : "—";
+ async function loadWhatsappIntake() {
+  if(!body||!currentClinic)return;
+  body.replaceChildren();
+  const {data,error}=await supabaseClient.from("whatsapp_intake_requests")
+   .select("id,channel,contact_name,contact_phone,concern_summary,triage_level,status,assigned_department,created_at")
+   .eq("clinic_id",currentClinic.id).order("created_at",{ascending:false}).limit(200);
+  if(error){message("Could not load intake inbox: "+error.message,true);const row=body.insertRow();cell(row,"Intake inbox unavailable.");return;}
+  const rows=data||[];
+  $i("intakeNewCount").textContent=rows.filter(x=>x.status==="new").length;
+  $i("intakeReviewCount").textContent=rows.filter(x=>x.status==="under_review").length;
+  $i("intakeUrgentCount").textContent=rows.filter(x=>["urgent","emergency"].includes(x.triage_level)).length;
+  $i("intakeClosedCount").textContent=rows.filter(x=>x.status==="closed").length;
+  if(!rows.length){const row=body.insertRow();const td=cell(row,"No intake requests have been recorded.");td.colSpan=8;return;}
+  rows.forEach(item=>{
+   const row=body.insertRow();
+   cell(row,stamp(item.created_at));cell(row,item.contact_name+" · "+item.contact_phone);
+   cell(row,item.channel.replaceAll("_"," "));cell(row,item.concern_summary);
+   const triageCell=cell(row,"");const triage=document.createElement("select");
+   [["unreviewed","Unreviewed"],["emergency","Emergency"],["urgent","Urgent"],["routine","Routine"],["administrative","Administrative"]].forEach(([v,l])=>triage.add(new Option(l,v)));
+   triage.value=item.triage_level;triageCell.appendChild(triage);
+   const statusCell=cell(row,"");const status=document.createElement("select");
+   [["new","New"],["under_review","Under review"],["referred","Referred"],["appointment_booked","Appointment booked"],["closed","Closed"]].forEach(([v,l])=>status.add(new Option(l,v)));
+   status.value=item.status;statusCell.appendChild(status);
+   cell(row,item.assigned_department);
+   const action=cell(row,"");const save=document.createElement("button");
+   save.type="button";save.className="logout-button";save.textContent="Save review";
+   save.addEventListener("click",async()=>{
+    const note=window.prompt("Enter the human review/action note (minimum 3 characters):");
+    if(!note||note.trim().length<3)return;
+    save.disabled=true;
+    const {error:updateError}=await supabaseClient.from("whatsapp_intake_requests").update({
+     triage_level:triage.value,status:status.value,reviewed_by:currentUser.id,
+     review_note:note.trim(),reviewed_at:new Date().toISOString(),updated_at:new Date().toISOString()
+    }).eq("id",item.id).eq("clinic_id",currentClinic.id);
+    if(updateError){message("Review could not be saved: "+updateError.message,true);save.disabled=false;return;}
+    message("Human triage review saved.");await loadWhatsappIntake();
+   });
+   action.appendChild(save);
+  });
+  message("Loaded "+rows.length+" intake request(s). Each request requires staff review.");
+ }
+ if(form)form.addEventListener("submit",async event=>{
+  event.preventDefault();
+  if(!currentClinic||!currentUser){message("Sign in to an authorised clinic workspace first.",true);return;}
+  if(!$i("intakeConsent").checked){message("Consent is required before recording this enquiry.",true);return;}
+  const name=$i("intakeContactName").value.trim();
+  const phone=$i("intakeContactPhone").value.trim();
+  const concern=$i("intakeConcernSummary").value.trim();
+  if(name.length<2||phone.length<7||concern.length<3){message("Check the contact name, phone number and concern summary.",true);return;}
+  const button=form.querySelector('button[type="submit"]');button.disabled=true;
+  const {error}=await supabaseClient.from("whatsapp_intake_requests").insert({
+   clinic_id:currentClinic.id,channel:$i("intakeChannel").value,contact_name:name,
+   contact_phone:phone,concern_summary:concern,consent_confirmed:true,
+   consent_confirmed_at:new Date().toISOString(),created_by:currentUser.id
+  });
+  button.disabled=false;
+  if(error){message("Could not save intake request: "+error.message,true);return;}
+  form.reset();message("Intake request saved. It is waiting for staff triage review.");
+  await loadWhatsappIntake();
+ });
+ $i("refreshWhatsappIntake")?.addEventListener("click",loadWhatsappIntake);
+ window.loadWhatsappIntake=loadWhatsappIntake;
 })();
