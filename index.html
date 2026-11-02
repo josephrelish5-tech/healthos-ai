@@ -1986,6 +1986,21 @@
                             </table>
                         </div>
 
+                        <section class="panel" id="revenueLeakageAuditPanel" hidden>
+                            <h3>Invoice-to-Bank Reconciliation &amp; Revenue Leakage Audit</h3>
+                            <p class="muted">Cross-checks performed services, invoice references, department receipts and recorded payments. Each flag requires Finance review; HealthOS AI does not automatically change invoices, payments or accounting balances.</p>
+                            <p id="revenueLeakageAuditMessage" class="message" role="status" aria-live="polite">Revenue audit findings will appear here.</p>
+                            <div class="table-wrap">
+                                <table>
+                                    <thead><tr>
+                                        <th>Risk</th><th>Finding</th><th>Reference / source</th>
+                                        <th>Expected</th><th>Observed</th><th>Status</th><th>Detected</th><th>Finance action</th>
+                                    </tr></thead>
+                                    <tbody id="revenueLeakageAuditRows"><tr><td colspan="8">Open Billing Review to run the audit.</td></tr></tbody>
+                                </table>
+                            </div>
+                        </section>
+
                         <p class="disclaimer" id="dashboardDisclaimer">
                             HealthOS AI is under development. Do not use this
                             prototype to make clinical decisions or process real
