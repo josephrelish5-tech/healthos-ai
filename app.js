@@ -2794,7 +2794,7 @@ async function loadStaffActivityTable(clinic) {
     const loadingRow = document.createElement("tr");
     const loadingCell = document.createElement("td");
 
-    loadingCell.colSpan = 6;
+    loadingCell.colSpan = 7;
     loadingCell.textContent = "Loading staff activity...";
     loadingRow.appendChild(loadingCell);
     tableBody.appendChild(loadingRow);
@@ -5897,7 +5897,7 @@ function openSection(sectionId, sectionName) {
                 const row = document.createElement("tr");
                 const cell = document.createElement("td");
 
-                cell.colSpan = 6;
+                cell.colSpan = 7;
                 cell.textContent =
                     "No medicine batches registered for this clinic.";
 
@@ -5963,6 +5963,17 @@ function openSection(sectionId, sectionName) {
                     statusCell.style.fontWeight = "bold";
                 }
 
+                const actionCell = addPharmacyCell(row, "");
+                const dispenseButton = document.createElement("button");
+                dispenseButton.type = "button"; dispenseButton.textContent = "Dispense";
+                dispenseButton.disabled = quantity < 1 || expiry < today;
+                dispenseButton.addEventListener("click", function () {
+                    if (dispensingBatch) {
+                        dispensingBatch.value = item.id;
+                        document.getElementById("pharmacyDispensingWorkspace").scrollIntoView({behavior:"smooth",block:"start"});
+                    }
+                });
+                actionCell.replaceChildren(dispenseButton);
                 pharmacyTableBody.appendChild(row);
             });
 
@@ -6019,7 +6030,7 @@ function openSection(sectionId, sectionName) {
                 const row = document.createElement("tr");
                 const cell = document.createElement("td");
 
-                cell.colSpan = 6;
+                cell.colSpan = 7;
                 cell.textContent =
                     "Inventory could not be loaded. Check your sign-in, clinic access, and database connection.";
 
@@ -6035,6 +6046,77 @@ function openSection(sectionId, sectionName) {
         }
     }
 
+    // PHARMACY DISPENSING WORKSPACE
+    const dispensingForm = document.getElementById("pharmacyDispensingForm");
+    const dispensingPatient = document.getElementById("pharmacyDispensingPatient");
+    const dispensingBatch = document.getElementById("pharmacyDispensingBatch");
+    const dispensingMessage = document.getElementById("pharmacyDispensingMessage");
+    const dispensingHistory = document.getElementById("pharmacyDispensingHistory");
+    function showDispensingMessage(message, isError) {
+        if (!dispensingMessage) return;
+        dispensingMessage.textContent = message;
+        dispensingMessage.style.color = isError ? "#b42318" : "#16794b";
+    }
+    async function loadPharmacyDispensingWorkspace() {
+        if (!dispensingForm) return;
+        try {
+            const context = getPharmacyContext();
+            const results = await Promise.all([
+                supabaseClient.from("patients").select("id, patient_number, first_name, last_name").eq("clinic_id", context.clinicId).order("first_name"),
+                supabaseClient.from("pharmacy_inventory").select("id, medicine_name, batch_number, quantity, expiry_date").eq("clinic_id", context.clinicId).order("expiry_date")
+            ]);
+            if (results[0].error) throw results[0].error;
+            if (results[1].error) throw results[1].error;
+            dispensingPatient.replaceChildren();
+            const p0 = document.createElement("option"); p0.value = ""; p0.textContent = "Select patient"; dispensingPatient.appendChild(p0);
+            (results[0].data || []).forEach(function (p) {
+                const o = document.createElement("option"); o.value = p.id;
+                o.textContent = (p.patient_number || "Patient") + " — " + [p.first_name,p.last_name].filter(Boolean).join(" ");
+                dispensingPatient.appendChild(o);
+            });
+            dispensingBatch.replaceChildren();
+            const b0 = document.createElement("option"); b0.value = ""; b0.textContent = "Select available, unexpired batch"; dispensingBatch.appendChild(b0);
+            (results[1].data || []).forEach(function (b) {
+                const o = document.createElement("option"); o.value = b.id;
+                o.textContent = b.medicine_name + " | Batch " + b.batch_number + " | Stock " + b.quantity + " | Expiry " + b.expiry_date;
+                o.disabled = Number(b.quantity) < 1 || b.expiry_date < pharmacyToday(); dispensingBatch.appendChild(o);
+            });
+            if (dispensingHistory) {
+                const h = await supabaseClient.from("pharmacy_dispensing_records").select("patient_id, medicine_name_snapshot, batch_number_snapshot, quantity_dispensed, dispensed_by, dispensed_at").eq("clinic_id", context.clinicId).eq("status", "dispensed").order("dispensed_at", {ascending:false}).limit(30);
+                if (h.error) throw h.error;
+                dispensingHistory.replaceChildren();
+                if (!h.data || !h.data.length) {
+                    const tr = document.createElement("tr"); const td = document.createElement("td"); td.colSpan = 6; td.textContent = "No dispensing records yet."; tr.appendChild(td); dispensingHistory.appendChild(tr);
+                } else {
+                    h.data.forEach(function (r) {
+                        const tr = document.createElement("tr");
+                        [new Date(r.dispensed_at).toLocaleString(),r.patient_id,r.medicine_name_snapshot,r.batch_number_snapshot,r.quantity_dispensed,r.dispensed_by].forEach(function (v) { addPharmacyCell(tr,v); });
+                        dispensingHistory.appendChild(tr);
+                    });
+                }
+            }
+        } catch (e) { console.error("Pharmacy dispensing load error:",e); showDispensingMessage(e.message || "Unable to load dispensing data.",true); }
+    }
+    if (dispensingForm) {
+        dispensingForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+            const button = document.getElementById("pharmacyDispensingSubmit");
+            if (button) { button.disabled = true; button.textContent = "Recording..."; }
+            try {
+                const context = getPharmacyContext();
+                const patientId = dispensingPatient.value; const inventoryId = dispensingBatch.value;
+                const quantity = Number(document.getElementById("pharmacyDispensingQuantity").value);
+                const notes = document.getElementById("pharmacyDispensingNotes").value.trim();
+                if (!patientId || !inventoryId) throw new Error("Select a patient and medicine batch.");
+                if (!Number.isInteger(quantity) || quantity < 1) throw new Error("Enter a whole-number quantity greater than zero.");
+                const result = await supabaseClient.rpc("dispense_pharmacy_medicine", {p_clinic_id:context.clinicId,p_inventory_id:inventoryId,p_patient_id:patientId,p_quantity:quantity,p_appointment_id:null,p_notes:notes || null});
+                if (result.error) throw result.error;
+                dispensingForm.reset(); showDispensingMessage("Dispensing recorded. Stock and movement history updated.",false);
+                await loadPharmacyInventory(); await loadPharmacyDispensingWorkspace();
+            } catch (e) { console.error("Pharmacy dispensing error:",e); showDispensingMessage(e.message || "Dispensing could not be recorded.",true); }
+            finally { if (button) { button.disabled = false; button.textContent = "Record Dispensing"; } }
+        });
+    }
     if (pharmacyForm) {
         pharmacyForm.addEventListener("submit", async function (event) {
             event.preventDefault();
@@ -6201,6 +6283,7 @@ function openSection(sectionId, sectionName) {
 
                 if (target === "pharmacy") {
                     void loadPharmacyInventory();
+                    void loadPharmacyDispensingWorkspace();
                 }
             });
         }
@@ -6209,6 +6292,7 @@ function openSection(sectionId, sectionName) {
     // Make the loader available for controlled internal use.
     window.loadHealthOSPharmacyInventory =
         loadPharmacyInventory;
+    window.loadHealthOSPharmacyDispensing = loadPharmacyDispensingWorkspace;
 
     console.log(
         "HealthOS Pharmacy inventory module initialized."
