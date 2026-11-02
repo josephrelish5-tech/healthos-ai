@@ -139,6 +139,11 @@ function showHealthOSView(viewId) {
             );
         });
     }
+    if (viewId === "posReconciliation" && typeof window.loadBankStatementImports === "function") {
+        window.loadBankStatementImports().catch(error => {
+            console.error("Bank statement panel failed:", error);
+        });
+    }
 }
 
 // Connect the sidebar to the page navigation.
@@ -6808,26 +6813,33 @@ function openSection(sectionId, sectionName) {
     }
 
     async function openBankStatementPanel() {
-        panel.hidden = true;
         if (!supabaseClient || !currentClinic || !currentUser) return;
+        panel.hidden = false;
+        const formArea = document.getElementById("bankStatementImportForm");
         const { data: allowed, error } = await supabaseClient.rpc(
             "can_import_bank_statements",
             { p_clinic_id: currentClinic.id }
         );
         if (error) {
             console.error("Bank statement import permission check failed:", error);
-            setImportMessage("Finance import permission could not be verified. Contact the administrator.", "error");
-            return;
+            if (formArea) formArea.hidden = true;
+            setImportMessage("Your import permission could not be verified. The bank statement panel is visible, but uploading is disabled. Contact the administrator.", "error");
+        } else if (allowed === true) {
+            if (formArea) formArea.hidden = false;
+            setImportMessage("Finance import access verified.", "success");
+        } else {
+            if (formArea) formArea.hidden = true;
+            setImportMessage("Your account can open this panel but does not currently have bank statement import permission. Ask the administrator to grant it.", "error");
         }
-        if (allowed !== true) return;
-        panel.hidden = false;
         try {
             await loadBankStatementData();
         } catch (loadError) {
             console.error("Bank statement history load failed:", loadError);
-            setImportMessage("Import history or statement rows could not load. Confirm finance view permissions.", "error");
+            setImportMessage("Import history could not load. Confirm bank statement view permissions for this account.", "error");
         }
     }
+
+    window.loadBankStatementImports = openBankStatementPanel;
 
     form.addEventListener("submit", async event => {
         event.preventDefault();
