@@ -63,7 +63,7 @@ function showHealthOSView(viewId) {
     const mainContent = document.getElementById("dashboard");
     if (!mainContent) return;
 
-    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "multiFacilityManagement", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
+    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "multiFacilityManagement", "aiAnalytics", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
     if (!allowedViews.includes(viewId)) {
         alert("This page is not available yet.");
         return;
@@ -79,7 +79,7 @@ function showHealthOSView(viewId) {
     const pageElements = mainContent.querySelectorAll(
         ":scope > .welcome, :scope > #dashboardMessage, :scope > .stats-grid, " +
         ":scope > #adminStaffDashboard, :scope > #patients, :scope > #appointments, " +
-        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #ussdDiagnostics, :scope > #multiFacilityManagement, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
+        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #ussdDiagnostics, :scope > #multiFacilityManagement, :scope > #aiAnalytics, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
         ":scope > #pharmacy, :scope > #reports"
     );
     pageElements.forEach(element => {
@@ -109,6 +109,7 @@ function showHealthOSView(viewId) {
     if (viewId === "patientRecordSharing" && typeof window.loadPatientRecordShares === "function") window.loadPatientRecordShares().catch(error => console.error("Patient record shares refresh failed:", error));
     if (viewId === "ussdDiagnostics" && typeof window.loadUssdDiagnosticRequests === "function") window.loadUssdDiagnosticRequests().catch(error => console.error("USSD diagnostic requests refresh failed:", error));
     if (viewId === "multiFacilityManagement" && typeof window.loadMultiFacilityManagement === "function") window.loadMultiFacilityManagement().catch(error => console.error("Multi-facility workspace refresh failed:", error));
+    if (viewId === "aiAnalytics" && typeof window.loadAIAnalytics === "function") window.loadAIAnalytics().catch(error => console.error("AI analytics refresh failed:", error));
 }
 
 document.querySelectorAll(".sidebar .nav-item").forEach(link => {
@@ -8821,3 +8822,71 @@ function openSection(sectionId, sectionName) {
  byId("facilityRefreshButton")?.addEventListener("click",()=>loadMultiFacilityManagement().catch(e=>setMessage("facilityLinkMessage",e.message,true)));
  window.loadMultiFacilityManagement=loadMultiFacilityManagement;
 })();
+ 
+// HEALTHOS AI: OPERATIONAL INTELLIGENCE & ANALYTICS
+(function initAIAnalytics(){
+ const $=id=>document.getElementById(id);
+ const money=value=>new Intl.NumberFormat("en-NG",{style:"currency",currency:"NGN",maximumFractionDigits:0}).format(Number(value)||0);
+ const num=value=>new Intl.NumberFormat("en-NG").format(Number(value)||0);
+ const dateKey=d=>{const x=new Date(d);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");};
+ const startOfDay=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x;};
+ const endOfDay=d=>{const x=startOfDay(d);x.setDate(x.getDate()+1);return x;};
+ const set=(id,value)=>{const el=$(id);if(el)el.textContent=value;};
+ const say=(message,error=false)=>{const el=$("aiAnalyticsMessage");if(el){el.textContent=message;el.className="message"+(error?" error":" success");}};
+ const cell=(row,value)=>{const td=document.createElement("td");td.textContent=value==null||value===""?"—":String(value);row.appendChild(td);};
+ function renderInsights(items){
+  const box=$("aiOperationalInsights");if(!box)return;box.replaceChildren();
+  items.forEach(item=>{const card=document.createElement("article");card.className="stat-card";const p=document.createElement("p");p.textContent=item.title;const h=document.createElement("h3");h.textContent=item.value;const note=document.createElement("p");note.className="muted";note.textContent=item.note;card.append(p,h,note);box.appendChild(card);});
+ }
+ async function loadAIAnalytics(){
+  if(!supabaseClient||!currentUser||!currentClinic){say("Sign in to an authorised clinic workspace first.",true);return;}
+  const clinicId=currentClinic.id,now=new Date(),todayStart=startOfDay(now),tomorrow=endOfDay(now),trendStart=new Date(todayStart);trendStart.setDate(trendStart.getDate()-6);
+  const isoStart=trendStart.toISOString(),isoTomorrow=tomorrow.toISOString();
+  say("Calculating clinic operational indicators…");
+  const results=await Promise.all([
+   supabaseClient.from("patients").select("id",{count:"exact",head:true}).eq("clinic_id",clinicId),
+   supabaseClient.from("appointments").select("id,scheduled_at,status").eq("clinic_id",clinicId).gte("scheduled_at",todayStart.toISOString()).lt("scheduled_at",isoTomorrow).limit(3000),
+   supabaseClient.from("billing_transactions").select("invoice_amount,amount_paid,payment_status,transaction_date").eq("clinic_id",clinicId).order("transaction_date",{ascending:false}).limit(5000),
+   supabaseClient.from("service_events").select("id,quantity,unit_price,event_status,performed_at").eq("clinic_id",clinicId).gte("performed_at",todayStart.toISOString()).lt("performed_at",isoTomorrow).in("event_status",["performed","verified"]).limit(3000),
+   supabaseClient.from("patient_queue").select("id,priority,status").eq("clinic_id",clinicId).not("status","in","(completed,cancelled)").limit(3000),
+   supabaseClient.from("hospital_beds").select("id,status").eq("clinic_id",clinicId).limit(3000),
+   supabaseClient.from("pharmacy_inventory").select("id,medicine_name,quantity,reorder_level,expiry_date").eq("clinic_id",clinicId).limit(5000),
+   supabaseClient.from("clinical_encounters").select("id,status,started_at").eq("clinic_id",clinicId).gte("started_at",todayStart.toISOString()).lt("started_at",isoTomorrow).limit(3000)
+  ]);
+  const failed=results.find(r=>r.error);if(failed)throw failed.error;
+  const patients=results[0].count||0,appointments=results[1].data||[],billing=results[2].data||[],services=results[3].data||[],queue=results[4].data||[],beds=results[5].data||[],stock=results[6].data||[],encounters=results[7].data||[];
+  const todaysBills=billing.filter(x=>x.transaction_date&&new Date(x.transaction_date)>=todayStart&&new Date(x.transaction_date)<tomorrow);
+  const collectedToday=todaysBills.reduce((n,x)=>n+Number(x.amount_paid||0),0);
+  const outstanding=billing.reduce((n,x)=>n+Math.max(0,Number(x.invoice_amount||0)-Number(x.amount_paid||0)),0);
+  const performedValue=services.reduce((n,x)=>n+(Number(x.quantity||0)*Number(x.unit_price||0)),0);
+  const waiting=queue.filter(x=>["waiting","triage","called"].includes(x.status));
+  const urgent=waiting.filter(x=>["urgent","emergency"].includes(x.priority));
+  const occupied=beds.filter(x=>x.status==="occupied").length;
+  const low=stock.filter(x=>Number(x.quantity||0)<=Number(x.reorder_level||0));
+  const expired=stock.filter(x=>x.expiry_date&&new Date(x.expiry_date)<todayStart);
+  const soon=stock.filter(x=>x.expiry_date&&new Date(x.expiry_date)>=todayStart&&new Date(x.expiry_date)<new Date(todayStart.getTime()+30*86400000));
+  set("aiPatientsTotal",num(patients));set("aiAppointmentsToday",num(appointments.length));set("aiRevenueToday",money(collectedToday));
+  set("aiOutstanding",money(outstanding));set("aiServicesToday",num(services.length));set("aiQueueWaiting",num(waiting.length));
+  set("aiBedsOccupied",num(occupied));set("aiLowStock",num(low.length));
+  const trend=$("aiRevenueTrendBody");trend.replaceChildren();
+  for(let offset=6;offset>=0;offset--){
+   const day=new Date(todayStart);day.setDate(day.getDate()-offset);const key=dateKey(day);
+   const rows=billing.filter(x=>x.transaction_date&&dateKey(x.transaction_date)===key);
+   const invoiced=rows.reduce((n,x)=>n+Number(x.invoice_amount||0),0),paid=rows.reduce((n,x)=>n+Number(x.amount_paid||0),0);
+   const tr=trend.insertRow();cell(tr,day.toLocaleDateString());cell(tr,num(rows.length));cell(tr,money(invoiced));cell(tr,money(paid));cell(tr,money(Math.max(0,invoiced-paid)));
+  }
+  const insights=[
+   {title:"Urgent / emergency queue",value:num(urgent.length),note:urgent.length?"Priority patients need prompt staff attention.":"No urgent or emergency priority entries currently in the active queue."},
+   {title:"Expired medicine batches",value:num(expired.length),note:expired.length?"Quarantine and review expired batches; do not dispense.":"No expired batch is currently recorded in this inventory result."},
+   {title:"Medicine expiring within 30 days",value:num(soon.length),note:soon.length?"Review near-expiry stock and plan safe use or supplier action.":"No batches recorded as expiring within 30 days."},
+   {title:"Low-stock medicine batches",value:num(low.length),note:low.length?"Review reorder needs against current demand and supplier lead time.":"No batch is currently at or below its recorded reorder level."},
+   {title:"Clinical encounters today",value:num(encounters.length),note:"Open and completed encounters started today."},
+   {title:"Services value today",value:money(performedValue),note:"Recorded performed/verified quantity multiplied by unit price; verify billing linkage."}
+  ];
+  renderInsights(insights);
+  say("Updated "+new Date().toLocaleTimeString()+". Loaded "+num(billing.length)+" billing records for financial calculations; patient count uses the database exact count.");
+ }
+ $("aiAnalyticsRefresh")?.addEventListener("click",()=>loadAIAnalytics().catch(e=>say("Analytics could not be refreshed: "+(e.message||"Unknown error"),true)));
+ window.loadAIAnalytics=loadAIAnalytics;
+})();
+
