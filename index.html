@@ -1690,6 +1690,12 @@
    <article class="stat-card"><p>Resolved Alerts</p><h3 id="clinicalResolvedCount">0</h3><p class="muted">Clinician-reviewed alerts.</p></article>
   </div>
   <!-- END CLINICAL RISK MONITORING -->
+  <section class="panel" id="clinicalAllergySafetyPanel">
+   <h4>Patient Allergy Safety Check</h4>
+   <p class="muted">Allergy records linked to the selected encounter's patient. Confirm each record with the patient before clinical decisions.</p>
+   <p id="clinicalAllergySafetyMessage" class="message" role="status" aria-live="polite">Select an encounter to review recorded allergies.</p>
+   <div class="table-wrap"><table><thead><tr><th>Allergen</th><th>Recorded reaction</th><th>Severity</th><th>Record status</th></tr></thead><tbody id="clinicalAllergySafetyBody"><tr><td colspan="4">No patient selected.</td></tr></tbody></table></div>
+  </section>
   <button type="button" id="runClinicalSafetyReview" class="primary-button">Review Latest Observations</button>
   <p id="clinicalDecisionSupportMessage" class="message" role="status" aria-live="polite">Select an encounter above to review its observations.</p>
   <div class="table-wrap"><table><thead><tr><th>Detected</th><th>Rule</th><th>Severity</th><th>Observed value</th><th>Clinical prompt</th><th>Status</th><th>Review action</th></tr></thead><tbody id="clinicalSafetyAlertsBody"><tr><td colspan="7">No alerts loaded.</td></tr></tbody></table></div>
