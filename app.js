@@ -63,7 +63,7 @@ function showHealthOSView(viewId) {
     const mainContent = document.getElementById("dashboard");
     if (!mainContent) return;
 
-    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
+    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "multiFacilityManagement", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
     if (!allowedViews.includes(viewId)) {
         alert("This page is not available yet.");
         return;
@@ -79,7 +79,7 @@ function showHealthOSView(viewId) {
     const pageElements = mainContent.querySelectorAll(
         ":scope > .welcome, :scope > #dashboardMessage, :scope > .stats-grid, " +
         ":scope > #adminStaffDashboard, :scope > #patients, :scope > #appointments, " +
-        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #ussdDiagnostics, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
+        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #ussdDiagnostics, :scope > #multiFacilityManagement, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
         ":scope > #pharmacy, :scope > #reports"
     );
     pageElements.forEach(element => {
@@ -8747,4 +8747,76 @@ function openSection(sectionId, sectionName) {
   form.reset();say("Diagnostic request registered. It is awaiting staff verification.");await loadUssdDiagnosticRequests();
  });
  window.loadUssdDiagnosticRequests=loadUssdDiagnosticRequests;
+})();
+
+
+// HEALTHOS AI: MULTI-FACILITY MANAGEMENT WORKFLOWS
+(function () {
+ const byId = id => document.getElementById(id);
+ const setMessage = (id, message, error=false) => {
+  const el=byId(id); if(el){el.textContent=message;el.className="message"+(error?" error":" success");}
+ };
+ const addCell=(tr,value)=>{const td=document.createElement("td");td.textContent=value==null||value===""?"—":String(value);tr.appendChild(td);};
+ let facilitiesLoaded=false;
+ async function loadMultiFacilityManagement(){
+  if(!supabaseClient||!currentUser||!currentClinic) return;
+  if(!managementVerified){setMessage("facilityOrganisationMessage","Management verification is required before managing facilities.",true);return;}
+  const [orgsResult, clinicsResult] = await Promise.all([
+   supabaseClient.from("healthcare_organizations").select("id,organization_name,organization_code,status").eq("owner_user_id",currentUser.id).order("created_at",{ascending:true}),
+   supabaseClient.from("clinics").select("id,name").eq("owner_user_id",currentUser.id).order("created_at",{ascending:true})
+  ]);
+  if(orgsResult.error) throw orgsResult.error;
+  if(clinicsResult.error) throw clinicsResult.error;
+  const orgs=orgsResult.data||[], clinics=clinicsResult.data||[];
+  byId("facilityOrgCount").textContent=orgs.length;
+  byId("facilityOrganisationSelect").replaceChildren(new Option("Select organisation",""));
+  orgs.forEach(o=>byId("facilityOrganisationSelect").add(new Option(o.organization_name,o.id)));
+  byId("facilityClinicSelect").replaceChildren(new Option("Select an owned clinic workspace",""));
+  clinics.forEach(c=>byId("facilityClinicSelect").add(new Option(c.name,c.id)));
+  const {data: links,error}=await supabaseClient.from("organization_facilities").select("id,organization_id,clinic_id,facility_name,facility_code,facility_type,status,healthcare_organizations(organization_name),clinics(name)").order("created_at",{ascending:false});
+  if(error) throw error;
+  const rows=links||[];
+  byId("facilityLinkedCount").textContent=rows.length;
+  byId("facilityActiveCount").textContent=rows.filter(x=>x.status==="active").length;
+  byId("facilityInactiveCount").textContent=rows.filter(x=>x.status!=="active").length;
+  const body=byId("facilityRegisterBody");body.replaceChildren();
+  if(!rows.length){const tr=document.createElement("tr");const td=document.createElement("td");td.colSpan=6;td.textContent="No facilities linked yet. Create an organisation to link your current clinic.";tr.appendChild(td);body.appendChild(tr);}
+  rows.forEach(x=>{const tr=document.createElement("tr");addCell(tr,x.healthcare_organizations?.organization_name);addCell(tr,x.facility_name);addCell(tr,x.facility_code);addCell(tr,x.facility_type?.replaceAll("_"," "));addCell(tr,x.clinics?.name);addCell(tr,x.status);body.appendChild(tr);});
+  facilitiesLoaded=true;
+ }
+ byId("facilityOrganisationForm")?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  if(!managementVerified||!currentUser||!currentClinic){setMessage("facilityOrganisationMessage","Sign in and complete management verification first.",true);return;}
+  const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true;
+  try{
+   const name=byId("facilityOrganisationName").value.trim();
+   const code=byId("facilityOrganisationCode").value.trim()||null;
+   const {data:org,error:orgError}=await supabaseClient.from("healthcare_organizations").insert({organization_name:name,organization_code:code,owner_user_id:currentUser.id}).select("id,organization_name").single();
+   if(orgError) throw orgError;
+   const {error:linkError}=await supabaseClient.from("organization_facilities").insert({organization_id:org.id,clinic_id:currentClinic.id,facility_name:currentClinic.name,facility_code:"MAIN",facility_type:"hospital"});
+   if(linkError) throw new Error("Organisation was created, but linking the current facility failed: "+linkError.message);
+   byId("facilityOrganisationForm").reset();
+   setMessage("facilityOrganisationMessage","Organisation created and current clinic linked as its first facility.");
+   await loadMultiFacilityManagement();
+  }catch(error){setMessage("facilityOrganisationMessage",error.message||"Could not create organisation.",true);}
+  finally{button.disabled=false;}
+ });
+ byId("facilityLinkForm")?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  if(!managementVerified||!currentUser){setMessage("facilityLinkMessage","Management verification is required.",true);return;}
+  const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true;
+  try{
+   const clinicId=byId("facilityClinicSelect").value;
+   const {data:clinic,error:clinicError}=await supabaseClient.from("clinics").select("id,name").eq("id",clinicId).eq("owner_user_id",currentUser.id).single();
+   if(clinicError) throw new Error("Select a clinic workspace that you own.");
+   const {error}=await supabaseClient.from("organization_facilities").insert({organization_id:byId("facilityOrganisationSelect").value,clinic_id:clinic.id,facility_name:byId("facilityDisplayName").value.trim(),facility_code:byId("facilityCode").value.trim()||null,facility_type:byId("facilityType").value});
+   if(error) throw error;
+   byId("facilityLinkForm").reset();
+   setMessage("facilityLinkMessage","Facility successfully linked to the organisation.");
+   await loadMultiFacilityManagement();
+  }catch(error){setMessage("facilityLinkMessage",error.message||"Could not link facility.",true);}
+  finally{button.disabled=false;}
+ });
+ byId("facilityRefreshButton")?.addEventListener("click",()=>loadMultiFacilityManagement().catch(e=>setMessage("facilityLinkMessage",e.message,true)));
+ window.loadMultiFacilityManagement=loadMultiFacilityManagement;
 })();
