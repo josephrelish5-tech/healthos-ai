@@ -8867,6 +8867,55 @@ function openSection(sectionId, sectionName) {
   button.disabled=false;if(error){msg(error.message,true);return;}allergyForm.reset();msg("Allergy record saved.");await loadClinicalRecords();
  });
  ["clinicalNoteEncounter","clinicalVitalsEncounter"].forEach(id=>$c(id)?.addEventListener("change",()=>{selectedEncounter=$c(id).value;void loadEncounterDetails();}));
+ let scribeRecorder=null,scribeChunks=[],scribeRecordedBlob=null;
+ const audioStatus=message=>{const el=$c("scribeAudioStatus");if(el)el.textContent=message;};
+ const audioStart=$c("scribeRecordStart"),audioStop=$c("scribeRecordStop"),audioInput=$c("scribeAudioFile"),transcribeButton=$c("scribeTranscribeButton");
+ audioStart?.addEventListener("click",async()=>{
+  if(!$c("scribeConsent").checked||!$c("scribeAudioConsent").checked){audioStatus("Confirm both documentation consent and explicit audio-processing consent before recording.");return;}
+  if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){audioStatus("Audio recording is not supported by this browser. Select an audio file or enter an approved transcript.");return;}
+  try{
+   const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+   const mimeType=["audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus"].find(type=>MediaRecorder.isTypeSupported(type));
+   scribeRecorder=new MediaRecorder(stream,mimeType?{mimeType}:undefined);scribeChunks=[];scribeRecordedBlob=null;
+   scribeRecorder.ondataavailable=event=>{if(event.data&&event.data.size)scribeChunks.push(event.data);};
+   scribeRecorder.onerror=()=>{stream.getTracks().forEach(track=>track.stop());audioStatus("Recording failed. Select an audio file or enter an approved transcript.");};
+   scribeRecorder.onstop=()=>{scribeRecordedBlob=new Blob(scribeChunks,{type:scribeRecorder.mimeType||"audio/webm"});stream.getTracks().forEach(track=>track.stop());audioStatus("Recording ready ("+Math.round(scribeRecordedBlob.size/1024)+" KB). Select Transcribe & prepare note when ready.");};
+   scribeRecorder.start();audioStart.disabled=true;if(audioStop)audioStop.disabled=false;audioStatus("Recording consultation audio. Press Stop recording when finished.");
+  }catch(error){audioStatus("Microphone access was not granted. Check browser permission or select an audio file.");}
+ });
+ audioStop?.addEventListener("click",()=>{if(scribeRecorder&&scribeRecorder.state!=="inactive"){scribeRecorder.stop();audioStop.disabled=true;audioStart.disabled=false;}});
+ audioInput?.addEventListener("change",()=>{scribeRecordedBlob=null;audioStatus(audioInput.files?.[0]?"Audio file selected. Confirm consent before transcription.":"No audio file selected.");});
+ transcribeButton?.addEventListener("click",async()=>{
+  if(!currentClinic||!currentUser){audioStatus("Sign in to the clinic workspace before using the Medical Scribe.");return;}
+  if(!$c("scribeConsent").checked||!$c("scribeAudioConsent").checked){audioStatus("Confirm both documentation consent and explicit audio-processing consent before transcription.");return;}
+  const encounterId=$c("scribeEncounterSelect").value;
+  const encounter=encounters.find(x=>x.id===encounterId&&x.clinician_id===currentUser.id&&["open","in_progress"].includes(x.status));
+  if(!encounter){audioStatus("Select an open encounter assigned to your account.");return;}
+  const selectedFile=audioInput?.files?.[0];
+  const audioBlob=selectedFile||scribeRecordedBlob;
+  if(!audioBlob){audioStatus("Record audio or select an audio file first.");return;}
+  if(audioBlob.size>20*1024*1024){audioStatus("Audio file exceeds the 20 MB limit. Use a shorter recording.");return;}
+  if(!audioBlob.type||!audioBlob.type.startsWith("audio/")){audioStatus("Choose a supported audio file.");return;}
+  const button=transcribeButton;button.disabled=true;audioStatus("Checking clinic permissions and securely processing audio. Please wait.");
+  try{
+   const formData=new FormData();
+   formData.append("clinic_id",currentClinic.id);formData.append("encounter_id",encounter.id);
+   formData.append("consent_confirmed","true");formData.append("audio_processing_consent","true");
+   formData.append("note_type",$c("scribeNoteType").value);
+   formData.append("audio",audioBlob,selectedFile?.name||"consultation-audio.webm");
+   const {data,error}=await supabaseClient.functions.invoke("clinical-scribe-assist",{body:formData});
+   if(error){audioStatus(error.message||"Secure transcription could not be completed. Check provider configuration and clinic permissions.");return;}
+   if(!data?.transcript||!data?.draft_note){audioStatus("The transcription service returned an incomplete response. No draft was saved.");return;}
+   $c("scribeTranscript").value=data.transcript;
+   $c("scribeEditedNote").value=data.draft_note;
+   $c("scribeSourceType").value="approved_transcription_service";
+   $c("scribeReviewConfirm").checked=false;
+   audioStatus("Transcript and AI note draft prepared. Listen/read the source, correct the transcript and personally edit the note before saving.");
+   scribeMessage("AI-assisted draft prepared for clinician review only. Nothing has been signed or added to the medical record.");
+  }catch(error){audioStatus("Secure transcription failed. No audio was saved in HealthOS AI. Please try again or enter an approved transcript manually.");}
+  finally{button.disabled=false;}
+ });
+
  const scribeForm=$c("clinicalScribeForm");
  if(scribeForm)scribeForm.addEventListener("submit",async ev=>{
   ev.preventDefault();
@@ -8877,17 +8926,18 @@ function openSection(sectionId, sectionName) {
   const edited=$c("scribeEditedNote").value.trim();
   if(!encounter){scribeMessage("Select an open encounter assigned to your account.",true);return;}
   if(!$c("scribeConsent").checked){scribeMessage("Confirm patient consent/authorisation before saving.",true);return;}
+  if(!$c("scribeReviewConfirm").checked){scribeMessage("Confirm that you personally reviewed and corrected the transcript and note before saving.",true);return;}
   if(!transcript||!edited){scribeMessage("Enter the transcript and the clinician-reviewed note.",true);return;}
   const button=scribeForm.querySelector('button[type="submit"]');button.disabled=true;
   const {error}=await supabaseClient.from("clinical_scribe_drafts").insert({
    clinic_id:currentClinic.id,encounter_id:encounter.id,patient_id:encounter.patient_id,
-   clinician_id:currentUser.id,source_type:"manual_transcript",consent_confirmed:true,
+   clinician_id:currentUser.id,source_type:$c("scribeSourceType").value,consent_confirmed:true,
    consent_confirmed_at:new Date().toISOString(),transcript_text:transcript,
    clinician_edited_note:edited,note_type:$c("scribeNoteType").value
   });
   button.disabled=false;
   if(error){scribeMessage(error.message,true);return;}
-  $c("scribeTranscript").value="";$c("scribeEditedNote").value="";$c("scribeConsent").checked=false;
+  $c("scribeTranscript").value="";$c("scribeEditedNote").value="";$c("scribeConsent").checked=false;$c("scribeAudioConsent").checked=false;$c("scribeReviewConfirm").checked=false;$c("scribeSourceType").value="manual_transcript";
   scribeMessage("Scribe draft saved. Review it below before adding it to the medical record.");
   selectedEncounter=encounter.id;
   await loadClinicalRecords();
