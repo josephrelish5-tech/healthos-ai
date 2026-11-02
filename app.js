@@ -6434,7 +6434,9 @@ function openSection(sectionId, sectionName) {
     const button = document.getElementById("posReceiptUploadButton");
     const rows = document.getElementById("posReceiptRows");
     const bucket = "pos-receipt-evidence";
-    let activeCapabilities = {};
+    // Reuse the authenticated user's capabilities loaded before this module initializes.
+    // Without this, navigation calls loadReceipts() with an empty object and hides Accept.
+    let activeCapabilities = transactionCapabilities || {};
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
     function setMessage(text, type) {
