@@ -8766,7 +8766,7 @@ function openSection(sectionId, sectionName) {
     const row=vitalTrendBody.insertRow();cell(row,"Encounter details unavailable.");
    }else{
     const {data:vitalHistory,error:vitalHistoryError}=await supabaseClient.from("patient_vitals")
-     .select("recorded_at,systolic_bp,diastolic_bp,pulse_bpm,temperature_c,respiratory_rate,oxygen_saturation,pain_score")
+     .select("recorded_at,systolic_bp,diastolic_bp,pulse_bpm,temperature_c,respiratory_rate,oxygen_saturation,weight_kg,height_cm,pain_score")
      .eq("clinic_id",currentClinic.id).eq("patient_id",encounter.patient_id)
      .order("recorded_at",{ascending:false}).limit(20);
     if(vitalHistoryError){
@@ -8779,7 +8779,7 @@ function openSection(sectionId, sectionName) {
      vitalHistory.forEach(item=>{
       const row=vitalTrendBody.insertRow();
       const bp=item.systolic_bp!=null||item.diastolic_bp!=null?[item.systolic_bp??"—",item.diastolic_bp??"—"].join("/"):"—";
-      [when(item.recorded_at),bp,item.pulse_bpm??"—",item.temperature_c!=null?item.temperature_c+" °C":"—",item.respiratory_rate??"—",item.oxygen_saturation!=null?item.oxygen_saturation+"%":"—",item.pain_score??"—"].forEach(value=>cell(row,value));
+      const bmi=item.weight_kg!=null&&item.height_cm!=null&&Number(item.height_cm)>0?(Number(item.weight_kg)/Math.pow(Number(item.height_cm)/100,2)).toFixed(1):"—";\n      [when(item.recorded_at),bp,item.pulse_bpm??"—",item.temperature_c!=null?item.temperature_c+" °C":"—",item.respiratory_rate??"—",item.oxygen_saturation!=null?item.oxygen_saturation+"%":"—",item.weight_kg!=null?item.weight_kg+" kg":"—",item.height_cm!=null?item.height_cm+" cm":"—",bmi,item.pain_score??"—"].forEach(value=>cell(row,value));
      });
      if(vitalTrendMessage){vitalTrendMessage.textContent=vitalHistory.length+" recent observation(s) shown, newest first. Compare with prior readings and assess clinically.";vitalTrendMessage.className="message";}
     }
