@@ -6468,12 +6468,26 @@ function openSection(sectionId, sectionName) {
         if (!supabaseClient || !currentClinic || !currentUser) return;
         rows.replaceChildren();
         const { data, error } = await supabaseClient.from("pos_receipts")
-            .select("id,created_at,payment_provider,transaction_reference,amount,ocr_status,source_file_path,payment_method,invoice_reference,capture_channel,acceptance_status")
+            .select("id,created_at,payment_provider,transaction_reference,amount,ocr_status,source_file_path,payment_method,invoice_reference,capture_channel,acceptance_status,captured_department,uploaded_by,accepted_by,accepted_at,reconciliation_status")
             .eq("clinic_id", currentClinic.id)
             .order("created_at", { ascending: false }).limit(50);
         if (error) throw error;
+        const adminAuditView = capabilities && capabilities.scope === "hospital";
+        const headerRow = document.querySelector("#posReconciliation thead tr");
+        const auditHeaders = ["Captured department", "Captured by", "Accepted by", "Accepted at", "Reconciliation"];
+        if (headerRow) {
+            headerRow.querySelectorAll("[data-admin-audit-column]").forEach(node => node.remove());
+            if (adminAuditView) {
+                auditHeaders.forEach(label => {
+                    const th = document.createElement("th");
+                    th.textContent = label;
+                    th.setAttribute("data-admin-audit-column", "true");
+                    headerRow.appendChild(th);
+                });
+            }
+        }
         if (!data || !data.length) {
-            rows.innerHTML = '<tr><td colspan="7">No transactions recorded yet.</td></tr>';
+            rows.innerHTML = '<tr><td colspan="' + (adminAuditView ? "12" : "7") + '">No transactions recorded yet.</td></tr>';
             return;
         }
         data.forEach(record => {
@@ -6545,6 +6559,21 @@ function openSection(sectionId, sectionName) {
                 acceptanceCell.appendChild(acceptButton);
             }
             tr.appendChild(acceptanceCell);
+            if (adminAuditView) {
+                const auditValues = [
+                    record.captured_department || "—",
+                    record.uploaded_by || "—",
+                    record.accepted_by || "—",
+                    record.accepted_at ? new Date(record.accepted_at).toLocaleString() : "—",
+                    record.reconciliation_status || "unmatched"
+                ];
+                auditValues.forEach(value => {
+                    const auditCell = document.createElement("td");
+                    auditCell.textContent = value;
+                    auditCell.setAttribute("data-admin-audit-column", "true");
+                    tr.appendChild(auditCell);
+                });
+            }
             rows.appendChild(tr);
         });
     }
