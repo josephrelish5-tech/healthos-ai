@@ -8576,7 +8576,7 @@ function openSection(sectionId, sectionName) {
  $v("adminVoiceStart")?.addEventListener("click",()=>{
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SpeechRecognition){$v("adminVoiceMicStatus").textContent="Speech recognition is not supported by this browser. Type the original message instead.";return;}
-  if(!$v("adminVoiceReviewConfirm").checked){$v("adminVoiceMicStatus").textContent="First confirm you understand the microphone and human-review notice.";return;}
+  if(!$v("adminVoiceMicConsent").checked){$v("adminVoiceMicStatus").textContent="Confirm the microphone privacy notice before starting speech recognition.";return;}
   recognition=new SpeechRecognition();recognition.lang=langCode[$v("adminVoiceLanguage").value]||"en-NG";
   recognition.continuous=true;recognition.interimResults=true;
   const source=$v("adminVoiceSourceText");let finalText=source.value.trim();
@@ -8610,7 +8610,7 @@ function openSection(sectionId, sectionName) {
   });
   button.disabled=false;
   if(error){say("Could not save record: "+error.message,true);return;}
-  form.reset();$v("adminVoiceMicStatus").textContent="Microphone is off. You can type the original message instead.";
+  form.reset();$v("adminVoiceMicStatus").textContent="Microphone is off. You can type the original message instead.";$v("adminVoiceMicConsent").checked=false;
   say("Administrative communication saved as a draft. It is not yet approved.");await loadAdminVoiceTranslations();
  });
  $v("refreshAdminVoice")?.addEventListener("click",loadAdminVoiceTranslations);
