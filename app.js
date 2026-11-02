@@ -7667,10 +7667,12 @@ function openSection(sectionId, sectionName) {
     if (!adjustmentForm || !locationForm || !transferForm) return;
 
     function context() {
-        if (!window.supabaseClient || !window.currentUser || !window.currentClinic) {
+        if (typeof supabaseClient === "undefined" || !supabaseClient ||
+            typeof currentUser === "undefined" || !currentUser ||
+            typeof currentClinic === "undefined" || !currentClinic) {
             throw new Error("Sign in and select a clinic before managing pharmacy stock.");
         }
-        return {clinicId: window.currentClinic.id, userId: window.currentUser.id};
+        return {clinicId: currentClinic.id, userId: currentUser.id};
     }
     function say(text, error) {
         if (!message) return;
