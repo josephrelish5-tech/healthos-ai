@@ -8193,3 +8193,111 @@ function openSection(sectionId, sectionName) {
     });
     window.loadHealthOSPatientFlow=loadPatientFlow;
 })();
+
+
+// ============================================================
+// HEALTHOS AI: CLINICAL MANAGEMENT AND ELECTRONIC MEDICAL RECORDS
+// ============================================================
+(function initHealthOSClinicalRecords(){
+ const $c=id=>document.getElementById(id);
+ const msg=(message,error=false)=>{const el=$c("clinicalRecordsMessage");if(el){el.textContent=message;el.className="message"+(error?" error":" success");}};
+ const patientName=p=>[p.patient_number,p.first_name,p.last_name].filter(Boolean).join(" — ");
+ const when=v=>v?new Date(v).toLocaleString():"—";
+ const cell=(row,value)=>{const td=document.createElement("td");td.textContent=value==null?"—":String(value);row.appendChild(td);return td;};
+ const numberOrNull=id=>{const v=$c(id).value;return v===""?null:Number(v);};
+ let patients=[],encounters=[],selectedEncounter=null;
+ async function loadClinicalRecords(){
+  if(!supabaseClient||!currentClinic||!currentClinic.id)return;
+  try{
+   const clinicId=currentClinic.id;
+   const [p,e,n,v,a]=await Promise.all([
+    supabaseClient.from("patients").select("id,patient_number,first_name,last_name").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(500),
+    supabaseClient.from("clinical_encounters").select("id,patient_id,appointment_id,encounter_number,encounter_type,status,chief_complaint,started_at,clinician_id").eq("clinic_id",clinicId).order("started_at",{ascending:false}).limit(150),
+    supabaseClient.from("clinical_notes").select("id,encounter_id,note_type,note_text,status,author_id,created_at").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(250),
+    supabaseClient.from("patient_vitals").select("id,encounter_id,patient_id,temperature_c,systolic_bp,diastolic_bp,pulse_bpm,respiratory_rate,oxygen_saturation,weight_kg,recorded_at").eq("clinic_id",clinicId).order("recorded_at",{ascending:false}).limit(250),
+    supabaseClient.from("patient_allergies").select("id,patient_id,allergen,reaction,severity,status,created_at").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(250)
+   ]);
+   for(const x of [p,e,n,v,a])if(x.error)throw x.error;
+   patients=p.data||[];encounters=e.data||[];
+   const pmap=new Map(patients.map(x=>[x.id,patientName(x)]));
+   const fill=(id,rows,label,empty)=>{const el=$c(id);if(!el)return;const old=el.value;el.replaceChildren(new Option(empty,""));rows.forEach(x=>el.add(new Option(label(x),x.id)));if(rows.some(x=>x.id===old))el.value=old;};
+   fill("clinicalPatientSelect",patients,patientName,"Select patient");
+   fill("clinicalAllergyPatient",patients,patientName,"Select patient");
+   const active=encounters.filter(x=>["open","in_progress"].includes(x.status));
+   fill("clinicalNoteEncounter",active,x=>x.encounter_number+" — "+(pmap.get(x.patient_id)||"Patient"),"Select an open encounter");
+   fill("clinicalVitalsEncounter",active,x=>x.encounter_number+" — "+(pmap.get(x.patient_id)||"Patient"),"Select an open encounter");
+   const appt=$c("clinicalAppointmentSelect");
+   if(appt){
+    const {data,error}=await supabaseClient.from("appointments").select("id,patient_id,scheduled_at,reason,status").eq("clinic_id",clinicId).in("status",["scheduled","checked_in"]).order("scheduled_at",{ascending:true}).limit(250);
+    if(error)throw error;const old=appt.value;appt.replaceChildren(new Option("No linked appointment",""));
+    (data||[]).forEach(x=>appt.add(new Option((pmap.get(x.patient_id)||"Patient")+" — "+when(x.scheduled_at)+" — "+(x.reason||""),x.id)));
+    if((data||[]).some(x=>x.id===old))appt.value=old;
+   }
+   $c("clinicalOpenCount").textContent=active.length;
+   $c("clinicalDraftCount").textContent=(n.data||[]).filter(x=>x.status==="draft").length;
+   const today=new Date();today.setHours(0,0,0,0);
+   $c("clinicalVitalsCount").textContent=(v.data||[]).filter(x=>new Date(x.recorded_at)>=today).length;
+   const eb=$c("clinicalEncountersBody");eb.replaceChildren();
+   if(!encounters.length){const r=eb.insertRow();cell(r,"No clinical encounters recorded.");}
+   encounters.forEach(x=>{const r=eb.insertRow();[x.encounter_number,pmap.get(x.patient_id)||"Patient",x.encounter_type.replaceAll("_"," "),when(x.started_at),x.status].forEach(y=>cell(r,y));const td=cell(r,"");const b=document.createElement("button");b.type="button";b.className="logout-button";b.textContent="Open";b.addEventListener("click",()=>{selectedEncounter=x.id;$c("clinicalNoteEncounter").value=x.id;$c("clinicalVitalsEncounter").value=x.id;void loadEncounterDetails();});td.appendChild(b);});
+   const ab=$c("clinicalAllergiesBody");ab.replaceChildren();
+   if(!(a.data||[]).length){const r=ab.insertRow();cell(r,"No allergy records.");}
+   (a.data||[]).forEach(x=>{const r=ab.insertRow();[pmap.get(x.patient_id)||"Patient",x.allergen,x.reaction||"—",x.severity,x.status].forEach(y=>cell(r,y));});
+   msg("Clinical records loaded. Access is controlled by clinic permissions.");
+   await loadEncounterDetails();
+  }catch(err){console.error("Clinical records load:",err);msg("Could not load clinical records: "+(err.message||"Check clinical-record permissions."),true);}
+ }
+ async function loadEncounterDetails(){
+  const id=selectedEncounter||$c("clinicalNoteEncounter").value||$c("clinicalVitalsEncounter").value;
+  if(!id)return;
+  selectedEncounter=id;
+  const [notes,vitals]=await Promise.all([
+   supabaseClient.from("clinical_notes").select("id,note_type,note_text,status,author_id,created_at").eq("clinic_id",currentClinic.id).eq("encounter_id",id).order("created_at",{ascending:false}),
+   supabaseClient.from("patient_vitals").select("temperature_c,systolic_bp,diastolic_bp,pulse_bpm,respiratory_rate,oxygen_saturation,weight_kg,recorded_at").eq("clinic_id",currentClinic.id).eq("encounter_id",id).order("recorded_at",{ascending:false}).limit(50)
+  ]);
+  if(notes.error||vitals.error){msg((notes.error||vitals.error).message,true);return;}
+  const nb=$c("clinicalNotesBody");nb.replaceChildren();
+  if(!notes.data.length){const r=nb.insertRow();cell(r,"No notes for this encounter.");}
+  notes.data.forEach(x=>{const r=nb.insertRow();[when(x.created_at),x.note_type,x.note_text.length>220?x.note_text.slice(0,220)+"…":x.note_text,x.status].forEach(y=>cell(r,y));const td=cell(r,"");if(x.status==="draft"&&x.author_id===currentUser.id){const b=document.createElement("button");b.type="button";b.className="logout-button";b.textContent="Sign note";b.addEventListener("click",async()=>{if(!confirm("Sign this note? Signed notes cannot be edited."))return;b.disabled=true;const {error}=await supabaseClient.from("clinical_notes").update({status:"signed"}).eq("id",x.id).eq("clinic_id",currentClinic.id);if(error){msg(error.message,true);b.disabled=false;}else{msg("Note signed and locked.");await loadClinicalRecords();}});td.appendChild(b);}});
+  const vb=$c("clinicalVitalsBody");vb.replaceChildren();
+  if(!vitals.data.length){const r=vb.insertRow();cell(r,"No vital signs recorded for this encounter.");}
+  vitals.data.forEach(x=>{const r=vb.insertRow();[when(x.recorded_at),x.temperature_c??"—",(x.systolic_bp??"—")+"/"+(x.diastolic_bp??"—"),x.pulse_bpm??"—",x.respiratory_rate??"—",x.oxygen_saturation??"—",x.weight_kg??"—"].forEach(y=>cell(r,y));});
+ }
+ const encounterForm=$c("clinicalEncounterForm");
+ if(encounterForm)encounterForm.addEventListener("submit",async ev=>{
+  ev.preventDefault();if(!currentClinic||!currentUser)return;
+  const patientId=$c("clinicalPatientSelect").value;if(!patients.some(p=>p.id===patientId)){msg("Select a registered patient.",true);return;}
+  const button=encounterForm.querySelector('button[type="submit"]');button.disabled=true;
+  const ref="ENC-"+new Date().toISOString().slice(0,10).replaceAll("-","")+"-"+Math.random().toString(36).slice(2,7).toUpperCase();
+  const {error}=await supabaseClient.from("clinical_encounters").insert({clinic_id:currentClinic.id,patient_id:patientId,appointment_id:$c("clinicalAppointmentSelect").value||null,encounter_number:ref,encounter_type:$c("clinicalEncounterType").value,chief_complaint:$c("clinicalChiefComplaint").value.trim(),clinician_id:currentUser.id});
+  button.disabled=false;if(error){msg(error.message,true);return;}encounterForm.reset();msg("Clinical encounter opened: "+ref);await loadClinicalRecords();
+ });
+ const noteForm=$c("clinicalNoteForm");
+ if(noteForm)noteForm.addEventListener("submit",async ev=>{
+  ev.preventDefault();const id=$c("clinicalNoteEncounter").value;if(!id){msg("Select an open encounter.",true);return;}
+  const button=noteForm.querySelector('button[type="submit"]');button.disabled=true;
+  const {error}=await supabaseClient.from("clinical_notes").insert({clinic_id:currentClinic.id,encounter_id:id,note_type:$c("clinicalNoteType").value,note_text:$c("clinicalNoteText").value.trim(),author_id:currentUser.id});
+  button.disabled=false;if(error){msg(error.message,true);return;} $c("clinicalNoteText").value="";msg("Clinical note saved as a draft. It is not signed.");selectedEncounter=id;await loadClinicalRecords();
+ });
+ const vitalsForm=$c("clinicalVitalsForm");
+ if(vitalsForm)vitalsForm.addEventListener("submit",async ev=>{
+  ev.preventDefault();const encounterId=$c("clinicalVitalsEncounter").value;const encounter=encounters.find(x=>x.id===encounterId);
+  if(!encounter){msg("Select an open encounter.",true);return;}
+  const fields=["clinicalTemperature","clinicalSystolic","clinicalDiastolic","clinicalPulse","clinicalRespiratory","clinicalOxygen","clinicalWeight","clinicalHeight","clinicalPain"];
+  if(fields.every(id=>$c(id).value==="")){msg("Enter at least one observation.",true);return;}
+  const button=vitalsForm.querySelector('button[type="submit"]');button.disabled=true;
+  const payload={clinic_id:currentClinic.id,encounter_id:encounterId,patient_id:encounter.patient_id,temperature_c:numberOrNull("clinicalTemperature"),systolic_bp:numberOrNull("clinicalSystolic"),diastolic_bp:numberOrNull("clinicalDiastolic"),pulse_bpm:numberOrNull("clinicalPulse"),respiratory_rate:numberOrNull("clinicalRespiratory"),oxygen_saturation:numberOrNull("clinicalOxygen"),weight_kg:numberOrNull("clinicalWeight"),height_cm:numberOrNull("clinicalHeight"),pain_score:numberOrNull("clinicalPain"),notes:$c("clinicalVitalsNotes").value.trim()||null,recorded_by:currentUser.id};
+  const {error}=await supabaseClient.from("patient_vitals").insert(payload);button.disabled=false;if(error){msg(error.message,true);return;}vitalsForm.reset();msg("Vital signs saved.");selectedEncounter=encounterId;await loadClinicalRecords();
+ });
+ const allergyForm=$c("clinicalAllergyForm");
+ if(allergyForm)allergyForm.addEventListener("submit",async ev=>{
+  ev.preventDefault();const patientId=$c("clinicalAllergyPatient").value;if(!patientId){msg("Select a patient.",true);return;}
+  const button=allergyForm.querySelector('button[type="submit"]');button.disabled=true;
+  const {error}=await supabaseClient.from("patient_allergies").insert({clinic_id:currentClinic.id,patient_id:patientId,allergen:$c("clinicalAllergen").value.trim(),reaction:$c("clinicalAllergyReaction").value.trim()||null,severity:$c("clinicalAllergySeverity").value,recorded_by:currentUser.id});
+  button.disabled=false;if(error){msg(error.message,true);return;}allergyForm.reset();msg("Allergy record saved.");await loadClinicalRecords();
+ });
+ ["clinicalNoteEncounter","clinicalVitalsEncounter"].forEach(id=>$c(id)?.addEventListener("change",()=>{selectedEncounter=$c(id).value;void loadEncounterDetails();}));
+ $c("refreshClinicalRecords")?.addEventListener("click",loadClinicalRecords);
+ document.querySelectorAll(".sidebar .nav-item").forEach(link=>link.addEventListener("click",()=>{if((link.getAttribute("href")||"")==="#clinicalRecords")void loadClinicalRecords();}));
+ window.loadHealthOSClinicalRecords=loadClinicalRecords;
+})();
