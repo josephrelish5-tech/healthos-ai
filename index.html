@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261102-11" defer></script>
+    <script src="app.js?v=20261102-12" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -709,6 +709,7 @@
                     <a href="#staffManagement" class="nav-item">♙ Staff Management</a>
                     <a href="#patients" class="nav-item">♙ Patients</a>
                     <a href="#appointments" class="nav-item">▣ Appointments</a>
+                    <a href="#whatsappIntake" class="nav-item">☏ WhatsApp Intake</a>
                     <a href="#patientFlow" class="nav-item">⇄ Queue &amp; Beds</a>
                     <a href="#clinicalRecords" class="nav-item">✚ Clinical Records</a>
                     <a href="#clinicalScribe" class="nav-item">◉ AI Medical Scribe</a>
@@ -2528,6 +2529,37 @@
     </p>
 </section>
 <!-- END HEALTHOS AI REPORTS MODULE -->
+
+<!-- HEALTHOS AI: WHATSAPP AI TRIAGE & PATIENT INTAKE FOUNDATION -->
+<section id="whatsappIntake" class="panel" hidden>
+ <div class="panel-heading">
+  <div><p class="eyebrow">PATIENT ACCESS & INTAKE</p><h2>WhatsApp AI Triage & Patient Intake</h2>
+   <p class="muted">Centralise WhatsApp enquiries and other front-desk intake. A staff member must verify urgency and assign the next action.</p></div>
+  <span class="demo-badge">STAFF REVIEW REQUIRED</span>
+ </div>
+ <div class="stats-grid">
+  <article class="stat-card"><p>New Requests</p><h3 id="intakeNewCount">—</h3></article>
+  <article class="stat-card"><p>Awaiting Review</p><h3 id="intakeReviewCount">—</h3></article>
+  <article class="stat-card"><p>Urgent / Emergency</p><h3 id="intakeUrgentCount">—</h3></article>
+  <article class="stat-card"><p>Closed</p><h3 id="intakeClosedCount">—</h3></article>
+ </div>
+ <div class="panel-heading"><div><h3>Register an Incoming Enquiry</h3><p class="muted">Use this form to log an enquiry received by WhatsApp, phone, web or at reception.</p></div></div>
+ <form id="whatsappIntakeForm" class="auth-form">
+  <label>Contact name<input id="intakeContactName" maxlength="150" required placeholder="Patient or caregiver name"></label>
+  <label>Contact phone number<input id="intakeContactPhone" type="tel" maxlength="30" required placeholder="Include country code where possible"></label>
+  <label>Enquiry channel<select id="intakeChannel" required><option value="whatsapp">WhatsApp</option><option value="phone">Phone call</option><option value="walk_in">Walk-in</option><option value="web">Website</option><option value="other">Other</option></select></label>
+  <label>Reason for contact / brief concern<textarea id="intakeConcernSummary" maxlength="2000" rows="4" required placeholder="Record only the minimum information needed for intake. Do not use this as a medical record."></textarea></label>
+  <label style="display:flex;gap:10px;align-items:flex-start"><input id="intakeConsent" type="checkbox" required style="width:auto;margin-top:4px">The person has agreed that the facility may record these contact details and enquiry for the purpose of responding to this request.</label>
+  <button class="primary-button" type="submit">Save Intake Request</button>
+ </form>
+ <p id="whatsappIntakeMessage" class="message" role="status" aria-live="polite"></p>
+ <div class="panel-heading"><div><h3>Intake Inbox & Human Triage Review</h3><p class="muted">Reception, nursing and authorised clinicians can review requests according to clinic permissions.</p></div><button type="button" class="logout-button" id="refreshWhatsappIntake">Refresh Inbox</button></div>
+ <div class="table-wrap"><table><thead><tr><th>Received</th><th>Contact</th><th>Channel</th><th>Concern summary</th><th>Triage level</th><th>Status</th><th>Department</th><th>Review action</th></tr></thead><tbody id="whatsappIntakeBody"><tr><td colspan="8">Open WhatsApp Intake to load requests.</td></tr></tbody></table></div>
+ <p class="disclaimer">Safety: this foundation does not diagnose, prescribe or automatically determine clinical urgency. A qualified staff member must review every concern. If a person reports a life-threatening emergency, advise them to seek immediate local emergency care; do not wait for a WhatsApp reply. Do not request photographs, test results or detailed medical histories through this basic intake form.</p>
+ <p class="muted">WhatsApp provider connection is not active yet. This workspace records enquiries manually until Meta WhatsApp Business Cloud API credentials, webhook verification and privacy review are configured.</p>
+</section>
+<!-- END HEALTHOS AI: WHATSAPP AI TRIAGE & PATIENT INTAKE FOUNDATION -->
+
                     <footer>
     HealthOS AI · Healthcare operations and revenue protection
                     </footer>
