@@ -1925,6 +1925,22 @@
             </table>
         </div>
     </section>
+    <section class="pos-receipt-card" id="posBankReconciliationWorkspace" hidden>
+        <div class="panel-heading">
+            <div>
+                <h3>Accounts &amp; Finance — POS / Bank Reconciliation</h3>
+                <p class="muted">Review proposed matches between accepted departmental receipts and imported bank credits. Suggestions never confirm settlement automatically.</p>
+            </div>
+            <button type="button" class="primary-button" id="generateReconciliationMatches">Find potential matches</button>
+        </div>
+        <p id="reconciliationMessage" class="message" role="status" aria-live="polite"></p>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Department receipt</th><th>Receipt reference</th><th>Receipt amount</th><th>Bank date / reference</th><th>Bank amount</th><th>Match basis</th><th>Decision</th></tr></thead>
+                <tbody id="posReconciliationMatchRows"><tr><td colspan="7">Open with an authorised Finance account to load proposed matches.</td></tr></tbody>
+            </table>
+        </div>
+    </section>
     <p class="disclaimer">Recording a payment is not proof of settlement. Receipt evidence and OCR values require verification. Accounts must match transactions against authorised bank statements or bank feeds before marking them reconciled.</p>
 </section>
 
