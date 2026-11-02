@@ -760,8 +760,7 @@
                         class="panel"
                         aria-labelledby="adminStaffDashboardHeading"
                     >
-
-                        <div class="panel-heading">
+<div class="workspace-subpage" data-workspace-page="adminOverview" id="adminOverviewPage"><div class="panel-heading">
                             <div>
                                 <p class="eyebrow">STAFF MANAGEMENT</p>
 
@@ -774,6 +773,15 @@
                                     shift coverage and staff availability.
                                 </p>
                             </div>
+<nav class="workspace-page-nav" aria-label="Staff management pages">
+<button type="button" class="workspace-page-button active" data-workspace-target="adminOverview">Overview</button>
+<button type="button" class="workspace-page-button" data-workspace-target="adminStaffActivity">Staff Activity</button>
+<button type="button" class="workspace-page-button" data-workspace-target="adminShifts">Shifts & Attendance</button>
+<button type="button" class="workspace-page-button" data-workspace-target="adminTasks">Task Management</button>
+<button type="button" class="workspace-page-button" data-workspace-target="adminLeadership">Department Leadership</button>
+<button type="button" class="workspace-page-button" data-workspace-target="adminPerformance">Department Performance</button>
+</nav>
+
                         </div>
 
                         <p
@@ -844,7 +852,9 @@
                             </article>
 
                         </div>
- <!-- HEALTHOS AI: INDIVIDUAL STAFF ACTIVITY TABLE -->
+</div>
+
+<div class="workspace-subpage" data-workspace-page="adminStaffActivity" id="adminStaffActivityPage"><!-- HEALTHOS AI: INDIVIDUAL STAFF ACTIVITY TABLE -->
 <div class="panel-heading">
     <div>
         <p class="eyebrow">STAFF ACTIVITY</p>
@@ -880,7 +890,8 @@
     </table>
 </div>
 <!-- END HEALTHOS AI: INDIVIDUAL STAFF ACTIVITY TABLE -->
-<!-- HEALTHOS AI: STAFF SHIFT ASSIGNMENT -->
+</div>
+<div class="workspace-subpage" data-workspace-page="adminShifts" id="adminShiftsPage" hidden><!-- HEALTHOS AI: STAFF SHIFT ASSIGNMENT -->
 <div class="panel-heading">
     <div>
         <p class="eyebrow">SHIFT MANAGEMENT</p>
@@ -981,9 +992,8 @@
                             authorised clinic records. Online presence
                             and shift attendance are separate measures.
                         </p>
-
-                    
-                        <!-- HEALTHOS AI: TASK ASSIGNMENT -->
+</div>
+<div class="workspace-subpage" data-workspace-page="adminTasks" id="adminTasksPage" hidden><!-- HEALTHOS AI: TASK ASSIGNMENT -->
                         <div class="panel-heading">
                             <div>
                                 <p class="eyebrow">WORKFLOW CONTROL</p>
@@ -1015,8 +1025,8 @@
                         </form>
                         <p id="taskAssignmentMessage" class="message" role="status" aria-live="polite">Task assignment is ready.</p>
                         <!-- END HEALTHOS AI: TASK ASSIGNMENT -->
-
-                        <!-- HEALTHOS AI: DEPARTMENT LEADERSHIP APPOINTMENTS -->
+</div>
+<div class="workspace-subpage" data-workspace-page="adminLeadership" id="adminLeadershipPage" hidden><!-- HEALTHOS AI: DEPARTMENT LEADERSHIP APPOINTMENTS -->
                         <div class="panel-heading">
                             <div>
                                 <p class="eyebrow">HOSPITAL STRUCTURE</p>
@@ -1052,8 +1062,8 @@
                         <p id="managementAppointmentMessage" class="message" role="status" aria-live="polite">Leadership appointment manager is ready.</p>
                         <div id="managementAppointmentList"></div>
                         <!-- END HEALTHOS AI: DEPARTMENT LEADERSHIP APPOINTMENTS -->
-
-                        <!-- HEALTHOS AI: DEPARTMENT PERFORMANCE -->
+</div>
+<div class="workspace-subpage" data-workspace-page="adminPerformance" id="adminPerformancePage" hidden><!-- HEALTHOS AI: DEPARTMENT PERFORMANCE -->
                         <div class="panel-heading">
                             <div>
                                 <p class="eyebrow">OPERATIONS INTELLIGENCE</p>
@@ -1089,6 +1099,7 @@
                             </table>
                         </div>
                         <!-- END HEALTHOS AI: DEPARTMENT PERFORMANCE -->
+</div>
 </section>
                     <!-- END HEALTHOS AI: ADMIN STAFF DASHBOARD -->
                     <section class="stats-grid">
