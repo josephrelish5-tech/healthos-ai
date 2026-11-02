@@ -2162,6 +2162,15 @@
             <p id="posReceiptUploadMessage" class="message" role="status" aria-live="polite"></p>
         </form>
     </div>
+    <section class="pos-receipt-card" id="offlineDepartmentTransactions" aria-labelledby="offlineDepartmentTransactionsHeading">
+        <h3 id="offlineDepartmentTransactionsHeading">Offline Department Transaction Queue</h3>
+        <p class="muted">When internet is unavailable, securely queue payment details without uploading evidence. Reconnect and sync to submit them to the normal department acceptance and Accounts reconciliation workflow. A queued or submitted report is not proof of settlement.</p>
+        <button type="button" id="offlinePosSaveButton" class="secondary-button">Secure current transaction offline</button>
+        <button type="button" id="offlinePosSyncButton" class="secondary-button">Review &amp; sync queued transactions</button>
+        <button type="button" id="offlinePosEraseButton" class="secondary-button">Erase offline transaction queue</button>
+        <p id="offlinePosStatus" class="message" role="status" aria-live="polite">No offline transactions queued.</p>
+        <div class="table-wrap"><table><thead><tr><th>Captured</th><th>Method</th><th>Reference</th><th>Amount</th><th>Sync status</th></tr></thead><tbody id="offlinePosRows"><tr><td colspan="5">No queued transactions.</td></tr></tbody></table></div>
+    </section>
     <h3>Recent department transactions</h3>
     <div class="table-wrap">
         <table>
