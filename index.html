@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261102-23" defer></script>
+    <script src="app.js?v=20261102-24" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -1651,17 +1651,30 @@
   <p class="muted">Prepare a transcript from an approved transcription service or enter a synthetic transcript for development. Live microphone transcription is not connected in this release; this page does not record or upload audio.</p>
   <form id="clinicalScribeForm" class="auth-form">
    <label>Clinician-owned open encounter<select id="scribeEncounterSelect" required><option value="">Select your encounter</option></select></label>
-   <label>Transcript source<select id="scribeSourceType"><option value="manual_transcript">Manually entered / externally approved transcript</option></select></label>
-   <label>Transcript<textarea id="scribeTranscript" rows="5" maxlength="20000" placeholder="Paste the transcript here. Verify names, medicines, dosages, dates and clinical terms." required></textarea></label>
+   <label>Transcript source<select id="scribeSourceType"><option value="manual_transcript">Manual / externally approved transcript</option><option value="approved_transcription_service">Clinic-approved secure transcription service</option></select></label>
+   <div class="scribe-audio-workspace">
+    <h4>Secure audio transcription</h4>
+    <p class="muted">Record a consultation or select an audio file. Audio is sent only to the clinic-configured server-side provider after consent and access checks. HealthOS AI does not store the audio file.</p>
+    <label>Choose audio file<input id="scribeAudioFile" type="file" accept="audio/*"></label>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+     <button type="button" class="logout-button" id="scribeRecordStart">Start recording</button>
+     <button type="button" class="logout-button" id="scribeRecordStop" disabled>Stop recording</button>
+     <button type="button" class="primary-button" id="scribeTranscribeButton">Transcribe &amp; prepare note</button>
+    </div>
+    <label style="display:flex;gap:10px;align-items:flex-start"><input id="scribeAudioConsent" type="checkbox" style="width:auto;margin-top:4px"> I confirm that the patient or authorised representative has explicitly consented to audio recording and processing by this clinic's approved transcription provider. I have explained the provider's applicable privacy and retention terms.</label>
+    <p id="scribeAudioStatus" class="message" role="status" aria-live="polite">Audio is not recording. You can still enter a transcript manually.</p>
+   </div>
+   <label>Transcript<textarea id="scribeTranscript" rows="5" maxlength="20000" placeholder="Generated transcript appears here, or paste an approved transcript. Verify names, medicines, dosages, dates and clinical terms." required></textarea></label>
    <label>Clinical note section<select id="scribeNoteType"><option value="progress">Progress</option><option value="history">History</option><option value="examination">Examination</option><option value="assessment">Assessment</option><option value="plan">Plan</option><option value="discharge">Discharge</option></select></label>
-   <label>Clinician-reviewed note<textarea id="scribeEditedNote" rows="6" maxlength="20000" placeholder="Edit and verify the clinical note before saving it to the patient record." required></textarea></label>
+   <label>AI-generated note draft — clinician must edit and verify<textarea id="scribeEditedNote" rows="6" maxlength="20000" placeholder="The AI draft appears here. Edit and verify every detail before saving." required></textarea></label>
+   <label style="display:flex;gap:10px;align-items:flex-start"><input id="scribeReviewConfirm" type="checkbox" required style="width:auto;margin-top:4px"> I have personally reviewed the transcript and edited/corrected the note. It accurately reflects the consultation and contains no unverified information.</label>
    <label style="display:flex;gap:10px;align-items:flex-start"><input id="scribeConsent" type="checkbox" required style="width:auto;margin-top:4px"> I confirm that the patient or authorised representative has consented to this documentation process, and that I am authorised to process this clinical information.</label>
    <button class="primary-button" type="submit">Save Scribe Draft for Review</button>
   </form>
   <p id="scribeMessage" class="message" role="status" aria-live="polite"></p>
   <h4>My Scribe Drafts</h4>
   <div class="table-wrap"><table><thead><tr><th>Created</th><th>Encounter</th><th>Note section</th><th>Status</th><th>Action</th></tr></thead><tbody id="scribeDraftsBody"><tr><td colspan="5">No scribe drafts loaded.</td></tr></tbody></table></div>
-  <p class="disclaimer">Nothing is automatically diagnosed, prescribed, signed or added to the medical record. The clinician must review and approve the edited note. Signed clinical notes remain immutable. Do not use real patient audio or data until the transcription provider, privacy assessment, retention controls and NDPA safeguards have been approved.</p>
+  <p class="disclaimer">Nothing is automatically diagnosed, prescribed, signed or added to the medical record. The clinician must review and approve the edited note. Signed clinical notes remain immutable. Use real patient audio only after the clinic has approved the transcription provider, privacy assessment, retention controls and NDPA safeguards. Audio is not stored by HealthOS AI; the configured provider may process it under its own terms.</p>
  </div>
  <hr><h3>3. Record Vital Signs</h3>
  <form id="clinicalVitalsForm" class="auth-form">
