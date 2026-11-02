@@ -8094,6 +8094,7 @@ function openSection(sectionId, sectionName) {
                         if(select.value==="completed") updates.completed_at=new Date().toISOString();
                         const {error}=await supabaseClient.from("patient_queue").update(updates).eq("id",q.id).eq("clinic_id",clinicId);
                         if(error){flowMessage("queueEntryMessage",error.message,true);button.disabled=false;return;}
+                        if(select.value==="completed" && q.appointment_id){ await supabaseClient.from("appointments").update({status:"completed"}).eq("id",q.appointment_id).eq("clinic_id",clinicId); }
                         await loadPatientFlow();
                     });
                     action.append(select,button);
@@ -8145,6 +8146,7 @@ function openSection(sectionId, sectionName) {
         });
         button.disabled=false;
         if(error){flowMessage("queueEntryMessage",error.message,true);return;}
+        if(appointmentId){ await supabaseClient.from("appointments").update({status:"checked_in"}).eq("id",appointmentId).eq("clinic_id",currentClinic.id); }
         queueForm.reset();flowMessage("queueEntryMessage","Patient added to queue: "+queueNumber);
         await loadPatientFlow();
     });
@@ -8180,9 +8182,7 @@ function openSection(sectionId, sectionName) {
         });
         button.disabled=false;
         if(error){flowMessage("admissionMessage",error.message,true);return;}
-        const bedUpdate=await supabaseClient.from("hospital_beds").update({status:"occupied",updated_at:new Date().toISOString()}).eq("id",bedId).eq("clinic_id",currentClinic.id).eq("status","available");
-        if(bedUpdate.error){flowMessage("admissionMessage","Admission saved, but bed status needs administrator review: "+bedUpdate.error.message,true);}
-        else flowMessage("admissionMessage","Patient admitted. Reference: "+admissionNumber);
+        flowMessage("admissionMessage","Patient admitted. Reference: "+admissionNumber);
         admissionForm.reset();await loadPatientFlow();
     });
 
