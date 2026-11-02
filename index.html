@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261102-10" defer></script>
+    <script src="app.js?v=20261102-11" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -164,6 +164,10 @@
             </button>
         </div>
     </header>
+
+    <div id="offlineModeBanner" role="status" aria-live="polite" hidden style="margin:0;padding:10px 16px;background:#fff4e5;border-bottom:1px solid #f0c36d;color:#7a3e00;font-weight:600;text-align:center">
+        Offline mode: application shell available. Patient records, billing, pharmacy and clinical actions are not available offline. No patient data is stored on this device.
+    </div>
 
     <main>
         <section id="authPanel" class="auth-screen">
