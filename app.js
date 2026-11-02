@@ -7964,14 +7964,14 @@ function openSection(sectionId, sectionName) {
             });
         }
         async function refresh(){
-            const ctx=getPharmacyContext();
+            const ctx={userId:currentUser.id,clinicId:currentClinic.id};
             const items=await readQueue({userId:ctx.userId,clinicId:ctx.clinicId});render(items);return items;
         }
         if(save)save.addEventListener("click",async()=>{
             save.disabled=true;
             try{
                 if(!window.crypto||!crypto.subtle||!window.indexedDB)throw new Error("Encrypted offline storage is unavailable in this browser.");
-                const ctx=getPharmacyContext();
+                const ctx={userId:currentUser.id,clinicId:currentClinic.id};
                 const method=document.getElementById("posPaymentMethod").value;
                 const amount=Number(document.getElementById("posReceiptAmount").value);
                 if(!method||!Number.isFinite(amount)||amount<=0)throw new Error("Select a payment method and enter a valid amount above zero.");
@@ -8000,7 +8000,7 @@ function openSection(sectionId, sectionName) {
             sync.disabled=true;
             try{
                 if(!navigator.onLine)throw new Error("Reconnect to the internet before syncing transaction reports.");
-                const ctx=getPharmacyContext(),items=await refresh();
+                const ctx={userId:currentUser.id,clinicId:currentClinic.id},items=await refresh();
                 if(!items.length){say("No queued transaction reports to sync.");return;}
                 const summary=items.map((item,i)=>(i+1)+". ₦"+Number(item.amount).toLocaleString()+" — "+item.paymentMethod+" — "+(item.transactionReference||item.invoiceReference||"No reference")).join("\n");
                 if(!window.confirm("Review the transaction reports below. They will be submitted as staff-reported transactions and remain awaiting acceptance/reconciliation.\n\n"+summary+"\n\nContinue?"))return;
