@@ -2141,6 +2141,87 @@
             </table>
         </div>
     </section>
+
+    <section class="panel" id="pharmacyProcurementWorkspace" aria-labelledby="pharmacyProcurementHeading">
+        <h3 id="pharmacyProcurementHeading">Supplier & Procurement Management</h3>
+        <p class="muted">Register medicine suppliers, submit purchase orders for approval, and record deliveries directly into pharmacy stock.</p>
+        <p id="pharmacyProcurementMessage" role="status" aria-live="polite"></p>
+
+        <h4>Register Supplier</h4>
+        <form id="pharmacySupplierForm">
+            <label for="pharmacySupplierName">Supplier / Company Name</label>
+            <input id="pharmacySupplierName" type="text" maxlength="200" required>
+            <label for="pharmacySupplierContact">Contact Person</label>
+            <input id="pharmacySupplierContact" type="text" maxlength="150">
+            <label for="pharmacySupplierPhone">Phone Number</label>
+            <input id="pharmacySupplierPhone" type="tel" maxlength="40">
+            <label for="pharmacySupplierEmail">Email Address</label>
+            <input id="pharmacySupplierEmail" type="email" maxlength="254">
+            <label for="pharmacySupplierAddress">Business Address</label>
+            <textarea id="pharmacySupplierAddress" rows="2" maxlength="500"></textarea>
+            <button type="submit" id="pharmacySupplierSaveButton">Save Supplier</button>
+        </form>
+
+        <h4>Registered Suppliers</h4>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Supplier</th><th>Contact</th><th>Phone</th><th>Status</th></tr></thead>
+                <tbody id="pharmacySuppliersBody"><tr><td colspan="4">Supplier list will appear here.</td></tr></tbody>
+            </table>
+        </div>
+
+        <h4>Create Purchase Order</h4>
+        <p class="muted">New orders are submitted for owner/admin approval before goods can be received.</p>
+        <form id="pharmacyPurchaseOrderForm">
+            <label for="pharmacyPurchaseSupplier">Supplier</label>
+            <select id="pharmacyPurchaseSupplier" required><option value="">Loading suppliers...</option></select>
+            <label for="pharmacyOrderNumber">Purchase Order Number</label>
+            <input id="pharmacyOrderNumber" type="text" maxlength="80" required>
+            <label for="pharmacyOrderMedicine">Medicine Name</label>
+            <input id="pharmacyOrderMedicine" type="text" maxlength="200" required>
+            <label for="pharmacyOrderMedicineCode">Medicine Barcode / Product Code</label>
+            <input id="pharmacyOrderMedicineCode" type="text" maxlength="100">
+            <label for="pharmacyOrderQuantity">Quantity Ordered</label>
+            <input id="pharmacyOrderQuantity" type="number" min="1" step="1" required>
+            <label for="pharmacyOrderUnitCost">Unit Purchase Cost (NGN)</label>
+            <input id="pharmacyOrderUnitCost" type="number" min="0" step="0.01" required>
+            <label for="pharmacyOrderDeliveryDate">Expected Delivery Date</label>
+            <input id="pharmacyOrderDeliveryDate" type="date">
+            <label for="pharmacyOrderNotes">Notes</label>
+            <textarea id="pharmacyOrderNotes" rows="2" maxlength="1000"></textarea>
+            <button type="submit" id="pharmacyPurchaseOrderSaveButton">Submit Purchase Order</button>
+        </form>
+
+        <h4>Purchase Orders & Approval</h4>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>PO Number</th><th>Supplier</th><th>Medicine / Received</th><th>Total</th><th>Status</th><th>Expected Delivery</th><th>Action</th></tr></thead>
+                <tbody id="pharmacyPurchaseOrdersBody"><tr><td colspan="7">Purchase orders will appear here.</td></tr></tbody>
+            </table>
+        </div>
+
+        <h4>Receive Supplier Delivery</h4>
+        <p class="muted">Only approved orders can be received. Each delivery creates a batch in pharmacy inventory. Expired batches and quantities above the outstanding order are rejected by the database.</p>
+        <form id="pharmacyReceiveGoodsForm">
+            <label for="pharmacyReceiveOrder">Approved Purchase Order</label>
+            <select id="pharmacyReceiveOrder" required><option value="">Select approved purchase order</option></select>
+            <label for="pharmacyReceiveOrderItem">Medicine Line</label>
+            <select id="pharmacyReceiveOrderItem" required><option value="">Select medicine line</option></select>
+            <label for="pharmacyGoodsReceiptNumber">Goods Receipt Number</label>
+            <input id="pharmacyGoodsReceiptNumber" type="text" maxlength="80" required>
+            <label for="pharmacyGoodsBatchNumber">Supplier Batch Number</label>
+            <input id="pharmacyGoodsBatchNumber" type="text" maxlength="100" required>
+            <label for="pharmacyGoodsExpiryDate">Medicine Expiry Date</label>
+            <input id="pharmacyGoodsExpiryDate" type="date" required>
+            <label for="pharmacyReceiveQuantity">Quantity Received</label>
+            <input id="pharmacyReceiveQuantity" type="number" min="1" step="1" required>
+            <label for="pharmacyDeliveryNote">Supplier Delivery Note Reference</label>
+            <input id="pharmacyDeliveryNote" type="text" maxlength="120">
+            <label for="pharmacyGoodsReceiptNotes">Receiving Notes</label>
+            <textarea id="pharmacyGoodsReceiptNotes" rows="2" maxlength="1000"></textarea>
+            <button type="submit" id="pharmacyReceiveGoodsButton">Record Goods Received</button>
+        </form>
+    </section>
     <p class="disclaimer">
         Inventory features are under development. Staff must verify
         medicine batches, quantities, and expiry dates before dispensing.
