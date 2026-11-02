@@ -2013,7 +2013,7 @@ areas.forEach(function (area) {
             // unresolved bare global before the section opens.
             if (area === "Transaction Handling") {
                 if (typeof window.loadDepartmentTransactionCapture === "function") {
-                    window.loadDepartmentTransactionCapture().catch(function (error) {
+                    window.loadDepartmentTransactionCapture(transactionCapabilities).catch(function (error) {
                         console.error("Transaction capture load failed:", error);
                         const status = document.getElementById("posReceiptUploadMessage");
                         if (status) {
@@ -6448,7 +6448,7 @@ function openSection(sectionId, sectionName) {
     const bucket = "pos-receipt-evidence";
     // Reuse the authenticated user's capabilities loaded before this module initializes.
     // Without this, navigation calls loadReceipts() with an empty object and hides Accept.
-    let activeCapabilities = transactionCapabilities || {};
+    let activeCapabilities = window.healthOSTransactionCapabilities || {};
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
     function setMessage(text, type) {
