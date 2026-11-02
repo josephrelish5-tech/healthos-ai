@@ -9700,8 +9700,8 @@ function openSection(sectionId, sectionName) {
   const option=$("clinicalVitalsEncounter").selectedOptions[0];
   const item={id:crypto.randomUUID(),encounterId,encounterLabel:option?.textContent||"Encounter",patientId:null,values,notes:$("clinicalVitalsNotes").value.trim()||null,capturedAt:Date.now(),status:"queued",detail:"Awaiting online encounter verification"};
   try{
-   const {data,error}=await supabaseClient.from("clinical_encounters").select("id,patient_id,status,clinician_id").eq("id",encounterId).eq("clinic_id",currentClinic.id).maybeSingle();
    if(navigator.onLine){
+    const {data,error}=await supabaseClient.from("clinical_encounters").select("id,patient_id,status,clinician_id").eq("id",encounterId).eq("clinic_id",currentClinic.id).maybeSingle();
     if(error||!data||data.clinician_id!==currentUser.id||!["open","in_progress"].includes(data.status)){say("Encounter is not available to this clinician or is no longer open.",true);return;}
     item.patientId=data.patient_id;
    }
