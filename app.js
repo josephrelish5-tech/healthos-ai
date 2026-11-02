@@ -8708,7 +8708,31 @@ function openSection(sectionId, sectionName) {
   const body=$c("clinicalSafetyAlertsBody");
   if(!body)return;
   body.replaceChildren();
-  if(!selectedEncounter){const r=body.insertRow();cell(r,"Select an encounter to view safety alerts.");return;}
+  if(!selectedEncounter){
+   const r=body.insertRow();cell(r,"Select an encounter to view safety alerts.");
+   const allergyBody=$c("clinicalAllergySafetyBody");if(allergyBody){allergyBody.replaceChildren();const row=allergyBody.insertRow();cell(row,"No patient selected.");}
+   const allergyMessage=$c("clinicalAllergySafetyMessage");if(allergyMessage)allergyMessage.textContent="Select an encounter to review recorded allergies.";
+   return;
+  }
+  const encounter=encounters.find(x=>x.id===selectedEncounter);
+  const allergyBody=$c("clinicalAllergySafetyBody");
+  const allergyMessage=$c("clinicalAllergySafetyMessage");
+  if(allergyBody){
+   allergyBody.replaceChildren();
+   if(!encounter){const row=allergyBody.insertRow();cell(row,"Encounter details unavailable.");}
+   else{
+    const {data:allergies,error:allergyError}=await supabaseClient.from("patient_allergies")
+     .select("allergen,reaction,severity,status")
+     .eq("clinic_id",currentClinic.id).eq("patient_id",encounter.patient_id)
+     .order("created_at",{ascending:false}).limit(100);
+    if(allergyError){const row=allergyBody.insertRow();cell(row,"Could not load allergy records.");if(allergyMessage){allergyMessage.textContent="Allergy records unavailable. Verify the patient's allergy history directly.";allergyMessage.className="message error";}}
+    else if(!allergies||!allergies.length){const row=allergyBody.insertRow();cell(row,"No allergy records found. Confirm allergy history directly; absence of a record does not mean no allergies.");if(allergyMessage){allergyMessage.textContent="No recorded allergies found. Confirm with the patient.";allergyMessage.className="message";}}
+    else{
+     allergies.forEach(item=>{const row=allergyBody.insertRow();[item.allergen,item.reaction||"Not recorded",item.severity||"Unknown",item.status||"Unspecified"].forEach(value=>cell(row,value));});
+     if(allergyMessage){allergyMessage.textContent=allergies.length+" recorded allergy item(s). Confirm the list and reactions with the patient.";allergyMessage.className="message error";}
+    }
+   }
+  }
   const {data,error}=await supabaseClient.from("clinical_decision_support_alerts")
    .select("id,rule_code,severity,observed_value,alert_message,status,created_at,review_note")
    .eq("clinic_id",currentClinic.id).eq("encounter_id",selectedEncounter)
