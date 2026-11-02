@@ -46,7 +46,22 @@ function showAdminWorkspacePage(pageId) {
     document.querySelectorAll("#adminStaffDashboard [data-workspace-page]").forEach(page => {
         page.hidden = page.dataset.workspacePage !== pageId;
     });
-    document.querySelectorAll("#adminStaffDashboard [data-workspace-target]").forEach(button => {
+    
+const staffAttendanceReportRun = document.getElementById("staffAttendanceReportRun");
+if (staffAttendanceReportRun) staffAttendanceReportRun.addEventListener("click", () => {
+    if (currentClinic) loadStaffAttendanceReport(currentClinic);
+});
+(function initialiseStaffAttendanceReportDates() {
+    const start = document.getElementById("staffAttendanceReportStart");
+    const end = document.getElementById("staffAttendanceReportEnd");
+    if (!start || !end) return;
+    const today = new Date();
+    const local = d => new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+    end.value = local(today);
+    start.value = local(new Date(today.getTime()-6*86400000));
+})();
+
+document.querySelectorAll("#adminStaffDashboard [data-workspace-target]").forEach(button => {
         const active = button.dataset.workspaceTarget === pageId;
         button.classList.toggle("active", active);
         button.setAttribute("aria-pressed", active ? "true" : "false");
@@ -2510,6 +2525,81 @@ async function loadAdminStaffDashboard(clinic) {
     }
 }
 
+
+
+/* HEALTHOS AI: HISTORICAL ATTENDANCE & WORKFORCE REPORT */
+async function loadStaffAttendanceReport(clinic) {
+    const body = document.getElementById("staffAttendanceReportBody");
+    const message = document.getElementById("staffAttendanceReportMessage");
+    const startInput = document.getElementById("staffAttendanceReportStart");
+    const endInput = document.getElementById("staffAttendanceReportEnd");
+    if (!body || !message || !startInput || !endInput) return;
+    if (!currentUser || !currentClinic || !managementVerified || clinic.id !== currentClinic.id) {
+        message.textContent = "Administrator verification is required.";
+        message.className = "message error";
+        return;
+    }
+    const startDate = startInput.value;
+    const endDate = endInput.value;
+    if (!startDate || !endDate || startDate > endDate) {
+        message.textContent = "Choose a valid start and end date.";
+        message.className = "message error";
+        return;
+    }
+    message.textContent = "Loading attendance history...";
+    message.className = "message";
+    body.replaceChildren();
+    try {
+        const from = new Date(startDate + "T00:00:00").toISOString();
+        const to = new Date(new Date(endDate + "T00:00:00").getTime() + 86400000).toISOString();
+        const [{data:sessions,error:sessionError},{data:shifts,error:shiftError}] = await Promise.all([
+            supabaseClient.from("staff_attendance_sessions")
+                .select("id,staff_profile_id,clocked_in_at,clocked_out_at")
+                .eq("clinic_id",clinic.id).gte("clocked_in_at",from).lt("clocked_in_at",to)
+                .order("clocked_in_at",{ascending:false}).limit(5000),
+            supabaseClient.from("staff_shifts")
+                .select("staff_profile_id,shift_date,starts_at,ends_at")
+                .eq("clinic_id",clinic.id).gte("shift_date",startDate).lte("shift_date",endDate)
+        ]);
+        if (sessionError) throw sessionError;
+        if (shiftError) throw shiftError;
+        const ids=[...new Set((sessions||[]).map(s=>s.staff_profile_id))];
+        let profiles=[];
+        if(ids.length){
+            const {data,error}=await supabaseClient.from("staff_profiles")
+                .select("id,full_name,staff_id,department").eq("clinic_id",clinic.id).in("id",ids);
+            if(error) throw error;
+            profiles=data||[];
+        }
+        const people=new Map(profiles.map(p=>[p.id,p]));
+        const shiftByKey=new Map((shifts||[]).map(s=>[s.staff_profile_id+"|"+s.shift_date,s]));
+        let totalMinutes=0, incomplete=0, late=0;
+        const fmt=v=>v?new Date(v).toLocaleString():"—";
+        (sessions||[]).forEach(s=>{
+            const p=people.get(s.staff_profile_id)||{};
+            const day=new Date(s.clocked_in_at).toLocaleDateString("en-CA");
+            const shift=shiftByKey.get(s.staff_profile_id+"|"+day);
+            const minutes=s.clocked_out_at?Math.max(0,(new Date(s.clocked_out_at)-new Date(s.clocked_in_at))/60000):0;
+            totalMinutes+=minutes;
+            if(!s.clocked_out_at) incomplete++;
+            if(shift && new Date(s.clocked_in_at).getTime()>new Date(shift.starts_at).getTime()+10*60000) late++;
+            const row=document.createElement("tr");
+            [p.full_name||"Unknown staff",p.department||"—",p.staff_id||"—",day,fmt(s.clocked_in_at),fmt(s.clocked_out_at),s.clocked_out_at?(minutes/60).toFixed(2)+" hrs":"Open session",shift?(new Date(s.clocked_in_at).getTime()>new Date(shift.starts_at).getTime()+10*60000?"Late":"On time"):"No shift linked"].forEach(v=>{
+                const cell=document.createElement("td");cell.textContent=String(v);row.appendChild(cell);
+            });
+            body.appendChild(row);
+        });
+        if(!(sessions||[]).length){
+            const row=document.createElement("tr"),cell=document.createElement("td");cell.colSpan=8;cell.textContent="No attendance sessions found in this date range.";row.appendChild(cell);body.appendChild(row);
+        }
+        message.textContent="Report loaded: "+sessions.length+" sessions · "+(totalMinutes/60).toFixed(2)+" completed hours · "+late+" late arrivals · "+incomplete+" open sessions. Maximum 5,000 sessions per report.";
+        message.className="message success";
+    } catch(error) {
+        console.error("Attendance report failed:",error);
+        message.textContent=error.message||"Attendance report could not be loaded.";
+        message.className="message error";
+    }
+}
 
 /* HEALTHOS AI: LIVE HOSPITAL-WIDE SHIFT ROSTER */
 async function loadStaffShiftRoster(clinic) {
