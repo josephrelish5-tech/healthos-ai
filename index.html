@@ -1682,6 +1682,14 @@
  <hr><div id="clinicalDecisionSupport">
   <h3>4. Clinical Decision Support &amp; Safety Alerts</h3>
   <p class="muted">Rule-based screening of the latest recorded observations. These alerts are prompts for qualified clinicians to verify measurements and apply approved hospital protocols. They are not diagnoses, treatment instructions or a substitute for clinical judgement.</p>
+  <!-- HEALTHOS AI: CLINICAL RISK MONITORING -->
+  <div class="stats-grid" id="clinicalRiskSummary">
+   <article class="stat-card"><p>Critical Alerts</p><h3 id="clinicalCriticalCount">0</h3><p class="muted">Require immediate clinician review.</p></article>
+   <article class="stat-card"><p>High-Risk Alerts</p><h3 id="clinicalHighCount">0</h3><p class="muted">Require prompt clinical attention.</p></article>
+   <article class="stat-card"><p>Pending Reviews</p><h3 id="clinicalPendingCount">0</h3><p class="muted">Awaiting clinician action.</p></article>
+   <article class="stat-card"><p>Resolved Alerts</p><h3 id="clinicalResolvedCount">0</h3><p class="muted">Clinician-reviewed alerts.</p></article>
+  </div>
+  <!-- END CLINICAL RISK MONITORING -->
   <button type="button" id="runClinicalSafetyReview" class="primary-button">Review Latest Observations</button>
   <p id="clinicalDecisionSupportMessage" class="message" role="status" aria-live="polite">Select an encounter above to review its observations.</p>
   <div class="table-wrap"><table><thead><tr><th>Detected</th><th>Rule</th><th>Severity</th><th>Observed value</th><th>Clinical prompt</th><th>Status</th><th>Review action</th></tr></thead><tbody id="clinicalSafetyAlertsBody"><tr><td colspan="7">No alerts loaded.</td></tr></tbody></table></div>
