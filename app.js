@@ -6506,6 +6506,35 @@ function openSection(sectionId, sectionName) {
             rows.innerHTML = '<tr><td colspan="' + (adminAuditView ? "12" : "7") + '">No transactions recorded yet.</td></tr>';
             return;
         }
+
+        // Admin audit view should show staff names and departments, not raw auth UUIDs.
+        const staffByUserId = new Map();
+        if (adminAuditView) {
+            const userIds = [...new Set(data.flatMap(record =>
+                [record.uploaded_by, record.accepted_by].filter(Boolean)
+            ))];
+            if (userIds.length) {
+                const { data: staffProfiles, error: staffProfilesError } = await supabaseClient
+                    .from("staff_profiles")
+                    .select("user_id,full_name,department,professional_role")
+                    .eq("clinic_id", currentClinic.id)
+                    .in("user_id", userIds);
+                if (staffProfilesError) throw staffProfilesError;
+                (staffProfiles || []).forEach(profile => {
+                    staffByUserId.set(profile.user_id, profile);
+                });
+            }
+        }
+
+        function formatAuditStaff(userId) {
+            if (!userId) return "—";
+            const profile = staffByUserId.get(userId);
+            if (!profile) return "Staff profile unavailable";
+            const name = profile.full_name || "Unnamed staff";
+            const department = profile.department ? " — " + profile.department : "";
+            return name + department;
+        }
+
         data.forEach(record => {
             const tr = document.createElement("tr");
             [
@@ -6578,8 +6607,8 @@ function openSection(sectionId, sectionName) {
             if (adminAuditView) {
                 const auditValues = [
                     record.captured_department || "—",
-                    record.uploaded_by || "—",
-                    record.accepted_by || "—",
+                    formatAuditStaff(record.uploaded_by),
+                    formatAuditStaff(record.accepted_by),
                     record.accepted_at ? new Date(record.accepted_at).toLocaleString() : "—",
                     record.reconciliation_status || "unmatched"
                 ];
