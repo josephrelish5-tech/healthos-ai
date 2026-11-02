@@ -1,6 +1,6 @@
 /* HealthOS AI offline application shell.
    Deliberately excludes all authenticated API responses and patient data. */
-const CACHE_NAME = "healthos-shell-v1";
+const CACHE_NAME = "healthos-shell-v2";
 const APP_SHELL = ["./", "./index.html", "./styles.css", "./app.js"];
 
 self.addEventListener("install", event => {
