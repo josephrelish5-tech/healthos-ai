@@ -63,7 +63,7 @@ function showHealthOSView(viewId) {
     const mainContent = document.getElementById("dashboard");
     if (!mainContent) return;
 
-    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
+    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
     if (!allowedViews.includes(viewId)) {
         alert("This page is not available yet.");
         return;
@@ -79,7 +79,7 @@ function showHealthOSView(viewId) {
     const pageElements = mainContent.querySelectorAll(
         ":scope > .welcome, :scope > #dashboardMessage, :scope > .stats-grid, " +
         ":scope > #adminStaffDashboard, :scope > #patients, :scope > #appointments, " +
-        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
+        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
         ":scope > #pharmacy, :scope > #reports"
     );
     pageElements.forEach(element => {
@@ -106,6 +106,7 @@ function showHealthOSView(viewId) {
     if (viewId === "billing" && currentClinic && managementVerified) loadBillingData(currentClinic).catch(error => console.error("Department payment review refresh failed:", error));
     if (viewId === "whatsappIntake" && typeof window.loadWhatsappIntake === "function") window.loadWhatsappIntake().catch(error => console.error("WhatsApp intake refresh failed:", error));
     if (viewId === "adminVoiceTranslator" && typeof window.loadAdminVoiceTranslations === "function") window.loadAdminVoiceTranslations().catch(error => console.error("Administrative voice register refresh failed:", error));
+    if (viewId === "patientRecordSharing" && typeof window.loadPatientRecordShares === "function") window.loadPatientRecordShares().catch(error => console.error("Patient record shares refresh failed:", error));
 }
 
 document.querySelectorAll(".sidebar .nav-item").forEach(link => {
@@ -8615,4 +8616,66 @@ function openSection(sectionId, sectionName) {
  });
  $v("refreshAdminVoice")?.addEventListener("click",loadAdminVoiceTranslations);
  window.loadAdminVoiceTranslations=loadAdminVoiceTranslations;
+})();
+
+
+// PATIENT-CONTROLLED RECORD SHARING FOUNDATION
+(function initPatientRecordSharing(){
+ const $s=id=>document.getElementById(id), form=$s("patientShareForm"), body=$s("patientShareBody");
+ const say=(message,error=false)=>{const el=$s("patientShareMessage");if(el){el.textContent=message;el.className="message"+(error?" error":" success");}};
+ const cell=(row,value)=>{const td=document.createElement("td");td.textContent=value==null||value===""?"—":String(value);row.appendChild(td);return td;};
+ const date=value=>value?new Date(value).toLocaleString():"—";
+ async function loadPatientSharePatients(){
+  if(!currentClinic||!$s("patientSharePatient"))return;
+  const select=$s("patientSharePatient");select.replaceChildren();
+  const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent="Select patient";select.appendChild(placeholder);
+  const {data,error}=await supabaseClient.from("patients").select("id,patient_number,first_name,last_name").eq("clinic_id",currentClinic.id).order("first_name").limit(1000);
+  if(error){say("Could not load patients: "+error.message,true);return;}
+  (data||[]).forEach(p=>{const option=document.createElement("option");option.value=p.id;option.textContent=[p.patient_number,p.first_name,p.last_name].filter(Boolean).join(" — ");select.appendChild(option);});
+ }
+ async function loadPatientRecordShares(){
+  if(!currentClinic||!body)return;
+  body.replaceChildren();
+  const {data,error}=await supabaseClient.from("patient_record_shares").select("id,patient_id,scope_categories,expires_at,max_uses,use_count,status,created_at,patients(first_name,last_name,patient_number)").eq("clinic_id",currentClinic.id).order("created_at",{ascending:false}).limit(200);
+  if(error){const row=body.insertRow();const td=cell(row,"Could not load shares: "+error.message);td.colSpan=7;return;}
+  if(!data?.length){const row=body.insertRow();const td=cell(row,"No patient record shares have been created.");td.colSpan=7;return;}
+  data.forEach(item=>{
+   const row=body.insertRow(),p=item.patients||{};
+   cell(row,date(item.created_at));cell(row,[p.patient_number,p.first_name,p.last_name].filter(Boolean).join(" — "));
+   cell(row,(item.scope_categories||[]).join(", "));cell(row,date(item.expires_at));cell(row,item.use_count+" / "+item.max_uses);
+   const status=item.status==="active"&&new Date(item.expires_at)<new Date()?"expired":item.status;cell(row,status);
+   const action=cell(row,"");
+   if(item.status==="active"&&new Date(item.expires_at)>new Date()){
+    const button=document.createElement("button");button.type="button";button.className="logout-button";button.textContent="Revoke access";
+    button.addEventListener("click",async()=>{if(!window.confirm("Revoke this patient-authorised access code immediately?"))return;button.disabled=true;
+     const {error:revokeError}=await supabaseClient.rpc("revoke_patient_record_share",{p_clinic_id:currentClinic.id,p_share_id:item.id});
+     if(revokeError){say("Could not revoke share: "+revokeError.message,true);button.disabled=false;return;}
+     say("Access code revoked.");await loadPatientRecordShares();
+    });action.appendChild(button);
+   }
+  });
+ }
+ if(form)form.addEventListener("submit",async event=>{
+  event.preventDefault();
+  if(!currentClinic||!currentUser){say("Sign in to an authorised clinic workspace first.",true);return;}
+  const scopes=[...form.querySelectorAll('input[name="patientShareScope"]:checked')].map(x=>x.value);
+  if(!scopes.length){say("Select at least one record category.",true);return;}
+  if(!$s("patientShareConsent").checked){say("Explicit patient consent must be confirmed.",true);return;}
+  const reference=$s("patientShareConsentReference").value.trim();
+  if(reference.length<3){say("Enter a consent reference or witness details.",true);return;}
+  const button=form.querySelector('button[type="submit"]');button.disabled=true;$s("patientShareCodePanel").hidden=true;
+  const {data,error}=await supabaseClient.rpc("create_patient_record_share",{
+   p_clinic_id:currentClinic.id,p_patient_id:$s("patientSharePatient").value,p_scope_categories:scopes,
+   p_consent_method:$s("patientShareConsentMethod").value,p_consent_reference:reference,p_consent_confirmed:true,
+   p_expires_in_hours:Number($s("patientShareExpiry").value),p_max_uses:Number($s("patientShareUses").value)
+  });
+  button.disabled=false;
+  if(error){say("Could not create access code: "+error.message,true);return;}
+  $s("patientShareCode").textContent=data.share_code;
+  $s("patientShareExpiryText").textContent="Expires: "+date(data.expires_at)+" · Maximum uses: "+data.max_uses;
+  $s("patientShareCodePanel").hidden=false;
+  say("Patient-authorised access code created. It will not be shown again after leaving this screen.");
+  await loadPatientRecordShares();
+ });
+ window.loadPatientRecordShares=async()=>{await loadPatientSharePatients();await loadPatientRecordShares();};
 })();
