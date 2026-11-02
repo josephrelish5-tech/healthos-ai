@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261102-05" defer></script>
+    <script src="app.js?v=20261102-06" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -2315,7 +2315,7 @@
         <p class="muted">Financial totals use approved supplier payments and approved purchase orders. Stock valuation uses recorded purchase cost. Demand estimates use the latest 30 days of completed dispensing records; they are baseline forecasts, not a trained AI prediction.</p>
         <p id="pharmacyAnalyticsMessage" role="status" aria-live="polite"></p>
         <div class="stats-grid">
-            <article class="stat-card"><p>Current Stock Value</p><h3 id="pharmacyAnalyticsStockValue">—</h3><p class="muted">Quantity × purchase cost</p></article>
+            <article class="stat-card"><p>Current Stock Value</p><h3 id="pharmacyAnalyticsStockValue">—</h3><p class="muted">Quantity × purchase cost, including expired batches</p></article>
             <article class="stat-card"><p>Expired Stock Value</p><h3 id="pharmacyAnalyticsExpiredValue">—</h3><p class="muted">Value tied up in expired batches</p></article>
             <article class="stat-card"><p>Approved Supplier Payments</p><h3 id="pharmacyAnalyticsPayments">—</h3><p class="muted">All approved payments recorded</p></article>
             <article class="stat-card"><p>Outstanding Approved Orders</p><h3 id="pharmacyAnalyticsOutstanding">—</h3><p class="muted">Approved order value less approved payments</p></article>
