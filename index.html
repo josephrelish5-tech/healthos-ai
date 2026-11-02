@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261103-28" defer></script>
+    <script src="app.js?v=20261103-29" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -1657,6 +1657,23 @@
   <label>Clinical note<textarea id="clinicalNoteText" rows="5" maxlength="12000" required></textarea></label>
   <button class="primary-button" type="submit">Save Draft Note</button>
  </form>
+
+ <section class="panel" id="offlineClinicalQueue" style="margin:16px 0">
+  <h3>Offline Clinical Note Queue</h3>
+  <p class="muted">Capture an unsigned clinical note when connectivity is unavailable. Notes are encrypted on this device, bound to your signed-in user and clinic, and expire after 8 hours. Sync requires an authorised clinician, an open encounter and online access. This does not replace the normal clinical note form.</p>
+  <form id="offlineClinicalQueueForm" class="auth-form">
+   <label>Assigned open encounter<select id="offlineClinicalEncounter" required><option value="">Select your encounter</option></select></label>
+   <label>Note section<select id="offlineClinicalType"><option value="progress">Progress</option><option value="history">History</option><option value="examination">Examination</option><option value="assessment">Assessment</option><option value="plan">Plan</option><option value="discharge">Discharge</option></select></label>
+   <label>Clinical note<textarea id="offlineClinicalText" rows="4" maxlength="12000" required placeholder="Enter the clinical note. Verify all details before saving."></textarea></label>
+   <button class="primary-button" type="submit">Save encrypted offline note</button>
+  </form>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
+   <button type="button" class="primary-button" id="offlineClinicalSync">Review &amp; sync queued notes</button>
+   <button type="button" class="logout-button" id="offlineClinicalErase">Erase this device's queued notes</button>
+  </div>
+  <p id="offlineClinicalStatus" class="message" role="status" aria-live="polite">No offline clinical notes loaded.</p>
+  <div class="table-wrap"><table><thead><tr><th>Saved</th><th>Encounter</th><th>Section</th><th>Sync status</th><th>Action</th></tr></thead><tbody id="offlineClinicalQueueBody"><tr><td colspan="5">No queued notes.</td></tr></tbody></table></div>
+ </section>
  <h3>Encounter Notes</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>Section</th><th>Note</th><th>Status</th><th>Action</th></tr></thead><tbody id="clinicalNotesBody"><tr><td colspan="5">Select an encounter to view notes.</td></tr></tbody></table></div>
  <hr><div id="clinicalScribe">
   <h3>AI Medical Scribe — Clinician Review</h3>
