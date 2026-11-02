@@ -2484,6 +2484,7 @@ async function loadAdminStaffDashboard(clinic) {
             shiftCounts.night.size
         );
         await loadStaffActivityTable(clinic);
+        await loadStaffShiftRoster(clinic);
         if (message) {
             message.textContent =
                 "Staff statistics updated successfully. " +
@@ -2508,6 +2509,90 @@ async function loadAdminStaffDashboard(clinic) {
         }
     }
 }
+
+
+/* HEALTHOS AI: LIVE HOSPITAL-WIDE SHIFT ROSTER */
+async function loadStaffShiftRoster(clinic) {
+    const body = document.getElementById("staffShiftRosterBody");
+    const message = document.getElementById("staffShiftRosterMessage");
+    if (!body || !message) return;
+    if (!currentUser || !currentClinic || !managementVerified || clinic.id !== currentClinic.id) {
+        message.textContent = "Administrator verification is required.";
+        message.className = "message error";
+        return;
+    }
+    message.textContent = "Loading today's shift roster...";
+    message.className = "message";
+    body.replaceChildren();
+    try {
+        const now = new Date();
+        const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+            .toISOString().slice(0, 10);
+        const { data: shifts, error: shiftError } = await supabaseClient
+            .from("staff_shifts")
+            .select("id,staff_profile_id,shift_type,starts_at,ends_at,attendance_status,clocked_in_at,clocked_out_at")
+            .eq("clinic_id", clinic.id)
+            .eq("shift_date", localDate)
+            .order("starts_at", { ascending: true });
+        if (shiftError) throw shiftError;
+        const ids = [...new Set((shifts || []).map(s => s.staff_profile_id).filter(Boolean))];
+        let profiles = [];
+        if (ids.length) {
+            const { data, error } = await supabaseClient.from("staff_profiles")
+                .select("id,full_name,staff_id,department,professional_role")
+                .eq("clinic_id", clinic.id).in("id", ids);
+            if (error) throw error;
+            profiles = data || [];
+        }
+        const byId = new Map(profiles.map(p => [p.id, p]));
+        const fmt = value => value ? new Date(value).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"}) : "—";
+        const addCell = (row, value) => {
+            const cell = document.createElement("td");
+            cell.textContent = String(value ?? "—");
+            row.appendChild(cell);
+        };
+        if (!shifts || !shifts.length) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+            cell.colSpan = 8;
+            cell.textContent = "No shifts have been assigned for today.";
+            row.appendChild(cell);
+            body.appendChild(row);
+        } else {
+            shifts.forEach(shift => {
+                const person = byId.get(shift.staff_profile_id) || {};
+                const start = new Date(shift.starts_at);
+                const end = new Date(shift.ends_at);
+                let status = shift.attendance_status || "scheduled";
+                if (shift.clocked_out_at) status = "Completed";
+                else if (shift.clocked_in_at) status = "On duty";
+                else if (now > end) status = "Missed";
+                else if (now > new Date(start.getTime() + 10 * 60000)) status = "Late";
+                else status = "Scheduled";
+                const row = document.createElement("tr");
+                addCell(row, person.full_name || "Unknown staff");
+                addCell(row, person.department || "—");
+                addCell(row, (shift.shift_type || "—").replace(/_/g," "));
+                addCell(row, fmt(shift.starts_at) + " – " + fmt(shift.ends_at));
+                addCell(row, status);
+                addCell(row, fmt(shift.clocked_in_at));
+                addCell(row, fmt(shift.clocked_out_at));
+                addCell(row, person.staff_id || "—");
+                body.appendChild(row);
+            });
+        }
+        const late = (shifts || []).filter(s => !s.clocked_in_at && now > new Date(new Date(s.starts_at).getTime()+10*60000) && now <= new Date(s.ends_at)).length;
+        const missed = (shifts || []).filter(s => !s.clocked_in_at && now > new Date(s.ends_at)).length;
+        message.textContent = "Today's roster: " + (shifts || []).length + " scheduled · " + late + " late · " + missed + " missed. Late threshold: 10 minutes after shift start.";
+        message.className = "message success";
+    } catch (error) {
+        console.error("Staff shift roster failed:", error);
+        message.textContent = error.message || "Today's shift roster could not be loaded.";
+        message.className = "message error";
+    }
+}
+/* END HEALTHOS AI: LIVE HOSPITAL-WIDE SHIFT ROSTER */
+
 
 // HEALTHOS AI: DEPARTMENT PERFORMANCE DASHBOARD
 async function loadDepartmentPerformanceDashboard(clinic) {
