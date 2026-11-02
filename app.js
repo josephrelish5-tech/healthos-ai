@@ -3129,7 +3129,7 @@ async function loadBillingData(clinic) {
             if (!auditCases || auditCases.length === 0) {
                 const empty = document.createElement("tr");
                 const cell = document.createElement("td");
-                cell.colSpan = 7;
+                cell.colSpan = 8;
                 cell.textContent = "No open revenue leakage flags. This is not a guarantee that every transaction is settled.";
                 empty.appendChild(cell);
                 auditRows.appendChild(empty);
