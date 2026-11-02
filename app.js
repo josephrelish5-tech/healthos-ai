@@ -6853,6 +6853,7 @@ function openSection(sectionId, sectionName) {
             emptyCell.textContent = "No imported bank transactions yet.";
             empty.appendChild(emptyCell);
             transactionRows.appendChild(empty);
+            await loadReconciliationWorkspace();
             return;
         }
 
