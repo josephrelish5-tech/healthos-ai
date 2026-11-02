@@ -3727,10 +3727,31 @@ if (staffRegistrationForm) {
                     error
                 );
 
-                message.textContent =
+                let errorMessage =
                     error.message ||
                     "Staff registration failed. Please try again.";
 
+                if (
+                    error.context &&
+                    typeof error.context.json === "function"
+                ) {
+                    try {
+                        const responseBody =
+                            await error.context.json();
+
+                        errorMessage =
+                            responseBody.error ||
+                            responseBody.message ||
+                            errorMessage;
+                    } catch (parseError) {
+                        console.warn(
+                            "Could not read registration error:",
+                            parseError
+                        );
+                    }
+                }
+
+                message.textContent = errorMessage;
                 message.className = "message error";
 
             } finally {
