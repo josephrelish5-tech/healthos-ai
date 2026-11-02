@@ -8758,6 +8758,33 @@ function openSection(sectionId, sectionName) {
     }
    }
   }
+  const vitalTrendBody=$c("clinicalVitalTrendBody");
+  const vitalTrendMessage=$c("clinicalVitalTrendMessage");
+  if(vitalTrendBody){
+   vitalTrendBody.replaceChildren();
+   if(!encounter){
+    const row=vitalTrendBody.insertRow();cell(row,"Encounter details unavailable.");
+   }else{
+    const {data:vitalHistory,error:vitalHistoryError}=await supabaseClient.from("patient_vitals")
+     .select("recorded_at,systolic_bp,diastolic_bp,pulse_bpm,temperature_c,respiratory_rate,oxygen_saturation,pain_score")
+     .eq("clinic_id",currentClinic.id).eq("patient_id",encounter.patient_id)
+     .order("recorded_at",{ascending:false}).limit(20);
+    if(vitalHistoryError){
+     const row=vitalTrendBody.insertRow();cell(row,"Could not load recent observations.");
+     if(vitalTrendMessage){vitalTrendMessage.textContent="Recent observations unavailable. Review the patient's chart directly.";vitalTrendMessage.className="message error";}
+    }else if(!vitalHistory||!vitalHistory.length){
+     const row=vitalTrendBody.insertRow();cell(row,"No previous observations found.");
+     if(vitalTrendMessage){vitalTrendMessage.textContent="No recorded vital-sign history found for this patient.";vitalTrendMessage.className="message";}
+    }else{
+     vitalHistory.forEach(item=>{
+      const row=vitalTrendBody.insertRow();
+      const bp=item.systolic_bp!=null||item.diastolic_bp!=null?[item.systolic_bp??"—",item.diastolic_bp??"—"].join("/"):"—";
+      [when(item.recorded_at),bp,item.pulse_bpm??"—",item.temperature_c!=null?item.temperature_c+" °C":"—",item.respiratory_rate??"—",item.oxygen_saturation!=null?item.oxygen_saturation+"%":"—",item.pain_score??"—"].forEach(value=>cell(row,value));
+     });
+     if(vitalTrendMessage){vitalTrendMessage.textContent=vitalHistory.length+" recent observation(s) shown, newest first. Compare with prior readings and assess clinically.";vitalTrendMessage.className="message";}
+    }
+   }
+  }
   const {data,error}=await supabaseClient.from("clinical_decision_support_alerts")
    .select("id,rule_code,severity,observed_value,alert_message,status,created_at,review_note")
    .eq("clinic_id",currentClinic.id).eq("encounter_id",selectedEncounter)
