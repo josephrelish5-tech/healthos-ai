@@ -8713,8 +8713,14 @@ function openSection(sectionId, sectionName) {
    .select("id,rule_code,severity,observed_value,alert_message,status,created_at,review_note")
    .eq("clinic_id",currentClinic.id).eq("encounter_id",selectedEncounter)
    .order("created_at",{ascending:false}).limit(100);
-  if(error){safetyMessage(error.message,true);const r=body.insertRow();cell(r,"Could not load safety alerts.");return;}
-  if(!data.length){const r=body.insertRow();cell(r,"No rule-based safety alerts for this encounter. This does not mean the patient is clinically clear.");return;}
+  if(error){["clinicalCriticalCount","clinicalHighCount","clinicalPendingCount","clinicalResolvedCount"].forEach(id=>{const el=$c(id);if(el)el.textContent="0";});safetyMessage(error.message,true);const r=body.insertRow();cell(r,"Could not load safety alerts.");return;}
+  const alerts=Array.isArray(data)?data:[];
+  const count=(id,value)=>{const el=$c(id);if(el)el.textContent=String(value);};
+  count("clinicalCriticalCount",alerts.filter(a=>(a.severity||"").toLowerCase()==="critical").length);
+  count("clinicalHighCount",alerts.filter(a=>(a.severity||"").toLowerCase()==="high").length);
+  count("clinicalPendingCount",alerts.filter(a=>(a.status||"").toLowerCase()!=="resolved").length);
+  count("clinicalResolvedCount",alerts.filter(a=>(a.status||"").toLowerCase()==="resolved").length);
+  if(!alerts.length){const r=body.insertRow();cell(r,"No rule-based safety alerts for this encounter. This does not mean the patient is clinically clear.");return;}
   data.forEach(alert=>{
    const row=body.insertRow();
    [when(alert.created_at),alert.rule_code.replaceAll("_"," "),alert.severity.toUpperCase(),alert.observed_value,alert.alert_message,alert.status.replaceAll("_"," ")].forEach(value=>cell(row,value));
