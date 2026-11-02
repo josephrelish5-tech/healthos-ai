@@ -157,6 +157,14 @@ document.querySelectorAll(".sidebar .nav-item").forEach(link => {
         event.preventDefault();
         showHealthOSView(viewId);
 
+        // Refresh Billing Review each time it opens so new department
+        // transactions are visible without requiring a new sign-in.
+        if (viewId === "billing" && currentClinic && managementVerified) {
+            loadBillingData(currentClinic).catch(error => {
+                console.error("Department payment review refresh failed:", error);
+            });
+        }
+
         if (window.location.hash !== "#" + viewId) {
             history.replaceState(null, "", "#" + viewId);
         }
@@ -3060,6 +3068,66 @@ async function loadBillingData(clinic) {
 
         if (transactionError) {
             throw transactionError;
+        }
+
+        // Load department-captured payments separately from invoices.
+        // These are operational payment records, not new invoices, and must
+        // not inflate confirmed revenue until bank/POS settlement is reconciled.
+        const { data: departmentPayments, error: departmentPaymentsError } =
+            await supabaseClient
+                .from("pos_receipts")
+                .select("id, created_at, transaction_at, payment_provider, transaction_reference, invoice_reference, payment_method, amount, captured_department, acceptance_status, reconciliation_status")
+                .eq("clinic_id", clinic.id)
+                .order("created_at", { ascending: false })
+                .limit(100);
+
+        if (departmentPaymentsError) {
+            throw departmentPaymentsError;
+        }
+
+        const departmentPaymentsBody =
+            document.getElementById("departmentPaymentsBody");
+
+        if (departmentPaymentsBody) {
+            departmentPaymentsBody.replaceChildren();
+
+            if (!departmentPayments || departmentPayments.length === 0) {
+                const emptyRow = document.createElement("tr");
+                const emptyCell = document.createElement("td");
+                emptyCell.colSpan = 8;
+                emptyCell.textContent = "No department payments recorded yet.";
+                emptyRow.appendChild(emptyCell);
+                departmentPaymentsBody.appendChild(emptyRow);
+            } else {
+                const departmentMoney = new Intl.NumberFormat("en-NG", {
+                    style: "currency",
+                    currency: "NGN",
+                    maximumFractionDigits: 2
+                });
+
+                departmentPayments.forEach(function (payment) {
+                    const row = document.createElement("tr");
+                    const dateValue = payment.transaction_at || payment.created_at;
+                    const values = [
+                        dateValue ? new Date(dateValue).toLocaleString() : "—",
+                        payment.captured_department || "Department not recorded",
+                        payment.invoice_reference || payment.transaction_reference || "No reference",
+                        payment.payment_provider || "—",
+                        payment.payment_method || "—",
+                        payment.amount == null ? "—" : departmentMoney.format(Number(payment.amount)),
+                        String(payment.acceptance_status || "awaiting_acceptance").replace(/_/g, " "),
+                        String(payment.reconciliation_status || "unmatched").replace(/_/g, " ")
+                    ];
+
+                    values.forEach(function (value) {
+                        const cell = document.createElement("td");
+                        cell.textContent = String(value);
+                        row.appendChild(cell);
+                    });
+
+                    departmentPaymentsBody.appendChild(row);
+                });
+            }
         }
 
         const { data: findings, error: findingsError } =
