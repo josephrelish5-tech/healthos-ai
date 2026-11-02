@@ -1612,7 +1612,7 @@
   <p class="muted">Prepare a transcript from an approved transcription service or enter a synthetic transcript for development. Live microphone transcription is not connected in this release; this page does not record or upload audio.</p>
   <form id="clinicalScribeForm" class="auth-form">
    <label>Clinician-owned open encounter<select id="scribeEncounterSelect" required><option value="">Select your encounter</option></select></label>
-   <label>Transcript source<select id="scribeSourceType"><option value="manual_transcript">Manually entered / approved transcript</option><option value="approved_transcription_service">Approved transcription provider</option></select></label>
+   <label>Transcript source<select id="scribeSourceType"><option value="manual_transcript">Manually entered / externally approved transcript</option></select></label>
    <label>Transcript<textarea id="scribeTranscript" rows="5" maxlength="20000" placeholder="Paste the transcript here. Verify names, medicines, dosages, dates and clinical terms." required></textarea></label>
    <label>Clinical note section<select id="scribeNoteType"><option value="progress">Progress</option><option value="history">History</option><option value="examination">Examination</option><option value="assessment">Assessment</option><option value="plan">Plan</option><option value="discharge">Discharge</option></select></label>
    <label>Clinician-reviewed note<textarea id="scribeEditedNote" rows="6" maxlength="20000" placeholder="Edit and verify the clinical note before saving it to the patient record." required></textarea></label>
