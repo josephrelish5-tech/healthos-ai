@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261102-12" defer></script>
+    <script src="app.js?v=20261102-13" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -710,6 +710,7 @@
                     <a href="#patients" class="nav-item">♙ Patients</a>
                     <a href="#appointments" class="nav-item">▣ Appointments</a>
                     <a href="#whatsappIntake" class="nav-item">☏ WhatsApp Intake</a>
+                    <a href="#adminVoiceTranslator" class="nav-item">◉ Voice Translator</a>
                     <a href="#patientFlow" class="nav-item">⇄ Queue &amp; Beds</a>
                     <a href="#clinicalRecords" class="nav-item">✚ Clinical Records</a>
                     <a href="#clinicalScribe" class="nav-item">◉ AI Medical Scribe</a>
@@ -2559,6 +2560,34 @@
  <p class="muted">WhatsApp provider connection is not active yet. This workspace records enquiries manually until Meta WhatsApp Business Cloud API credentials, webhook verification and privacy review are configured.</p>
 </section>
 <!-- END HEALTHOS AI: WHATSAPP AI TRIAGE & PATIENT INTAKE FOUNDATION -->
+
+
+<!-- HEALTHOS AI: ADMINISTRATIVE VOICE-TO-TEXT & TRANSLATION WORKFLOW -->
+<section id="adminVoiceTranslator" class="panel" hidden>
+ <div class="panel-heading"><div><p class="eyebrow">ADMINISTRATIVE COMMUNICATION</p><h2>Voice-to-Text Administrative Translator</h2>
+ <p class="muted">Capture routine staff instructions and administrative messages, then prepare a clear English version for human review.</p></div></div>
+ <div class="stats-grid">
+  <article class="stat-card"><p>Saved Drafts</p><h3 id="adminVoiceDraftCount">—</h3></article>
+  <article class="stat-card"><p>Reviewed Records</p><h3 id="adminVoiceReviewedCount">—</h3></article>
+  <article class="stat-card"><p>Archived Records</p><h3 id="adminVoiceArchivedCount">—</h3></article>
+ </div>
+ <form id="adminVoiceForm" class="auth-form">
+  <label>Source language<select id="adminVoiceLanguage"><option value="english">English</option><option value="yoruba">Yoruba</option><option value="hausa">Hausa</option><option value="igbo">Igbo</option><option value="nigerian_pidgin">Nigerian Pidgin</option><option value="other">Other / specify in transcript</option></select></label>
+  <label>Message type<select id="adminVoiceOutputType"><option value="administrative_note">Administrative note</option><option value="task_instruction">Task instruction</option><option value="staff_memo">Staff memo</option><option value="incident_summary">Non-clinical incident summary</option></select></label>
+  <label>Department<select id="adminVoiceDepartment"><option value="">General / unassigned</option><option>Reception</option><option>Accounts and Finance</option><option>Doctors</option><option>Nursing</option><option>Pharmacy</option><option>Laboratory</option><option>Radiology</option><option>Human Resources</option><option>Administration</option></select></label>
+  <label>Original message / transcript<textarea id="adminVoiceSourceText" rows="4" maxlength="6000" required placeholder="Type the original message or dictate it using the optional microphone button."></textarea></label>
+  <div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="logout-button" id="adminVoiceStart">Start microphone</button><button type="button" class="logout-button" id="adminVoiceStop" disabled>Stop microphone</button></div>
+  <p id="adminVoiceMicStatus" class="muted" role="status" aria-live="polite">Microphone is off. You can type the original message instead.</p>
+  <label>Clear English version (staff-reviewed translation)<textarea id="adminVoiceEnglishText" rows="5" maxlength="6000" required placeholder="Enter the reviewed English meaning. Do not guess unclear words or instructions."></textarea></label>
+  <label style="display:flex;gap:10px;align-items:flex-start"><input id="adminVoiceReviewConfirm" type="checkbox" required style="width:auto;margin-top:4px">I have checked that the English version preserves the intended meaning and contains no unverified instructions or patient clinical information.</label>
+  <button class="primary-button" type="submit">Save Administrative Draft</button>
+ </form>
+ <p id="adminVoiceMessage" class="message" role="status" aria-live="polite"></p>
+ <div class="panel-heading"><div><h3>Translation & Communication Register</h3><p class="muted">Authorised staff can review, archive and retrieve saved administrative messages.</p></div><button type="button" class="logout-button" id="refreshAdminVoice">Refresh</button></div>
+ <div class="table-wrap"><table><thead><tr><th>Date</th><th>Language</th><th>Department</th><th>Original message</th><th>English version</th><th>Type</th><th>Status</th><th>Action</th></tr></thead><tbody id="adminVoiceBody"><tr><td colspan="8">Open Voice Translator to load records.</td></tr></tbody></table></div>
+ <p class="disclaimer">This is an administrative communication tool, not a clinical translator or medical interpreter. Do not enter patient names, diagnoses, prescriptions, test results or other clinical information. Browser speech recognition may send audio to the browser provider for processing; use the microphone only with appropriate notice and permission. Speech recognition and translation quality are not guaranteed. A human must verify every transcript and translation. Automated translation and AI speech services are not yet connected.</p>
+</section>
+<!-- END HEALTHOS AI: ADMINISTRATIVE VOICE-TO-TEXT & TRANSLATION WORKFLOW -->
 
                     <footer>
     HealthOS AI · Healthcare operations and revenue protection
