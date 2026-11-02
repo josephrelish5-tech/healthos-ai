@@ -63,7 +63,7 @@ function showHealthOSView(viewId) {
     const mainContent = document.getElementById("dashboard");
     if (!mainContent) return;
 
-    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
+    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
     if (!allowedViews.includes(viewId)) {
         alert("This page is not available yet.");
         return;
@@ -79,7 +79,7 @@ function showHealthOSView(viewId) {
     const pageElements = mainContent.querySelectorAll(
         ":scope > .welcome, :scope > #dashboardMessage, :scope > .stats-grid, " +
         ":scope > #adminStaffDashboard, :scope > #patients, :scope > #appointments, " +
-        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
+        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #ussdDiagnostics, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
         ":scope > #pharmacy, :scope > #reports"
     );
     pageElements.forEach(element => {
@@ -107,6 +107,7 @@ function showHealthOSView(viewId) {
     if (viewId === "whatsappIntake" && typeof window.loadWhatsappIntake === "function") window.loadWhatsappIntake().catch(error => console.error("WhatsApp intake refresh failed:", error));
     if (viewId === "adminVoiceTranslator" && typeof window.loadAdminVoiceTranslations === "function") window.loadAdminVoiceTranslations().catch(error => console.error("Administrative voice register refresh failed:", error));
     if (viewId === "patientRecordSharing" && typeof window.loadPatientRecordShares === "function") window.loadPatientRecordShares().catch(error => console.error("Patient record shares refresh failed:", error));
+    if (viewId === "ussdDiagnostics" && typeof window.loadUssdDiagnosticRequests === "function") window.loadUssdDiagnosticRequests().catch(error => console.error("USSD diagnostic requests refresh failed:", error));
 }
 
 document.querySelectorAll(".sidebar .nav-item").forEach(link => {
@@ -8678,4 +8679,72 @@ function openSection(sectionId, sectionName) {
   await loadPatientRecordShares();
  });
  window.loadPatientRecordShares=async()=>{await loadPatientSharePatients();await loadPatientRecordShares();};
+})();
+
+
+// USSD DIAGNOSTIC REQUEST MANAGEMENT FOUNDATION
+(function initUssdDiagnosticRequests(){
+ const $u=id=>document.getElementById(id), form=$u("ussdDiagnosticForm"), body=$u("ussdDiagnosticBody");
+ const say=(message,error=false)=>{const el=$u("ussdDiagnosticMessage");if(el){el.textContent=message;el.className="message"+(error?" error":" success");}};
+ const cell=(row,value)=>{const td=document.createElement("td");td.textContent=value==null||value===""?"—":String(value);row.appendChild(td);return td;};
+ const date=value=>value?new Date(value).toLocaleString():"—";
+ async function loadUssdDiagnosticRequests(){
+  if(!currentClinic||!body)return;
+  const patientSelect=$u("ussdPatient");
+  if(patientSelect){
+   const previous=patientSelect.value;
+   const {data:patients,error:patientError}=await supabaseClient.from("patients").select("id,patient_number,first_name,last_name").eq("clinic_id",currentClinic.id).order("first_name").limit(1000);
+   if(!patientError){patientSelect.replaceChildren();const blank=document.createElement("option");blank.value="";blank.textContent="Not linked / identify later";patientSelect.appendChild(blank);
+    (patients||[]).forEach(p=>{const option=document.createElement("option");option.value=p.id;option.textContent=[p.patient_number,p.first_name,p.last_name].filter(Boolean).join(" — ");patientSelect.appendChild(option);});
+    if(previous)patientSelect.value=previous;
+   }
+  }
+  const {data,error}=await supabaseClient.from("ussd_diagnostic_requests").select("id,patient_id,phone_number,patient_reference,service_code,requested_service,request_channel,status,created_at,patients(first_name,last_name,patient_number)").eq("clinic_id",currentClinic.id).order("created_at",{ascending:false}).limit(300);
+  if(error){body.replaceChildren();const row=body.insertRow();const td=cell(row,"Could not load requests: "+error.message);td.colSpan=8;return;}
+  const rows=data||[];
+  $u("ussdNewCount").textContent=rows.filter(x=>x.status==="new").length;
+  $u("ussdVerifyCount").textContent=rows.filter(x=>x.status==="verification_required").length;
+  $u("ussdAcceptedCount").textContent=rows.filter(x=>["accepted","scheduled"].includes(x.status)).length;
+  $u("ussdCompletedCount").textContent=rows.filter(x=>x.status==="completed").length;
+  body.replaceChildren();
+  if(!rows.length){const row=body.insertRow();const td=cell(row,"No diagnostic requests registered.");td.colSpan=8;return;}
+  rows.forEach(item=>{
+   const row=body.insertRow(),p=item.patients||{};
+   cell(row,date(item.created_at));cell(row,[p.patient_number,p.first_name,p.last_name,item.patient_reference].filter(Boolean).join(" — "));
+   cell(row,item.phone_number);cell(row,item.request_channel.replaceAll("_"," "));cell(row,item.service_code);cell(row,item.requested_service);cell(row,item.status.replaceAll("_"," "));
+   const action=cell(row,"");
+   const select=document.createElement("select");
+   ["new","verification_required","accepted","scheduled","sample_collected","completed","cancelled","rejected"].forEach(status=>{const option=document.createElement("option");option.value=status;option.textContent=status.replaceAll("_"," ");select.appendChild(option);});
+   select.value=item.status;
+   const note=document.createElement("input");note.type="text";note.maxLength=500;note.placeholder="Staff note (optional)";note.setAttribute("aria-label","Staff review note");
+   const save=document.createElement("button");save.type="button";save.className="logout-button";save.textContent="Update";
+   save.addEventListener("click",async()=>{
+    if(!window.confirm("Save this diagnostic request status? Confirm patient identity and test suitability before accepting or scheduling."))return;
+    save.disabled=true;
+    const {error:updateError}=await supabaseClient.from("ussd_diagnostic_requests").update({status:select.value,staff_note:note.value.trim()||null,reviewed_by:currentUser.id,reviewed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",item.id).eq("clinic_id",currentClinic.id);
+    if(updateError){say("Could not update request: "+updateError.message,true);save.disabled=false;return;}
+    say("Diagnostic request updated.");await loadUssdDiagnosticRequests();
+   });
+   action.append(select,note,save);
+  });
+  say("Loaded "+rows.length+" diagnostic request(s).");
+ }
+ if(form)form.addEventListener("submit",async event=>{
+  event.preventDefault();
+  if(!currentClinic||!currentUser){say("Sign in to an authorised clinic workspace first.",true);return;}
+  if(!$u("ussdConsent").checked){say("Patient consent is required before recording this request.",true);return;}
+  const phone=$u("ussdPhone").value.trim(),code=$u("ussdServiceCode").value.trim(),service=$u("ussdServiceName").value.trim();
+  if(phone.length<7||code.length<2||service.length<2){say("Check the phone number, service code and requested service.",true);return;}
+  const button=form.querySelector('button[type="submit"]');button.disabled=true;
+  const {error}=await supabaseClient.from("ussd_diagnostic_requests").insert({
+   clinic_id:currentClinic.id,patient_id:$u("ussdPatient").value||null,phone_number:phone,
+   patient_reference:$u("ussdPatientReference").value.trim()||null,request_channel:$u("ussdChannel").value,
+   service_code:code,requested_service:service,consent_confirmed:true,consent_recorded_at:new Date().toISOString(),
+   created_by:currentUser.id
+  });
+  button.disabled=false;
+  if(error){say("Could not register request: "+error.message,true);return;}
+  form.reset();say("Diagnostic request registered. It is awaiting staff verification.");await loadUssdDiagnosticRequests();
+ });
+ window.loadUssdDiagnosticRequests=loadUssdDiagnosticRequests;
 })();
