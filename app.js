@@ -3106,6 +3106,95 @@ async function loadBillingData(clinic) {
             }
         }
 
+        // HEALTHOS AI: INVOICE-TO-BANK REVENUE LEAKAGE REVIEW
+        const auditPanel = document.getElementById("revenueLeakageAuditPanel");
+        const auditRows = document.getElementById("revenueLeakageAuditRows");
+        const auditMessage = document.getElementById("revenueLeakageAuditMessage");
+        if (auditPanel && auditRows) {
+            auditPanel.hidden = false;
+            if (auditMessage) auditMessage.textContent = "Scanning invoices, performed services and accepted department receipts…";
+            const { data: auditRun, error: auditRunError } = await supabaseClient.rpc(
+                "run_revenue_leakage_audit", { p_clinic_id: clinic.id }
+            );
+            if (auditRunError) throw auditRunError;
+            const { data: auditCases, error: auditCasesError } = await supabaseClient
+                .from("revenue_audit_cases")
+                .select("id,finding_type,severity,source_type,source_id,reference,expected_amount,observed_amount,currency,details,status,detected_at")
+                .eq("clinic_id", clinic.id)
+                .in("status", ["open", "under_review"])
+                .order("detected_at", { ascending: false })
+                .limit(200);
+            if (auditCasesError) throw auditCasesError;
+            auditRows.replaceChildren();
+            if (!auditCases || auditCases.length === 0) {
+                const empty = document.createElement("tr");
+                const cell = document.createElement("td");
+                cell.colSpan = 7;
+                cell.textContent = "No open revenue leakage flags. This is not a guarantee that every transaction is settled.";
+                empty.appendChild(cell);
+                auditRows.appendChild(empty);
+            } else {
+                auditCases.forEach(item => {
+                    const row = document.createElement("tr");
+                    const details = item.details || {};
+                    const descriptions = {
+                        unbilled_service: "Performed service has no linked billing transaction",
+                        duplicate_invoice_reference: "Duplicate invoice reference detected",
+                        receipt_not_bank_matched: "Accepted department receipt not yet bank-reconciled",
+                        invoice_payment_variance: "Recorded invoice payments differ from accepted receipts",
+                        unallocated_bank_credit: "Unallocated bank credit"
+                    };
+                    const moneyText = value => value == null ? "—" :
+                        new Intl.NumberFormat("en-NG", {style:"currency",currency:item.currency || "NGN",maximumFractionDigits:2}).format(Number(value));
+                    const values = [
+                        String(item.severity || "medium").toUpperCase(),
+                        descriptions[item.finding_type] || String(item.finding_type).replace(/_/g, " "),
+                        item.reference || details.service || item.source_type,
+                        moneyText(item.expected_amount),
+                        moneyText(item.observed_amount),
+                        String(item.status).replace(/_/g, " "),
+                        item.detected_at ? new Date(item.detected_at).toLocaleString() : "—"
+                    ];
+                    values.forEach(value => {
+                        const cell = document.createElement("td");
+                        cell.textContent = String(value);
+                        row.appendChild(cell);
+                    });
+                    const actions = document.createElement("td");
+                    [["under_review","Review"],["resolved","Resolve"],["dismissed","Dismiss"]].forEach(([status,label]) => {
+                        const button = document.createElement("button");
+                        button.type = "button";
+                        button.className = status === "resolved" ? "primary-button" : "secondary-button";
+                        button.textContent = label;
+                        button.addEventListener("click", async () => {
+                            const note = window.prompt("Add a Finance review note (required):");
+                            if (!note || note.trim().length < 3) return;
+                            button.disabled = true;
+                            try {
+                                const { error } = await supabaseClient.from("revenue_audit_cases").update({
+                                    status, review_notes: note.trim(), reviewed_by: currentUser.id,
+                                    reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString()
+                                }).eq("id", item.id).eq("clinic_id", clinic.id);
+                                if (error) throw error;
+                                if (auditMessage) auditMessage.textContent = "Revenue audit case updated. No payment or invoice amount was changed.";
+                                await loadBillingData(clinic);
+                            } catch (error) {
+                                if (auditMessage) auditMessage.textContent = "Could not update case: " + (error.message || "Please retry.");
+                                button.disabled = false;
+                            }
+                        });
+                        actions.appendChild(button);
+                    });
+                    row.appendChild(actions);
+                    auditRows.appendChild(row);
+                });
+            }
+            if (auditMessage) auditMessage.textContent =
+                (auditRun?.new_cases || 0) + " new flag(s) created. " +
+                (auditCases?.length || 0) + " open case(s) require Finance review. Flags are not proof of fraud or confirmed loss.";
+        }
+        // END INVOICE-TO-BANK REVENUE LEAKAGE REVIEW
+
         const { data: findings, error: findingsError } =
             await supabaseClient
                 .from("revenue_audit_findings")
