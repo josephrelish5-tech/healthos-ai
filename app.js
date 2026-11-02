@@ -3191,8 +3191,9 @@ async function loadBillingData(clinic) {
         outstandingBalanceElement.textContent =
             money.format(outstandingBalance); 
 
+        // Count only findings that still require human attention.
         billingFindingCountElement.textContent =
-            String(findings ? findings.length : 0);
+            String(activeFindings.length);
 
         transactionCountElement.textContent =
             String((transactions || []).length);
@@ -4903,15 +4904,19 @@ async function loadServiceAudit() {
 
         const findingsByService = new Map();
 
-        (findings || []).forEach(finding => {
-            if (
-                finding.service_event_id &&
-                !findingsByService.has(finding.service_event_id)
-            ) {
-                findingsByService.set(
-                    finding.service_event_id,
-                    finding
-                );
+        // A service may have older closed findings from before duplicate
+        // prevention was added. Display only its most recently reviewed
+        // finding, so one service never appears with conflicting statuses.
+        const orderedFindings = [...(findings || [])].sort((a, b) => {
+            const aTime = new Date(a.reviewed_at || a.detected_at || 0).getTime();
+            const bTime = new Date(b.reviewed_at || b.detected_at || 0).getTime();
+            return bTime - aTime;
+        });
+
+        orderedFindings.forEach(finding => {
+            if (finding.service_event_id &&
+                !findingsByService.has(finding.service_event_id)) {
+                findingsByService.set(finding.service_event_id, finding);
             }
         });
 
