@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261102-16" defer></script>
+    <script src="app.js?v=20261102-17" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -713,6 +713,7 @@
                     <a href="#adminVoiceTranslator" class="nav-item">◉ Voice Translator</a>
                     <a href="#patientRecordSharing" class="nav-item">▣ Patient Record Sharing</a>
                     <a href="#ussdDiagnostics" class="nav-item">⌘ USSD Diagnostics</a>
+                    <a href="#multiFacilityManagement" class="nav-item">▦ Multi-Facility Management</a>
                     <a href="#patientFlow" class="nav-item">⇄ Queue &amp; Beds</a>
                     <a href="#clinicalRecords" class="nav-item">✚ Clinical Records</a>
                     <a href="#clinicalScribe" class="nav-item">◉ AI Medical Scribe</a>
@@ -2643,6 +2644,40 @@
  <div class="table-wrap"><table><thead><tr><th>Date</th><th>Patient / Reference</th><th>Phone</th><th>Channel</th><th>Code</th><th>Requested Service</th><th>Status</th><th>Staff Action</th></tr></thead><tbody id="ussdDiagnosticBody"><tr><td colspan="8">Open this workspace to load requests.</td></tr></tbody></table></div>
  <p class="disclaimer">USSD gateway connection is not active. This is the facility-side request and tracking foundation; staff currently log enquiries received through an external USSD channel. No diagnosis, test result or sensitive clinical information is sent by USSD. Identity, consent, clinical appropriateness, payment and sample collection must be verified by authorised staff before testing.</p>
 </section>
+
+
+<!-- HEALTHOS AI: MULTI-FACILITY MANAGEMENT -->
+<section id="multiFacilityManagement" class="panel" hidden>
+ <div class="panel-heading"><div><p class="eyebrow">CENTRAL ADMINISTRATION</p><h2>Multi-Facility Management</h2><p class="muted">Manage facilities belonging to your healthcare organisation from one authorised owner account.</p></div></div>
+ <div class="stats-grid">
+  <article class="stat-card"><p>Organisations</p><h3 id="facilityOrgCount">—</h3></article>
+  <article class="stat-card"><p>Linked Facilities</p><h3 id="facilityLinkedCount">—</h3></article>
+  <article class="stat-card"><p>Active Facilities</p><h3 id="facilityActiveCount">—</h3></article>
+  <article class="stat-card"><p>Inactive Facilities</p><h3 id="facilityInactiveCount">—</h3></article>
+ </div>
+ <h3>Create Healthcare Organisation</h3>
+ <p class="muted">Create the central organisation. Your currently active clinic will be linked as its first facility.</p>
+ <form id="facilityOrganisationForm" class="auth-form">
+  <label>Organisation name<input id="facilityOrganisationName" maxlength="180" required placeholder="e.g. HealthOS Hospital Group"></label>
+  <label>Organisation code (optional)<input id="facilityOrganisationCode" maxlength="40" placeholder="e.g. HOS-GROUP-01"></label>
+  <button class="primary-button" type="submit">Create Organisation &amp; Link Current Facility</button>
+ </form>
+ <p id="facilityOrganisationMessage" class="message" role="status" aria-live="polite"></p>
+ <h3>Link Another Facility</h3>
+ <form id="facilityLinkForm" class="auth-form">
+  <label>Organisation<select id="facilityOrganisationSelect" required><option value="">Load organisations…</option></select></label>
+  <label>Clinic workspace<select id="facilityClinicSelect" required><option value="">Load your clinic workspaces…</option></select></label>
+  <label>Facility display name<input id="facilityDisplayName" maxlength="180" required placeholder="e.g. Ikeja Diagnostic Centre"></label>
+  <label>Facility code (optional)<input id="facilityCode" maxlength="40" placeholder="Unique within the organisation"></label>
+  <label>Facility type<select id="facilityType"><option value="hospital">Hospital</option><option value="clinic">Clinic</option><option value="diagnostic_centre">Diagnostic centre</option><option value="pharmacy">Pharmacy</option><option value="specialist_centre">Specialist centre</option><option value="other">Other</option></select></label>
+  <button class="primary-button" type="submit">Link Facility</button>
+ </form>
+ <p id="facilityLinkMessage" class="message" role="status" aria-live="polite"></p>
+ <div class="panel-heading"><div><h3>Organisation Facility Register</h3><p class="muted">Only facilities you own and are authorised to manage can be linked.</p></div><button id="facilityRefreshButton" type="button">Refresh Facilities</button></div>
+ <div class="table-wrap"><table><thead><tr><th>Organisation</th><th>Facility</th><th>Code</th><th>Type</th><th>Clinic Workspace</th><th>Status</th></tr></thead><tbody id="facilityRegisterBody"><tr><td colspan="6">Open this page to load your facilities.</td></tr></tbody></table></div>
+ <p class="disclaimer">This is the organisation and facility directory foundation. It does not yet combine financial, patient or operational records across facilities. Each clinic remains a separate data boundary; central consolidated reporting and controlled cross-facility staff assignments are planned as later implementation steps.</p>
+</section>
+<!-- END HEALTHOS AI: MULTI-FACILITY MANAGEMENT -->
 
                     <footer>
     HealthOS AI · Healthcare operations and revenue protection
