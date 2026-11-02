@@ -8230,7 +8230,7 @@ function openSection(sectionId, sectionName) {
    if(appt){
     const {data,error}=await supabaseClient.from("appointments").select("id,patient_id,scheduled_at,reason,status").eq("clinic_id",clinicId).in("status",["scheduled","checked_in"]).order("scheduled_at",{ascending:true}).limit(250);
     if(error)throw error;const old=appt.value;appt.replaceChildren(new Option("No linked appointment",""));
-    (data||[]).forEach(x=>appt.add(new Option((pmap.get(x.patient_id)||"Patient")+" — "+when(x.scheduled_at)+" — "+(x.reason||""),x.id)));
+    (data||[]).forEach(x=>{const option=new Option((pmap.get(x.patient_id)||"Patient")+" — "+when(x.scheduled_at)+" — "+(x.reason||""),x.id);option.dataset.patientId=x.patient_id;appt.add(option);});
     if((data||[]).some(x=>x.id===old))appt.value=old;
    }
    $c("clinicalOpenCount").textContent=active.length;
@@ -8263,10 +8263,12 @@ function openSection(sectionId, sectionName) {
   if(!vitals.data.length){const r=vb.insertRow();cell(r,"No vital signs recorded for this encounter.");}
   vitals.data.forEach(x=>{const r=vb.insertRow();[when(x.recorded_at),x.temperature_c??"—",(x.systolic_bp??"—")+"/"+(x.diastolic_bp??"—"),x.pulse_bpm??"—",x.respiratory_rate??"—",x.oxygen_saturation??"—",x.weight_kg??"—"].forEach(y=>cell(r,y));});
  }
+ const patientPicker=$c("clinicalPatientSelect");
+ if(patientPicker)patientPicker.addEventListener("change",()=>{const chosen=patientPicker.value;const appt=$c("clinicalAppointmentSelect");if(!appt)return;Array.from(appt.options).forEach((option,index)=>{if(index>0)option.hidden=!!chosen&&option.dataset.patientId!==chosen;});if(appt.selectedOptions[0]?.hidden)appt.value="";});
  const encounterForm=$c("clinicalEncounterForm");
  if(encounterForm)encounterForm.addEventListener("submit",async ev=>{
   ev.preventDefault();if(!currentClinic||!currentUser)return;
-  const patientId=$c("clinicalPatientSelect").value;if(!patients.some(p=>p.id===patientId)){msg("Select a registered patient.",true);return;}
+  const patientId=$c("clinicalPatientSelect").value;if(!patients.some(p=>p.id===patientId)){msg("Select a registered patient.",true);return;}const linkedAppointment=$c("clinicalAppointmentSelect").selectedOptions[0];if(linkedAppointment?.dataset.patientId&&linkedAppointment.dataset.patientId!==patientId){msg("Choose an appointment belonging to the selected patient.",true);return;}
   const button=encounterForm.querySelector('button[type="submit"]');button.disabled=true;
   const ref="ENC-"+new Date().toISOString().slice(0,10).replaceAll("-","")+"-"+Math.random().toString(36).slice(2,7).toUpperCase();
   const {error}=await supabaseClient.from("clinical_encounters").insert({clinic_id:currentClinic.id,patient_id:patientId,appointment_id:$c("clinicalAppointmentSelect").value||null,encounter_number:ref,encounter_type:$c("clinicalEncounterType").value,chief_complaint:$c("clinicalChiefComplaint").value.trim(),clinician_id:currentUser.id});
