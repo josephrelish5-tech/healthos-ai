@@ -7900,6 +7900,135 @@ function openSection(sectionId, sectionName) {
             }
         });
     });
+    // ENCRYPTED OFFLINE DEPARTMENT PAYMENT REPORT QUEUE
+    (function initOfflineDepartmentTransactionQueue() {
+        const DB_NAME="healthos_offline_department_tx_v1", STORE="secure_queue";
+        const KEY_ID="department_tx_key", QUEUE_ID="department_tx_queue";
+        const status=document.getElementById("offlinePosStatus");
+        const body=document.getElementById("offlinePosRows");
+        const save=document.getElementById("offlinePosSaveButton");
+        const sync=document.getElementById("offlinePosSyncButton");
+        const erase=document.getElementById("offlinePosEraseButton");
+        let dbPromise;
+        function openDb(){
+            if(dbPromise)return dbPromise;
+            dbPromise=new Promise((resolve,reject)=>{
+                const req=indexedDB.open(DB_NAME,1);
+                req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE);};
+                req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+            });return dbPromise;
+        }
+        async function get(key){
+            const db=await openDb();return new Promise((resolve,reject)=>{
+                const tx=db.transaction(STORE,"readonly"),req=tx.objectStore(STORE).get(key);
+                req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+            });
+        }
+        async function put(key,value){
+            const db=await openDb();return new Promise((resolve,reject)=>{
+                const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(value,key);
+                tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+            });
+        }
+        async function key(){
+            let k=await get(KEY_ID);
+            if(!k){k=await crypto.subtle.generateKey({name:"AES-GCM",length:256},false,["encrypt","decrypt"]);await put(KEY_ID,k);}
+            return k;
+        }
+        function say(message,error=false){
+            if(!status)return;status.textContent=message;status.className="message "+(error?"error":"success");
+        }
+        async function saveEncrypted(items,ctx){
+            const iv=crypto.getRandomValues(new Uint8Array(12));
+            const bytes=new TextEncoder().encode(JSON.stringify({userId:ctx.userId,clinicId:ctx.clinicId,expiresAt:Date.now()+8*60*60*1000,items}));
+            const cipher=await crypto.subtle.encrypt({name:"AES-GCM",iv},await key(),bytes);
+            await put(QUEUE_ID,{iv:Array.from(iv),cipher:Array.from(new Uint8Array(cipher))});
+        }
+        async function readQueue(ctx){
+            const stored=await get(QUEUE_ID);if(!stored)return [];
+            const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:new Uint8Array(stored.iv)},await key(),new Uint8Array(stored.cipher));
+            const data=JSON.parse(new TextDecoder().decode(plain));
+            if(data.userId!==ctx.userId||data.clinicId!==ctx.clinicId||data.expiresAt<Date.now()){
+                await put(QUEUE_ID,null);throw new Error("Queue expired or belongs to another user/clinic. It has been cleared.");
+            }
+            return Array.isArray(data.items)?data.items:[];
+        }
+        function render(items){
+            if(!body)return;body.replaceChildren();
+            if(!items.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=5;td.textContent="No queued transactions.";tr.appendChild(td);body.appendChild(tr);return;}
+            items.forEach(item=>{
+                const tr=document.createElement("tr");
+                [new Date(item.capturedAt).toLocaleString(),item.paymentMethod,item.transactionReference||item.invoiceReference||"—","₦"+Number(item.amount).toLocaleString(),item.syncStatus||"Draft — not submitted"]
+                    .forEach(value=>{const td=document.createElement("td");td.textContent=String(value);tr.appendChild(td);});
+                body.appendChild(tr);
+            });
+        }
+        async function refresh(){
+            const ctx=getPharmacyContext();
+            const items=await readQueue({userId:ctx.userId,clinicId:ctx.clinicId});render(items);return items;
+        }
+        if(save)save.addEventListener("click",async()=>{
+            save.disabled=true;
+            try{
+                if(!window.crypto||!crypto.subtle||!window.indexedDB)throw new Error("Encrypted offline storage is unavailable in this browser.");
+                const ctx=getPharmacyContext();
+                const method=document.getElementById("posPaymentMethod").value;
+                const amount=Number(document.getElementById("posReceiptAmount").value);
+                if(!method||!Number.isFinite(amount)||amount<=0)throw new Error("Select a payment method and enter a valid amount above zero.");
+                if(fileInput&&fileInput.files&&fileInput.files.length)throw new Error("Remove the receipt file before saving offline. Evidence upload requires an internet connection.");
+                const dateText=document.getElementById("posReceiptDate").value;
+                const items=await refresh();
+                if(items.length>=50)throw new Error("Offline queue limit is 50 transaction reports.");
+                const record={
+                    id:crypto.randomUUID(),clinic_id:ctx.clinicId,uploaded_by:ctx.userId,
+                    payment_provider:document.getElementById("posReceiptProvider").value.trim()||null,
+                    transaction_reference:document.getElementById("posReceiptReference").value.trim()||null,
+                    amount,currency:"NGN",transaction_at:dateText?new Date(dateText).toISOString():new Date().toISOString(),
+                    transaction_status:"reported_by_staff",payment_method:method,
+                    invoice_reference:document.getElementById("posInvoiceReference").value.trim()||null,
+                    patient_reference:document.getElementById("posPatientReference").value.trim()||null,
+                    capture_channel:"manual_entry",ocr_status:"not_applicable",
+                    ocr_raw:{capture_method:"offline_staff_manual_entry",offline_captured:true},
+                    capturedAt:new Date().toISOString(),syncStatus:"Draft — not submitted"
+                };
+                items.push(record);await saveEncrypted(items,ctx);render(items);
+                form.reset();say("Transaction report encrypted on this device. It has NOT been submitted, accepted or reconciled.");
+            }catch(error){console.error("Offline department transaction save:",error);say(error.message||"Could not save offline transaction.",true);}
+            finally{save.disabled=false;}
+        });
+        if(sync)sync.addEventListener("click",async()=>{
+            sync.disabled=true;
+            try{
+                if(!navigator.onLine)throw new Error("Reconnect to the internet before syncing transaction reports.");
+                const ctx=getPharmacyContext(),items=await refresh();
+                if(!items.length){say("No queued transaction reports to sync.");return;}
+                const summary=items.map((item,i)=>(i+1)+". ₦"+Number(item.amount).toLocaleString()+" — "+item.paymentMethod+" — "+(item.transactionReference||item.invoiceReference||"No reference")).join("\n");
+                if(!window.confirm("Review the transaction reports below. They will be submitted as staff-reported transactions and remain awaiting acceptance/reconciliation.\n\n"+summary+"\n\nContinue?"))return;
+                const remaining=[];let sent=0;
+                for(const item of items){
+                    const payload={...item};delete payload.capturedAt;delete payload.syncStatus;
+                    try{
+                        const result=await supabaseClient.from("pos_receipts").insert(payload);
+                        if(result.error)throw result.error;sent++;
+                    }catch(error){item.syncStatus="Sync failed: "+(error.message||"Review required");remaining.push(item);}
+                }
+                await saveEncrypted(remaining,ctx);render(remaining);
+                say(sent+" transaction report(s) submitted. They still require department acceptance and Accounts reconciliation. "+remaining.length+" remain queued.",remaining.length>0);
+                if(sent)await loadReceipts(activeCapabilities);
+            }catch(error){console.error("Offline department transaction sync:",error);say(error.message||"Sync failed.",true);}
+            finally{sync.disabled=false;}
+        });
+        if(erase)erase.addEventListener("click",async()=>{
+            if(!window.confirm("Permanently erase the offline transaction queue from this device?"))return;
+            try{await put(QUEUE_ID,null);render([]);say("Offline transaction queue erased from this device.");}
+            catch(error){say(error.message||"Could not erase queue.",true);}
+        });
+        window.addEventListener("online",()=>say("Connection restored. Review and sync queued transaction reports when ready."));
+        try{if(typeof currentUser!=="undefined"&&currentUser&&typeof currentClinic!=="undefined"&&currentClinic)void refresh().catch(()=>{});}
+        catch(error){console.warn("Offline transaction queue waits for clinic sign-in.",error);}
+    })();
+    // END ENCRYPTED OFFLINE DEPARTMENT PAYMENT REPORT QUEUE
+
     console.log("HealthOS department transaction capture initialized.");
 })();
 
