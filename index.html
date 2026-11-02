@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261102-24" defer></script>
+    <script src="app.js?v=20261102-25" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -1648,7 +1648,7 @@
  <h3>Encounter Notes</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>Section</th><th>Note</th><th>Status</th><th>Action</th></tr></thead><tbody id="clinicalNotesBody"><tr><td colspan="5">Select an encounter to view notes.</td></tr></tbody></table></div>
  <hr><div id="clinicalScribe">
   <h3>AI Medical Scribe — Clinician Review</h3>
-  <p class="muted">Prepare a transcript from an approved transcription service or enter a synthetic transcript for development. Live microphone transcription is not connected in this release; this page does not record or upload audio.</p>
+  <p class="muted">Record a consultation in this browser or select an audio file after explicit patient consent. Audio is sent to the clinic-configured secure transcription function only after encounter ownership and consent checks; HealthOS AI does not retain the audio file.</p>
   <form id="clinicalScribeForm" class="auth-form">
    <label>Clinician-owned open encounter<select id="scribeEncounterSelect" required><option value="">Select your encounter</option></select></label>
    <label>Transcript source<select id="scribeSourceType"><option value="manual_transcript">Manual / externally approved transcript</option><option value="approved_transcription_service">Clinic-approved secure transcription service</option></select></label>
