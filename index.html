@@ -711,6 +711,7 @@
                     <a href="#appointments" class="nav-item">▣ Appointments</a>
                     <a href="#whatsappIntake" class="nav-item">☏ WhatsApp Intake</a>
                     <a href="#adminVoiceTranslator" class="nav-item">◉ Voice Translator</a>
+                    <a href="#patientRecordSharing" class="nav-item">▣ Patient Record Sharing</a>
                     <a href="#patientFlow" class="nav-item">⇄ Queue &amp; Beds</a>
                     <a href="#clinicalRecords" class="nav-item">✚ Clinical Records</a>
                     <a href="#clinicalScribe" class="nav-item">◉ AI Medical Scribe</a>
@@ -2589,6 +2590,31 @@
  <p class="disclaimer">This is an administrative communication tool, not a clinical translator or medical interpreter. Do not enter patient names, diagnoses, prescriptions, test results or other clinical information. Browser speech recognition may send audio to the browser provider for processing; use the microphone only with appropriate notice and permission. Speech recognition and translation quality are not guaranteed. A human must verify every transcript and translation. Automated translation and AI speech services are not yet connected.</p>
 </section>
 <!-- END HEALTHOS AI: ADMINISTRATIVE VOICE-TO-TEXT & TRANSLATION WORKFLOW -->
+
+
+<!-- PATIENT-CONTROLLED INTEROPERABLE RECORD SHARING -->
+<section id="patientRecordSharing" class="panel" hidden>
+ <div class="panel-heading"><div><p class="eyebrow">PATIENT-CONTROLLED DATA</p><h2>Patient Record Sharing</h2><p class="muted">Create a limited, expiring access code only after documenting the patient's consent. The code is displayed once.</p></div></div>
+ <form id="patientShareForm" class="auth-form">
+  <label>Patient<select id="patientSharePatient" required><option value="">Loading patients…</option></select></label>
+  <fieldset><legend>Record categories to share</legend>
+   <label><input type="checkbox" name="patientShareScope" value="encounter_summary"> Encounter summaries</label>
+   <label><input type="checkbox" name="patientShareScope" value="signed_notes"> Signed clinical notes</label>
+   <label><input type="checkbox" name="patientShareScope" value="vitals"> Vital signs</label>
+   <label><input type="checkbox" name="patientShareScope" value="allergies"> Allergies</label>
+  </fieldset>
+  <label>Consent method<select id="patientShareConsentMethod" required><option value="signed_form">Signed consent form</option><option value="in_person_witnessed">In-person witnessed consent</option><option value="patient_portal">Patient portal consent</option></select></label>
+  <label>Consent reference (form/reference number or witness details)<input id="patientShareConsentReference" maxlength="250" required></label>
+  <label style="display:flex;gap:8px;align-items:flex-start"><input id="patientShareConsent" type="checkbox" required style="width:auto">I confirm the patient has explicitly authorised this specific sharing request.</label>
+  <label>Access expiry<select id="patientShareExpiry"><option value="1">1 hour</option><option value="6">6 hours</option><option value="24" selected>24 hours</option><option value="72">3 days</option><option value="168">7 days</option></select></label>
+  <label>Maximum successful uses<select id="patientShareUses"><option value="1" selected>1 use</option><option value="2">2 uses</option><option value="5">5 uses</option><option value="10">10 uses</option></select></label>
+  <button class="primary-button" type="submit">Create Patient Access Code</button>
+ </form>
+ <p id="patientShareMessage" class="message" role="status" aria-live="polite"></p>
+ <div id="patientShareCodePanel" hidden class="stat-card"><h3>One-time display — share securely with the authorised recipient</h3><p id="patientShareCode" style="font-size:1.3rem;word-break:break-all"></p><p id="patientShareExpiryText" class="muted"></p><p class="disclaimer">This code is shown only now. Copy it to the patient or their authorised recipient through a verified channel. Do not place it in public messages or clinical notes. A recipient verification and scoped record-release endpoint must be connected before external record retrieval is enabled.</p></div>
+ <h3>Active and Previous Shares</h3><div class="table-wrap"><table><thead><tr><th>Created</th><th>Patient</th><th>Scope</th><th>Expiry</th><th>Uses</th><th>Status</th><th>Action</th></tr></thead><tbody id="patientShareBody"><tr><td colspan="7">Open this section to load shares.</td></tr></tbody></table></div>
+ <p class="disclaimer">This foundation creates and revokes consent-bound access credentials. It does not yet deliver OTPs, generate downloadable QR codes, verify an external recipient, or release records outside the clinic. Those steps require a secure patient identity/recipient verification flow and approved messaging provider.</p>
+</section>
 
                     <footer>
     HealthOS AI · Healthcare operations and revenue protection
