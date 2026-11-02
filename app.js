@@ -6446,9 +6446,11 @@ function openSection(sectionId, sectionName) {
     const button = document.getElementById("posReceiptUploadButton");
     const rows = document.getElementById("posReceiptRows");
     const bucket = "pos-receipt-evidence";
-    // Reuse the authenticated user's capabilities loaded before this module initializes.
-    // Without this, navigation calls loadReceipts() with an empty object and hides Accept.
-    let activeCapabilities = window.healthOSTransactionCapabilities || {};
+    // Reuse capabilities when the staff workspace already loaded them.
+    // Admin sidebar navigation can call loadReceipts() without passing capabilities,
+    // so resolve them here as well instead of silently treating the user as non-admin.
+    let activeCapabilities = window.healthOSTransactionCapabilities || null;
+    let capabilitiesResolved = Boolean(activeCapabilities);
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 
     function setMessage(text, type) {
@@ -6463,9 +6465,23 @@ function openSection(sectionId, sectionName) {
     }
 
     async function loadReceipts(capabilities) {
-        if (capabilities) activeCapabilities = capabilities;
-        capabilities = activeCapabilities;
         if (!supabaseClient || !currentClinic || !currentUser) return;
+        if (capabilities) {
+            activeCapabilities = capabilities;
+            capabilitiesResolved = true;
+            window.healthOSTransactionCapabilities = capabilities;
+        }
+        if (!capabilitiesResolved) {
+            const { data: resolved, error: capabilityError } = await supabaseClient.rpc(
+                "get_my_transaction_capabilities",
+                { p_clinic_id: currentClinic.id }
+            );
+            if (capabilityError) throw capabilityError;
+            activeCapabilities = resolved || {};
+            capabilitiesResolved = true;
+            window.healthOSTransactionCapabilities = activeCapabilities;
+        }
+        capabilities = activeCapabilities || {};
         rows.replaceChildren();
         const { data, error } = await supabaseClient.from("pos_receipts")
             .select("id,created_at,payment_provider,transaction_reference,amount,ocr_status,source_file_path,payment_method,invoice_reference,capture_channel,acceptance_status,captured_department,uploaded_by,accepted_by,accepted_at,reconciliation_status")
