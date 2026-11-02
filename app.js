@@ -7125,6 +7125,179 @@ function openSection(sectionId, sectionName) {
         });
     });
     window.loadHealthOSPharmacyProcurement = loadPharmacyProcurementWorkspace;
+    // ENCRYPTED OFFLINE PHARMACY PURCHASE ORDER DRAFT QUEUE
+    (function initOfflinePharmacyPurchaseQueue() {
+        const DB_NAME = "healthos_offline_pharmacy_v1";
+        const STORE = "secure_queue";
+        const KEY_ID = "pharmacy_po_queue_key";
+        const QUEUE_ID = "pharmacy_po_queue";
+        const status = document.getElementById("pharmacyOfflineQueueStatus");
+        const body = document.getElementById("pharmacyOfflineQueueBody");
+        const saveButton = document.getElementById("pharmacyOfflineSaveButton");
+        const syncButton = document.getElementById("pharmacyOfflineSyncButton");
+        const eraseButton = document.getElementById("pharmacyOfflineEraseButton");
+        let dbPromise;
+
+        function openDb() {
+            if (dbPromise) return dbPromise;
+            dbPromise = new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onupgradeneeded = () => {
+                    const db = request.result;
+                    if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+                };
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+            return dbPromise;
+        }
+        async function getValue(key) {
+            const db = await openDb();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE, "readonly");
+                const req = tx.objectStore(STORE).get(key);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+        async function setValue(key, value) {
+            const db = await openDb();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE, "readwrite");
+                tx.objectStore(STORE).put(value, key);
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+        async function getKey() {
+            let key = await getValue(KEY_ID);
+            if (!key) {
+                key = await crypto.subtle.generateKey({name:"AES-GCM",length:256}, false, ["encrypt","decrypt"]);
+                await setValue(KEY_ID, key);
+            }
+            return key;
+        }
+        async function encryptQueue(queue, context) {
+            const key = await getKey();
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const payload = new TextEncoder().encode(JSON.stringify({
+                userId:context.userId, clinicId:context.clinicId,
+                expiresAt:Date.now()+8*60*60*1000, items:queue
+            }));
+            const cipher = await crypto.subtle.encrypt({name:"AES-GCM",iv}, key, payload);
+            await setValue(QUEUE_ID,{iv:Array.from(iv),cipher:Array.from(new Uint8Array(cipher))});
+        }
+        async function decryptQueue(context) {
+            const stored = await getValue(QUEUE_ID);
+            if (!stored) return [];
+            const key = await getKey();
+            const plain = await crypto.subtle.decrypt({name:"AES-GCM",iv:new Uint8Array(stored.iv)},key,new Uint8Array(stored.cipher));
+            const data = JSON.parse(new TextDecoder().decode(plain));
+            if (data.userId !== context.userId || data.clinicId !== context.clinicId || data.expiresAt < Date.now()) {
+                await setValue(QUEUE_ID,null);
+                throw new Error("Offline pharmacy queue expired or belongs to another signed-in user/clinic. It has been cleared.");
+            }
+            return Array.isArray(data.items) ? data.items : [];
+        }
+        function say(message,error=false) {
+            if (!status) return;
+            status.textContent=message;
+            status.style.color=error?"#b42318":"#16794b";
+        }
+        function render(items) {
+            if (!body) return;
+            body.replaceChildren();
+            if (!items.length) {
+                const tr=document.createElement("tr"),td=document.createElement("td");
+                td.colSpan=5;td.textContent="No queued purchase orders.";tr.appendChild(td);body.appendChild(tr);return;
+            }
+            items.forEach(item=>{
+                const tr=document.createElement("tr");
+                [item.poNumber,item.supplierLabel,String(item.lines.length),new Date(item.capturedAt).toLocaleString(),item.status||"Draft — not submitted"]
+                    .forEach(value=>addPharmacyCell(tr,value));
+                body.appendChild(tr);
+            });
+        }
+        async function readQueue(context) {
+            const items=await decryptQueue(context);render(items);return items;
+        }
+        if(saveButton) saveButton.addEventListener("click",async()=>{
+            saveButton.disabled=true;
+            try {
+                const context=getPharmacyContext();
+                if (!window.crypto || !crypto.subtle || !window.indexedDB) throw new Error("This browser does not support encrypted offline storage.");
+                const supplier=document.getElementById("pharmacyPurchaseSupplier");
+                const supplierId=supplier && supplier.value;
+                const supplierLabel=supplier && supplier.selectedOptions[0] ? supplier.selectedOptions[0].textContent : "";
+                const poNumber=document.getElementById("pharmacyOrderNumber").value.trim();
+                const rows=Array.from(document.querySelectorAll("#pharmacyOrderItems .pharmacy-po-line"));
+                const lines=rows.map(row=>({
+                    medicine_name:row.querySelector(".pharmacy-po-medicine").value.trim(),
+                    medicine_code:row.querySelector(".pharmacy-po-code").value.trim()||null,
+                    quantity:Number(row.querySelector(".pharmacy-po-quantity").value),
+                    unit_cost:Number(row.querySelector(".pharmacy-po-cost").value)
+                }));
+                if(!supplierId || !poNumber) throw new Error("Load and select a supplier, then enter a purchase order number before going offline.");
+                if(!lines.length || lines.some(line=>!line.medicine_name||!Number.isInteger(line.quantity)||line.quantity<1||!Number.isFinite(line.unit_cost)||line.unit_cost<0)) throw new Error("Complete every medicine line with a name, whole quantity above zero and valid unit cost.");
+                const queue=await readQueue(context);
+                if(queue.length>=20) throw new Error("Offline queue limit is 20 purchase orders.");
+                if(queue.some(item=>item.poNumber===poNumber)) throw new Error("That purchase order number is already in the offline queue.");
+                queue.push({
+                    id:crypto.randomUUID(),poNumber,supplierId,supplierLabel,lines,
+                    expectedDeliveryDate:document.getElementById("pharmacyOrderDeliveryDate").value||null,
+                    notes:document.getElementById("pharmacyOrderNotes").value.trim()||null,
+                    capturedAt:new Date().toISOString(),status:"Draft — not submitted"
+                });
+                await encryptQueue(queue,context);
+                render(queue);
+                say("Encrypted offline purchase order saved. No stock has changed and no order has been submitted.");
+            } catch(error) { console.error("Offline pharmacy queue save:",error);say(error.message||"Could not save offline pharmacy draft.",true); }
+            finally { saveButton.disabled=false; }
+        });
+        if(syncButton) syncButton.addEventListener("click",async()=>{
+            syncButton.disabled=true;
+            try {
+                if(!navigator.onLine) throw new Error("Reconnect to the internet before syncing pharmacy purchase orders.");
+                const context=getPharmacyContext();
+                const queue=await readQueue(context);
+                if(!queue.length) {say("There are no pharmacy purchase orders waiting to sync.");return;}
+                const review=queue.map((item,index)=>(index+1)+". "+item.poNumber+" — "+item.supplierLabel+" — "+item.lines.length+" medicine line(s)").join("\n");
+                if(!window.confirm("Review these orders before submission:\n\n"+review+"\n\nEach order will be submitted for normal owner/admin approval. Continue?")) return;
+                const remaining=[];
+                let submitted=0;
+                for(const item of queue) {
+                    try {
+                        const result=await supabaseClient.rpc("create_pharmacy_purchase_order_with_items",{
+                            p_clinic_id:context.clinicId,p_supplier_id:item.supplierId,p_po_number:item.poNumber,
+                            p_items:item.lines,p_expected_delivery_date:item.expectedDeliveryDate,p_notes:item.notes
+                        });
+                        if(result.error) throw result.error;
+                        submitted++;
+                    } catch(error) {
+                        item.status="Sync failed: "+(error.message||"Review required");
+                        remaining.push(item);
+                    }
+                }
+                await encryptQueue(remaining,context);
+                render(remaining);
+                say(submitted+" purchase order(s) submitted for owner/admin approval. "+remaining.length+" remain queued for review.",remaining.length>0);
+                if(submitted) await loadPharmacyProcurementWorkspace();
+            } catch(error) { console.error("Offline pharmacy queue sync:",error);say(error.message||"Pharmacy sync failed.",true); }
+            finally { syncButton.disabled=false; }
+        });
+        if(eraseButton) eraseButton.addEventListener("click",async()=>{
+            if(!window.confirm("Erase all offline pharmacy purchase order drafts from this device?")) return;
+            try { await setValue(QUEUE_ID,null);render([]);say("Offline pharmacy queue erased from this device."); }
+            catch(error) {say(error.message||"Could not erase offline queue.",true);}
+        });
+        window.addEventListener("online",()=>{say("Connection restored. Review queued pharmacy purchase orders and choose sync when ready.");});
+        if(body) {
+            try { if(typeof currentUser!=="undefined"&&currentUser&&typeof currentClinic!=="undefined"&&currentClinic) void readQueue(getPharmacyContext()); }
+            catch(error) { console.warn("Offline pharmacy queue awaits clinic sign-in.",error); }
+        }
+    })();
+    // END ENCRYPTED OFFLINE PHARMACY PURCHASE ORDER DRAFT QUEUE
+
     // END PHARMACY PROCUREMENT WORKSPACE
 
 })();
