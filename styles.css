@@ -1216,3 +1216,9 @@ th {
         line-height: 2.1;
     }
 }
+
+
+/* HealthOS AI: keep inactive workspace pages completely out of the layout. */
+[hidden] {
+    display: none !important;
+}
