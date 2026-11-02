@@ -39,6 +39,21 @@ const adminVerificationMessage = document.getElementById("adminVerificationMessa
 const adminVerificationSubmit = document.getElementById("adminVerificationSubmit");
 const adminVerificationCancel = document.getElementById("adminVerificationCancel");
 // HEALTHOS AI: SEPARATE WORKSPACE PAGE NAVIGATION
+function showAdminWorkspacePage(pageId) {
+    const allowed = ["adminOverview", "adminStaffActivity", "adminShifts", "adminTasks", "adminLeadership", "adminPerformance"];
+    if (!allowed.includes(pageId)) pageId = "adminOverview";
+
+    document.querySelectorAll("#adminStaffDashboard [data-workspace-page]").forEach(page => {
+        page.hidden = page.dataset.workspacePage !== pageId;
+    });
+    document.querySelectorAll("#adminStaffDashboard [data-workspace-target]").forEach(button => {
+        const active = button.dataset.workspaceTarget === pageId;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+    window.scrollTo({ top: 0, behavior: "auto" });
+}
+
 function showHealthOSView(viewId) {
     if (viewId === "dashboard" && !managementVerified) {
         showOnly(currentUser ? "verification" : "auth");
@@ -48,52 +63,32 @@ function showHealthOSView(viewId) {
     const mainContent = document.getElementById("dashboard");
     if (!mainContent) return;
 
-    const allowedViews = [
-        "dashboard",
-        "staffManagement",
-        "patients",
-        "appointments",
-        "serviceCapture",
-        "billing",
-        "posReconciliation",
-        "pharmacy",
-        "reports"
-    ];
-
+    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
     if (!allowedViews.includes(viewId)) {
         alert("This page is not available yet.");
         return;
     }
 
-    const requestedPanel = viewId === "dashboard"
-        ? mainContent
-        : document.getElementById(
-            viewId === "staffManagement" ? "adminStaffDashboard" : viewId
-        );
-
+    const requestedPanel = viewId === "dashboard" ? mainContent :
+        document.getElementById(viewId === "staffManagement" ? "adminStaffDashboard" : viewId);
     if (!requestedPanel) {
         alert("This workspace page could not be found.");
         return;
     }
 
-    // Each navigation choice displays one workspace page only.
-    const dashboardElements = mainContent.querySelectorAll(
+    const pageElements = mainContent.querySelectorAll(
         ":scope > .welcome, :scope > #dashboardMessage, :scope > .stats-grid, " +
-        ":scope > #adminStaffDashboard, :scope > #patients, " +
-        ":scope > #appointments, :scope > #serviceCapture, " +
-        ":scope > #billing, :scope > #posReconciliation, " +
+        ":scope > #adminStaffDashboard, :scope > #patients, :scope > #appointments, " +
+        ":scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
         ":scope > #pharmacy, :scope > #reports"
     );
-
-    dashboardElements.forEach(element => {
-        const isDashboardElement =
-            element.matches(".welcome, #dashboardMessage, .stats-grid");
-        element.hidden = viewId === "dashboard"
-            ? !isDashboardElement
-            : element !== requestedPanel;
+    pageElements.forEach(element => {
+        const isOverview = element.matches(".welcome, #dashboardMessage, .stats-grid");
+        element.hidden = viewId === "dashboard" ? !isOverview : element !== requestedPanel;
     });
 
-    // Keep the floating assistant available without making it part of the page scroll.
+    if (viewId === "staffManagement") showAdminWorkspacePage("adminOverview");
+
     const assistantLauncher = document.getElementById("staffAssistantLauncher");
     if (assistantLauncher) assistantLauncher.hidden = false;
 
@@ -106,47 +101,27 @@ function showHealthOSView(viewId) {
 
     window.scrollTo({ top: 0, behavior: "auto" });
 
-    if (viewId === "serviceCapture") {
-        loadServiceCaptureModule().catch(error => {
-            console.error("Service Capture module loading failed:", error);
-        });
-    }
-
-    if (viewId === "posReconciliation" &&
-        typeof window.loadBankStatementImports === "function") {
-        window.loadBankStatementImports().catch(error => {
-            console.error("Bank statement panel failed:", error);
-        });
-    }
-
-    if (viewId === "billing" && currentClinic && managementVerified) {
-        loadBillingData(currentClinic).catch(error => {
-            console.error("Department payment review refresh failed:", error);
-        });
-    }
-}
-
-function navigateHealthOSView(viewId) {
-    showHealthOSView(viewId);
-    if (window.location.hash !== "#" + viewId) {
-        history.pushState({ healthOSView: viewId }, "", "#" + viewId);
-    }
+    if (viewId === "serviceCapture") loadServiceCaptureModule().catch(error => console.error("Service Capture module loading failed:", error));
+    if (viewId === "posReconciliation" && typeof window.loadBankStatementImports === "function") window.loadBankStatementImports().catch(error => console.error("Bank statement panel failed:", error));
+    if (viewId === "billing" && currentClinic && managementVerified) loadBillingData(currentClinic).catch(error => console.error("Department payment review refresh failed:", error));
 }
 
 document.querySelectorAll(".sidebar .nav-item").forEach(link => {
     link.addEventListener("click", function(event) {
         event.preventDefault();
         const viewId = (this.getAttribute("href") || "").replace(/^#/, "");
-        if (viewId) navigateHealthOSView(viewId);
+        if (viewId) {
+            showHealthOSView(viewId);
+            if (window.location.hash !== "#" + viewId) history.pushState({ healthOSView: viewId }, "", "#" + viewId);
+        }
     });
 });
 
-// Support browser back/forward navigation between workspace pages.
-window.addEventListener("popstate", () => {
-    const viewId = (window.location.hash || "#dashboard").slice(1);
-    showHealthOSView(viewId);
+document.querySelectorAll("#adminStaffDashboard [data-workspace-target]").forEach(button => {
+    button.addEventListener("click", () => showAdminWorkspacePage(button.dataset.workspaceTarget));
 });
 
+window.addEventListener("popstate", () => showHealthOSView((window.location.hash || "#dashboard").slice(1)));
 window.showHealthOSView = showHealthOSView;
 const logoutButton = document.getElementById("logoutButton");
 const currentUserLabel = document.getElementById("currentUserLabel");
