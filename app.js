@@ -8929,6 +8929,53 @@ function openSection(sectionId, sectionName) {
   finally{button.disabled=false;}
  });
 
+
+ // Clinician-only patient context preview. Data remains in the authenticated
+ // browser session and is deliberately not attached to the AI request.
+ const contextSelect=$c("scribeEncounterSelect");
+ const contextBody=$c("scribePatientContextBody");
+ async function loadScribePatientContext(){
+  if(!contextSelect||!contextBody||!supabaseClient||!currentClinic||!currentUser)return;
+  const encounter=encounters.find(x=>x.id===contextSelect.value&&x.clinician_id===currentUser.id&&["open","in_progress"].includes(x.status));
+  if(!encounter){contextBody.textContent="Select an open encounter assigned to your account.";return;}
+  contextBody.textContent="Loading patient context…";
+  try{
+   const patientId=encounter.patient_id,clinicId=currentClinic.id;
+   const [allergyResult,vitalResult,noteResult]=await Promise.all([
+    supabaseClient.from("patient_allergies").select("allergen,reaction,severity,status,created_at").eq("clinic_id",clinicId).eq("patient_id",patientId).order("created_at",{ascending:false}).limit(20),
+    supabaseClient.from("patient_vitals").select("temperature_c,systolic_bp,diastolic_bp,pulse_bpm,respiratory_rate,oxygen_saturation,weight_kg,recorded_at").eq("clinic_id",clinicId).eq("patient_id",patientId).order("recorded_at",{ascending:false}).limit(5),
+    supabaseClient.from("clinical_notes").select("note_type,note_text,status,created_at").eq("clinic_id",clinicId).eq("encounter_id",encounter.id).order("created_at",{ascending:false}).limit(5)
+   ]);
+   for(const result of [allergyResult,vitalResult,noteResult])if(result.error)throw result.error;
+   const activeAllergies=(allergyResult.data||[]).filter(x=>!x.status||["active","confirmed"].includes(String(x.status).toLowerCase()));
+   const vitals=vitalResult.data||[],notes=noteResult.data||[];
+   const section=(title,items)=>{
+    const wrap=document.createElement("div"),heading=document.createElement("strong"),list=document.createElement("ul");
+    heading.textContent=title;wrap.appendChild(heading);
+    if(!items.length){const li=document.createElement("li");li.textContent="No records found.";list.appendChild(li);}
+    else items.forEach(value=>{const li=document.createElement("li");li.textContent=value;list.appendChild(li);});
+    wrap.appendChild(list);return wrap;
+   };
+   contextBody.replaceChildren();
+   contextBody.appendChild(section("Active / confirmed allergies",activeAllergies.map(x=>[x.allergen,x.reaction&&("Reaction: "+x.reaction),x.severity&&("Severity: "+x.severity)].filter(Boolean).join(" — "))));
+   contextBody.appendChild(section("Latest recorded observations",vitals.map(x=>[
+    x.recorded_at?new Date(x.recorded_at).toLocaleString():"",
+    x.temperature_c!=null?("Temp "+x.temperature_c+" °C"):"",
+    x.systolic_bp!=null?("BP "+x.systolic_bp+"/"+(x.diastolic_bp??"—")):"",
+    x.pulse_bpm!=null?("Pulse "+x.pulse_bpm):"",
+    x.respiratory_rate!=null?("RR "+x.respiratory_rate):"",
+    x.oxygen_saturation!=null?("SpO₂ "+x.oxygen_saturation+"%"):"",
+    x.weight_kg!=null?("Weight "+x.weight_kg+" kg"):""
+   ].filter(Boolean).join(" — "))));
+   contextBody.appendChild(section("Notes from this encounter",notes.map(x=>(x.created_at?new Date(x.created_at).toLocaleString()+" — ":"")+(x.note_type||"Note")+" ("+(x.status||"status not recorded")+") — "+(x.note_text||"No note text").slice(0,500))));
+   const disclaimer=document.createElement("p");disclaimer.className="muted";disclaimer.textContent="Verify source, date and accuracy before relying on any item. Missing records do not mean the patient has no history.";contextBody.appendChild(disclaimer);
+  }catch(error){
+   contextBody.textContent="Patient context could not be loaded. Check your clinical-record permissions; continue using the verified source record.";
+   console.error("Scribe patient context load failed:",error);
+  }
+ }
+ contextSelect?.addEventListener("change",loadScribePatientContext);
+
  const scribeForm=$c("clinicalScribeForm");
  if(scribeForm)scribeForm.addEventListener("submit",async ev=>{
   ev.preventDefault();
