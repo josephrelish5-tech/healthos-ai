@@ -9596,11 +9596,7 @@ function openSection(sectionId, sectionName) {
   const encounterId=$("offlineClinicalEncounter").value;
   const note=$("offlineClinicalText").value.trim();
   if(!encounterId||!note){say("Select an assigned open encounter and enter the note.",true);return;}
-  if(!navigator.onLine){
-   const {data,error}=await supabaseClient.from("clinical_encounters").select("id,encounter_number,status,clinician_id").eq("id",encounterId).eq("clinic_id",currentClinic.id).maybeSingle();
-   if(!error&&data&&data.clinician_id===currentUser.id&&!["open","in_progress"].includes(data.status)){say("This encounter is no longer open. Connect online and select a valid encounter.",true);return;}
-   if(error&&error.code!=="PGRST116"){say("Could not validate the encounter. Connect online before queueing.",true);return;}
-  }
+  if(!navigator.onLine&&!$("offlineClinicalEncounter").selectedOptions[0]){say("Choose an encounter that was loaded while you were online.",true);return;}
   const encounter=$("offlineClinicalEncounter").selectedOptions[0];
   queue.push({id:crypto.randomUUID(),encounterId,encounterLabel:encounter?.textContent||"Encounter",noteType:$("offlineClinicalType").value,noteText:note,createdAt:Date.now(),status:"queued"});
   try{await persist();$("offlineClinicalText").value="";render();say("Encrypted unsigned note saved on this device. It has not been added to the medical record.");}
