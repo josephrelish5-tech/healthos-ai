@@ -6123,6 +6123,82 @@ function openSection(sectionId, sectionName) {
             finally { if (button) { button.disabled = false; button.textContent = "Record Dispensing"; } }
         });
     }
+
+    // HEALTHOS AI: PHARMACY CAMERA BARCODE SCANNER AND BULK STOCK REGISTRATION
+    (function initPharmacyBarcodeAndBulk(){
+        const video=document.getElementById("pharmacyBarcodeVideo");
+        const start=document.getElementById("pharmacyStartBarcodeScan");
+        const stop=document.getElementById("pharmacyStopBarcodeScan");
+        const status=document.getElementById("pharmacyBarcodeStatus");
+        const bulkInput=document.getElementById("pharmacyBulkRows");
+        const bulkButton=document.getElementById("pharmacyBulkRegisterButton");
+        const bulkMessage=document.getElementById("pharmacyBulkMessage");
+        let stream=null,detector=null,scanTimer=null,scanning=false;
+        const say=(el,msg,error=false)=>{if(el){el.textContent=msg;el.className="message"+(error?" error":" success");}};
+        function stopScanner(){
+            scanning=false;if(scanTimer)clearInterval(scanTimer);scanTimer=null;
+            if(stream){stream.getTracks().forEach(track=>track.stop());stream=null;}
+            if(video){video.pause();video.srcObject=null;video.hidden=true;}
+            if(start)start.disabled=false;if(stop)stop.disabled=true;
+        }
+        async function scanFrame(){
+            if(!scanning||!detector||!video||video.readyState<2)return;
+            try{
+                const codes=await detector.detect(video);
+                if(codes&&codes.length){
+                    const value=codes[0].rawValue||"";
+                    const field=document.getElementById("pharmacyMedicineCode");
+                    if(field){field.value=value;field.dispatchEvent(new Event("input",{bubbles:true}));}
+                    say(status,"Barcode captured: "+value+". Confirm it matches the medicine pack.");
+                    stopScanner();
+                }
+            }catch(error){console.warn("Barcode frame scan issue:",error);}
+        }
+        if(start)start.addEventListener("click",async()=>{
+            try{
+                if(!("BarcodeDetector" in window))throw new Error("This browser does not support native barcode scanning. Use a USB/Bluetooth scanner or type the barcode.");
+                if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error("Camera access is unavailable. Open HealthOS over HTTPS and allow camera permission.");
+                detector=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39","itf","qr_code"]});
+                stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});
+                video.srcObject=stream;video.hidden=false;await video.play();scanning=true;
+                start.disabled=true;stop.disabled=false;say(status,"Scanner active. Hold the medicine barcode steady inside the camera view.");
+                scanTimer=setInterval(scanFrame,350);
+            }catch(error){stopScanner();say(status,error.message||"Could not start camera scanner.",true);}
+        });
+        if(stop)stop.addEventListener("click",()=>{stopScanner();say(status,"Camera scanner stopped.");});
+        document.addEventListener("visibilitychange",()=>{if(document.hidden&&scanning){stopScanner();say(status,"Scanner paused because the page is no longer active.");}});
+        window.addEventListener("beforeunload",stopScanner);
+        if(bulkButton)bulkButton.addEventListener("click",async()=>{
+            bulkButton.disabled=true;
+            try{
+                if(!supabaseClient||!currentClinic||!currentUser)throw new Error("Sign in to an authorised clinic workspace first.");
+                const lines=(bulkInput.value||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+                if(!lines.length)throw new Error("Paste at least one batch row.");
+                if(lines.length>100)throw new Error("Register a maximum of 100 batches per upload.");
+                const parsed=lines.map((line,index)=>{
+                    const p=line.split("|").map(x=>x.trim());
+                    if(p.length!==8)throw new Error("Line "+(index+1)+" must contain exactly 8 fields separated by |.");
+                    const [medicine_name,medicine_code,batch_number,qty,reorder,expiry,cost,supplier]=p;
+                    const quantity=Number(qty),reorder_level=Number(reorder),purchase_cost=Number(cost);
+                    if(!medicine_name||!batch_number)throw new Error("Line "+(index+1)+": medicine name and batch number are required.");
+                    if(!Number.isInteger(quantity)||quantity<0||!Number.isInteger(reorder_level)||reorder_level<0||!Number.isFinite(purchase_cost)||purchase_cost<0)throw new Error("Line "+(index+1)+": quantity, reorder level or cost is invalid.");
+                    if(!/^\d{4}-\d{2}-\d{2}$/.test(expiry)||Number.isNaN(Date.parse(expiry+"T00:00:00")))throw new Error("Line "+(index+1)+": expiry must use YYYY-MM-DD.");
+                    return {clinic_id:currentClinic.id,location_id:null,medicine_name,medicine_code:medicine_code||null,batch_number,quantity,reorder_level,expiry_date:expiry,purchase_cost,supplier_name:supplier||null,created_by:currentUser.id};
+                });
+                const location=await supabaseClient.from("pharmacy_stock_locations").select("id").eq("clinic_id",currentClinic.id).eq("is_default",true).eq("is_active",true).limit(1).maybeSingle();
+                if(location.error)throw location.error;if(!location.data)throw new Error("Main Pharmacy Store is not configured.");
+                parsed.forEach(row=>row.location_id=location.data.id);
+                const {error}=await supabaseClient.from("pharmacy_inventory").insert(parsed);
+                if(error)throw error;
+                bulkInput.value="";
+                say(bulkMessage,parsed.length+" medicine batches registered successfully. Refreshing inventory.");
+                if(typeof loadPharmacyInventory==="function")await loadPharmacyInventory();
+            }catch(error){console.error("Pharmacy bulk registration failed:",error);say(bulkMessage,error.message||"Bulk registration failed. No rows were confirmed.",true);}
+            finally{bulkButton.disabled=false;}
+        });
+    })();
+    // END PHARMACY CAMERA BARCODE SCANNER AND BULK STOCK REGISTRATION
+
     if (pharmacyForm) {
         pharmacyForm.addEventListener("submit", async function (event) {
             event.preventDefault();
