@@ -1016,6 +1016,19 @@
         </table>
     </div>
 </div>
+
+<div class="panel" style="margin-top:20px;">
+ <div class="panel-heading"><div><p class="eyebrow">WORKFORCE REPORTING</p><h3>Historical Attendance &amp; Punctuality</h3><p class="muted">Review recorded clock-in/out sessions, completed hours, late arrivals and sessions still open.</p></div></div>
+ <div class="form-grid">
+  <label>Start date<input type="date" id="staffAttendanceReportStart"></label>
+  <label>End date<input type="date" id="staffAttendanceReportEnd"></label>
+  <button type="button" class="primary-button" id="staffAttendanceReportRun">Generate Attendance Report</button>
+ </div>
+ <p id="staffAttendanceReportMessage" class="message" role="status" aria-live="polite">Select a date range to load workforce attendance history.</p>
+ <div style="overflow-x:auto;"><table><thead><tr><th>Staff</th><th>Department</th><th>Staff ID</th><th>Date</th><th>Clock In</th><th>Clock Out</th><th>Hours / Session</th><th>Punctuality</th></tr></thead><tbody id="staffAttendanceReportBody"><tr><td colspan="8">No report generated.</td></tr></tbody></table></div>
+ <p class="disclaimer">Attendance hours are calculated from recorded clock-in/out timestamps. Open sessions are not counted as completed hours. Late arrival is compared with an assigned shift where one exists; sessions without a matching shift are marked accordingly.</p>
+</div>
+
 <!-- END HEALTHOS AI: STAFF SHIFT ASSIGNMENT -->
                         <p class="disclaimer">
                             Staff statistics will be calculated from
