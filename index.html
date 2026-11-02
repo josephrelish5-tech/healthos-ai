@@ -2112,6 +2112,35 @@
         </table>
     </div>
 
+    <section class="panel" id="pharmacyDispensingWorkspace" aria-labelledby="pharmacyDispensingHeading">
+        <h3 id="pharmacyDispensingHeading">Dispense Medicine</h3>
+        <p class="muted">Select a registered patient, choose an available batch, and record the quantity dispensed. Expired batches are blocked by the database.</p>
+        <form id="pharmacyDispensingForm">
+            <label for="pharmacyDispensingPatient">Patient</label>
+            <select id="pharmacyDispensingPatient" required>
+                <option value="">Loading patients...</option>
+            </select>
+            <label for="pharmacyDispensingBatch">Medicine batch</label>
+            <select id="pharmacyDispensingBatch" required>
+                <option value="">Select a batch</option>
+            </select>
+            <label for="pharmacyDispensingQuantity">Quantity to dispense</label>
+            <input id="pharmacyDispensingQuantity" type="number" min="1" step="1" required>
+            <label for="pharmacyDispensingNotes">Notes (optional)</label>
+            <textarea id="pharmacyDispensingNotes" rows="2" maxlength="1000"></textarea>
+            <button type="submit" id="pharmacyDispensingSubmit">Record Dispensing</button>
+        </form>
+        <p id="pharmacyDispensingMessage" role="status" aria-live="polite"></p>
+        <h3>Recent Dispensing Records</h3>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Date</th><th>Patient ID</th><th>Medicine</th><th>Batch</th><th>Quantity</th><th>Dispensed By</th></tr></thead>
+                <tbody id="pharmacyDispensingHistory">
+                    <tr><td colspan="6">Dispensing history will appear here.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
     <p class="disclaimer">
         Inventory features are under development. Staff must verify
         medicine batches, quantities, and expiry dates before dispensing.
