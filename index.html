@@ -1651,6 +1651,11 @@
   <p class="muted">Record a consultation in this browser or select an audio file after explicit patient consent. Audio is sent to the clinic-configured secure transcription function only after encounter ownership and consent checks; HealthOS AI does not retain the audio file.</p>
   <form id="clinicalScribeForm" class="auth-form">
    <label>Clinician-owned open encounter<select id="scribeEncounterSelect" required><option value="">Select your encounter</option></select></label>
+   <section id="scribePatientContext" class="panel" aria-live="polite" style="margin:12px 0;padding:14px">
+    <h4>Patient history context</h4>
+    <p class="muted">Select your encounter to review relevant existing records. This context is for clinician review and is not automatically sent to the AI or added to a note.</p>
+    <div id="scribePatientContextBody" class="muted">Select an encounter to load its patient context.</div>
+   </section>
    <label>Transcript source<select id="scribeSourceType"><option value="manual_transcript">Manual / externally approved transcript</option><option value="approved_transcription_service">Clinic-approved secure transcription service</option></select></label>
    <div class="scribe-audio-workspace">
     <h4>Secure audio transcription</h4>
