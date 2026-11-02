@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261102-20" defer></script>
+    <script src="app.js?v=20261102-21" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -2045,6 +2045,7 @@
     <section class="pos-receipt-card" id="bankStatementImportPanel" hidden>
         <h3>Accounts &amp; Finance — Bank Statement Import</h3>
         <p class="muted">Upload an exported CSV statement. Imported entries are for review and matching; uploading does not reconcile or confirm any hospital payment.</p>
+        <p class="stat-note">Supported columns: Date, Reference or Description, and either Amount or separate Credit and Debit columns. Optional: Value Date, Currency and Transaction Type. Credit entries are stored as positive amounts; debit entries as negative amounts. Keep one transaction per row and use a clear date format such as YYYY-MM-DD.</p>
         <form id="bankStatementImportForm" class="auth-form">
             <label for="bankStatementFile">Bank statement CSV (maximum 10 MB)</label>
             <input id="bankStatementFile" type="file" accept=".csv,text/csv,application/vnd.ms-excel" required>
