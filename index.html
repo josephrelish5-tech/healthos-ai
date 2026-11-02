@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261102-18" defer></script>
+    <script src="app.js?v=20261102-19" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -2121,6 +2121,22 @@
     </div>
 
     <h3>Inventory Workspace</h3>
+
+<section id="pharmacyBarcodeTools" class="panel" aria-labelledby="pharmacyBarcodeHeading">
+ <h3 id="pharmacyBarcodeHeading">Barcode Scanner &amp; Bulk Stock Registration</h3>
+ <p class="muted">Scan a medicine barcode with your device camera, or paste multiple batch rows for one-step registration. Always verify the medicine, batch, expiry and quantity against the physical pack and supplier invoice.</p>
+ <div class="button-group">
+  <button type="button" id="pharmacyStartBarcodeScan" class="primary-button">Start Camera Scanner</button>
+  <button type="button" id="pharmacyStopBarcodeScan" class="btn btn-secondary" disabled>Stop Scanner</button>
+ </div>
+ <video id="pharmacyBarcodeVideo" playsinline muted hidden style="width:100%;max-width:420px;border-radius:10px;margin-top:12px"></video>
+ <p id="pharmacyBarcodeStatus" class="message" role="status" aria-live="polite">Camera scanning requires HTTPS and browser BarcodeDetector support. You can also use a USB/Bluetooth barcode scanner in the barcode field below.</p>
+ <h4>Bulk Register Medicine Batches</h4>
+ <p class="muted">One batch per line. Use this exact order, separated by the | character:<br><code>Medicine name | Barcode | Batch number | Quantity | Reorder level | YYYY-MM-DD expiry | Unit purchase cost NGN | Supplier</code></p>
+ <textarea id="pharmacyBulkRows" rows="5" maxlength="30000" placeholder="Paracetamol 500mg | 8901234567890 | BATCH-001 | 100 | 20 | 2027-12-31 | 25 | ABC Pharma"></textarea>
+ <button type="button" id="pharmacyBulkRegisterButton" class="primary-button">Validate &amp; Register All Rows</button>
+ <p id="pharmacyBulkMessage" class="message" role="status" aria-live="polite"></p>
+</section>
 
 <form id="pharmacyInventoryForm">
 
