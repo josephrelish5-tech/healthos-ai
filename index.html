@@ -2508,6 +2508,16 @@
             </table>
         </div>
 
+        <section class="panel" id="pharmacyOfflineQueue" aria-labelledby="pharmacyOfflineQueueHeading">
+            <h3 id="pharmacyOfflineQueueHeading">Offline Pharmacy Purchase Order Queue</h3>
+            <p class="muted">Prepare a purchase order while disconnected. Drafts are encrypted on this device and expire after 8 hours. Sync submits the order for normal owner/admin approval. This does not change stock or permit offline dispensing.</p>
+            <button type="button" id="pharmacyOfflineSaveButton">Secure current purchase order offline</button>
+            <button type="button" id="pharmacyOfflineSyncButton">Review &amp; sync queued orders</button>
+            <button type="button" id="pharmacyOfflineEraseButton">Erase this device's pharmacy queue</button>
+            <p id="pharmacyOfflineQueueStatus" role="status" aria-live="polite">No offline pharmacy action has been performed.</p>
+            <div class="table-wrap"><table><thead><tr><th>PO reference</th><th>Supplier</th><th>Medicine lines</th><th>Captured</th><th>Status</th></tr></thead><tbody id="pharmacyOfflineQueueBody"><tr><td colspan="5">No queued purchase orders.</td></tr></tbody></table></div>
+        </section>
+
         <h4>Create Purchase Order</h4>
         <p class="muted">New orders are submitted for owner/admin approval before goods can be received.</p>
         <form id="pharmacyPurchaseOrderForm">
