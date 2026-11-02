@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261102-07" defer></script>
+    <script src="app.js?v=20261102-08" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -706,6 +706,7 @@
                     <a href="#patients" class="nav-item">♙ Patients</a>
                     <a href="#appointments" class="nav-item">▣ Appointments</a>
                     <a href="#patientFlow" class="nav-item">⇄ Queue &amp; Beds</a>
+                    <a href="#clinicalRecords" class="nav-item">✚ Clinical Records</a>
                     <a href="#serviceCapture" class="nav-item">✚ Service Capture</a>
                     <a href="#billing" class="nav-item">₦ Billing &amp; Revenue</a>
                     <a href="#posReconciliation" class="nav-item">▣ POS Reconciliation</a>
@@ -1576,7 +1577,64 @@
  <h3>Current Admissions</h3><div class="table-wrapper"><table><thead><tr><th>Admission No.</th><th>Patient</th><th>Bed / Ward</th><th>Admitted</th><th>Action</th></tr></thead><tbody id="activeAdmissionsBody"><tr><td colspan="5">Admissions will appear here.</td></tr></tbody></table></div>
  <p class="disclaimer">Triage priority is an administrative queue aid, not a diagnosis or clinical decision. Emergency cases must receive immediate attention under the hospital's clinical protocol. Use fictional patient records until formal clinical and privacy approval.</p>
 </section>
-<!-- END SMART QUEUE AND BED MANAGEMENT -->                
+<!-- END SMART QUEUE AND BED MANAGEMENT -->
+
+<!-- HEALTHOS AI: CLINICAL MANAGEMENT AND ELECTRONIC MEDICAL RECORDS -->
+<section class="panel" id="clinicalRecords" aria-labelledby="clinicalRecordsHeading">
+ <div class="panel-heading"><div><p class="eyebrow">CLINICAL WORKSPACE</p><h2 id="clinicalRecordsHeading">Clinical Management &amp; Electronic Medical Records</h2><p class="muted">Clinician-led encounter documentation, observations, notes and allergy records.</p></div><button type="button" id="refreshClinicalRecords" class="logout-button">Refresh Records</button></div>
+ <p id="clinicalRecordsMessage" class="message" role="status" aria-live="polite">Open this workspace to load authorised clinical records.</p>
+ <div class="stats-grid">
+  <article class="stat-card"><p>Open Encounters</p><h3 id="clinicalOpenCount">0</h3></article>
+  <article class="stat-card"><p>Notes Awaiting Signature</p><h3 id="clinicalDraftCount">0</h3></article>
+  <article class="stat-card"><p>Vitals Recorded Today</p><h3 id="clinicalVitalsCount">0</h3></article>
+ </div>
+ <h3>1. Start a Clinical Encounter</h3>
+ <form id="clinicalEncounterForm" class="auth-form">
+  <label>Patient<select id="clinicalPatientSelect" required><option value="">Loading patients...</option></select></label>
+  <label>Appointment (optional)<select id="clinicalAppointmentSelect"><option value="">No linked appointment</option></select></label>
+  <label>Encounter type<select id="clinicalEncounterType"><option value="outpatient">Outpatient</option><option value="inpatient">Inpatient</option><option value="emergency">Emergency</option><option value="follow_up">Follow-up</option></select></label>
+  <label>Chief complaint / reason for encounter<textarea id="clinicalChiefComplaint" rows="3" maxlength="2000" required></textarea></label>
+  <button class="primary-button" type="submit">Open Clinical Encounter</button>
+ </form>
+ <h3>Active &amp; Recent Encounters</h3>
+ <div class="table-wrap"><table><thead><tr><th>Encounter</th><th>Patient</th><th>Type</th><th>Started</th><th>Status</th><th>Select</th></tr></thead><tbody id="clinicalEncountersBody"><tr><td colspan="6">No records loaded.</td></tr></tbody></table></div>
+ <hr><h3>2. Record Clinical Notes</h3>
+ <form id="clinicalNoteForm" class="auth-form">
+  <label>Encounter<select id="clinicalNoteEncounter" required><option value="">Select an open encounter</option></select></label>
+  <label>Note section<select id="clinicalNoteType"><option value="history">History</option><option value="examination">Examination</option><option value="assessment">Assessment</option><option value="plan">Plan</option><option value="progress">Progress</option><option value="discharge">Discharge</option></select></label>
+  <label>Clinical note<textarea id="clinicalNoteText" rows="5" maxlength="12000" required></textarea></label>
+  <button class="primary-button" type="submit">Save Draft Note</button>
+ </form>
+ <h3>Encounter Notes</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>Section</th><th>Note</th><th>Status</th><th>Action</th></tr></thead><tbody id="clinicalNotesBody"><tr><td colspan="5">Select an encounter to view notes.</td></tr></tbody></table></div>
+ <hr><h3>3. Record Vital Signs</h3>
+ <form id="clinicalVitalsForm" class="auth-form">
+  <label>Encounter<select id="clinicalVitalsEncounter" required><option value="">Select an open encounter</option></select></label>
+  <label>Temperature (°C)<input id="clinicalTemperature" type="number" min="25" max="45" step="0.1"></label>
+  <label>Blood pressure — systolic (mmHg)<input id="clinicalSystolic" type="number" min="40" max="300"></label>
+  <label>Blood pressure — diastolic (mmHg)<input id="clinicalDiastolic" type="number" min="20" max="200"></label>
+  <label>Pulse (beats/min)<input id="clinicalPulse" type="number" min="20" max="250"></label>
+  <label>Respiratory rate (/min)<input id="clinicalRespiratory" type="number" min="4" max="80"></label>
+  <label>Oxygen saturation (%)<input id="clinicalOxygen" type="number" min="0" max="100" step="0.1"></label>
+  <label>Weight (kg)<input id="clinicalWeight" type="number" min="0.2" max="500" step="0.01"></label>
+  <label>Height (cm)<input id="clinicalHeight" type="number" min="20" max="250" step="0.1"></label>
+  <label>Pain score (0–10)<input id="clinicalPain" type="number" min="0" max="10"></label>
+  <label>Observation notes<textarea id="clinicalVitalsNotes" rows="2" maxlength="1000"></textarea></label>
+  <button class="primary-button" type="submit">Save Vital Signs</button>
+ </form>
+ <h3>Latest Observations</h3><div class="table-wrap"><table><thead><tr><th>Recorded</th><th>Temperature</th><th>Blood Pressure</th><th>Pulse</th><th>Respiratory</th><th>SpO₂</th><th>Weight</th></tr></thead><tbody id="clinicalVitalsBody"><tr><td colspan="7">Select an encounter to view observations.</td></tr></tbody></table></div>
+ <hr><h3>4. Patient Allergy Register</h3>
+ <form id="clinicalAllergyForm" class="auth-form">
+  <label>Patient<select id="clinicalAllergyPatient" required><option value="">Select patient</option></select></label>
+  <label>Allergen<input id="clinicalAllergen" maxlength="200" required></label>
+  <label>Reaction<input id="clinicalAllergyReaction" maxlength="500"></label>
+  <label>Severity<select id="clinicalAllergySeverity"><option value="unknown">Unknown</option><option value="mild">Mild</option><option value="moderate">Moderate</option><option value="severe">Severe</option></select></label>
+  <button class="primary-button" type="submit">Record Allergy</button>
+ </form>
+ <div class="table-wrap"><table><thead><tr><th>Patient</th><th>Allergen</th><th>Reaction</th><th>Severity</th><th>Status</th></tr></thead><tbody id="clinicalAllergiesBody"><tr><td colspan="5">Allergy records will appear here.</td></tr></tbody></table></div>
+ <p class="disclaimer">Clinical records must be entered and reviewed by authorised healthcare professionals. Draft notes are not signed clinical documents. This workspace does not diagnose, prescribe or replace clinical judgement. Use synthetic records during development and testing.</p>
+</section>
+<!-- END CLINICAL MANAGEMENT AND ELECTRONIC MEDICAL RECORDS -->
+                
 <section class="panel" id="serviceCapture">
 
     <div class="panel-heading">
