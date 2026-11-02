@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261102-06" defer></script>
+    <script src="app.js?v=20261102-07" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -705,6 +705,7 @@
                     <a href="#staffManagement" class="nav-item">♙ Staff Management</a>
                     <a href="#patients" class="nav-item">♙ Patients</a>
                     <a href="#appointments" class="nav-item">▣ Appointments</a>
+                    <a href="#patientFlow" class="nav-item">⇄ Queue &amp; Beds</a>
                     <a href="#serviceCapture" class="nav-item">✚ Service Capture</a>
                     <a href="#billing" class="nav-item">₦ Billing &amp; Revenue</a>
                     <a href="#posReconciliation" class="nav-item">▣ POS Reconciliation</a>
@@ -1534,7 +1535,48 @@
 
 </section>
 
-<!-- END HEALTHOS AI — APPOINTMENTS MODULE -->                
+<!-- END HEALTHOS AI — APPOINTMENTS MODULE -->
+
+<!-- HEALTHOS AI: SMART QUEUE AND BED MANAGEMENT -->
+<section class="panel" id="patientFlow">
+ <div class="panel-heading"><div><p class="eyebrow">PATIENT FLOW</p><h2>Smart Queue &amp; Bed Management</h2><p class="muted">Coordinate arrival, triage priority, consultation flow, admissions and discharge.</p></div>
+ <button type="button" id="refreshPatientFlow" class="logout-button">Refresh</button></div>
+ <div class="stats-grid">
+  <div class="stat-card"><span>Waiting</span><strong id="queueWaitingCount">0</strong></div>
+  <div class="stat-card"><span>Urgent / Emergency</span><strong id="queuePriorityCount">0</strong></div>
+  <div class="stat-card"><span>Available beds</span><strong id="bedAvailableCount">0</strong></div>
+  <div class="stat-card"><span>Occupied beds</span><strong id="bedOccupiedCount">0</strong></div>
+ </div>
+ <hr><h3>1. Register Patient Arrival</h3>
+ <form id="queueEntryForm" class="auth-form">
+  <label>Patient<select id="queuePatientSelect" required><option value="">Loading patients...</option></select></label>
+  <label>Appointment (optional)<select id="queueAppointmentSelect"><option value="">Walk-in / no appointment</option></select></label>
+  <label>Reason for visit<input id="queueVisitReason" maxlength="500" required></label>
+  <label>Priority<select id="queuePriority"><option value="routine">Routine</option><option value="urgent">Urgent</option><option value="emergency">Emergency</option></select></label>
+  <label>Triage note (optional)<textarea id="queueTriageNote" rows="2" maxlength="1000"></textarea></label>
+  <button class="primary-button" type="submit">Add to Patient Queue</button>
+ </form>
+ <p id="queueEntryMessage" class="message" role="status" aria-live="polite"></p>
+ <h3>Live Patient Queue</h3><div class="table-wrapper"><table><thead><tr><th>Queue No.</th><th>Patient</th><th>Arrival</th><th>Priority</th><th>Reason</th><th>Status</th><th>Next action</th></tr></thead><tbody id="patientQueueBody"><tr><td colspan="7">Queue will appear here.</td></tr></tbody></table></div>
+ <hr><h3>2. Bed &amp; Ward Register</h3>
+ <form id="bedRegisterForm" class="auth-form">
+  <label>Bed number<input id="bedNumber" maxlength="40" required></label>
+  <label>Ward name<input id="bedWardName" maxlength="100" required></label>
+  <label>Bed type (optional)<input id="bedType" maxlength="80"></label>
+  <button class="primary-button" type="submit">Register Bed</button>
+ </form><p id="bedRegisterMessage" class="message" role="status" aria-live="polite"></p>
+ <div class="table-wrapper"><table><thead><tr><th>Bed</th><th>Ward</th><th>Type</th><th>Status</th></tr></thead><tbody id="bedRegisterBody"><tr><td colspan="4">Beds will appear here.</td></tr></tbody></table></div>
+ <hr><h3>3. Admit Patient</h3>
+ <form id="patientAdmissionForm" class="auth-form">
+  <label>Patient<select id="admissionPatientSelect" required><option value="">Loading patients...</option></select></label>
+  <label>Available bed<select id="admissionBedSelect" required><option value="">Loading beds...</option></select></label>
+  <label>Admission reason<textarea id="admissionReason" rows="2" maxlength="1000" required></textarea></label>
+  <button class="primary-button" type="submit">Admit Patient</button>
+ </form><p id="admissionMessage" class="message" role="status" aria-live="polite"></p>
+ <h3>Current Admissions</h3><div class="table-wrapper"><table><thead><tr><th>Admission No.</th><th>Patient</th><th>Bed / Ward</th><th>Admitted</th><th>Action</th></tr></thead><tbody id="activeAdmissionsBody"><tr><td colspan="5">Admissions will appear here.</td></tr></tbody></table></div>
+ <p class="disclaimer">Triage priority is an administrative queue aid, not a diagnosis or clinical decision. Emergency cases must receive immediate attention under the hospital's clinical protocol. Use fictional patient records until formal clinical and privacy approval.</p>
+</section>
+<!-- END SMART QUEUE AND BED MANAGEMENT -->                
 <section class="panel" id="serviceCapture">
 
     <div class="panel-heading">
