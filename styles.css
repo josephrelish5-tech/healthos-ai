@@ -1014,3 +1014,78 @@ footer {
     background: #dc2626;
 }
 
+
+
+/* HEALTHOS AI BLACK / WHITE / RED MEDICAL IDENTITY */
+:root {
+    --navy: #111111;
+    --navy-deep: #050505;
+    --medical-blue: #d71920;
+    --blue-soft: #fff0f0;
+    --page: #f7f7f7;
+    --border: #dedede;
+    --muted: #666666;
+}
+html, body { background: #f7f7f7; color: #171717; }
+.topbar { position: relative; background: #ffffff; border-bottom: 3px solid #d71920; }
+.brand-icon {
+    position: relative;
+    overflow: hidden;
+    background: #111111;
+    border: 2px solid #d71920;
+    box-shadow: 0 4px 14px rgba(215,25,32,.16);
+}
+.brand-icon::after {
+    content: "〰";
+    position: absolute;
+    left: 1px;
+    top: 7px;
+    color: #ed1c24;
+    font-size: 25px;
+    font-weight: 900;
+    line-height: 1;
+    text-shadow: 0 0 5px rgba(237,28,36,.35);
+}
+.brand h1, .welcome h2, .panel-heading h2, .stat-card h3,
+.auth-screen h2 { color: #111111 !important; }
+.brand h1::after {
+    content: " AI";
+    color: #d71920;
+}
+.sidebar, .assistant-launcher, .assistant-panel-header {
+    background: #111111;
+}
+.nav-item:hover { background: #292929; }
+.nav-item.active { color: #111111; border-left: 4px solid #d71920; }
+.eyebrow, .assistant-greeting, .text-button { color: #c9161d !important; }
+.primary-button, .assistant-send { background: #d71920; }
+.primary-button:hover, .assistant-send:hover { background: #a90f16; }
+.connection-label { background: #fff0f0; color: #b51219; }
+.stat-card { border-top-color: #d71920; }
+.panel, .stat-card, .auth-screen { border-color: #dedede; }
+th { background: #f0f0f0; color: #222222; }
+.demo-badge { background: #fff0f0; color: #a90f16; border-color: #f2b9bc; }
+.topbar::after {
+    content: "✚   ⚕   ♥   ✚   ⚕   ♥   ✚   ⚕";
+    display: block;
+    flex-basis: 100%;
+    padding: 7px 4px 0;
+    color: #d71920;
+    font-size: 15px;
+    letter-spacing: 13px;
+    opacity: .72;
+    text-align: center;
+    border-top: 1px solid #eeeeee;
+}
+.main-content {
+    background-image:
+      radial-gradient(circle at 12px 12px, rgba(215,25,32,.045) 1.4px, transparent 1.8px);
+    background-size: 30px 30px;
+}
+.assistant-launcher:hover { background: #d71920; }
+.assistant-action > span:first-child { background: #fff0f0; color: #c9161d; }
+.assistant-action:hover { background: #fff5f5; border-color: #e9a4a7; }
+:focus-visible { outline-color: #e05258; }
+@media (max-width: 600px) {
+    .topbar::after { letter-spacing: 7px; font-size: 13px; }
+}
