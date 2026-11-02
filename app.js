@@ -63,7 +63,7 @@ function showHealthOSView(viewId) {
     const mainContent = document.getElementById("dashboard");
     if (!mainContent) return;
 
-    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
+    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
     if (!allowedViews.includes(viewId)) {
         alert("This page is not available yet.");
         return;
@@ -79,7 +79,7 @@ function showHealthOSView(viewId) {
     const pageElements = mainContent.querySelectorAll(
         ":scope > .welcome, :scope > #dashboardMessage, :scope > .stats-grid, " +
         ":scope > #adminStaffDashboard, :scope > #patients, :scope > #appointments, " +
-        ":scope > #whatsappIntake, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
+        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
         ":scope > #pharmacy, :scope > #reports"
     );
     pageElements.forEach(element => {
@@ -105,6 +105,7 @@ function showHealthOSView(viewId) {
     if (viewId === "posReconciliation" && typeof window.loadBankStatementImports === "function") window.loadBankStatementImports().catch(error => console.error("Bank statement panel failed:", error));
     if (viewId === "billing" && currentClinic && managementVerified) loadBillingData(currentClinic).catch(error => console.error("Department payment review refresh failed:", error));
     if (viewId === "whatsappIntake" && typeof window.loadWhatsappIntake === "function") window.loadWhatsappIntake().catch(error => console.error("WhatsApp intake refresh failed:", error));
+    if (viewId === "adminVoiceTranslator" && typeof window.loadAdminVoiceTranslations === "function") window.loadAdminVoiceTranslations().catch(error => console.error("Administrative voice register refresh failed:", error));
 }
 
 document.querySelectorAll(".sidebar .nav-item").forEach(link => {
@@ -8517,4 +8518,101 @@ function openSection(sectionId, sectionName) {
  });
  $i("refreshWhatsappIntake")?.addEventListener("click",loadWhatsappIntake);
  window.loadWhatsappIntake=loadWhatsappIntake;
+})();
+
+
+// HEALTHOS AI: ADMINISTRATIVE VOICE-TO-TEXT TRANSLATION WORKFLOW
+(function initAdminVoiceTranslator(){
+ const $v=id=>document.getElementById(id);
+ const form=$v("adminVoiceForm"), body=$v("adminVoiceBody");
+ let recognition=null, listening=false;
+ const say=(text,isError=false)=>{const el=$v("adminVoiceMessage");if(el){el.textContent=text;el.className="message"+(isError?" error":" success");}};
+ const cell=(row,value)=>{const td=document.createElement("td");td.textContent=value==null||value===""?"—":String(value);row.appendChild(td);return td;};
+ const date=value=>value?new Date(value).toLocaleString():"—";
+ const langCode={english:"en-NG",yoruba:"yo-NG",hausa:"ha-NG",igbo:"ig-NG",nigerian_pidgin:"en-NG",other:"en-NG"};
+ async function loadAdminVoiceTranslations(){
+  if(!body||!currentClinic)return;
+  body.replaceChildren();
+  const {data,error}=await supabaseClient.from("administrative_voice_translations")
+   .select("id,source_language,source_text,standardized_english,output_type,department,status,created_at")
+   .eq("clinic_id",currentClinic.id).order("created_at",{ascending:false}).limit(200);
+  if(error){say("Could not load communication register: "+error.message,true);const row=body.insertRow();const td=cell(row,"Register unavailable.");td.colSpan=8;return;}
+  const rows=data||[];
+  $v("adminVoiceDraftCount").textContent=rows.filter(x=>x.status==="draft").length;
+  $v("adminVoiceReviewedCount").textContent=rows.filter(x=>x.status==="reviewed").length;
+  $v("adminVoiceArchivedCount").textContent=rows.filter(x=>x.status==="archived").length;
+  if(!rows.length){const row=body.insertRow();const td=cell(row,"No administrative translations saved yet.");td.colSpan=8;return;}
+  rows.forEach(item=>{
+   const row=body.insertRow();cell(row,date(item.created_at));cell(row,item.source_language.replaceAll("_"," "));
+   cell(row,item.department);cell(row,item.source_text);cell(row,item.standardized_english);
+   cell(row,item.output_type.replaceAll("_"," "));cell(row,item.status);
+   const action=cell(row,"");
+   if(item.status==="draft"){
+    const review=document.createElement("button");review.type="button";review.className="logout-button";review.textContent="Mark reviewed";
+    review.addEventListener("click",async()=>{
+     if(!window.confirm("Confirm that the source and English version have been checked by a staff member?"))return;
+     review.disabled=true;
+     const {error:updateError}=await supabaseClient.from("administrative_voice_translations").update({status:"reviewed",reviewed_by:currentUser.id,review_note:"Staff confirmed source and English version were reviewed.",reviewed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",item.id).eq("clinic_id",currentClinic.id);
+     if(updateError){say("Could not mark reviewed: "+updateError.message,true);review.disabled=false;return;}
+     say("Record marked as reviewed.");await loadAdminVoiceTranslations();
+    });action.appendChild(review);
+   }else if(item.status==="reviewed"){
+    const archive=document.createElement("button");archive.type="button";archive.className="logout-button";archive.textContent="Archive";
+    archive.addEventListener("click",async()=>{
+     if(!window.confirm("Archive this administrative communication?"))return;
+     archive.disabled=true;
+     const {error:updateError}=await supabaseClient.from("administrative_voice_translations").update({status:"archived",updated_at:new Date().toISOString()}).eq("id",item.id).eq("clinic_id",currentClinic.id);
+     if(updateError){say("Could not archive record: "+updateError.message,true);archive.disabled=false;return;}
+     say("Record archived.");await loadAdminVoiceTranslations();
+    });action.appendChild(archive);
+   }
+  });
+  say("Loaded "+rows.length+" administrative communication record(s).");
+ }
+ function stopMic(){
+  if(recognition){try{recognition.stop();}catch(_e){}}
+  listening=false;$v("adminVoiceStart").disabled=false;$v("adminVoiceStop").disabled=true;
+ }
+ $v("adminVoiceStart")?.addEventListener("click",()=>{
+  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechRecognition){$v("adminVoiceMicStatus").textContent="Speech recognition is not supported by this browser. Type the original message instead.";return;}
+  if(!$v("adminVoiceReviewConfirm").checked){$v("adminVoiceMicStatus").textContent="First confirm you understand the microphone and human-review notice.";return;}
+  recognition=new SpeechRecognition();recognition.lang=langCode[$v("adminVoiceLanguage").value]||"en-NG";
+  recognition.continuous=true;recognition.interimResults=true;
+  const source=$v("adminVoiceSourceText");let finalText=source.value.trim();
+  recognition.onresult=event=>{
+   let interim="";
+   for(let i=event.resultIndex;i<event.results.length;i++){
+    const spoken=event.results[i][0].transcript;
+    if(event.results[i].isFinal)finalText+=(finalText?" ":"")+spoken;else interim+=spoken;
+   }
+   source.value=finalText+(interim?" "+interim:"");
+  };
+  recognition.onerror=event=>{$v("adminVoiceMicStatus").textContent="Microphone error: "+event.error+". You may type the transcript instead.";stopMic();};
+  recognition.onend=()=>{listening=false;$v("adminVoiceStart").disabled=false;$v("adminVoiceStop").disabled=true;$v("adminVoiceMicStatus").textContent="Microphone stopped. Check and correct the transcript before saving.";};
+  try{recognition.start();listening=true;$v("adminVoiceStart").disabled=true;$v("adminVoiceStop").disabled=false;$v("adminVoiceMicStatus").textContent="Listening. Speak clearly, then stop and review the transcript."; }
+  catch(error){$v("adminVoiceMicStatus").textContent="Could not start microphone: "+error.message;}
+ });
+ $v("adminVoiceStop")?.addEventListener("click",stopMic);
+ $v("adminVoiceLanguage")?.addEventListener("change",()=>{if(listening){stopMic();$v("adminVoiceMicStatus").textContent="Language changed. Start the microphone again."; }});
+ if(form)form.addEventListener("submit",async event=>{
+  event.preventDefault();stopMic();
+  if(!currentClinic||!currentUser){say("Sign in to an authorised clinic workspace first.",true);return;}
+  if(!$v("adminVoiceReviewConfirm").checked){say("Confirm human review and privacy checks before saving.",true);return;}
+  const source=$v("adminVoiceSourceText").value.trim(),english=$v("adminVoiceEnglishText").value.trim();
+  if(source.length<2||english.length<2){say("Enter the original message and its reviewed English version.",true);return;}
+  const button=form.querySelector('button[type="submit"]');button.disabled=true;
+  const {error}=await supabaseClient.from("administrative_voice_translations").insert({
+   clinic_id:currentClinic.id,source_language:$v("adminVoiceLanguage").value,
+   source_text:source,transcript_text:source,standardized_english:english,
+   output_type:$v("adminVoiceOutputType").value,department:$v("adminVoiceDepartment").value||null,
+   status:"draft",created_by:currentUser.id
+  });
+  button.disabled=false;
+  if(error){say("Could not save record: "+error.message,true);return;}
+  form.reset();$v("adminVoiceMicStatus").textContent="Microphone is off. You can type the original message instead.";
+  say("Administrative communication saved as a draft. It is not yet approved.");await loadAdminVoiceTranslations();
+ });
+ $v("refreshAdminVoice")?.addEventListener("click",loadAdminVoiceTranslations);
+ window.loadAdminVoiceTranslations=loadAdminVoiceTranslations;
 })();
