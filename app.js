@@ -8004,3 +8004,192 @@ function openSection(sectionId, sectionName) {
     });
     window.loadHealthOSPharmacyAnalytics=loadAnalytics;
 })();
+
+
+// ============================================================
+// HEALTHOS AI: SMART QUEUE AND BED MANAGEMENT
+// ============================================================
+(function initHealthOSPatientFlow() {
+    const $flow = (id) => document.getElementById(id);
+    const flowMessage = (id, message, isError = false) => {
+        const el = $flow(id);
+        if (!el) return;
+        el.textContent = message;
+        el.className = "message" + (isError ? " error" : " success");
+    };
+    const safeText = (value) => value == null ? "" : String(value);
+    const patientLabel = (p) => [p.patient_number, p.first_name, p.last_name].filter(Boolean).join(" — ");
+    const formatTime = (value) => value ? new Date(value).toLocaleString() : "—";
+    const addFlowCell = (row, value) => {
+        const cell = document.createElement("td");
+        cell.textContent = safeText(value);
+        row.appendChild(cell);
+        return cell;
+    };
+    let patientsCache = [];
+    let bedsCache = [];
+    let queueCache = [];
+
+    async function loadPatientFlow() {
+        if (!supabaseClient || !currentClinic || !currentClinic.id) return;
+        try {
+            const clinicId = currentClinic.id;
+            const [patientsResult, queueResult, bedsResult, admissionsResult] = await Promise.all([
+                supabaseClient.from("patients").select("id,patient_number,first_name,last_name").eq("clinic_id", clinicId).order("created_at", {ascending:false}).limit(500),
+                supabaseClient.from("patient_queue").select("id,patient_id,appointment_id,queue_number,priority,status,visit_reason,arrived_at,called_at,consultation_started_at").eq("clinic_id", clinicId).order("arrived_at", {ascending:false}).limit(250),
+                supabaseClient.from("hospital_beds").select("id,bed_number,ward_name,bed_type,status").eq("clinic_id", clinicId).order("ward_name").order("bed_number"),
+                supabaseClient.from("patient_admissions").select("id,patient_id,bed_id,admission_number,admitted_at,status").eq("clinic_id", clinicId).eq("status","admitted").order("admitted_at",{ascending:false})
+            ]);
+            for (const result of [patientsResult,queueResult,bedsResult,admissionsResult]) if (result.error) throw result.error;
+            patientsCache = patientsResult.data || [];
+            queueCache = queueResult.data || [];
+            bedsCache = bedsResult.data || [];
+            const patientMap = new Map(patientsCache.map(p => [p.id,patientLabel(p)]));
+            const bedMap = new Map(bedsCache.map(b => [b.id,b]));
+            const fillSelect = (id, rows, labelFn, firstLabel) => {
+                const select = $flow(id);
+                if (!select) return;
+                const previous = select.value;
+                select.replaceChildren(new Option(firstLabel,""));
+                rows.forEach(item => select.add(new Option(labelFn(item),item.id)));
+                if (rows.some(item => item.id === previous)) select.value = previous;
+            };
+            fillSelect("queuePatientSelect",patientsCache,patientLabel,"Select patient");
+            fillSelect("admissionPatientSelect",patientsCache,patientLabel,"Select patient");
+            fillSelect("admissionBedSelect",bedsCache.filter(b=>b.status==="available"),b=>b.bed_number+" — "+b.ward_name,"Select available bed");
+            const appointmentSelect=$flow("queueAppointmentSelect");
+            if(appointmentSelect){
+                const {data:appointments,error}=await supabaseClient.from("appointments")
+                    .select("id,patient_id,scheduled_at,reason,status").eq("clinic_id",clinicId)
+                    .in("status",["scheduled","checked_in"]).order("scheduled_at",{ascending:true}).limit(300);
+                if(error) throw error;
+                const prior=appointmentSelect.value;
+                appointmentSelect.replaceChildren(new Option("Walk-in / no appointment",""));
+                (appointments||[]).forEach(a=>appointmentSelect.add(new Option(
+                    (patientMap.get(a.patient_id)||"Patient")+" — "+formatTime(a.scheduled_at)+" — "+(a.reason||"Visit"),a.id
+                )));
+                if((appointments||[]).some(a=>a.id===prior)) appointmentSelect.value=prior;
+            }
+            const activeQueue=queueCache.filter(q=>!["completed","cancelled"].includes(q.status));
+            $flow("queueWaitingCount").textContent=activeQueue.filter(q=>["waiting","triage"].includes(q.status)).length;
+            $flow("queuePriorityCount").textContent=activeQueue.filter(q=>["urgent","emergency"].includes(q.priority)).length;
+            $flow("bedAvailableCount").textContent=bedsCache.filter(b=>b.status==="available").length;
+            $flow("bedOccupiedCount").textContent=bedsCache.filter(b=>b.status==="occupied").length;
+            const queueBody=$flow("patientQueueBody"); queueBody.replaceChildren();
+            if(!queueCache.length){const row=queueBody.insertRow();addFlowCell(row,"No patients in today's queue.");}
+            queueCache.forEach(q=>{
+                const row=queueBody.insertRow();
+                [q.queue_number,patientMap.get(q.patient_id)||"Patient record",formatTime(q.arrived_at),q.priority,q.visit_reason,q.status.replaceAll("_"," ")].forEach(v=>addFlowCell(row,v));
+                const action=addFlowCell(row,"");
+                if(!["completed","cancelled"].includes(q.status)){
+                    const select=document.createElement("select");
+                    ["waiting","triage","called","in_consultation","completed","cancelled"].forEach(s=>select.add(new Option(s.replaceAll("_"," "),s)));
+                    select.value=q.status;
+                    const button=document.createElement("button");button.type="button";button.className="logout-button";button.textContent="Update";
+                    button.addEventListener("click",async()=>{
+                        button.disabled=true;
+                        const updates={status:select.value,updated_at:new Date().toISOString()};
+                        if(select.value==="called"&&!q.called_at) updates.called_at=new Date().toISOString();
+                        if(select.value==="in_consultation"&&!q.consultation_started_at) updates.consultation_started_at=new Date().toISOString();
+                        if(select.value==="completed") updates.completed_at=new Date().toISOString();
+                        const {error}=await supabaseClient.from("patient_queue").update(updates).eq("id",q.id).eq("clinic_id",clinicId);
+                        if(error){flowMessage("queueEntryMessage",error.message,true);button.disabled=false;return;}
+                        await loadPatientFlow();
+                    });
+                    action.append(select,button);
+                }
+            });
+            const bedBody=$flow("bedRegisterBody");bedBody.replaceChildren();
+            if(!bedsCache.length){const row=bedBody.insertRow();addFlowCell(row,"No beds registered.");}
+            bedsCache.forEach(b=>{const row=bedBody.insertRow();[b.bed_number,b.ward_name,b.bed_type||"—",b.status].forEach(v=>addFlowCell(row,v));});
+            const admissionBody=$flow("activeAdmissionsBody");admissionBody.replaceChildren();
+            if(!admissionsResult.data.length){const row=admissionBody.insertRow();addFlowCell(row,"No active admissions.");}
+            (admissionsResult.data||[]).forEach(a=>{
+                const bed=bedMap.get(a.bed_id);
+                const row=admissionBody.insertRow();
+                [a.admission_number,patientMap.get(a.patient_id)||"Patient record",bed?bed.bed_number+" — "+bed.ward_name:"No bed",formatTime(a.admitted_at)].forEach(v=>addFlowCell(row,v));
+                const cell=addFlowCell(row,"");
+                const button=document.createElement("button");button.type="button";button.className="logout-button";button.textContent="Discharge";
+                button.addEventListener("click",async()=>{
+                    const note=window.prompt("Enter discharge note (required):");
+                    if(!note||!note.trim()) return;
+                    button.disabled=true;
+                    const {error}=await supabaseClient.from("patient_admissions").update({status:"discharged",discharged_at:new Date().toISOString(),discharge_note:note.trim(),discharged_by:currentUser.id}).eq("id",a.id).eq("clinic_id",clinicId);
+                    if(error){flowMessage("admissionMessage",error.message,true);button.disabled=false;return;}
+                    await loadPatientFlow();
+                });
+                cell.appendChild(button);
+            });
+        } catch(error) {
+            console.error("Patient flow load failed:",error);
+            flowMessage("queueEntryMessage","Patient flow could not load: "+(error.message||"Check your clinic permissions."),true);
+        }
+    }
+
+    const queueForm=$flow("queueEntryForm");
+    if(queueForm) queueForm.addEventListener("submit",async event=>{
+        event.preventDefault();
+        if(!currentClinic||!currentUser) return;
+        const patientId=$flow("queuePatientSelect").value;
+        const appointmentId=$flow("queueAppointmentSelect").value||null;
+        const patient=patientsCache.find(p=>p.id===patientId);
+        if(!patient){flowMessage("queueEntryMessage","Select a registered patient.",true);return;}
+        const button=queueForm.querySelector('button[type="submit"]');button.disabled=true;
+        const dateKey=new Date().toISOString().slice(0,10).replaceAll("-","");
+        const queueNumber="Q-"+dateKey+"-"+Math.random().toString(36).slice(2,7).toUpperCase();
+        const {error}=await supabaseClient.from("patient_queue").insert({
+            clinic_id:currentClinic.id,patient_id:patientId,appointment_id:appointmentId,
+            queue_number:queueNumber,priority:$flow("queuePriority").value,
+            visit_reason:$flow("queueVisitReason").value.trim(),
+            triage_note:$flow("queueTriageNote").value.trim()||null,created_by:currentUser.id
+        });
+        button.disabled=false;
+        if(error){flowMessage("queueEntryMessage",error.message,true);return;}
+        queueForm.reset();flowMessage("queueEntryMessage","Patient added to queue: "+queueNumber);
+        await loadPatientFlow();
+    });
+
+    const bedForm=$flow("bedRegisterForm");
+    if(bedForm) bedForm.addEventListener("submit",async event=>{
+        event.preventDefault();
+        if(!currentClinic) return;
+        const button=bedForm.querySelector('button[type="submit"]');button.disabled=true;
+        const {error}=await supabaseClient.from("hospital_beds").insert({
+            clinic_id:currentClinic.id,bed_number:$flow("bedNumber").value.trim(),
+            ward_name:$flow("bedWardName").value.trim(),bed_type:$flow("bedType").value.trim()||null
+        });
+        button.disabled=false;
+        if(error){flowMessage("bedRegisterMessage",error.message,true);return;}
+        bedForm.reset();flowMessage("bedRegisterMessage","Bed registered.");await loadPatientFlow();
+    });
+
+    const admissionForm=$flow("patientAdmissionForm");
+    if(admissionForm) admissionForm.addEventListener("submit",async event=>{
+        event.preventDefault();
+        if(!currentClinic||!currentUser) return;
+        const patientId=$flow("admissionPatientSelect").value;
+        const bedId=$flow("admissionBedSelect").value;
+        const bed=bedsCache.find(b=>b.id===bedId&&b.status==="available");
+        if(!bed){flowMessage("admissionMessage","Select a currently available bed.",true);return;}
+        const button=admissionForm.querySelector('button[type="submit"]');button.disabled=true;
+        const admissionNumber="ADM-"+new Date().toISOString().slice(0,10).replaceAll("-","")+"-"+Math.random().toString(36).slice(2,6).toUpperCase();
+        const {error}=await supabaseClient.from("patient_admissions").insert({
+            clinic_id:currentClinic.id,patient_id:patientId,bed_id:bedId,
+            admission_number:admissionNumber,admission_reason:$flow("admissionReason").value.trim(),
+            admitted_by:currentUser.id
+        });
+        button.disabled=false;
+        if(error){flowMessage("admissionMessage",error.message,true);return;}
+        const bedUpdate=await supabaseClient.from("hospital_beds").update({status:"occupied",updated_at:new Date().toISOString()}).eq("id",bedId).eq("clinic_id",currentClinic.id).eq("status","available");
+        if(bedUpdate.error){flowMessage("admissionMessage","Admission saved, but bed status needs administrator review: "+bedUpdate.error.message,true);}
+        else flowMessage("admissionMessage","Patient admitted. Reference: "+admissionNumber);
+        admissionForm.reset();await loadPatientFlow();
+    });
+
+    const refresh=$flow("refreshPatientFlow");
+    if(refresh) refresh.addEventListener("click",loadPatientFlow);
+    document.querySelectorAll(".sidebar .nav-item").forEach(link=>{
+        link.addEventListener("click",()=>{if((link.getAttribute("href")||"")==="#patientFlow") void loadPatientFlow();});
+    });
+    window.loadHealthOSPatientFlow=loadPatientFlow;
+})();
