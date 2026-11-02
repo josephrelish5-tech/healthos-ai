@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261102-04" defer></script>
+    <script src="app.js?v=20261102-05" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -2111,6 +2111,64 @@
             </tbody>
         </table>
     </div>
+
+    <section class="panel" id="pharmacyStockControlWorkspace" aria-labelledby="pharmacyStockControlHeading">
+        <h3 id="pharmacyStockControlHeading">Stock Adjustments & Department Transfers</h3>
+        <p class="muted">Stock corrections require owner/admin approval. Transfers move stock between registered pharmacy stores or department locations with dispatch and receipt records.</p>
+        <p id="pharmacyStockControlMessage" role="status" aria-live="polite"></p>
+
+        <h4>Request Stock Adjustment</h4>
+        <form id="pharmacyStockAdjustmentForm">
+            <label for="pharmacyAdjustmentBatch">Medicine Batch</label>
+            <select id="pharmacyAdjustmentBatch" required><option value="">Loading inventory...</option></select>
+            <label for="pharmacyAdjustmentQuantity">Correct Count / New Quantity</label>
+            <input id="pharmacyAdjustmentQuantity" type="number" min="0" step="1" required>
+            <label for="pharmacyAdjustmentReason">Reason</label>
+            <select id="pharmacyAdjustmentReason" required>
+                <option value="">Select reason</option><option value="damage">Damaged stock</option>
+                <option value="expiry">Expired stock</option><option value="loss">Loss / missing stock</option>
+                <option value="count_correction">Physical count correction</option><option value="return">Stock return</option>
+                <option value="other">Other</option>
+            </select>
+            <label for="pharmacyAdjustmentNotes">Explanation</label>
+            <textarea id="pharmacyAdjustmentNotes" rows="2" maxlength="1000"></textarea>
+            <button type="submit" id="pharmacyAdjustmentSubmit">Submit Adjustment for Approval</button>
+        </form>
+        <h4>Adjustment Requests</h4>
+        <div class="table-wrap"><table>
+            <thead><tr><th>Medicine Batch</th><th>Current → Requested</th><th>Reason</th><th>Requested</th><th>Status</th><th>Review</th></tr></thead>
+            <tbody id="pharmacyAdjustmentRequestsBody"><tr><td colspan="6">Adjustment requests will appear here.</td></tr></tbody>
+        </table></div>
+
+        <h4>Register Store / Department Location</h4>
+        <form id="pharmacyStockLocationForm">
+            <label for="pharmacyStockLocationName">Location Name</label>
+            <input id="pharmacyStockLocationName" type="text" maxlength="150" placeholder="e.g. Emergency Unit Pharmacy" required>
+            <label for="pharmacyStockLocationDepartment">Department</label>
+            <input id="pharmacyStockLocationDepartment" type="text" maxlength="100" placeholder="e.g. Emergency">
+            <button type="submit" id="pharmacyStockLocationSubmit">Add Stock Location</button>
+        </form>
+
+        <h4>Request Stock Transfer</h4>
+        <form id="pharmacyStockTransferForm">
+            <label for="pharmacyTransferBatch">Source Medicine Batch</label>
+            <select id="pharmacyTransferBatch" required><option value="">Loading inventory...</option></select>
+            <label for="pharmacyTransferDestination">Destination Store / Department</label>
+            <select id="pharmacyTransferDestination" required><option value="">Loading locations...</option></select>
+            <label for="pharmacyTransferNumber">Transfer Reference</label>
+            <input id="pharmacyTransferNumber" type="text" maxlength="80" required>
+            <label for="pharmacyTransferQuantity">Quantity to Transfer</label>
+            <input id="pharmacyTransferQuantity" type="number" min="1" step="1" required>
+            <label for="pharmacyTransferNotes">Notes</label>
+            <textarea id="pharmacyTransferNotes" rows="2" maxlength="1000"></textarea>
+            <button type="submit" id="pharmacyTransferSubmit">Submit Transfer for Approval</button>
+        </form>
+        <h4>Transfer Register</h4>
+        <div class="table-wrap"><table>
+            <thead><tr><th>Reference</th><th>Medicine / Batch</th><th>From</th><th>To</th><th>Quantity</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="pharmacyStockTransfersBody"><tr><td colspan="7">Stock transfers will appear here.</td></tr></tbody>
+        </table></div>
+    </section>
 
     <section class="panel" id="pharmacyDispensingWorkspace" aria-labelledby="pharmacyDispensingHeading">
         <h3 id="pharmacyDispensingHeading">Dispense Medicine</h3>
