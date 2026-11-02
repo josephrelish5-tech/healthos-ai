@@ -7867,3 +7867,140 @@ function openSection(sectionId, sectionName) {
     window.loadHealthOSPharmacyStockControls=loadStockControl;
     if(document.getElementById("pharmacy") && !document.getElementById("pharmacy").hidden) void loadStockControl();
 })();
+
+
+/* HEALTHOS AI: PHARMACY EXPENDITURE, STOCK VALUATION AND DEMAND FORECAST */
+(function () {
+    "use strict";
+    const $ = id => document.getElementById(id);
+    const panel = $("pharmacyAnalyticsWorkspace");
+    if (!panel) return;
+    const money = value => "₦" + Number(value || 0).toLocaleString("en-NG", {minimumFractionDigits:2, maximumFractionDigits:2});
+    const safeNumber = value => Number.isFinite(Number(value)) ? Number(value) : 0;
+    function setMessage(value, isError) {
+        const node = $("pharmacyAnalyticsMessage");
+        if (node) { node.textContent = value; node.style.color = isError ? "#b42318" : "#16794b"; }
+    }
+    function addCell(row, value) {
+        const td = document.createElement("td");
+        td.textContent = String(value ?? "—");
+        row.appendChild(td);
+    }
+    function emptyRow(body, colspan, message) {
+        body.replaceChildren();
+        const tr = document.createElement("tr"), td = document.createElement("td");
+        td.colSpan = colspan; td.textContent = message; tr.appendChild(td); body.appendChild(tr);
+    }
+    async function loadAnalytics() {
+        if (typeof supabaseClient === "undefined" || !supabaseClient ||
+            typeof currentClinic === "undefined" || !currentClinic) return;
+        const clinicId = currentClinic.id;
+        const now = new Date();
+        const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        setMessage("Calculating pharmacy expenditure, stock value and demand from clinic records…", false);
+        try {
+            const results = await Promise.all([
+                supabaseClient.from("pharmacy_inventory")
+                    .select("id,medicine_name,quantity,reorder_level,expiry_date,purchase_cost")
+                    .eq("clinic_id", clinicId),
+                supabaseClient.from("pharmacy_supplier_payments")
+                    .select("supplier_id,amount,status,payment_date")
+                    .eq("clinic_id", clinicId).eq("status", "approved"),
+                supabaseClient.from("pharmacy_purchase_orders")
+                    .select("id,supplier_id,total_amount,status,po_number")
+                    .eq("clinic_id", clinicId),
+                supabaseClient.from("pharmacy_suppliers")
+                    .select("id,supplier_name").eq("clinic_id", clinicId),
+                supabaseClient.from("pharmacy_dispensing_records")
+                    .select("medicine_name_snapshot,quantity_dispensed,dispensed_at,status")
+                    .eq("clinic_id", clinicId).eq("status", "dispensed")
+                    .gte("dispensed_at", cutoff).lte("dispensed_at", now.toISOString())
+            ]);
+            for (const result of results) if (result.error) throw result.error;
+            const inventory = results[0].data || [];
+            const payments = results[1].data || [];
+            const orders = results[2].data || [];
+            const suppliers = results[3].data || [];
+            const dispensing = results[4].data || [];
+            const today = now.toISOString().slice(0,10);
+            const stockValue = inventory.reduce((sum, item) => sum + safeNumber(item.quantity) * safeNumber(item.purchase_cost), 0);
+            const expiredValue = inventory.filter(item => item.expiry_date < today)
+                .reduce((sum,item)=>sum+safeNumber(item.quantity)*safeNumber(item.purchase_cost),0);
+            const approvedPayments = payments.reduce((sum,p)=>sum+safeNumber(p.amount),0);
+            const approvedOrders = orders.filter(o => ["approved","partially_received","received"].includes(o.status));
+            const approvedOrderValue = approvedOrders.reduce((sum,o)=>sum+safeNumber(o.total_amount),0);
+            const outstanding = Math.max(0, approvedOrderValue - approvedPayments);
+            $("pharmacyAnalyticsStockValue").textContent = money(stockValue);
+            $("pharmacyAnalyticsExpiredValue").textContent = money(expiredValue);
+            $("pharmacyAnalyticsPayments").textContent = money(approvedPayments);
+            $("pharmacyAnalyticsOutstanding").textContent = money(outstanding);
+
+            const supplierNames = new Map(suppliers.map(s=>[s.id,s.supplier_name]));
+            const supplierIds = new Set([
+                ...payments.map(p=>p.supplier_id), ...approvedOrders.map(o=>o.supplier_id)
+            ]);
+            const spendBody = $("pharmacySupplierSpendBody");
+            spendBody.replaceChildren();
+            if (!supplierIds.size) emptyRow(spendBody,4,"No approved supplier payments or orders recorded.");
+            supplierIds.forEach(id=>{
+                const paid=payments.filter(p=>p.supplier_id===id).reduce((sum,p)=>sum+safeNumber(p.amount),0);
+                const supplierOrders=approvedOrders.filter(o=>o.supplier_id===id);
+                const orderValue=supplierOrders.reduce((sum,o)=>sum+safeNumber(o.total_amount),0);
+                const tr=document.createElement("tr");
+                [supplierNames.get(id)||"Supplier",money(paid),money(orderValue),money(Math.max(0,orderValue-paid))].forEach(v=>addCell(tr,v));
+                spendBody.appendChild(tr);
+            });
+
+            const usage = new Map();
+            dispensing.forEach(record=>{
+                const key=(record.medicine_name_snapshot||"").trim().toLowerCase();
+                if (!key) return;
+                const current=usage.get(key)||{quantity:0,name:record.medicine_name_snapshot};
+                current.quantity+=safeNumber(record.quantity_dispensed);
+                usage.set(key,current);
+            });
+            const medicineMap = new Map();
+            inventory.forEach(item=>{
+                const key=(item.medicine_name||"").trim().toLowerCase();
+                if (!key) return;
+                if (!medicineMap.has(key)) medicineMap.set(key,{name:item.medicine_name,stock:0,reorder:0,expiryRisk:0});
+                const group=medicineMap.get(key);
+                if (item.expiry_date >= today) group.stock+=Math.max(0,safeNumber(item.quantity));
+                group.reorder=Math.max(group.reorder,safeNumber(item.reorder_level));
+                if (item.expiry_date < today || item.expiry_date <= new Date(now.getTime()+30*86400000).toISOString().slice(0,10)) group.expiryRisk+=Math.max(0,safeNumber(item.quantity));
+            });
+            const forecastBody=$("pharmacyForecastBody");
+            forecastBody.replaceChildren();
+            if (!medicineMap.size) emptyRow(forecastBody,7,"No inventory batches available for forecasting.");
+            medicineMap.forEach((item,key)=>{
+                const history=usage.get(key);
+                const used=history?history.quantity:0;
+                const daily=used/30;
+                const days=daily>0?item.stock/daily:null;
+                let recommendation="Insufficient dispensing history";
+                if (item.expiryRisk>0 && item.stock===0) recommendation="Expiry / stock review required";
+                if (history && daily>0) {
+                    if (item.stock<=0) recommendation="URGENT: stock-out — initiate approved replenishment";
+                    else if (days<=7) recommendation="URGENT: reorder — 7 days or less of cover";
+                    else if (days<=14 || item.stock<=item.reorder) recommendation="Reorder soon";
+                    else recommendation="Stock cover currently adequate";
+                } else if (item.stock<=item.reorder) recommendation="Low stock — review manual reorder";
+                const tr=document.createElement("tr");
+                [item.name,item.stock,history?used:"No data",history?daily.toFixed(2):"—",days===null?"—":days.toFixed(1),item.reorder,recommendation].forEach(v=>addCell(tr,v));
+                forecastBody.appendChild(tr);
+            });
+            setMessage("Analytics refreshed. Forecast window: last 30 days. "+dispensing.length+" completed dispensing record(s) included. Values are based on saved clinic records; pending payments are excluded.",false);
+        } catch(error) {
+            console.error("Pharmacy analytics load failed:",error);
+            setMessage("Analytics could not load: "+(error.message||"Check pharmacy reporting permissions."),true);
+        }
+    }
+    const refresh=$("pharmacyAnalyticsRefreshButton");
+    if(refresh) refresh.addEventListener("click",()=>loadAnalytics());
+    document.querySelectorAll(".sidebar .nav-item").forEach(link=>{
+        link.addEventListener("click",()=>{
+            if((link.getAttribute("href")||"")==="#pharmacy") void loadAnalytics();
+        });
+    });
+    window.loadHealthOSPharmacyAnalytics=loadAnalytics;
+})();
