@@ -8210,14 +8210,15 @@ function openSection(sectionId, sectionName) {
   if(!supabaseClient||!currentClinic||!currentClinic.id)return;
   try{
    const clinicId=currentClinic.id;
-   const [p,e,n,v,a]=await Promise.all([
+   const [p,e,n,v,a,s]=await Promise.all([
     supabaseClient.from("patients").select("id,patient_number,first_name,last_name").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(500),
     supabaseClient.from("clinical_encounters").select("id,patient_id,appointment_id,encounter_number,encounter_type,status,chief_complaint,started_at,clinician_id").eq("clinic_id",clinicId).order("started_at",{ascending:false}).limit(150),
     supabaseClient.from("clinical_notes").select("id,encounter_id,note_type,note_text,status,author_id,created_at").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(250),
     supabaseClient.from("patient_vitals").select("id,encounter_id,patient_id,temperature_c,systolic_bp,diastolic_bp,pulse_bpm,respiratory_rate,oxygen_saturation,weight_kg,recorded_at").eq("clinic_id",clinicId).order("recorded_at",{ascending:false}).limit(250),
-    supabaseClient.from("patient_allergies").select("id,patient_id,allergen,reaction,severity,status,created_at").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(250)
+    supabaseClient.from("patient_allergies").select("id,patient_id,allergen,reaction,severity,status,created_at").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(250),
+    supabaseClient.from("clinical_scribe_drafts").select("id,encounter_id,note_type,status,created_at,clinician_id").eq("clinic_id",clinicId).eq("clinician_id",currentUser.id).order("created_at",{ascending:false}).limit(100)
    ]);
-   for(const x of [p,e,n,v,a])if(x.error)throw x.error;
+   for(const x of [p,e,n,v,a,s])if(x.error)throw x.error;
    patients=p.data||[];encounters=e.data||[];
    const pmap=new Map(patients.map(x=>[x.id,patientName(x)]));
    const fill=(id,rows,label,empty)=>{const el=$c(id);if(!el)return;const old=el.value;el.replaceChildren(new Option(empty,""));rows.forEach(x=>el.add(new Option(label(x),x.id)));if(rows.some(x=>x.id===old))el.value=old;};
@@ -8243,6 +8244,39 @@ function openSection(sectionId, sectionName) {
    const ab=$c("clinicalAllergiesBody");ab.replaceChildren();
    if(!(a.data||[]).length){const r=ab.insertRow();cell(r,"No allergy records.");}
    (a.data||[]).forEach(x=>{const r=ab.insertRow();[pmap.get(x.patient_id)||"Patient",x.allergen,x.reaction||"—",x.severity,x.status].forEach(y=>cell(r,y));});
+   const scribeEncounter=$c("scribeEncounterSelect");
+   if(scribeEncounter){
+    const old=scribeEncounter.value;
+    const mine=active.filter(x=>x.clinician_id===currentUser.id);
+    scribeEncounter.replaceChildren(new Option("Select your open encounter",""));
+    mine.forEach(x=>scribeEncounter.add(new Option(x.encounter_number+" — "+(pmap.get(x.patient_id)||"Patient"),x.id)));
+    if(mine.some(x=>x.id===old))scribeEncounter.value=old;
+   }
+   const scribeBody=$c("scribeDraftsBody");
+   if(scribeBody){
+    scribeBody.replaceChildren();
+    if(!(s.data||[]).length){const row=scribeBody.insertRow();cell(row,"No scribe drafts yet.");}
+    (s.data||[]).forEach(d=>{
+     const row=scribeBody.insertRow();
+     [when(d.created_at),encounters.find(x=>x.id===d.encounter_id)?.encounter_number||"Encounter",d.note_type,d.status.replaceAll("_"," ")].forEach(value=>cell(row,value));
+     const action=cell(row,"");
+     if(d.status==="draft"&&d.clinician_id===currentUser.id){
+      const button=document.createElement("button");button.type="button";button.className="logout-button";button.textContent="Review & save to EMR";
+      button.addEventListener("click",async()=>{
+       if(!confirm("Confirm that you have reviewed and corrected this note, and want to save it as an unsigned clinical draft?"))return;
+       button.disabled=true;
+       const {data,error}=await supabaseClient.rpc("finalize_clinical_scribe_draft",{p_clinic_id:currentClinic.id,p_scribe_draft_id:d.id});
+       if(error){scribeMessage(error.message,true);button.disabled=false;return;}
+       selectedEncounter=d.encounter_id;
+       $c("clinicalNoteEncounter").value=d.encounter_id;
+       $c("clinicalVitalsEncounter").value=d.encounter_id;
+       scribeMessage("Reviewed note saved to Clinical Records as an unsigned draft. A clinician must sign it separately.");
+       await loadClinicalRecords();
+      });
+      action.appendChild(button);
+     }
+    });
+   }
    msg("Clinical records loaded. Access is controlled by clinic permissions.");
    await loadEncounterDetails();
   }catch(err){console.error("Clinical records load:",err);msg("Could not load clinical records: "+(err.message||"Check clinical-record permissions."),true);}
@@ -8299,6 +8333,34 @@ function openSection(sectionId, sectionName) {
   button.disabled=false;if(error){msg(error.message,true);return;}allergyForm.reset();msg("Allergy record saved.");await loadClinicalRecords();
  });
  ["clinicalNoteEncounter","clinicalVitalsEncounter"].forEach(id=>$c(id)?.addEventListener("change",()=>{selectedEncounter=$c(id).value;void loadEncounterDetails();}));
+ const scribeForm=$c("clinicalScribeForm");
+ if(scribeForm)scribeForm.addEventListener("submit",async ev=>{
+  ev.preventDefault();
+  if(!currentClinic||!currentUser)return;
+  const encounterId=$c("scribeEncounterSelect").value;
+  const encounter=encounters.find(x=>x.id===encounterId&&x.clinician_id===currentUser.id&&["open","in_progress"].includes(x.status));
+  const transcript=$c("scribeTranscript").value.trim();
+  const edited=$c("scribeEditedNote").value.trim();
+  if(!encounter){scribeMessage("Select an open encounter assigned to your account.",true);return;}
+  if(!$c("scribeConsent").checked){scribeMessage("Confirm patient consent/authorisation before saving.",true);return;}
+  if(!transcript||!edited){scribeMessage("Enter the transcript and the clinician-reviewed note.",true);return;}
+  const button=scribeForm.querySelector('button[type="submit"]');button.disabled=true;
+  const {error}=await supabaseClient.from("clinical_scribe_drafts").insert({
+   clinic_id:currentClinic.id,encounter_id:encounter.id,patient_id:encounter.patient_id,
+   clinician_id:currentUser.id,source_type:"manual_transcript",consent_confirmed:true,
+   consent_confirmed_at:new Date().toISOString(),transcript_text:transcript,
+   clinician_edited_note:edited,note_type:$c("scribeNoteType").value
+  });
+  button.disabled=false;
+  if(error){scribeMessage(error.message,true);return;}
+  $c("scribeTranscript").value="";$c("scribeEditedNote").value="";$c("scribeConsent").checked=false;
+  scribeMessage("Scribe draft saved. Review it below before adding it to the medical record.");
+  selectedEncounter=encounter.id;
+  await loadClinicalRecords();
+ });
+ function scribeMessage(message,error=false){
+  const el=$c("scribeMessage");if(el){el.textContent=message;el.className="message"+(error?" error":" success");}
+ }
  $c("refreshClinicalRecords")?.addEventListener("click",loadClinicalRecords);
  document.querySelectorAll(".sidebar .nav-item").forEach(link=>link.addEventListener("click",()=>{if((link.getAttribute("href")||"")==="#clinicalRecords")void loadClinicalRecords();}));
  window.loadHealthOSClinicalRecords=loadClinicalRecords;
