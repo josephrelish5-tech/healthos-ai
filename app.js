@@ -8733,6 +8733,31 @@ function openSection(sectionId, sectionName) {
     }
    }
   }
+  const medicationBody=$c("clinicalMedicationHistoryBody");
+  const medicationMessage=$c("clinicalMedicationHistoryMessage");
+  if(medicationBody){
+   medicationBody.replaceChildren();
+   if(!encounter){const row=medicationBody.insertRow();cell(row,"Encounter details unavailable.");}
+   else{
+    const {data:dispenses,error:dispenseError}=await supabaseClient.from("pharmacy_dispensing_records")
+     .select("medicine_name_snapshot,quantity_dispensed,batch_number_snapshot,expiry_date_snapshot,status,dispensed_at")
+     .eq("clinic_id",currentClinic.id).eq("patient_id",encounter.patient_id)
+     .order("dispensed_at",{ascending:false}).limit(100);
+    if(dispenseError){
+     const row=medicationBody.insertRow();cell(row,"Could not load dispensing history.");
+     if(medicationMessage){medicationMessage.textContent="Dispensing history unavailable. Verify medication history directly with the patient and pharmacy.";medicationMessage.className="message error";}
+    }else if(!dispenses||!dispenses.length){
+     const row=medicationBody.insertRow();cell(row,"No pharmacy dispensing history found.");
+     if(medicationMessage){medicationMessage.textContent="No dispensing records found. This does not establish that the patient takes no medication.";medicationMessage.className="message";}
+    }else{
+     dispenses.forEach(item=>{
+      const row=medicationBody.insertRow();
+      [when(item.dispensed_at),item.medicine_name_snapshot,item.quantity_dispensed,item.batch_number_snapshot,item.expiry_date_snapshot,item.status].forEach(value=>cell(row,value));
+     });
+     if(medicationMessage){medicationMessage.textContent=dispenses.length+" historical dispensing record(s) found. Confirm current use, dose, frequency and any outside medications with the patient.";medicationMessage.className="message";}
+    }
+   }
+  }
   const {data,error}=await supabaseClient.from("clinical_decision_support_alerts")
    .select("id,rule_code,severity,observed_value,alert_message,status,created_at,review_note")
    .eq("clinic_id",currentClinic.id).eq("encounter_id",selectedEncounter)
