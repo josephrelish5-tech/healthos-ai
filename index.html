@@ -1439,6 +1439,18 @@
         tested and approved for that purpose.
     </p>
 
+    <div class="panel" id="offlinePatientDirectory">
+        <h3>Offline Patient Directory</h3>
+        <p class="muted">Optional encrypted offline copy of basic patient identifiers only. Clinical notes, diagnoses, medicines, billing and contact details are never stored here.</p>
+        <button type="button" class="primary-button" id="offlineDirectoryRefresh">Secure and refresh directory</button>
+        <button type="button" class="logout-button" id="offlineDirectoryClear">Erase this device's offline directory</button>
+        <p id="offlineDirectoryStatus" class="message" role="status" aria-live="polite">No offline directory loaded.</p>
+        <label for="offlineDirectorySearch">Search saved patient directory</label>
+        <input type="search" id="offlineDirectorySearch" placeholder="Patient number or name" autocomplete="off">
+        <div id="offlineDirectoryResults" aria-live="polite"></div>
+        <p class="disclaimer">Use only on a hospital-controlled, access-protected device. This is a limited directory, not a substitute for the live clinical record. Erase it before handing the device to another person.</p>
+    </div>
+
 </section>
 
 <!-- END PATIENT REGISTRATION --> 
