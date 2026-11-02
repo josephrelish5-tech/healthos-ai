@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261102-09" defer></script>
+    <script src="app.js?v=20261102-10" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -1640,7 +1640,14 @@
   <button class="primary-button" type="submit">Save Vital Signs</button>
  </form>
  <h3>Latest Observations</h3><div class="table-wrap"><table><thead><tr><th>Recorded</th><th>Temperature</th><th>Blood Pressure</th><th>Pulse</th><th>Respiratory</th><th>SpO₂</th><th>Weight</th></tr></thead><tbody id="clinicalVitalsBody"><tr><td colspan="7">Select an encounter to view observations.</td></tr></tbody></table></div>
- <hr><h3>4. Patient Allergy Register</h3>
+ <hr><div id="clinicalDecisionSupport">
+  <h3>4. Clinical Decision Support &amp; Safety Alerts</h3>
+  <p class="muted">Rule-based screening of the latest recorded observations. These alerts are prompts for qualified clinicians to verify measurements and apply approved hospital protocols. They are not diagnoses, treatment instructions or a substitute for clinical judgement.</p>
+  <button type="button" id="runClinicalSafetyReview" class="primary-button">Review Latest Observations</button>
+  <p id="clinicalDecisionSupportMessage" class="message" role="status" aria-live="polite">Select an encounter above to review its observations.</p>
+  <div class="table-wrap"><table><thead><tr><th>Detected</th><th>Rule</th><th>Severity</th><th>Observed value</th><th>Clinical prompt</th><th>Status</th><th>Review action</th></tr></thead><tbody id="clinicalSafetyAlertsBody"><tr><td colspan="7">No alerts loaded.</td></tr></tbody></table></div>
+ </div>
+ <hr><h3>5. Patient Allergy Register</h3>
  <form id="clinicalAllergyForm" class="auth-form">
   <label>Patient<select id="clinicalAllergyPatient" required><option value="">Select patient</option></select></label>
   <label>Allergen<input id="clinicalAllergen" maxlength="200" required></label>
