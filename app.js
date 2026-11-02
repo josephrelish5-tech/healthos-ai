@@ -6897,6 +6897,136 @@ function openSection(sectionId, sectionName) {
             addCell(row, item.currency || "NGN");
             transactionRows.appendChild(row);
         });
+
+        await loadReconciliationWorkspace();
+    }
+
+    const reconciliationPanel = document.getElementById("posBankReconciliationWorkspace");
+    const reconciliationRows = document.getElementById("posReconciliationMatchRows");
+    const reconciliationMessage = document.getElementById("reconciliationMessage");
+    const generateMatchesButton = document.getElementById("generateReconciliationMatches");
+
+    function setReconciliationMessage(text, type) {
+        if (!reconciliationMessage) return;
+        reconciliationMessage.textContent = text;
+        reconciliationMessage.className = "message" + (type ? " " + type : "");
+    }
+
+    async function loadReconciliationWorkspace() {
+        if (!reconciliationPanel || !supabaseClient || !currentClinic || !currentUser) return;
+        const { data: capabilities, error: capabilityError } = await supabaseClient.rpc(
+            "get_my_transaction_capabilities", { p_clinic_id: currentClinic.id }
+        );
+        if (capabilityError) throw capabilityError;
+        if (!capabilities || capabilities.can_reconcile !== true) {
+            reconciliationPanel.hidden = true;
+            return;
+        }
+        reconciliationPanel.hidden = false;
+        const { data: matches, error: matchesError } = await supabaseClient
+            .from("pos_bank_reconciliation_matches")
+            .select("id,pos_receipt_id,bank_transaction_id,match_method,confidence,review_status,proposed_at")
+            .eq("clinic_id", currentClinic.id)
+            .eq("review_status", "proposed")
+            .order("proposed_at", { ascending: false })
+            .limit(100);
+        if (matchesError) throw matchesError;
+
+        reconciliationRows.replaceChildren();
+        if (!matches || matches.length === 0) {
+            const empty = document.createElement("tr");
+            const cell = document.createElement("td");
+            cell.colSpan = 7;
+            cell.textContent = "No proposed matches. Import a bank statement, then select Find potential matches.";
+            empty.appendChild(cell);
+            reconciliationRows.appendChild(empty);
+            return;
+        }
+
+        const receiptIds = [...new Set(matches.map(match => match.pos_receipt_id))];
+        const bankIds = [...new Set(matches.map(match => match.bank_transaction_id))];
+        const [{ data: receipts, error: receiptError }, { data: bankItems, error: bankError }] = await Promise.all([
+            supabaseClient.from("pos_receipts")
+                .select("id,captured_department,transaction_reference,invoice_reference,amount,currency,payment_provider,transaction_at,created_at")
+                .eq("clinic_id", currentClinic.id).in("id", receiptIds),
+            supabaseClient.from("bank_statement_transactions")
+                .select("id,bank_reference,external_transaction_id,description,amount,currency,booked_at")
+                .eq("clinic_id", currentClinic.id).in("id", bankIds)
+        ]);
+        if (receiptError) throw receiptError;
+        if (bankError) throw bankError;
+        const receiptMap = new Map((receipts || []).map(item => [item.id, item]));
+        const bankMap = new Map((bankItems || []).map(item => [item.id, item]));
+
+        matches.forEach(match => {
+            const receipt = receiptMap.get(match.pos_receipt_id);
+            const bankItem = bankMap.get(match.bank_transaction_id);
+            if (!receipt || !bankItem) return;
+            const row = document.createElement("tr");
+            const receiptDate = receipt.transaction_at || receipt.created_at;
+            addCell(row, (receipt.captured_department || "Department") + " · " +
+                (receiptDate ? new Date(receiptDate).toLocaleDateString() : "—"));
+            addCell(row, receipt.transaction_reference || receipt.invoice_reference || "—");
+            addCell(row, "₦" + Number(receipt.amount).toLocaleString() + " " + (receipt.currency || "NGN"));
+            addCell(row, (bankItem.booked_at ? new Date(bankItem.booked_at).toLocaleString() : "—") +
+                " · " + (bankItem.bank_reference || bankItem.external_transaction_id || bankItem.description || "—"));
+            addCell(row, "₦" + Number(Math.abs(Number(bankItem.amount))).toLocaleString() + " " + (bankItem.currency || "NGN"));
+            addCell(row, match.match_method.replace(/_/g, " ") + " · " +
+                (match.confidence == null ? "—" : Number(match.confidence) + "%"));
+            const decisionCell = document.createElement("td");
+            const confirm = document.createElement("button");
+            confirm.type = "button";
+            confirm.className = "primary-button";
+            confirm.textContent = "Confirm";
+            const reject = document.createElement("button");
+            reject.type = "button";
+            reject.className = "secondary-button";
+            reject.textContent = "Reject";
+            async function review(decision, button) {
+                button.disabled = true;
+                try {
+                    const { error } = await supabaseClient.rpc("review_pos_bank_reconciliation_match", {
+                        p_match_id: match.id, p_decision: decision,
+                        p_notes: decision === "confirm" ? "Finance manually confirmed against imported bank statement." : "Finance rejected proposed match."
+                    });
+                    if (error) throw error;
+                    setReconciliationMessage(
+                        decision === "confirm" ? "Match confirmed. The receipt is now marked reconciled." : "Proposed match rejected.",
+                        "success"
+                    );
+                    await loadReconciliationWorkspace();
+                    await loadBankStatementData();
+                } catch (error) {
+                    setReconciliationMessage("Review failed: " + (error.message || "Please retry."), "error");
+                    button.disabled = false;
+                }
+            }
+            confirm.addEventListener("click", () => review("confirm", confirm));
+            reject.addEventListener("click", () => review("reject", reject));
+            decisionCell.append(confirm, document.createTextNode(" "), reject);
+            row.appendChild(decisionCell);
+            reconciliationRows.appendChild(row);
+        });
+    }
+
+    if (generateMatchesButton) {
+        generateMatchesButton.addEventListener("click", async () => {
+            generateMatchesButton.disabled = true;
+            setReconciliationMessage("Checking accepted receipts against imported bank transactions…");
+            try {
+                const { data: count, error } = await supabaseClient.rpc(
+                    "propose_pos_bank_reconciliation_matches", { p_clinic_id: currentClinic.id }
+                );
+                if (error) throw error;
+                setReconciliationMessage(Number(count || 0) +
+                    " new unambiguous suggestion(s) created. Finance must review each suggestion.", "success");
+                await loadReconciliationWorkspace();
+            } catch (error) {
+                setReconciliationMessage("Could not generate suggestions: " + (error.message || "Check Finance permissions."), "error");
+            } finally {
+                generateMatchesButton.disabled = false;
+            }
+        });
     }
 
     async function openBankStatementPanel() {
