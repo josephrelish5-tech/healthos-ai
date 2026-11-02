@@ -1222,3 +1222,37 @@ th {
 [hidden] {
     display: none !important;
 }
+
+
+/* Separate workspace pages: compact navigation instead of long stacked dashboards. */
+.workspace-page-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 18px 0 22px;
+    padding: 14px;
+    background: #f4f5f7;
+    border: 1px solid #dedede;
+    border-radius: 12px;
+}
+.workspace-page-button {
+    border: 1px solid #c9cdd2;
+    border-radius: 8px;
+    padding: 10px 15px;
+    background: #fff;
+    color: #222;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+.workspace-page-button:hover,
+.workspace-page-button.active {
+    background: #171717;
+    border-color: #171717;
+    color: #fff;
+}
+.workspace-subpage[hidden] { display: none !important; }
+@media (max-width: 640px) {
+    .workspace-page-nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .workspace-page-button { padding: 11px 8px; font-size: 0.9rem; }
+}
