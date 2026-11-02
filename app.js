@@ -6297,6 +6297,319 @@ function openSection(sectionId, sectionName) {
     console.log(
         "HealthOS Pharmacy inventory module initialized."
     );
+
+    // PHARMACY PROCUREMENT: SUPPLIERS, PURCHASE ORDERS AND GOODS RECEIVING
+    const procurementSupplierForm = document.getElementById("pharmacySupplierForm");
+    const procurementOrderForm = document.getElementById("pharmacyPurchaseOrderForm");
+    const procurementReceiveForm = document.getElementById("pharmacyReceiveGoodsForm");
+    const procurementMessage = document.getElementById("pharmacyProcurementMessage");
+    const procurementSupplierSelect = document.getElementById("pharmacyPurchaseSupplier");
+    const procurementOrderSelect = document.getElementById("pharmacyReceiveOrder");
+    const procurementItemSelect = document.getElementById("pharmacyReceiveOrderItem");
+    const procurementOrdersBody = document.getElementById("pharmacyPurchaseOrdersBody");
+
+    function showProcurementMessage(message, isError) {
+        if (!procurementMessage) return;
+        procurementMessage.textContent = message;
+        procurementMessage.style.color = isError ? "#b42318" : "#16794b";
+    }
+
+    async function loadPharmacyProcurementWorkspace() {
+        if (!procurementSupplierForm) return;
+        try {
+            const context = getPharmacyContext();
+            const supplierResult = await supabaseClient.from("pharmacy_suppliers")
+                .select("id,supplier_name,phone,email,is_active")
+                .eq("clinic_id", context.clinicId)
+                .order("supplier_name");
+            if (supplierResult.error) throw supplierResult.error;
+            const suppliers = supplierResult.data || [];
+            procurementSupplierSelect.replaceChildren();
+            const supplierPlaceholder = document.createElement("option");
+            supplierPlaceholder.value = "";
+            supplierPlaceholder.textContent = "Select an active supplier";
+            procurementSupplierSelect.appendChild(supplierPlaceholder);
+            suppliers.filter(s => s.is_active).forEach(s => {
+                const option = document.createElement("option");
+                option.value = s.id;
+                option.textContent = s.supplier_name;
+                procurementSupplierSelect.appendChild(option);
+            });
+
+            const supplierBody = document.getElementById("pharmacySuppliersBody");
+            if (supplierBody) {
+                supplierBody.replaceChildren();
+                if (!suppliers.length) {
+                    const row = document.createElement("tr");
+                    const cell = document.createElement("td");
+                    cell.colSpan = 4;
+                    cell.textContent = "No suppliers registered yet.";
+                    row.appendChild(cell);
+                    supplierBody.appendChild(row);
+                } else {
+                    suppliers.forEach(s => {
+                        const row = document.createElement("tr");
+                        [s.supplier_name, s.contact_person || "—", s.phone || "—", s.is_active ? "Active" : "Inactive"]
+                            .forEach(v => addPharmacyCell(row, v));
+                        supplierBody.appendChild(row);
+                    });
+                }
+            }
+
+            const orderResult = await supabaseClient.from("pharmacy_purchase_orders")
+                .select("id,po_number,supplier_id,status,total_amount,expected_delivery_date,ordered_at")
+                .eq("clinic_id", context.clinicId)
+                .order("ordered_at", {ascending:false})
+                .limit(100);
+            if (orderResult.error) throw orderResult.error;
+            const orders = orderResult.data || [];
+            const supplierMap = new Map(suppliers.map(s => [s.id, s.supplier_name]));
+            const itemResult = orders.length
+                ? await supabaseClient.from("pharmacy_purchase_order_items")
+                    .select("id,purchase_order_id,medicine_name,quantity_ordered,quantity_received,unit_cost")
+                    .eq("clinic_id", context.clinicId)
+                    .in("purchase_order_id", orders.map(o => o.id))
+                : {data:[],error:null};
+            if (itemResult.error) throw itemResult.error;
+            const itemsByOrder = new Map();
+            (itemResult.data || []).forEach(item => {
+                if (!itemsByOrder.has(item.purchase_order_id)) itemsByOrder.set(item.purchase_order_id, []);
+                itemsByOrder.get(item.purchase_order_id).push(item);
+            });
+
+            procurementOrdersBody.replaceChildren();
+            if (!orders.length) {
+                const row = document.createElement("tr");
+                const cell = document.createElement("td");
+                cell.colSpan = 6;
+                cell.textContent = "No purchase orders have been created.";
+                row.appendChild(cell);
+                procurementOrdersBody.appendChild(row);
+            } else {
+                orders.forEach(order => {
+                    const row = document.createElement("tr");
+                    const orderItems = itemsByOrder.get(order.id) || [];
+                    const itemSummary = orderItems.map(i =>
+                        i.medicine_name + " (" + i.quantity_received + "/" + i.quantity_ordered + ")"
+                    ).join(", ") || "No items";
+                    [
+                        order.po_number,
+                        supplierMap.get(order.supplier_id) || "Supplier",
+                        itemSummary,
+                        formatNaira(order.total_amount),
+                        order.status.replace(/_/g, " "),
+                        order.expected_delivery_date || "Not specified"
+                    ].forEach(v => addPharmacyCell(row, v));
+                    const actionCell = document.createElement("td");
+                    if (order.status === "submitted") {
+                        const approve = document.createElement("button");
+                        approve.type = "button";
+                        approve.textContent = "Approve";
+                        approve.dataset.procurementAction = "approve";
+                        approve.dataset.orderId = order.id;
+                        actionCell.appendChild(approve);
+                    } else if (order.status === "approved" || order.status === "partially_received") {
+                        const receive = document.createElement("button");
+                        receive.type = "button";
+                        receive.textContent = "Receive goods";
+                        receive.dataset.procurementAction = "receive";
+                        receive.dataset.orderId = order.id;
+                        actionCell.appendChild(receive);
+                    } else {
+                        actionCell.textContent = "—";
+                    }
+                    row.appendChild(actionCell);
+                    procurementOrdersBody.appendChild(row);
+                });
+            }
+
+            procurementOrderSelect.replaceChildren();
+            const orderPlaceholder = document.createElement("option");
+            orderPlaceholder.value = "";
+            orderPlaceholder.textContent = "Select approved purchase order";
+            procurementOrderSelect.appendChild(orderPlaceholder);
+            orders.filter(o => ["approved","partially_received"].includes(o.status)).forEach(o => {
+                const option = document.createElement("option");
+                option.value = o.id;
+                option.textContent = o.po_number + " — " + (supplierMap.get(o.supplier_id) || "Supplier");
+                procurementOrderSelect.appendChild(option);
+            });
+            await loadPharmacyReceiveOrderItems();
+            showProcurementMessage("Procurement workspace loaded.", false);
+        } catch (error) {
+            console.error("Pharmacy procurement load error:", error);
+            showProcurementMessage(error.message || "Unable to load procurement workspace.", true);
+        }
+    }
+
+    async function loadPharmacyReceiveOrderItems() {
+        if (!procurementItemSelect || !procurementOrderSelect) return;
+        procurementItemSelect.replaceChildren();
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "Select medicine line";
+        procurementItemSelect.appendChild(placeholder);
+        if (!procurementOrderSelect.value) return;
+        const context = getPharmacyContext();
+        const result = await supabaseClient.from("pharmacy_purchase_order_items")
+            .select("id,medicine_name,quantity_ordered,quantity_received")
+            .eq("clinic_id", context.clinicId)
+            .eq("purchase_order_id", procurementOrderSelect.value);
+        if (result.error) throw result.error;
+        (result.data || []).filter(i => i.quantity_received < i.quantity_ordered).forEach(i => {
+            const option = document.createElement("option");
+            option.value = i.id;
+            option.textContent = i.medicine_name + " — outstanding " + (i.quantity_ordered - i.quantity_received);
+            procurementItemSelect.appendChild(option);
+        });
+    }
+
+    if (procurementSupplierForm) {
+        procurementSupplierForm.addEventListener("submit", async event => {
+            event.preventDefault();
+            const button = document.getElementById("pharmacySupplierSaveButton");
+            if (button) button.disabled = true;
+            try {
+                const context = getPharmacyContext();
+                const payload = {
+                    clinic_id: context.clinicId,
+                    supplier_name: document.getElementById("pharmacySupplierName").value.trim(),
+                    contact_person: document.getElementById("pharmacySupplierContact").value.trim() || null,
+                    phone: document.getElementById("pharmacySupplierPhone").value.trim() || null,
+                    email: document.getElementById("pharmacySupplierEmail").value.trim() || null,
+                    address: document.getElementById("pharmacySupplierAddress").value.trim() || null,
+                    created_by: context.userId
+                };
+                if (payload.supplier_name.length < 2) throw new Error("Enter a valid supplier name.");
+                const result = await supabaseClient.from("pharmacy_suppliers").insert(payload);
+                if (result.error) throw result.error;
+                procurementSupplierForm.reset();
+                showProcurementMessage("Supplier registered successfully.", false);
+                await loadPharmacyProcurementWorkspace();
+            } catch (error) {
+                console.error("Supplier registration error:", error);
+                showProcurementMessage(error.message || "Unable to register supplier.", true);
+            } finally {
+                if (button) button.disabled = false;
+            }
+        });
+    }
+
+    if (procurementOrderForm) {
+        procurementOrderForm.addEventListener("submit", async event => {
+            event.preventDefault();
+            const button = document.getElementById("pharmacyPurchaseOrderSaveButton");
+            if (button) button.disabled = true;
+            try {
+                const context = getPharmacyContext();
+                const quantity = Number(document.getElementById("pharmacyOrderQuantity").value);
+                const unitCost = Number(document.getElementById("pharmacyOrderUnitCost").value);
+                if (!Number.isInteger(quantity) || quantity < 1) throw new Error("Order quantity must be a whole number above zero.");
+                if (!Number.isFinite(unitCost) || unitCost < 0) throw new Error("Enter a valid unit cost.");
+                const result = await supabaseClient.rpc("create_pharmacy_purchase_order", {
+                    p_clinic_id: context.clinicId,
+                    p_supplier_id: procurementSupplierSelect.value,
+                    p_po_number: document.getElementById("pharmacyOrderNumber").value.trim(),
+                    p_medicine_name: document.getElementById("pharmacyOrderMedicine").value.trim(),
+                    p_medicine_code: document.getElementById("pharmacyOrderMedicineCode").value.trim() || null,
+                    p_quantity: quantity,
+                    p_unit_cost: unitCost,
+                    p_expected_delivery_date: document.getElementById("pharmacyOrderDeliveryDate").value || null,
+                    p_notes: document.getElementById("pharmacyOrderNotes").value.trim() || null
+                });
+                if (result.error) throw result.error;
+                procurementOrderForm.reset();
+                showProcurementMessage("Purchase order submitted for owner/admin approval.", false);
+                await loadPharmacyProcurementWorkspace();
+            } catch (error) {
+                console.error("Purchase order creation error:", error);
+                showProcurementMessage(error.message || "Unable to create purchase order.", true);
+            } finally {
+                if (button) button.disabled = false;
+            }
+        });
+    }
+
+    if (procurementOrdersBody) {
+        procurementOrdersBody.addEventListener("click", async event => {
+            const button = event.target.closest("button[data-procurement-action]");
+            if (!button) return;
+            const context = getPharmacyContext();
+            const orderId = button.dataset.orderId;
+            button.disabled = true;
+            try {
+                if (button.dataset.procurementAction === "approve") {
+                    const result = await supabaseClient.rpc("approve_pharmacy_purchase_order", {
+                        p_clinic_id: context.clinicId,
+                        p_purchase_order_id: orderId
+                    });
+                    if (result.error) throw result.error;
+                    showProcurementMessage("Purchase order approved. Goods can now be received.", false);
+                } else if (button.dataset.procurementAction === "receive") {
+                    procurementOrderSelect.value = orderId;
+                    await loadPharmacyReceiveOrderItems();
+                    document.getElementById("pharmacyReceiveGoodsForm").scrollIntoView({behavior:"smooth",block:"center"});
+                    showProcurementMessage("Select the medicine line and enter the delivered batch details below.", false);
+                }
+                await loadPharmacyProcurementWorkspace();
+            } catch (error) {
+                console.error("Purchase order action error:", error);
+                showProcurementMessage(error.message || "Unable to complete purchase order action.", true);
+            } finally {
+                button.disabled = false;
+            }
+        });
+    }
+
+    if (procurementOrderSelect) {
+        procurementOrderSelect.addEventListener("change", () => {
+            loadPharmacyReceiveOrderItems().catch(error => showProcurementMessage(error.message, true));
+        });
+    }
+
+    if (procurementReceiveForm) {
+        procurementReceiveForm.addEventListener("submit", async event => {
+            event.preventDefault();
+            const button = document.getElementById("pharmacyReceiveGoodsButton");
+            if (button) button.disabled = true;
+            try {
+                const context = getPharmacyContext();
+                const quantity = Number(document.getElementById("pharmacyReceiveQuantity").value);
+                if (!Number.isInteger(quantity) || quantity < 1) throw new Error("Received quantity must be a whole number above zero.");
+                const result = await supabaseClient.rpc("receive_pharmacy_purchase_order_item", {
+                    p_clinic_id: context.clinicId,
+                    p_purchase_order_item_id: procurementItemSelect.value,
+                    p_receipt_number: document.getElementById("pharmacyGoodsReceiptNumber").value.trim(),
+                    p_batch_number: document.getElementById("pharmacyGoodsBatchNumber").value.trim(),
+                    p_expiry_date: document.getElementById("pharmacyGoodsExpiryDate").value,
+                    p_quantity: quantity,
+                    p_delivery_note_reference: document.getElementById("pharmacyDeliveryNote").value.trim() || null,
+                    p_notes: document.getElementById("pharmacyGoodsReceiptNotes").value.trim() || null
+                });
+                if (result.error) throw result.error;
+                procurementReceiveForm.reset();
+                showProcurementMessage("Goods received. A new inventory batch and receipt record have been created.", false);
+                await loadPharmacyInventory();
+                await loadPharmacyProcurementWorkspace();
+            } catch (error) {
+                console.error("Goods receiving error:", error);
+                showProcurementMessage(error.message || "Unable to record goods receipt.", true);
+            } finally {
+                if (button) button.disabled = false;
+            }
+        });
+    }
+
+    document.querySelectorAll(".sidebar .nav-item").forEach(link => {
+        link.addEventListener("click", () => {
+            if ((link.getAttribute("href") || "") === "#pharmacy") {
+                void loadPharmacyProcurementWorkspace();
+            }
+        });
+    });
+    window.loadHealthOSPharmacyProcurement = loadPharmacyProcurementWorkspace;
+    // END PHARMACY PROCUREMENT WORKSPACE
+
 })();
 // ============================================================
 // HEALTHOS AI: LIVE OPERATIONAL REPORTS
