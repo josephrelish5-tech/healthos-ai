@@ -78,14 +78,14 @@ function showHealthOSView(viewId) {
     const mainContent = document.getElementById("dashboard");
     if (!mainContent) return;
 
-    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "multiFacilityManagement", "aiAnalytics", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
+    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "multiFacilityManagement", "aiAnalytics", "patientFlow", "clinicalRecords", "clinicalScribe", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
     if (!allowedViews.includes(viewId)) {
         alert("This page is not available yet.");
         return;
     }
 
     const requestedPanel = viewId === "dashboard" ? mainContent :
-        document.getElementById(viewId === "staffManagement" ? "adminStaffDashboard" : viewId);
+        document.getElementById(viewId === "staffManagement" ? "adminStaffDashboard" : viewId === "clinicalScribe" ? "clinicalRecords" : viewId);
     if (!requestedPanel) {
         alert("This workspace page could not be found.");
         return;
@@ -94,13 +94,24 @@ function showHealthOSView(viewId) {
     const pageElements = mainContent.querySelectorAll(
         ":scope > .welcome, :scope > #dashboardMessage, :scope > .stats-grid, " +
         ":scope > #adminStaffDashboard, :scope > #patients, :scope > #appointments, " +
-        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #ussdDiagnostics, :scope > #multiFacilityManagement, :scope > #aiAnalytics, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
+        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #ussdDiagnostics, :scope > #multiFacilityManagement, :scope > #aiAnalytics, :scope > #patientFlow, :scope > #clinicalRecords, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
         ":scope > #pharmacy, :scope > #reports"
     );
     pageElements.forEach(element => {
         const isOverview = element.matches(".welcome, #dashboardMessage, .stats-grid");
         element.hidden = viewId === "dashboard" ? !isOverview : element !== requestedPanel;
     });
+
+    // The AI Medical Scribe is a focused sub-workspace inside Clinical Records.
+    const clinicalWorkspace = document.getElementById("clinicalRecords");
+    if (clinicalWorkspace) {
+        const scribeOnly = viewId === "clinicalScribe";
+        Array.from(clinicalWorkspace.children).forEach(child => {
+            if (child.id === "clinicalScribe") child.hidden = false;
+            else if (child.matches(".panel-heading")) child.hidden = false;
+            else child.hidden = scribeOnly;
+        });
+    }
 
     if (viewId === "staffManagement") showAdminWorkspacePage("adminOverview");
 
@@ -116,6 +127,8 @@ function showHealthOSView(viewId) {
 
     window.scrollTo({ top: 0, behavior: "auto" });
 
+    if (["clinicalRecords", "clinicalScribe"].includes(viewId) && typeof window.loadHealthOSClinicalRecords === "function") window.loadHealthOSClinicalRecords().catch(error => console.error("Clinical records refresh failed:", error));
+    if (viewId === "patientFlow" && typeof window.loadPatientFlow === "function") window.loadPatientFlow().catch(error => console.error("Patient flow refresh failed:", error));
     if (viewId === "serviceCapture") loadServiceCaptureModule().catch(error => console.error("Service Capture module loading failed:", error));
     if (viewId === "posReconciliation" && typeof window.loadBankStatementImports === "function") window.loadBankStatementImports().catch(error => console.error("Bank statement panel failed:", error));
     if (viewId === "billing" && currentClinic && managementVerified) loadBillingData(currentClinic).catch(error => console.error("Department payment review refresh failed:", error));
