@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261102-03" defer></script>
+    <script src="app.js?v=20261102-04" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -2177,14 +2177,16 @@
             <select id="pharmacyPurchaseSupplier" required><option value="">Loading suppliers...</option></select>
             <label for="pharmacyOrderNumber">Purchase Order Number</label>
             <input id="pharmacyOrderNumber" type="text" maxlength="80" required>
-            <label for="pharmacyOrderMedicine">Medicine Name</label>
-            <input id="pharmacyOrderMedicine" type="text" maxlength="200" required>
-            <label for="pharmacyOrderMedicineCode">Medicine Barcode / Product Code</label>
-            <input id="pharmacyOrderMedicineCode" type="text" maxlength="100">
-            <label for="pharmacyOrderQuantity">Quantity Ordered</label>
-            <input id="pharmacyOrderQuantity" type="number" min="1" step="1" required>
-            <label for="pharmacyOrderUnitCost">Unit Purchase Cost (NGN)</label>
-            <input id="pharmacyOrderUnitCost" type="number" min="0" step="0.01" required>
+            <div id="pharmacyOrderItems">
+                <div class="pharmacy-po-line" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0;padding:12px;border:1px solid #dbe3ee;border-radius:8px;">
+                    <label>Medicine Name<input class="pharmacy-po-medicine" type="text" maxlength="200" required></label>
+                    <label>Barcode / Product Code<input class="pharmacy-po-code" type="text" maxlength="100"></label>
+                    <label>Quantity<input class="pharmacy-po-quantity" type="number" min="1" step="1" required></label>
+                    <label>Unit Cost (NGN)<input class="pharmacy-po-cost" type="number" min="0" step="0.01" required></label>
+                    <button type="button" class="pharmacy-po-remove" hidden>Remove line</button>
+                </div>
+            </div>
+            <button type="button" id="pharmacyAddOrderItemButton">+ Add another medicine</button>
             <label for="pharmacyOrderDeliveryDate">Expected Delivery Date</label>
             <input id="pharmacyOrderDeliveryDate" type="date">
             <label for="pharmacyOrderNotes">Notes</label>
@@ -2197,6 +2199,33 @@
             <table>
                 <thead><tr><th>PO Number</th><th>Supplier</th><th>Medicine / Received</th><th>Total</th><th>Status</th><th>Expected Delivery</th><th>Action</th></tr></thead>
                 <tbody id="pharmacyPurchaseOrdersBody"><tr><td colspan="7">Purchase orders will appear here.</td></tr></tbody>
+            </table>
+        </div>
+
+        <h4>Supplier Payments & Approval</h4>
+        <p class="muted">Record full or partial payments against approved purchase orders. Payments remain pending until an authorised owner/admin reviews them; approved totals cannot exceed the order value.</p>
+        <form id="pharmacySupplierPaymentForm">
+            <label for="pharmacyPaymentOrder">Approved Purchase Order</label>
+            <select id="pharmacyPaymentOrder" required><option value="">Select purchase order</option></select>
+            <label for="pharmacyPaymentReference">Payment Reference</label>
+            <input id="pharmacyPaymentReference" type="text" maxlength="100" required>
+            <label for="pharmacyPaymentAmount">Amount Paid (NGN)</label>
+            <input id="pharmacyPaymentAmount" type="number" min="0.01" step="0.01" required>
+            <label for="pharmacyPaymentMethod">Payment Method</label>
+            <select id="pharmacyPaymentMethod" required>
+                <option value="bank_transfer">Bank transfer</option><option value="cash">Cash</option>
+                <option value="pos">POS</option><option value="cheque">Cheque</option><option value="other">Other</option>
+            </select>
+            <label for="pharmacyPaymentDate">Payment Date</label>
+            <input id="pharmacyPaymentDate" type="date" required>
+            <label for="pharmacyPaymentNotes">Notes</label>
+            <textarea id="pharmacyPaymentNotes" rows="2" maxlength="1000"></textarea>
+            <button type="submit" id="pharmacySupplierPaymentButton">Record Supplier Payment</button>
+        </form>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Reference</th><th>PO Number</th><th>Amount</th><th>Method</th><th>Date</th><th>Status</th><th>Review</th></tr></thead>
+                <tbody id="pharmacySupplierPaymentsBody"><tr><td colspan="7">Supplier payments will appear here.</td></tr></tbody>
             </table>
         </div>
 
