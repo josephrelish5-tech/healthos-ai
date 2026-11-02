@@ -9638,3 +9638,105 @@ function openSection(sectionId, sectionName) {
  window.addEventListener("online",()=>{if(identity())void loadEncounters();});
  init();
 })();
+
+
+// HEALTHOS AI: ENCRYPTED OFFLINE VITALS QUEUE
+(function initOfflineVitalsQueue(){
+ const $=id=>document.getElementById(id), DB="healthos_offline_directory_v1", STORE="secure_cache", KEY="vitals_queue";
+ let items=[];
+ const who=()=>currentUser&&currentClinic?{user:currentUser.id,clinic:currentClinic.id}:null;
+ const say=(m,e=false)=>{const el=$("offlineVitalsStatus");if(el){el.textContent=m;el.className="message"+(e?" error":" success");}};
+ function openDb(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB,1);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
+ async function get(){const d=await openDb();return new Promise((resolve,reject)=>{const r=d.transaction(STORE).objectStore(STORE).get(KEY);r.onsuccess=()=>{d.close();resolve(r.result||null);};r.onerror=()=>{d.close();reject(r.error);};});}
+ async function put(v){const d=await openDb();return new Promise((resolve,reject)=>{const t=d.transaction(STORE,"readwrite");t.objectStore(STORE).put(v,KEY);t.oncomplete=()=>{d.close();resolve();};t.onerror=()=>{d.close();reject(t.error);};});}
+ async function remove(){const d=await openDb();return new Promise((resolve,reject)=>{const t=d.transaction(STORE,"readwrite");t.objectStore(STORE).delete(KEY);t.oncomplete=()=>{d.close();resolve();};t.onerror=()=>{d.close();reject(t.error);};});}
+ async function saveEncrypted(){
+  const owner=who();if(!owner)throw new Error("Sign in to the clinic workspace first.");
+  const key=await crypto.subtle.generateKey({name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const data={owner,expiresAt:Date.now()+8*60*60*1000,items};
+  const ciphertext=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,new TextEncoder().encode(JSON.stringify(data)));
+  await put({key,iv:Array.from(iv),ciphertext});
+ }
+ async function unlock(){
+  if(!who()){items=[];return false;}
+  try{
+   const rec=await get();if(!rec){items=[];return true;}
+   const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:new Uint8Array(rec.iv)},rec.key,rec.ciphertext);
+   const data=JSON.parse(new TextDecoder().decode(plain));
+   if(data.owner.user!==who().user||data.owner.clinic!==who().clinic||data.expiresAt<Date.now()){await remove();items=[];say("Offline observations expired or belong to another account; the queue was erased.");return false;}
+   items=data.items||[];return true;
+  }catch(e){items=[];say("Encrypted offline observations could not be unlocked. Erase the queue before starting again.",true);return false;}
+ }
+ const ids=["clinicalTemperature","clinicalSystolic","clinicalDiastolic","clinicalPulse","clinicalRespiratory","clinicalOxygen","clinicalWeight","clinicalHeight","clinicalPain"];
+ const fields=["temperature_c","systolic_bp","diastolic_bp","pulse_bpm","respiratory_rate","oxygen_saturation","weight_kg","height_cm","pain_score"];
+ function capture(){
+  const values={};ids.forEach((id,i)=>values[fields[i]]=$(id).value===""?null:Number($(id).value));
+  return values;
+ }
+ function valid(v){return Object.values(v).some(x=>x!==null)&&
+  (v.temperature_c===null||(v.temperature_c>=25&&v.temperature_c<=45))&&
+  (v.systolic_bp===null||(Number.isInteger(v.systolic_bp)&&v.systolic_bp>=40&&v.systolic_bp<=300))&&
+  (v.diastolic_bp===null||(Number.isInteger(v.diastolic_bp)&&v.diastolic_bp>=20&&v.diastolic_bp<=200))&&
+  (v.pulse_bpm===null||(Number.isInteger(v.pulse_bpm)&&v.pulse_bpm>=20&&v.pulse_bpm<=250))&&
+  (v.respiratory_rate===null||(Number.isInteger(v.respiratory_rate)&&v.respiratory_rate>=4&&v.respiratory_rate<=80))&&
+  (v.oxygen_saturation===null||(v.oxygen_saturation>=0&&v.oxygen_saturation<=100))&&
+  (v.weight_kg===null||(v.weight_kg>=0.2&&v.weight_kg<=500))&&
+  (v.height_cm===null||(v.height_cm>=20&&v.height_cm<=250))&&
+  (v.pain_score===null||(Number.isInteger(v.pain_score)&&v.pain_score>=0&&v.pain_score<=10));}
+ function render(){
+  const body=$("offlineVitalsBody");if(!body)return;body.replaceChildren();
+  if(!items.length){const r=body.insertRow(),c=r.insertCell();c.colSpan=5;c.textContent="No queued observations.";return;}
+  items.forEach(x=>{const r=body.insertRow();[new Date(x.capturedAt).toLocaleString(),x.encounterLabel,
+   fields.filter(k=>x.values[k]!==null).map(k=>k.replaceAll("_"," ")+": "+x.values[k]).join("; "),x.status,x.detail||"—"
+  ].forEach(v=>{const c=r.insertCell();c.textContent=v;});});
+ }
+ $("offlineVitalsSave")?.addEventListener("click",async()=>{
+  if(!who()){say("Sign in to your clinic workspace first.",true);return;}
+  const encounterId=$("clinicalVitalsEncounter").value;
+  if(!encounterId){say("Select an encounter that was loaded while online.",true);return;}
+  const values=capture();
+  if(!valid(values)){say("Enter at least one valid observation. Check each value's permitted range.",true);return;}
+  const option=$("clinicalVitalsEncounter").selectedOptions[0];
+  const item={id:crypto.randomUUID(),encounterId,encounterLabel:option?.textContent||"Encounter",patientId:null,values,notes:$("clinicalVitalsNotes").value.trim()||null,capturedAt:Date.now(),status:"queued",detail:"Awaiting online encounter verification"};
+  try{
+   const {data,error}=await supabaseClient.from("clinical_encounters").select("id,patient_id,status,clinician_id").eq("id",encounterId).eq("clinic_id",currentClinic.id).maybeSingle();
+   if(navigator.onLine){
+    if(error||!data||data.clinician_id!==currentUser.id||!["open","in_progress"].includes(data.status)){say("Encounter is not available to this clinician or is no longer open.",true);return;}
+    item.patientId=data.patient_id;
+   }
+   items.push(item);await saveEncrypted();render();
+   ids.forEach(id=>$(id).value="");$("clinicalVitalsNotes").value="";
+   say("Vital observations encrypted on this device. They have not yet been added to the medical record.");
+  }catch(e){say("Could not securely queue observations: "+e.message,true);}
+ });
+ $("offlineVitalsSync")?.addEventListener("click",async()=>{
+  if(!navigator.onLine){say("Connect to the internet before syncing.",true);return;}
+  if(!who()){say("Sign in to the same clinic account that captured these observations.",true);return;}
+  const b=$("offlineVitalsSync");b.disabled=true;
+  try{
+   await unlock();let saved=0,conflicts=0,failed=0;
+   for(const x of items.filter(v=>v.status!=="synced")){
+    const {data:enc,error:ee}=await supabaseClient.from("clinical_encounters").select("id,patient_id,status,clinician_id").eq("id",x.encounterId).eq("clinic_id",currentClinic.id).maybeSingle();
+    if(ee||!enc||enc.clinician_id!==currentUser.id||!["open","in_progress"].includes(enc.status)){x.status="conflict";x.detail="Encounter unavailable, closed or not assigned to this clinician.";conflicts++;continue;}
+    x.patientId=enc.patient_id;
+    const payload={id:x.id,clinic_id:currentClinic.id,encounter_id:x.encounterId,patient_id:enc.patient_id,...x.values,notes:x.notes,recorded_by:currentUser.id,recorded_at:new Date(x.capturedAt).toISOString()};
+    const {error}=await supabaseClient.from("patient_vitals").insert(payload);
+    if(!error){x.status="synced";x.detail="Saved to patient record";saved++;continue;}
+    if(error.code==="23505"){
+     const {data:existing}=await supabaseClient.from("patient_vitals").select("id,encounter_id,patient_id,recorded_by").eq("id",x.id).eq("clinic_id",currentClinic.id).maybeSingle();
+     if(existing&&existing.encounter_id===x.encounterId&&existing.patient_id===enc.patient_id&&existing.recorded_by===currentUser.id){x.status="synced";x.detail="Already synced";saved++;}
+     else{x.status="conflict";x.detail="A record with this queue ID exists but does not match.";conflicts++;}
+    }else{x.status="sync_error";x.detail=error.message;failed++;}
+   }
+   await saveEncrypted();render();say("Sync complete: "+saved+" observation set(s) saved, "+conflicts+" conflict(s), "+failed+" error(s). Check the clinical record and resolve conflicts.");
+   if(saved&&window.loadHealthOSClinicalRecords)await window.loadHealthOSClinicalRecords();
+  }catch(e){say("Sync could not complete: "+e.message,true);}
+  finally{b.disabled=false;}
+ });
+ $("offlineVitalsErase")?.addEventListener("click",async()=>{if(!confirm("Permanently erase queued offline vital observations from this device?"))return;await remove();items=[];render();say("Offline vital observations erased from this device.");});
+ async function init(){if(!crypto?.subtle||!indexedDB){say("This browser does not support secure offline storage.",true);return;}await unlock();render();}
+ document.querySelectorAll(".sidebar .nav-item").forEach(link=>link.addEventListener("click",()=>{if((link.getAttribute("href")||"")==="#clinicalRecords")void init();}));
+ window.addEventListener("online",()=>say("Connection restored. Review queued observations and sync when ready."));
+ init();
+})();
