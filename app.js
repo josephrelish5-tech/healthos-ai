@@ -7169,7 +7169,7 @@ function openSection(sectionId, sectionName) {
         capabilities = activeCapabilities || {};
         rows.replaceChildren();
         const { data, error } = await supabaseClient.from("pos_receipts")
-            .select("id,created_at,payment_provider,transaction_reference,amount,ocr_status,source_file_path,payment_method,invoice_reference,capture_channel,acceptance_status,captured_department,uploaded_by,accepted_by,accepted_at,reconciliation_status")
+            .select("id,created_at,payment_provider,transaction_reference,amount,ocr_status,ocr_raw,source_file_path,payment_method,invoice_reference,capture_channel,acceptance_status,captured_department,uploaded_by,accepted_by,accepted_at,reconciliation_status")
             .eq("clinic_id", currentClinic.id)
             .order("created_at", { ascending: false }).limit(50);
         if (error) throw error;
@@ -7250,8 +7250,67 @@ function openSection(sectionId, sectionName) {
                 });
                 td.appendChild(openButton);
                 const status = document.createElement("small");
-                status.textContent = " OCR: " + (record.ocr_status || "pending");
+                status.textContent = " OCR review: " + (record.ocr_status || "pending");
                 td.appendChild(status);
+                if (capabilities && (capabilities.can_review || capabilities.can_accept) &&
+                    ["pending", "processing", "extracted", "needs_review"].includes(record.ocr_status || "pending")) {
+                    const reviewButton = document.createElement("button");
+                    reviewButton.type = "button";
+                    reviewButton.className = "secondary-button";
+                    reviewButton.textContent = "Review receipt fields";
+                    reviewButton.addEventListener("click", async () => {
+                        const providerValue = prompt("Provider / bank read from receipt:", record.payment_provider || "");
+                        if (providerValue === null) return;
+                        const referenceValue = prompt("Transaction reference read from receipt:", record.transaction_reference || "");
+                        if (referenceValue === null) return;
+                        const amountValue = prompt("Amount read from receipt (NGN):", record.amount == null ? "" : String(record.amount));
+                        if (amountValue === null) return;
+                        const dateValue = prompt("Transaction date/time read from receipt (ISO or leave blank):", "");
+                        if (dateValue === null) return;
+                        const noteValue = prompt("Review note: explain what you checked (required):", "");
+                        if (noteValue === null || noteValue.trim().length < 3) {
+                            setMessage("A review note of at least 3 characters is required.", "error");
+                            return;
+                        }
+                        const extractedAmount = amountValue.trim() === "" ? null : Number(amountValue);
+                        if (extractedAmount !== null && (!Number.isFinite(extractedAmount) || extractedAmount < 0)) {
+                            setMessage("Enter a valid non-negative amount read from the receipt.", "error");
+                            return;
+                        }
+                        const matches = extractedAmount !== null && Number(record.amount) === extractedAmount &&
+                            (referenceValue.trim() || "") === (record.transaction_reference || "") &&
+                            (providerValue.trim() || "") === (record.payment_provider || "");
+                        const decision = matches ? "verified" : "needs_review";
+                        if (!confirm(matches
+                            ? "The manually read amount, reference and provider match the submitted transaction. Mark receipt fields verified? This does not confirm bank settlement."
+                            : "One or more receipt fields differ from the submitted transaction. Flag this receipt for further review?")) return;
+                        reviewButton.disabled = true;
+                        try {
+                            const { error: reviewError } = await supabaseClient.rpc("review_pos_receipt_ocr", {
+                                p_clinic_id: currentClinic.id,
+                                p_receipt_id: record.id,
+                                p_decision: decision,
+                                p_extracted_fields: {
+                                    payment_provider: providerValue.trim() || null,
+                                    transaction_reference: referenceValue.trim() || null,
+                                    amount: extractedAmount,
+                                    transaction_at_text: dateValue.trim() || null
+                                },
+                                p_review_note: noteValue.trim()
+                            });
+                            if (reviewError) throw reviewError;
+                            setMessage(decision === "verified"
+                                ? "Receipt fields manually verified. Bank settlement still requires reconciliation."
+                                : "Receipt flagged for further review because the manually read fields differ.", "success");
+                            await loadReceipts(capabilities);
+                        } catch (error) {
+                            setMessage("Receipt review failed: " + error.message, "error");
+                            reviewButton.disabled = false;
+                        }
+                    });
+                    td.appendChild(document.createElement("br"));
+                    td.appendChild(reviewButton);
+                }
             } else {
                 td.textContent = "Evidence missing";
             }
