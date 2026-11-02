@@ -8411,3 +8411,33 @@ function openSection(sectionId, sectionName) {
  document.querySelectorAll(".sidebar .nav-item").forEach(link=>link.addEventListener("click",()=>{if(["#clinicalRecords","#clinicalScribe"].includes(link.getAttribute("href")||""))void loadClinicalRecords();}));
  window.loadHealthOSClinicalRecords=loadClinicalRecords;
 })();
+
+// HEALTHOS AI: OFFLINE-FIRST APPLICATION SHELL FOUNDATION
+// Only the public application shell is cached. Authenticated API responses,
+// patient records, clinical notes, payment data and pharmacy data are never cached.
+(function initOfflineShell() {
+    const banner = document.getElementById("offlineModeBanner");
+    function refreshNetworkState() {
+        const offline = !navigator.onLine;
+        if (banner) banner.hidden = !offline;
+        if (connectionStatus && offline) {
+            connectionStatus.textContent = "Offline — application shell only";
+            connectionStatus.classList.remove("success");
+            connectionStatus.classList.add("error");
+        } else if (connectionStatus && navigator.onLine) {
+            connectionStatus.textContent = "Network available — sign-in required for live data";
+            connectionStatus.classList.remove("error");
+        }
+    }
+    window.addEventListener("online", refreshNetworkState);
+    window.addEventListener("offline", refreshNetworkState);
+    refreshNetworkState();
+
+    if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+        window.addEventListener("load", () => {
+            navigator.serviceWorker.register("./sw.js")
+                .then(() => console.info("HealthOS AI offline application shell registered."))
+                .catch(error => console.warn("Offline shell registration unavailable:", error));
+        });
+    }
+})();
