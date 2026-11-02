@@ -8752,7 +8752,7 @@ function openSection(sectionId, sectionName) {
     }else{
      dispenses.forEach(item=>{
       const row=medicationBody.insertRow();
-      [when(item.dispensed_at),item.medicine_name_snapshot,item.quantity_dispensed,item.batch_number_snapshot,item.expiry_date_snapshot,item.status].forEach(value=>cell(row,value));
+      const d=item.dispensed_at?new Date(item.dispensed_at):null; const e=item.expiry_date_snapshot?new Date(item.expiry_date_snapshot+"T23:59:59"):null; const review=d&&e&&e<d?"Potentially expired at dispensing — verify":item.expiry_date_snapshot?"Expiry date recorded — verify batch":"Expiry date not recorded"; [when(item.dispensed_at),item.medicine_name_snapshot,item.quantity_dispensed,item.batch_number_snapshot,item.expiry_date_snapshot,review,item.status].forEach(value=>cell(row,value));
      });
      if(medicationMessage){medicationMessage.textContent=dispenses.length+" historical dispensing record(s) found. Confirm current use, dose, frequency and any outside medications with the patient.";medicationMessage.className="message";}
     }
