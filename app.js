@@ -2954,10 +2954,29 @@ async function loadStaffActivityTable(clinic) {
             values.forEach(function (value, index) {
                 const cell = document.createElement("td");
 
-                cell.textContent = value;
-
                 if (index === 3) {
-                    cell.style.fontWeight = "600";
+                    const statusBadge = document.createElement("span");
+                    const online = value === "Online";
+
+                    statusBadge.className = online
+                        ? "staff-presence-badge staff-presence-online"
+                        : "staff-presence-badge staff-presence-offline";
+                    statusBadge.setAttribute(
+                        "aria-label",
+                        online ? "Staff portal is online" : "Staff portal is offline"
+                    );
+
+                    const statusDot = document.createElement("span");
+                    statusDot.className = "staff-presence-dot";
+                    statusDot.setAttribute("aria-hidden", "true");
+
+                    const statusText = document.createElement("span");
+                    statusText.textContent = value;
+
+                    statusBadge.append(statusDot, statusText);
+                    cell.appendChild(statusBadge);
+                } else {
+                    cell.textContent = value;
                 }
 
                 row.appendChild(cell);
