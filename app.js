@@ -38,24 +38,19 @@ const adminVerificationPassword = document.getElementById("adminVerificationPass
 const adminVerificationMessage = document.getElementById("adminVerificationMessage");
 const adminVerificationSubmit = document.getElementById("adminVerificationSubmit");
 const adminVerificationCancel = document.getElementById("adminVerificationCancel");
-// HEALTHOS AI: SEPARATE DASHBOARD VIEWS
-
-
-
+// HEALTHOS AI: SEPARATE WORKSPACE PAGE NAVIGATION
 function showHealthOSView(viewId) {
-
-        // Require fresh verification whenever the management dashboard is opened.
     if (viewId === "dashboard" && !managementVerified) {
         showOnly(currentUser ? "verification" : "auth");
         return;
     }
 
     const mainContent = document.getElementById("dashboard");
-
     if (!mainContent) return;
 
     const allowedViews = [
         "dashboard",
+        "staffManagement",
         "patients",
         "appointments",
         "serviceCapture",
@@ -70,105 +65,86 @@ function showHealthOSView(viewId) {
         return;
     }
 
-    const isDashboard = viewId === "dashboard";
-
-// Keep management verification active while the authorised user
-// navigates between modules. Verification is reset on sign-out,
-// workspace re-entry, or when verification is explicitly cancelled.
-
-// Check that the requested page exists before changing views.
-    // Check that the requested page exists before changing views.
-    const requestedPanel = isDashboard
+    const requestedPanel = viewId === "dashboard"
         ? mainContent
-        : document.getElementById(viewId);
+        : document.getElementById(
+            viewId === "staffManagement" ? "adminStaffDashboard" : viewId
+        );
 
     if (!requestedPanel) {
-        alert(
-            viewId === "pharmacy"
-                ? "The Pharmacy page has not been created yet."
-                : viewId === "reports"
-                    ? "The Reports page has not been created yet."
-                    : "This page could not be found."
-        );
+        alert("This workspace page could not be found.");
         return;
     }
 
-    // Show the overview only on the Dashboard page.
-    mainContent.querySelectorAll(
-        ":scope > .welcome, :scope > .stats-grid, :scope > #dashboardMessage"
-    ).forEach(element => {
-        element.hidden = !isDashboard;
+    // Each navigation choice displays one workspace page only.
+    const dashboardElements = mainContent.querySelectorAll(
+        ":scope > .welcome, :scope > #dashboardMessage, :scope > .stats-grid, " +
+        ":scope > #adminStaffDashboard, :scope > #patients, " +
+        ":scope > #appointments, :scope > #serviceCapture, " +
+        ":scope > #billing, :scope > #posReconciliation, " +
+        ":scope > #pharmacy, :scope > #reports"
+    );
+
+    dashboardElements.forEach(element => {
+        const isDashboardElement =
+            element.matches(".welcome, #dashboardMessage, .stats-grid");
+        element.hidden = viewId === "dashboard"
+            ? !isDashboardElement
+            : element !== requestedPanel;
     });
 
-    // Hide every existing module except the selected page.
-    allowedViews
-        .filter(id => id !== "dashboard")
-        .forEach(id => {
-            const panel = document.getElementById(id);
+    // Keep the floating assistant available without making it part of the page scroll.
+    const assistantLauncher = document.getElementById("staffAssistantLauncher");
+    if (assistantLauncher) assistantLauncher.hidden = false;
 
-            if (panel) {
-                panel.hidden = id !== viewId;
-            }
-        });
-
-    // Highlight the selected sidebar link.
     document.querySelectorAll(".sidebar .nav-item").forEach(link => {
-        const active =
-            link.getAttribute("href") === "#" + viewId;
-
+        const active = link.getAttribute("href") === "#" + viewId;
         link.classList.toggle("active", active);
-
-        if (active) {
-            link.setAttribute("aria-current", "page");
-        } else {
-            link.removeAttribute("aria-current");
-        }
+        if (active) link.setAttribute("aria-current", "page");
+        else link.removeAttribute("aria-current");
     });
 
-    // Display the selected page.
-    requestedPanel.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
-    });
-        // Load Service Capture data whenever its page opens.
+    window.scrollTo({ top: 0, behavior: "auto" });
+
     if (viewId === "serviceCapture") {
         loadServiceCaptureModule().catch(error => {
-            console.error(
-                "Service Capture module loading failed:",
-                error
-            );
+            console.error("Service Capture module loading failed:", error);
         });
     }
-    if (viewId === "posReconciliation" && typeof window.loadBankStatementImports === "function") {
+
+    if (viewId === "posReconciliation" &&
+        typeof window.loadBankStatementImports === "function") {
         window.loadBankStatementImports().catch(error => {
             console.error("Bank statement panel failed:", error);
         });
     }
+
+    if (viewId === "billing" && currentClinic && managementVerified) {
+        loadBillingData(currentClinic).catch(error => {
+            console.error("Department payment review refresh failed:", error);
+        });
+    }
 }
 
-// Connect the sidebar to the page navigation.
+function navigateHealthOSView(viewId) {
+    showHealthOSView(viewId);
+    if (window.location.hash !== "#" + viewId) {
+        history.pushState({ healthOSView: viewId }, "", "#" + viewId);
+    }
+}
+
 document.querySelectorAll(".sidebar .nav-item").forEach(link => {
     link.addEventListener("click", function(event) {
-        const viewId = (this.getAttribute("href") || "")
-            .replace(/^#/, "");
-
-        if (!viewId) return;
-
         event.preventDefault();
-        showHealthOSView(viewId);
-
-        // Refresh Billing Review each time it opens so new department
-        // transactions are visible without requiring a new sign-in.
-        if (viewId === "billing" && currentClinic && managementVerified) {
-            loadBillingData(currentClinic).catch(error => {
-                console.error("Department payment review refresh failed:", error);
-            });
-        }
-
-        if (window.location.hash !== "#" + viewId) {
-            history.replaceState(null, "", "#" + viewId);
-        }
+        const viewId = (this.getAttribute("href") || "").replace(/^#/, "");
+        if (viewId) navigateHealthOSView(viewId);
     });
+});
+
+// Support browser back/forward navigation between workspace pages.
+window.addEventListener("popstate", () => {
+    const viewId = (window.location.hash || "#dashboard").slice(1);
+    showHealthOSView(viewId);
 });
 
 window.showHealthOSView = showHealthOSView;
