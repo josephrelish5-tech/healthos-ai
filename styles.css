@@ -974,3 +974,43 @@ footer {
     opacity: .65;
     cursor: wait;
 }
+
+/* Staff portal presence badges */
+.staff-presence-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 7px 13px;
+    border-radius: 999px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.staff-presence-online {
+    color: #087a2e;
+    background: #dcfce7;
+}
+
+.staff-presence-offline {
+    color: #b42318;
+    background: #fee2e2;
+}
+
+.staff-presence-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    flex: 0 0 9px;
+    border-radius: 50%;
+}
+
+.staff-presence-online .staff-presence-dot {
+    background: #16a34a;
+}
+
+.staff-presence-offline .staff-presence-dot {
+    background: #dc2626;
+}
+
