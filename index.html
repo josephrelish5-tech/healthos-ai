@@ -1871,6 +1871,38 @@
             <tbody id="posReceiptRows"><tr><td colspan="7">Sign in with an authorised account to load transactions.</td></tr></tbody>
         </table>
     </div>
+    <section class="pos-receipt-card" id="bankStatementImportPanel" hidden>
+        <h3>Accounts &amp; Finance — Bank Statement Import</h3>
+        <p class="muted">Upload an exported CSV statement. Imported entries are for review and matching; uploading does not reconcile or confirm any hospital payment.</p>
+        <form id="bankStatementImportForm" class="auth-form">
+            <label for="bankStatementFile">Bank statement CSV (maximum 10 MB)</label>
+            <input id="bankStatementFile" type="file" accept=".csv,text/csv,application/vnd.ms-excel" required>
+            <label for="bankStatementProvider">Bank / payment provider</label>
+            <input id="bankStatementProvider" type="text" maxlength="100" placeholder="e.g. GTBank" required>
+            <label for="bankStatementAccount">Account label (optional)</label>
+            <input id="bankStatementAccount" type="text" maxlength="100" placeholder="e.g. Hospital collections">
+            <label for="bankStatementPeriodStart">Statement period start (optional)</label>
+            <input id="bankStatementPeriodStart" type="date">
+            <label for="bankStatementPeriodEnd">Statement period end (optional)</label>
+            <input id="bankStatementPeriodEnd" type="date">
+            <button id="bankStatementImportButton" class="primary-button" type="submit">Upload and import statement</button>
+            <p id="bankStatementImportMessage" class="message" role="status" aria-live="polite"></p>
+        </form>
+        <h4>Statement import history</h4>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Uploaded</th><th>Bank / provider</th><th>Account</th><th>Period</th><th>Rows</th><th>Status</th></tr></thead>
+                <tbody id="bankStatementImportRows"><tr><td colspan="6">Open this section with an authorised finance account to load imports.</td></tr></tbody>
+            </table>
+        </div>
+        <h4>Imported bank transactions — latest 100</h4>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Booked date</th><th>Bank reference</th><th>Description</th><th>Type</th><th>Amount</th><th>Currency</th></tr></thead>
+                <tbody id="bankStatementTransactionRows"><tr><td colspan="6">No statement transactions loaded.</td></tr></tbody>
+            </table>
+        </div>
+    </section>
     <p class="disclaimer">Recording a payment is not proof of settlement. Receipt evidence and OCR values require verification. Accounts must match transactions against authorised bank statements or bank feeds before marking them reconciled.</p>
 </section>
 
