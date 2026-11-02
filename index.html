@@ -2309,6 +2309,25 @@
             <button type="submit" id="pharmacyReceiveGoodsButton">Record Goods Received</button>
         </form>
     </section>
+
+    <section class="panel" id="pharmacyAnalyticsWorkspace" aria-labelledby="pharmacyAnalyticsHeading">
+        <h3 id="pharmacyAnalyticsHeading">Pharmacy Expenditure, Valuation & Reorder Intelligence</h3>
+        <p class="muted">Financial totals use approved supplier payments and approved purchase orders. Stock valuation uses recorded purchase cost. Demand estimates use the latest 30 days of completed dispensing records; they are baseline forecasts, not a trained AI prediction.</p>
+        <p id="pharmacyAnalyticsMessage" role="status" aria-live="polite"></p>
+        <div class="stats-grid">
+            <article class="stat-card"><p>Current Stock Value</p><h3 id="pharmacyAnalyticsStockValue">—</h3><p class="muted">Quantity × purchase cost</p></article>
+            <article class="stat-card"><p>Expired Stock Value</p><h3 id="pharmacyAnalyticsExpiredValue">—</h3><p class="muted">Value tied up in expired batches</p></article>
+            <article class="stat-card"><p>Approved Supplier Payments</p><h3 id="pharmacyAnalyticsPayments">—</h3><p class="muted">All approved payments recorded</p></article>
+            <article class="stat-card"><p>Outstanding Approved Orders</p><h3 id="pharmacyAnalyticsOutstanding">—</h3><p class="muted">Approved order value less approved payments</p></article>
+        </div>
+        <h4>Supplier Spending Analysis</h4>
+        <div class="table-wrap"><table><thead><tr><th>Supplier</th><th>Approved Payments</th><th>Approved Orders</th><th>Unpaid Order Balance</th></tr></thead><tbody id="pharmacySupplierSpendBody"><tr><td colspan="4">Open Pharmacy to load supplier spending.</td></tr></tbody></table></div>
+        <h4>Medicine Demand Forecast & Reorder Recommendations</h4>
+        <p class="muted">Daily usage is calculated from completed dispensing records in the last 30 days. Medicines without dispensing history are marked as insufficient data and are not assigned a fabricated forecast.</p>
+        <div class="table-wrap"><table><thead><tr><th>Medicine</th><th>Available Stock</th><th>30-Day Dispensed</th><th>Avg. Daily Use</th><th>Days of Cover</th><th>Reorder Level</th><th>Recommendation / Risk</th></tr></thead><tbody id="pharmacyForecastBody"><tr><td colspan="7">Forecasts will appear here.</td></tr></tbody></table></div>
+        <button type="button" id="pharmacyAnalyticsRefreshButton">Refresh Pharmacy Analytics</button>
+    </section>
+
     <p class="disclaimer">
         Inventory features are under development. Staff must verify
         medicine batches, quantities, and expiry dates before dispensing.
