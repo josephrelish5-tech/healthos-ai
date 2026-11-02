@@ -8296,7 +8296,53 @@ function openSection(sectionId, sectionName) {
   const vb=$c("clinicalVitalsBody");vb.replaceChildren();
   if(!vitals.data.length){const r=vb.insertRow();cell(r,"No vital signs recorded for this encounter.");}
   vitals.data.forEach(x=>{const r=vb.insertRow();[when(x.recorded_at),x.temperature_c??"—",(x.systolic_bp??"—")+"/"+(x.diastolic_bp??"—"),x.pulse_bpm??"—",x.respiratory_rate??"—",x.oxygen_saturation??"—",x.weight_kg??"—"].forEach(y=>cell(r,y));});
+  await loadClinicalSafetyAlerts();
  }
+
+ async function loadClinicalSafetyAlerts(){
+  const body=$c("clinicalSafetyAlertsBody");
+  if(!body)return;
+  body.replaceChildren();
+  if(!selectedEncounter){const r=body.insertRow();cell(r,"Select an encounter to view safety alerts.");return;}
+  const {data,error}=await supabaseClient.from("clinical_decision_support_alerts")
+   .select("id,rule_code,severity,observed_value,alert_message,status,created_at,review_note")
+   .eq("clinic_id",currentClinic.id).eq("encounter_id",selectedEncounter)
+   .order("created_at",{ascending:false}).limit(100);
+  if(error){safetyMessage(error.message,true);const r=body.insertRow();cell(r,"Could not load safety alerts.");return;}
+  if(!data.length){const r=body.insertRow();cell(r,"No rule-based safety alerts for this encounter. This does not mean the patient is clinically clear.");return;}
+  data.forEach(alert=>{
+   const row=body.insertRow();
+   [when(alert.created_at),alert.rule_code.replaceAll("_"," "),alert.severity.toUpperCase(),alert.observed_value,alert.alert_message,alert.status.replaceAll("_"," ")].forEach(value=>cell(row,value));
+   const action=cell(row,"");
+   if(alert.status!=="resolved"){
+    const select=document.createElement("select");
+    [["acknowledged","Acknowledge"],["escalated","Escalate"],["resolved","Resolve"]].forEach(([v,l])=>select.add(new Option(l,v)));
+    const button=document.createElement("button");button.type="button";button.className="logout-button";button.textContent="Save review";
+    button.addEventListener("click",async()=>{
+     const note=window.prompt("Record the clinician's review/action (minimum 3 characters):");
+     if(!note||note.trim().length<3)return;
+     button.disabled=true;
+     const {error}=await supabaseClient.rpc("review_clinical_safety_alert",{p_clinic_id:currentClinic.id,p_alert_id:alert.id,p_status:select.value,p_review_note:note.trim()});
+     if(error){safetyMessage(error.message,true);button.disabled=false;return;}
+     safetyMessage("Clinical alert review recorded.");await loadClinicalSafetyAlerts();
+    });
+    action.append(select,button);
+   }else cell(row,alert.review_note||"Reviewed");
+  });
+  safetyMessage("Showing recorded rule-based alerts. Verify the source observation and follow hospital protocol.");
+ }
+ function safetyMessage(message,error=false){
+  const el=$c("clinicalDecisionSupportMessage");if(el){el.textContent=message;el.className="message"+(error?" error":" success");}
+ }
+ $c("runClinicalSafetyReview")?.addEventListener("click",async()=>{
+  if(!currentClinic||!selectedEncounter){safetyMessage("Select an encounter first.",true);return;}
+  const button=$c("runClinicalSafetyReview");button.disabled=true;
+  const {data,error}=await supabaseClient.rpc("generate_clinical_safety_alerts",{p_clinic_id:currentClinic.id,p_encounter_id:selectedEncounter});
+  button.disabled=false;
+  if(error){safetyMessage(error.message,true);return;}
+  safetyMessage((Number(data)||0)+" new alert(s) generated from the latest recorded observations. Existing alerts are retained.");
+  await loadClinicalSafetyAlerts();
+ });
  const patientPicker=$c("clinicalPatientSelect");
  if(patientPicker)patientPicker.addEventListener("change",()=>{const chosen=patientPicker.value;const appt=$c("clinicalAppointmentSelect");if(!appt)return;Array.from(appt.options).forEach((option,index)=>{if(index>0)option.hidden=!!chosen&&option.dataset.patientId!==chosen;});if(appt.selectedOptions[0]?.hidden)appt.value="";});
  const encounterForm=$c("clinicalEncounterForm");
