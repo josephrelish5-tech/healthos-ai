@@ -1000,6 +1000,22 @@
     role="status"
     aria-live="polite"
 ></p>
+<div class="panel" style="margin-top:20px;">
+    <div class="panel-heading">
+        <div>
+            <p class="eyebrow">WORKFORCE ATTENDANCE</p>
+            <h3>Today's Hospital Shift Roster</h3>
+            <p class="muted">Live view of assigned shifts, clock-in/out, late arrivals and missed shifts.</p>
+        </div>
+    </div>
+    <p id="staffShiftRosterMessage" class="message" role="status" aria-live="polite">Roster will load after administrator verification.</p>
+    <div style="overflow-x:auto;">
+        <table>
+            <thead><tr><th>Staff</th><th>Department</th><th>Shift</th><th>Scheduled Time</th><th>Attendance</th><th>Clock In</th><th>Clock Out</th><th>Staff ID</th></tr></thead>
+            <tbody id="staffShiftRosterBody"><tr><td colspan="8">No roster loaded.</td></tr></tbody>
+        </table>
+    </div>
+</div>
 <!-- END HEALTHOS AI: STAFF SHIFT ASSIGNMENT -->
                         <p class="disclaimer">
                             Staff statistics will be calculated from
