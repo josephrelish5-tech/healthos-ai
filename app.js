@@ -9043,81 +9043,78 @@ function openSection(sectionId, sectionName) {
 
 // HEALTHOS AI: WHATSAPP AI TRIAGE & PATIENT INTAKE FOUNDATION
 (function initWhatsappPatientIntake() {
- const $i = id => document.getElementById(id);
- const form = $i("whatsappIntakeForm");
- const body = $i("whatsappIntakeBody");
- const message = (text, isError=false) => {
-  const el=$i("whatsappIntakeMessage");
-  if(el){el.textContent=text;el.className="message"+(isError?" error":" success");}
- };
- const cell = (row,value) => {const td=document.createElement("td");td.textContent=value==null||value===""?"—":String(value);row.appendChild(td);return td;};
- const stamp = value => value ? new Date(value).toLocaleString() : "—";
- async function loadWhatsappIntake() {
-  if(!body||!currentClinic)return;
+ const $i = id => document.getElementById(id), form=$i("whatsappIntakeForm"), body=$i("whatsappIntakeBody");
+ const departments=["Reception","Nursing","Doctors","Pharmacy","Laboratory","Radiology","Accounts and Finance","Administration"];
+ const message=(text,isError=false)=>{const el=$i("whatsappIntakeMessage");if(el){el.textContent=text;el.className="message"+(isError?" error":" success");}};
+ const cell=(row,value)=>{const td=document.createElement("td");td.textContent=value==null||value===""?"—":String(value);row.appendChild(td);return td;};
+ const stamp=value=>value?new Date(value).toLocaleString():"—";
+ async function writeActivity(requestId,type,note){
+  const {error}=await supabaseClient.from("whatsapp_intake_activity").insert({clinic_id:currentClinic.id,intake_request_id:requestId,activity_type:type,activity_note:String(note).slice(0,1000),created_by:currentUser.id});
+  if(error)console.warn("WhatsApp intake activity log could not be saved:",error.message);
+  return !error;
+ }
+ async function loadActivity(requestId){
+  const {data,error}=await supabaseClient.from("whatsapp_intake_activity").select("activity_type,activity_note,created_at").eq("clinic_id",currentClinic.id).eq("intake_request_id",requestId).order("created_at",{ascending:false}).limit(30);
+  if(error){message("Activity history could not be loaded: "+error.message,true);return;}
+  const lines=(data||[]).map(x=>stamp(x.created_at)+" · "+x.activity_type.replaceAll("_"," ")+": "+x.activity_note);
+  window.alert(lines.length?lines.join("\n\n"):"No activity has been recorded for this request yet.");
+ }
+ async function loadWhatsappIntake(){
+  if(!body||!currentClinic||!supabaseClient)return;
   body.replaceChildren();
-  const {data,error}=await supabaseClient.from("whatsapp_intake_requests")
-   .select("id,channel,contact_name,contact_phone,concern_summary,triage_level,status,assigned_department,created_at")
-   .eq("clinic_id",currentClinic.id).order("created_at",{ascending:false}).limit(200);
+  const {data,error}=await supabaseClient.from("whatsapp_intake_requests").select("id,channel,contact_name,contact_phone,concern_summary,triage_level,status,assigned_department,created_at").eq("clinic_id",currentClinic.id).order("created_at",{ascending:false}).limit(200);
   if(error){message("Could not load intake inbox: "+error.message,true);const row=body.insertRow();cell(row,"Intake inbox unavailable.");return;}
   const rows=data||[];
   $i("intakeNewCount").textContent=rows.filter(x=>x.status==="new").length;
   $i("intakeReviewCount").textContent=rows.filter(x=>x.status==="under_review").length;
   $i("intakeUrgentCount").textContent=rows.filter(x=>["urgent","emergency"].includes(x.triage_level)).length;
   $i("intakeClosedCount").textContent=rows.filter(x=>x.status==="closed").length;
-  if(!rows.length){const row=body.insertRow();const td=cell(row,"No intake requests have been recorded.");td.colSpan=8;return;}
+  if(!rows.length){const row=body.insertRow();const td=cell(row,"No intake requests have been recorded.");td.colSpan=9;return;}
   rows.forEach(item=>{
-   const row=body.insertRow();
-   cell(row,stamp(item.created_at));cell(row,item.contact_name+" · "+item.contact_phone);
-   cell(row,item.channel.replaceAll("_"," "));cell(row,item.concern_summary);
-   const triageCell=cell(row,"");const triage=document.createElement("select");
+   const row=body.insertRow();cell(row,stamp(item.created_at));cell(row,item.contact_name+" · "+item.contact_phone);cell(row,item.channel.replaceAll("_"," "));cell(row,item.concern_summary);
+   const triageCell=cell(row,""),triage=document.createElement("select");
    [["unreviewed","Unreviewed"],["emergency","Emergency"],["urgent","Urgent"],["routine","Routine"],["administrative","Administrative"]].forEach(([v,l])=>triage.add(new Option(l,v)));
    triage.value=item.triage_level;triageCell.appendChild(triage);
-   const statusCell=cell(row,"");const status=document.createElement("select");
+   const statusCell=cell(row,""),status=document.createElement("select");
    [["new","New"],["under_review","Under review"],["referred","Referred"],["appointment_booked","Appointment booked"],["closed","Closed"]].forEach(([v,l])=>status.add(new Option(l,v)));
    status.value=item.status;statusCell.appendChild(status);
-   cell(row,item.assigned_department);
-   const action=cell(row,"");const save=document.createElement("button");
-   save.type="button";save.className="logout-button";save.textContent="Save review";
+   const deptCell=cell(row,""),dept=document.createElement("select");dept.add(new Option("Unassigned",""));
+   departments.forEach(name=>dept.add(new Option(name,name)));dept.value=item.assigned_department||"";deptCell.appendChild(dept);
+   const action=cell(row,""),save=document.createElement("button");save.type="button";save.className="logout-button";save.textContent="Save review";
    save.addEventListener("click",async()=>{
-    const note=window.prompt("Enter the human review/action note (minimum 3 characters):");
-    if(!note||note.trim().length<3)return;
+    const note=window.prompt("Enter the human review/action note (minimum 3 characters):");if(!note||note.trim().length<3)return;
     save.disabled=true;
-    const {error:updateError}=await supabaseClient.from("whatsapp_intake_requests").update({
-     triage_level:triage.value,status:status.value,reviewed_by:currentUser.id,
-     review_note:note.trim(),reviewed_at:new Date().toISOString(),updated_at:new Date().toISOString()
-    }).eq("id",item.id).eq("clinic_id",currentClinic.id);
+    const changes={triage_level:triage.value,status:status.value,assigned_department:dept.value||null,reviewed_by:currentUser.id,review_note:note.trim(),reviewed_at:new Date().toISOString(),updated_at:new Date().toISOString()};
+    const {error:updateError}=await supabaseClient.from("whatsapp_intake_requests").update(changes).eq("id",item.id).eq("clinic_id",currentClinic.id);
     if(updateError){message("Review could not be saved: "+updateError.message,true);save.disabled=false;return;}
-    message("Human triage review saved.");await loadWhatsappIntake();
+    const logged=await writeActivity(item.id,"reviewed","Triage: "+triage.value+"; status: "+status.value+"; department: "+(dept.value||"unassigned")+". Staff note: "+note.trim());
+    message(logged?"Human review saved and added to activity history.":"Human review saved, but activity logging failed.",!logged);await loadWhatsappIntake();
    });
    action.appendChild(save);
+   const historyCell=cell(row,""),history=document.createElement("button");history.type="button";history.className="logout-button";history.textContent="View history";history.addEventListener("click",()=>loadActivity(item.id));historyCell.appendChild(history);
   });
-  message("Loaded "+rows.length+" intake request(s). Each request requires staff review.");
+  message("Loaded "+rows.length+" intake request(s). Every triage level requires authorised human review.");
  }
  if(form)form.addEventListener("submit",async event=>{
   event.preventDefault();
   if(!currentClinic||!currentUser){message("Sign in to an authorised clinic workspace first.",true);return;}
   if(!$i("intakeConsent").checked){message("Consent is required before recording this enquiry.",true);return;}
-  const name=$i("intakeContactName").value.trim();
-  const phone=$i("intakeContactPhone").value.trim();
-  const concern=$i("intakeConcernSummary").value.trim();
+  const name=$i("intakeContactName").value.trim(),phone=$i("intakeContactPhone").value.trim(),concern=$i("intakeConcernSummary").value.trim();
   if(name.length<2||phone.length<7||concern.length<3){message("Check the contact name, phone number and concern summary.",true);return;}
   const button=form.querySelector('button[type="submit"]');button.disabled=true;
-  const {error}=await supabaseClient.from("whatsapp_intake_requests").insert({
-   clinic_id:currentClinic.id,channel:$i("intakeChannel").value,contact_name:name,
-   contact_phone:phone,concern_summary:concern,consent_confirmed:true,
-   consent_confirmed_at:new Date().toISOString(),created_by:currentUser.id
-  });
-  button.disabled=false;
-  if(error){message("Could not save intake request: "+error.message,true);return;}
-  form.reset();message("Intake request saved. It is waiting for staff triage review.");
-  await loadWhatsappIntake();
+  try{
+   const {data,error}=await supabaseClient.from("whatsapp_intake_requests").insert({clinic_id:currentClinic.id,channel:$i("intakeChannel").value,contact_name:name,contact_phone:phone,concern_summary:concern,consent_confirmed:true,consent_confirmed_at:new Date().toISOString(),created_by:currentUser.id}).select("id").single();
+   if(error)throw error;
+   const logged=await writeActivity(data.id,"created","Enquiry received through "+$i("intakeChannel").value+"; consent confirmed.");
+   form.reset();message(logged?"Intake saved and activity logged. Waiting for staff triage.":"Intake saved, but activity logging failed.",!logged);await loadWhatsappIntake();
+  }catch(error){message("Could not save intake request: "+(error.message||"Unknown error"),true);}
+  finally{button.disabled=false;}
  });
  $i("refreshWhatsappIntake")?.addEventListener("click",loadWhatsappIntake);
  window.loadWhatsappIntake=loadWhatsappIntake;
 })();
 
 
-// HEALTHOS AI: ADMINISTRATIVE VOICE-TO-TEXT TRANSLATION WORKFLOW
 (function initAdminVoiceTranslator(){
  const $v=id=>document.getElementById(id);
  const form=$v("adminVoiceForm"), body=$v("adminVoiceBody");
