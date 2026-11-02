@@ -8362,6 +8362,6 @@ function openSection(sectionId, sectionName) {
   const el=$c("scribeMessage");if(el){el.textContent=message;el.className="message"+(error?" error":" success");}
  }
  $c("refreshClinicalRecords")?.addEventListener("click",loadClinicalRecords);
- document.querySelectorAll(".sidebar .nav-item").forEach(link=>link.addEventListener("click",()=>{if((link.getAttribute("href")||"")==="#clinicalRecords")void loadClinicalRecords();}));
+ document.querySelectorAll(".sidebar .nav-item").forEach(link=>link.addEventListener("click",()=>{if(["#clinicalRecords","#clinicalScribe"].includes(link.getAttribute("href")||""))void loadClinicalRecords();}));
  window.loadHealthOSClinicalRecords=loadClinicalRecords;
 })();
