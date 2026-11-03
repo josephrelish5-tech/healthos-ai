@@ -2475,6 +2475,23 @@
                             <p class="stat-note">Control note: a receipt is counted under its recorded captured_department. Missing department attribution is displayed as “Department not recorded” and should be corrected through an authorised review, not silently reassigned.</p>
                         </section>
 
+                        <section class="panel" id="departmentCashDepositPanel" style="margin:18px 0">
+                            <h3>Department Cash Collection &amp; Deposit Verification</h3>
+                            <p class="muted">Departments submit a shift cash declaration. A different authorised Finance reviewer verifies the banked amount using the bank reference and evidence record. The original declaration cannot be edited after submission or review.</p>
+                            <form id="departmentCashDepositForm" class="form-grid">
+                                <label>Department<select id="cashDepositDepartment" required><option value="">Loading departments…</option></select></label>
+                                <label>Shift / collection period<input id="cashDepositShift" maxlength="80" required placeholder="e.g. Morning shift"></label>
+                                <label>Shift date<input id="cashDepositDate" type="date" required></label>
+                                <label>Currency<select id="cashDepositCurrency"><option value="NGN">NGN</option><option value="USD">USD</option><option value="GBP">GBP</option><option value="EUR">EUR</option></select></label>
+                                <label>Cash declared (amount)<input id="cashDepositDeclared" type="number" min="0" step="0.01" required></label>
+                                <label>Cash bag / seal reference<input id="cashDepositBag" maxlength="120" placeholder="Optional seal or handover reference"></label>
+                                <label class="full-width">Handover notes<textarea id="cashDepositNotes" maxlength="1000" placeholder="Optional shift close / handover notes"></textarea></label>
+                                <div class="full-width"><button type="submit" class="primary-button" id="submitCashDeposit">Submit cash declaration</button><p id="cashDepositMessage" class="message" role="status" aria-live="polite"></p></div>
+                            </form>
+                            <h4>Submitted cash declarations</h4>
+                            <div class="table-wrap"><table><thead><tr><th>Date / shift</th><th>Department</th><th>Declared</th><th>Banked / verified</th><th>Bank reference</th><th>Status</th><th>Finance action</th></tr></thead><tbody id="departmentCashDepositRows"><tr><td colspan="7">Open Billing Review to load cash declarations.</td></tr></tbody></table></div>
+                        </section>
+
                         <h3>Department Payments — Hospital-wide Capture</h3>
                         <p class="muted">Payments recorded by authorised departments appear here for management monitoring. Acceptance by Finance does not mean bank settlement has been reconciled.</p>
                         <div class="table-wrap">
