@@ -3329,11 +3329,45 @@ async function loadManagementAppointments(clinic) {
         list.appendChild(empty);
     } else {
         appointments.forEach(function (item) {
-            const row = document.createElement("p");
-            row.textContent = item.department_name + (item.unit_name ? " / " + item.unit_name : "") +
+            const row = document.createElement("div");
+            row.className = "leadership-appointment-row";
+            row.style.display = "flex";
+            row.style.justifyContent = "space-between";
+            row.style.alignItems = "center";
+            row.style.gap = "12px";
+            row.style.padding = "12px 0";
+            row.style.borderBottom = "1px solid var(--border-color, #e5e7eb)";
+            const details = document.createElement("p");
+            details.textContent = item.department_name + (item.unit_name ? " / " + item.unit_name : "") +
                 " — " + item.role.replaceAll("_", " ") + ": " + item.manager_name +
                 " (" + item.status + ", " + item.effective_from +
                 (item.effective_to ? " to " + item.effective_to : " onward") + ")";
+            row.appendChild(details);
+            if (["active", "delegated", "on_leave"].includes(item.status)) {
+                const endButton = document.createElement("button");
+                endButton.type = "button";
+                endButton.className = "logout-button";
+                endButton.textContent = "End appointment";
+                endButton.addEventListener("click", async function () {
+                    if (!currentClinic || !managementVerified ||
+                        !confirm("End this leadership appointment? Its history will be retained.")) return;
+                    endButton.disabled = true;
+                    const { data: result, error: endError } = await supabaseClient.rpc(
+                        "healthos_end_department_leadership_appointment",
+                        { p_clinic_id: currentClinic.id, p_appointment_id: item.id }
+                    );
+                    if (endError) {
+                        message.textContent = friendlyError(endError);
+                        message.className = "message error";
+                        endButton.disabled = false;
+                        return;
+                    }
+                    message.textContent = "Leadership appointment ended. Historical record retained.";
+                    message.className = "message success";
+                    await loadManagementAppointments(currentClinic);
+                });
+                row.appendChild(endButton);
+            }
             list.appendChild(row);
         });
     }
