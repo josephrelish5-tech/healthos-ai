@@ -8187,7 +8187,7 @@ function openSection(sectionId, sectionName) {
     const message = document.getElementById("posReceiptUploadMessage");
     const button = document.getElementById("posReceiptUploadButton");
     const rows = document.getElementById("posReceiptRows");
-    const bucket = "pos-receipt-evidence";
+    const storageProvider = "backblaze_b2";
     // Reuse capabilities when the staff workspace already loaded them.
     // Admin sidebar navigation can call loadReceipts() without passing capabilities,
     // so resolve them here as well instead of silently treating the user as non-admin.
@@ -8297,13 +8297,25 @@ function openSection(sectionId, sectionName) {
                 openButton.className = "secondary-button";
                 openButton.textContent = "View evidence";
                 openButton.addEventListener("click", async () => {
-                    const { data: signed, error: signedError } =
-                        await supabaseClient.storage.from(bucket).createSignedUrl(record.source_file_path, 60);
-                    if (signedError) {
-                        setMessage("Could not open evidence: " + signedError.message, "error");
-                        return;
+                    try {
+                        if (record.ocr_raw && record.ocr_raw.storage_provider === storageProvider) {
+                            const { data: link, error: linkError } = await supabaseClient.functions.invoke(
+                                "healthos-b2-storage",
+                                { body: { action: "create-download", objectKey: record.source_file_path } }
+                            );
+                            if (linkError) throw linkError;
+                            if (!link || !link.downloadUrl) throw new Error("Secure B2 download link was not returned.");
+                            window.open(link.downloadUrl, "_blank", "noopener,noreferrer");
+                        } else {
+                            // Backward compatibility: older receipts remain in the legacy Supabase bucket.
+                            const { data: signed, error: signedError } =
+                                await supabaseClient.storage.from("pos-receipt-evidence").createSignedUrl(record.source_file_path, 60);
+                            if (signedError) throw signedError;
+                            window.open(signed.signedUrl, "_blank", "noopener,noreferrer");
+                        }
+                    } catch (e) {
+                        setMessage("Could not open evidence: " + (e.message || "Storage error"), "error");
                     }
-                    window.open(signed.signedUrl, "_blank", "noopener,noreferrer");
                 });
                 td.appendChild(openButton);
                 const status = document.createElement("small");
@@ -8453,11 +8465,31 @@ function openSection(sectionId, sectionName) {
             let digest = null;
             if (file) {
                 const extension = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" }[file.type];
-                path = currentClinic.id + "/" + currentUser.id + "/" + crypto.randomUUID() + "." + extension;
                 digest = await hashFile(file);
-                const { error: uploadError } = await supabaseClient.storage.from(bucket)
-                    .upload(path, file, { contentType: file.type, upsert: false });
-                if (uploadError) throw uploadError;
+                const { data: ticket, error: ticketError } = await supabaseClient.functions.invoke(
+                    "healthos-b2-storage",
+                    {
+                        body: {
+                            action: "create-upload",
+                            fileName: file.name,
+                            contentType: file.type,
+                            sizeBytes: file.size
+                        }
+                    }
+                );
+                if (ticketError) throw ticketError;
+                if (!ticket || !ticket.uploadUrl || !ticket.objectKey) {
+                    throw new Error("Backblaze did not return secure upload details.");
+                }
+                const uploaded = await fetch(ticket.uploadUrl, {
+                    method: "PUT",
+                    headers: ticket.requiredHeaders || { "Content-Type": file.type },
+                    body: file
+                });
+                if (!uploaded.ok) {
+                    throw new Error("Backblaze receipt upload failed (HTTP " + uploaded.status + ").");
+                }
+                path = ticket.objectKey;
             }
             const dateText = document.getElementById("posReceiptDate").value;
             const provider = document.getElementById("posReceiptProvider").value.trim() || null;
@@ -8481,7 +8513,8 @@ function openSection(sectionId, sectionName) {
                     capture_method: file ? "staff_receipt_upload" : "staff_manual_entry",
                     original_file_name: file ? file.name : null,
                     mime_type: file ? file.type : null,
-                    size_bytes: file ? file.size : null
+                    size_bytes: file ? file.size : null,
+                    storage_provider: file ? storageProvider : null
                 }
             };
             const { error: insertError } = await supabaseClient.from("pos_receipts").insert(record);
