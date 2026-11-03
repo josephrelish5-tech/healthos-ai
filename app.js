@@ -4879,9 +4879,9 @@ async function checkConnection() {
             error
         );
 
+        connectionStatus.textContent =
+            "Connection check failed. Refresh the page or check your internet connection.";
         connectionStatus.classList.remove("success");
-        connectionStatus.classList.add("error");
-    
         connectionStatus.classList.add("error");
 
         showOnly("auth");
