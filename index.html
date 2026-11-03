@@ -13,6 +13,7 @@
     <script src="pharmacy-procurement-intelligence.js?v=20261103-1" defer></script>
     <script src="healthos-advanced-ocr.js?v=20261103-1" defer></script>
     <script src="healthos-patient-document-ocr.js?v=20261103-2" defer></script>
+    <script src="healthos-patient-intake-triage.js?v=20261103-1" defer></script>
     <script src="healthos-analytics-forecasting.js?v=20261103-1" defer></script>
     <script src="offline-ehr.js?v=20261103-1" defer></script>
     <script src="pharmacy-offline.js?v=20261103-1" defer></script>
@@ -1826,6 +1827,20 @@
   <label>Patient<select id="queuePatientSelect" required><option value="">Loading patients...</option></select></label>
   <label>Appointment (optional)<select id="queueAppointmentSelect"><option value="">Walk-in / no appointment</option></select></label>
   <label>Reason for visit<input id="queueVisitReason" maxlength="500" required></label>
+   <label>Symptom duration (optional)<input id="intakeSymptomDuration" maxlength="100" placeholder="e.g. started 2 days ago"></label>
+   <fieldset class="panel" style="border:1px solid #d5deea;padding:12px">
+    <legend><strong>Patient-reported warning signs — staff screening aid</strong></legend>
+    <p class="muted">If any severe warning sign is reported, alert an onsite clinician immediately and follow hospital emergency protocol. Do not wait for this tool.</p>
+    <label><input type="checkbox" class="intake-warning" value="Severe difficulty breathing"> Severe difficulty breathing</label>
+    <label><input type="checkbox" class="intake-warning" value="Chest pain or pressure"> Chest pain or pressure</label>
+    <label><input type="checkbox" class="intake-warning" value="Unconsciousness, collapse or new severe confusion"> Unconsciousness, collapse or new severe confusion</label>
+    <label><input type="checkbox" class="intake-warning" value="Severe bleeding"> Severe bleeding</label>
+    <label><input type="checkbox" class="intake-warning" value="Seizure"> Seizure</label>
+    <label><input type="checkbox" class="intake-warning" value="Sudden weakness or difficulty speaking"> Sudden weakness or difficulty speaking</label>
+    <label><input type="checkbox" class="intake-warning" value="Severe allergic reaction or swelling of face or tongue"> Severe allergic reaction or swelling of face or tongue</label>
+    <button type="button" id="composePatientIntake" class="logout-button">Prepare intake summary</button>
+    <p id="patientIntakeSafetyMessage" class="message" role="status" aria-live="polite"></p>
+   </fieldset>
   <label>Priority<select id="queuePriority"><option value="routine">Routine</option><option value="urgent">Urgent</option><option value="emergency">Emergency</option></select></label>
   <label>Triage note (optional)<textarea id="queueTriageNote" rows="2" maxlength="1000"></textarea></label>
   <button class="primary-button" type="submit">Add to Patient Queue</button>
