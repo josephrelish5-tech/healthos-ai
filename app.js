@@ -3940,7 +3940,8 @@ async function loadBillingData(clinic) {
                         receipt_not_bank_matched: "Accepted department receipt not yet bank-reconciled",
                         invoice_payment_variance: "Recorded invoice payments differ from accepted receipts",
                         unallocated_bank_credit: "Positive bank deposit has no exact invoice or accepted receipt reference",
-                        duplicate_payment_reference: "Repeated accepted payment reference — verify for possible duplicate capture"
+                        duplicate_payment_reference: "Repeated accepted payment reference — verify for possible duplicate capture",
+                        duplicate_bank_reference: "Repeated bank reference across statement imports — verify for possible duplicate import or replay"
                     };
                     const moneyText = value => value == null ? "—" :
                         new Intl.NumberFormat("en-NG", {style:"currency",currency:item.currency || "NGN",maximumFractionDigits:2}).format(Number(value));
