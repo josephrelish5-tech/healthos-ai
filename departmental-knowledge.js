@@ -38,5 +38,46 @@ async function changeStatus(a,status){if(!isOwner)return;const {error}=await sup
 async function save(e){e.preventDefault();if(!isOwner){notify("Only the clinic owner can publish or manage departmental knowledge.");return;}const row={clinic_id:clinicId(),department_id:$("dkcDepartment").value,article_type:$("dkcType").value,title:$("dkcTitle").value.trim(),summary:$("dkcSummary").value.trim()||null,content:$("dkcContent").value.trim(),keywords:$("dkcKeywords").value.split(",").map(x=>x.trim().toLowerCase()).filter(Boolean).slice(0,30),workspace_section_id:$("dkcWorkspace").value.trim()||null,status:"draft",created_by:currentUser.id,updated_by:currentUser.id};if(!row.department_id||row.title.length<3||row.content.length<10){notify("Choose a department and enter a title and complete instruction.");return;}const {error}=await supabaseClient.from("department_knowledge_articles").insert(row);if(error){notify("Save failed: "+error.message);return;}$("dkcForm").reset();notify("Draft saved. Review it and select Publish when it is ready for staff.");await load();}
 function search(){const q=$("dkcSearch").value.toLowerCase().trim();const filtered=articles.filter(a=>a.status==="published"&&(!q||[a.title,a.summary,a.content,(a.keywords||[]).join(" "),types[a.article_type]].join(" ").toLowerCase().includes(q)));render(filtered);}
 document.addEventListener("DOMContentLoaded",()=>{$("dkcForm")?.addEventListener("submit",save);$("dkcSearchButton")?.addEventListener("click",search);$("dkcSearch")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();search();}});$("dkcRefresh")?.addEventListener("click",load);$("dkcCloseReader")?.addEventListener("click",()=>$("dkcArticleReader").hidden=true);init();});
-window.healthOSDepartmentKnowledgeSearch=async function(query){if(!clinicId()||!currentUser)return null;if(!departments.length)await init();const q=String(query||"").toLowerCase().trim();const found=articles.filter(a=>a.status==="published"&&[a.title,a.summary,a.content,(a.keywords||[]).join(" ")].join(" ").toLowerCase().includes(q)).slice(0,3);return found;};
+const stopWords=new Set(["the","a","an","is","are","was","were","to","for","of","in","on","at","and","or","how","what","where","when","who","can","do","does","i","we","my","our","your","me","please","help","with","about","from","this","that","it","should","would","could","use","using"]);
+const synonymGroups=[
+ ["medicine","medicines","drug","drugs","medication","medications"],
+ ["stock","inventory","supplies","items"],
+ ["expiry","expiration","expiring","expired"],
+ ["payment","payments","paid","receipt","receipts","transaction"],
+ ["invoice","invoices","billing","bill","charge","charges"],
+ ["appointment","appointments","booking","schedule","scheduling"],
+ ["patient","patients","client"],
+ ["incident","incidents","event","events","hazard"],
+ ["staff","employee","employees","personnel"],
+ ["attendance","clockin","clockout","shift","roster"],
+ ["procedure","procedures","sop","protocol","workflow","instruction"],
+ ["record","records","document","documentation","note","notes"],
+ ["handover","handoff","transfer"],
+ ["reconcile","reconciliation","matching","match"],
+ ["license","licence","credential","credentials","registration"],
+ ["quality","accreditation","indicator","improvement"]
+];
+function expandTokens(tokens){const out=new Set(tokens);synonymGroups.forEach(group=>{if(group.some(x=>tokens.includes(x)))group.forEach(x=>out.add(x));});return [...out];}
+function tokenize(text){return String(text||"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g," ").split(/\\s+/).filter(t=>t.length>1&&!stopWords.has(t));}
+window.healthOSDepartmentKnowledgeSearch=async function(query){
+ if(!clinicId()||!currentUser)return null;
+ if(!departments.length)await init();
+ const raw=String(query||"").trim(),tokens=tokenize(raw);
+ if(!tokens.length)return [];
+ const expanded=expandTokens(tokens);
+ const scored=articles.filter(a=>a.status==="published").map(a=>{
+  const title=tokenize(a.title),summary=tokenize(a.summary),keywords=tokenize((a.keywords||[]).join(" ")),content=tokenize(a.content);
+  const hay=[...title,...summary,...keywords,...content],haySet=new Set(hay);
+  let score=0,matched=[];
+  tokens.forEach(t=>{if(title.includes(t)){score+=9;matched.push(t);}else if(keywords.includes(t)){score+=7;matched.push(t);}else if(summary.includes(t)){score+=5;matched.push(t);}else if(content.includes(t)){score+=2;matched.push(t);}});
+  expanded.filter(t=>!tokens.includes(t)).forEach(t=>{if(haySet.has(t))score+=1;});
+  if(raw.length>5&&a.title.toLowerCase().includes(raw.toLowerCase()))score+=12;
+  const phrase=raw.toLowerCase();if(a.title.toLowerCase().includes(phrase))score+=10;if(a.summary&&a.summary.toLowerCase().includes(phrase))score+=4;
+  const uniqueMatched=[...new Set(matched)];
+  const coverage=uniqueMatched.length/Math.max(1,tokens.length);
+  if(coverage<0.25)score=0;
+  return {...a,_score:score,_matched:uniqueMatched,_coverage:coverage};
+ }).filter(a=>a._score>=3).sort((a,b)=>b._score-a._score||new Date(b.updated_at)-new Date(a.updated_at));
+ return scored.slice(0,5);
+};
 })();
