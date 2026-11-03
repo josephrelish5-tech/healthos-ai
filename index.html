@@ -12,6 +12,7 @@
     <script src="pharmacy-forecast.js?v=20261103-1" defer></script>
     <script src="offline-ehr.js?v=20261103-1" defer></script>
     <script src="pharmacy-offline.js?v=20261103-1" defer></script>
+    <script src="offline-sync-center.js?v=20261103-1" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -1907,6 +1908,22 @@
   <button type="button" class="logout-button" id="offlineVitalsErase">Erase this device's queued observations</button>
   <p id="offlineVitalsStatus" class="message" role="status" aria-live="polite">No offline observations loaded.</p>
   <div class="table-wrap"><table><thead><tr><th>Captured</th><th>Encounter</th><th>Observations</th><th>Status</th><th>Details</th></tr></thead><tbody id="offlineVitalsBody"><tr><td colspan="5">No queued observations.</td></tr></tbody></table></div>
+ </section>
+
+ <section class="panel" id="offlineSyncCentre" style="margin:16px 0" aria-labelledby="offlineSyncHeading">
+  <h3 id="offlineSyncHeading">HealthOS AI — Offline Synchronisation Centre</h3>
+  <p class="muted">A central connection and workflow guide for offline-capable modules. Clinical drafts and pharmacy operation intents remain separate, encrypted queues and require their own authorised review before they can enter live records.</p>
+  <div class="stats-grid">
+   <article class="stat-card"><p>Network</p><h4 id="offlineSyncNetwork">Checking…</h4></article>
+   <article class="stat-card"><p>Clinical offline workspace</p><h4 id="offlineSyncClinical">Available</h4></article>
+   <article class="stat-card"><p>Pharmacy offline workspace</p><h4 id="offlineSyncPharmacy">Available</h4></article>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+   <button type="button" class="primary-button" id="offlineSyncGoClinical">Open clinical offline workspace</button>
+   <button type="button" class="primary-button" id="offlineSyncGoPharmacy">Open pharmacy offline workspace</button>
+   <button type="button" class="logout-button" id="offlineSyncRefresh">Refresh connection status</button>
+  </div>
+  <p id="offlineSyncMessage" class="muted" role="status">No automatic background upload is performed. Reconnect, open the relevant workspace, review the queued items and explicitly submit them.</p>
  </section>
  <section class="panel" id="offlineEhrWorkspace" style="margin:16px 0">
   <h3>Offline-First Patient Record Workspace</h3>
