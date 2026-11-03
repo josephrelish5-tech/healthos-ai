@@ -1624,6 +1624,7 @@ await startStaffPresenceTracking(
                 assignments.forEach(function (assignment, index) {
                     const option = document.createElement("option");
                     option.value = assignment.assignment_id;
+                    option.dataset.departmentId = assignment.department_id || "";
                     option.textContent =
                         (assignment.department_name || "Department") +
                         " — " + (assignment.unit_name || "All units") +
@@ -1672,6 +1673,7 @@ await startStaffPresenceTracking(
                         return assignment.assignment_id === contextSelect.value;
                     });
                     displayStaffAssignmentContext(selectedAssignment);
+                    if (selectedAssignment) void loadDepartmentAppointmentInbox(selectedAssignment.department_id);
                 });
 
                 const initialAssignment =
@@ -1679,6 +1681,7 @@ await startStaffPresenceTracking(
                         return assignment.assignment_id === contextSelect.value;
                     }) || assignments[0];
                 displayStaffAssignmentContext(initialAssignment);
+                if (initialAssignment) void loadDepartmentAppointmentInbox(initialAssignment.department_id);
                 // END HEALTHOS AI: STAFF DEPARTMENT CONTEXT SELECTOR
 
                 assignments.forEach(function (assignment) {
@@ -10445,6 +10448,66 @@ function openSection(sectionId, sectionName) {
  init();
 })();
 
+
+async function loadDepartmentAppointmentInbox(departmentId) {
+ const body=document.getElementById("departmentAppointmentInboxBody");
+ const message=document.getElementById("departmentAppointmentInboxMessage");
+ if(!body||!message)return;
+ if(!currentUser||!currentClinic||!departmentId){message.textContent="Choose one of your active assigned departments.";return;}
+ body.replaceChildren();message.textContent="Loading department requests...";
+ try{
+  const [{data:rows,error},{data:patients,error:patientsError},{data:names,error:namesError}]=await Promise.all([
+   supabaseClient.from("healthos_patient_appointment_requests").select("id,patient_user_id,department_id,requested_at,reason,visit_type,status,patient_note,linked_appointment_id").eq("clinic_id",currentClinic.id).eq("department_id",departmentId).order("created_at",{ascending:false}).limit(200),
+   supabaseClient.from("patients").select("id,first_name,last_name,patient_number").eq("clinic_id",currentClinic.id).order("first_name").limit(1000),
+   supabaseClient.rpc("healthos_get_department_appointment_patient_names",{p_clinic_id:currentClinic.id,p_department_id:departmentId})
+  ]);
+  if(error)throw error;if(patientsError)throw patientsError;if(namesError)throw namesError;
+  const data=rows||[], patientRows=patients||[], patientNames=new Map((names||[]).map(x=>[x.patient_user_id,x.full_name]));
+  const count=(status)=>data.filter(x=>x.status===status).length;
+  document.getElementById("departmentApptPending").textContent=count("requested");
+  document.getElementById("departmentApptAccepted").textContent=count("accepted");
+  document.getElementById("departmentApptRejected").textContent=count("rejected");
+  document.getElementById("departmentApptCompleted").textContent=count("completed");
+  if(!data.length){body.innerHTML='<tr><td colspan="7">No requests routed to this department.</td></tr>';message.textContent="Department inbox is clear.";message.className="message success";return;}
+  data.forEach(row=>{
+   const tr=document.createElement("tr");
+   const cells=[new Date(row.created_at||row.requested_at).toLocaleString(),patientNames.get(row.patient_user_id)||"Patient",new Date(row.requested_at).toLocaleString(),String(row.visit_type||"").replace(/_/g," "),row.reason||"—",row.status];
+   cells.forEach(value=>{const td=document.createElement("td");td.textContent=value;tr.appendChild(td);});
+   const action=document.createElement("td");
+   if(row.status==="requested"){
+    const selector=document.createElement("select");selector.add(new Option("Match hospital patient record",""));
+    patientRows.forEach(p=>selector.add(new Option([p.first_name,p.last_name].filter(Boolean).join(" ")+" · "+p.patient_number,p.id)));
+    const accept=document.createElement("button");accept.type="button";accept.className="primary-button";accept.textContent="Accept";
+    accept.addEventListener("click",async()=>{
+     if(!selector.value){message.textContent="Select the correct hospital patient record first.";message.className="message error";return;}
+     accept.disabled=true;accept.textContent="Accepting...";
+     const {data:appointmentId,error:rpcError}=await supabaseClient.rpc("healthos_accept_patient_appointment_request",{p_request_id:row.id,p_patient_id:selector.value});
+     if(rpcError){message.textContent=friendlyError(rpcError);message.className="message error";accept.disabled=false;accept.textContent="Accept";return;}
+     message.textContent="Accepted. Appointment added to the hospital register.";message.className="message success";
+     if(typeof loadAppointments==="function")await loadAppointments();
+     await loadDepartmentAppointmentInbox(departmentId);
+    });
+    const reject=document.createElement("button");reject.type="button";reject.className="logout-button";reject.textContent="Reject";
+    reject.addEventListener("click",async()=>{
+     if(!confirm("Reject this request for this department?"))return;
+     reject.disabled=true;
+     const {error:updateError}=await supabaseClient.from("healthos_patient_appointment_requests").update({status:"rejected",reviewed_at:new Date().toISOString(),reviewed_by:currentUser.id,updated_at:new Date().toISOString()}).eq("id",row.id).eq("status","requested");
+     if(updateError){message.textContent=friendlyError(updateError);message.className="message error";reject.disabled=false;return;}
+     await loadDepartmentAppointmentInbox(departmentId);
+    });
+    action.append(selector,accept,reject);
+   }else action.textContent=row.linked_appointment_id?"Linked appointment: "+row.linked_appointment_id:"No action required";
+   tr.appendChild(action);body.appendChild(tr);
+  });
+  message.textContent=data.length+" request(s) loaded for this department. Patient records are matched only when accepting.";
+  message.className="message success";
+ }catch(error){message.textContent=friendlyError(error);message.className="message error";}
+}
+const refreshDepartmentAppointmentInbox=document.getElementById("refreshDepartmentAppointmentInbox");
+if(refreshDepartmentAppointmentInbox)refreshDepartmentAppointmentInbox.addEventListener("click",()=>{
+ const select=document.getElementById("staffDepartmentContextSelect");
+ if(select?.selectedOptions?.length)loadDepartmentAppointmentInbox(select.selectedOptions[0].dataset.departmentId||"");
+});
 
 window.loadPatientAppointmentRequests=async function(){
  const body=document.getElementById("patientAppointmentReviewBody"),message=document.getElementById("patientAppointmentReviewMessage");if(!body||!message)return;
