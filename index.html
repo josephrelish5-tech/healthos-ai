@@ -321,6 +321,7 @@
                 <p class="muted">Requests can be sent only to hospitals that have approved your connection. The hospital must confirm the requested time.</p>
                 <form id="patientAppointmentForm" class="auth-form">
                     <label>Connected hospital<select id="patientAppointmentClinic" required><option value="">Loading connected hospitals...</option></select></label>
+                    <label>Department<select id="patientAppointmentDepartment" required disabled><option value="">Select a hospital first</option></select></label>
                     <label>Preferred date and time<input id="patientAppointmentAt" type="datetime-local" required></label>
                     <label>Consultation type<select id="patientAppointmentType"><option value="in_person">In person</option><option value="audio">Audio consultation</option><option value="video">Video consultation</option></select></label>
                     <label>Reason for visit<input id="patientAppointmentReason" maxlength="500" minlength="3" required placeholder="Brief reason for your appointment"></label>
