@@ -11159,3 +11159,53 @@ document.getElementById("refreshGlobalReferrals")?.addEventListener("click",asyn
  // Patient portal load sequence invokes this helper after successful profile load.
  if(currentUser)refresh().catch(e=>say(friendlyError(e),true));
 })();
+
+// HEALTHOS AI: CLINICIAN-INITIATED MEDICATION / ALLERGY NAME-MATCH SCREEN
+(function initMedicationAllergyNameCheck(){
+ const $=id=>document.getElementById(id);
+ const button=$("runMedicationAllergyCheck");
+ if(!button)return;
+ const say=(message,error=false)=>{const el=$("clinicalMedicationAllergyCheckMessage");if(el){el.textContent=message;el.className="message"+(error?" error":"");}};
+ const normalize=value=>String(value||"").toLocaleLowerCase().normalize("NFKD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim();
+ button.addEventListener("click",async()=>{
+  const encounterId=$("clinicalVitalsEncounter")?.value||$("scribeEncounterSelect")?.value;
+  const candidate=$("clinicalMedicineCandidate")?.value.trim();
+  const result=$("clinicalMedicationAllergyCheckResult");
+  if(!currentClinic||!currentUser){say("Sign in to an authorised clinic workspace first.",true);return;}
+  if(!encounterId){say("Select the patient's clinical encounter first.",true);return;}
+  if(!candidate||candidate.length<2){say("Enter the medicine or active ingredient name.",true);return;}
+  button.disabled=true;result.textContent="Checking recorded allergy names…";
+  try{
+   const {data:encounter,error:encounterError}=await supabaseClient.from("clinical_encounters")
+    .select("id,patient_id,clinic_id").eq("id",encounterId).eq("clinic_id",currentClinic.id).maybeSingle();
+   if(encounterError)throw encounterError;
+   if(!encounter){say("The selected encounter could not be verified in this clinic.",true);result.textContent="No check completed.";return;}
+   const {data:allergies,error}=await supabaseClient.from("patient_allergies")
+    .select("allergen,reaction,severity,status").eq("clinic_id",currentClinic.id).eq("patient_id",encounter.patient_id).limit(200);
+   if(error)throw error;
+   const active=(allergies||[]).filter(x=>!x.status||["active","confirmed"].includes(String(x.status).toLowerCase()));
+   const medicine=normalize(candidate);
+   const matches=active.filter(x=>{
+    const allergen=normalize(x.allergen);
+    return allergen&&(allergen===medicine||allergen.includes(medicine)||medicine.includes(allergen));
+   });
+   result.replaceChildren();
+   const heading=document.createElement("strong");
+   heading.textContent=matches.length?"Potential recorded allergy name match — clinician review required":"No direct text match found in recorded active / confirmed allergy names.";
+   result.appendChild(heading);
+   const list=document.createElement("ul");
+   (matches.length?matches:active).forEach(item=>{
+    const li=document.createElement("li");
+    li.textContent=[item.allergen,item.reaction?"Reaction: "+item.reaction:"Reaction not recorded",item.severity?"Severity: "+item.severity:"Severity unknown"].join(" — ");
+    list.appendChild(li);
+   });
+   if(active.length)result.appendChild(list);
+   const note=document.createElement("p");
+   note.textContent=matches.length?"Do not interpret this as a definitive allergy diagnosis. Verify the substance, reaction and clinical history before any prescribing or dispensing.":"A negative text match does not rule out allergy, cross-reactivity or other medicine risks. Verify the complete history and consult an approved clinical reference.";
+   result.appendChild(note);
+   if(!active.length){const empty=document.createElement("p");empty.textContent="No active / confirmed allergy records were returned. This does not mean the patient has no allergies.";result.appendChild(empty);}
+   say("Name-match screen completed against "+active.length+" recorded allergy item(s). This is not a prescribing clearance.");
+  }catch(error){result.textContent="The allergy name-match screen could not complete. Verify the allergy record directly.";say("Check unavailable: "+(error.message||"permission or data error"),true);}
+  finally{button.disabled=false;}
+ });
+})();
