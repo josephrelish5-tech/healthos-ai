@@ -1094,6 +1094,7 @@ async function openPatientPortal(user) {
     await loadPatientAppointmentList();
     await loadPatientGlobalReferrals();
     await loadPatientInternationalPayments();
+    if (window.loadPatientPrivateFiles) await window.loadPatientPrivateFiles();
 }
 
 async function loadPatientHospitalLinks() {
