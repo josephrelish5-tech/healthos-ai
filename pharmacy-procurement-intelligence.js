@@ -23,7 +23,7 @@
     refresh.disabled = true; body.replaceChildren();
     rowNote(body, "Reviewing procurement records…");
     try {
-      if (!window.supabaseClient || !window.currentUser?.id || !window.currentClinic?.id)
+      if (typeof supabaseClient === "undefined" || !supabaseClient || typeof currentUser === "undefined" || !currentUser || !currentUser.id || typeof currentClinic === "undefined" || !currentClinic || !currentClinic.id)
         throw new Error("Sign in and select a clinic to view procurement intelligence.");
       const clinic = currentClinic.id;
       const [orders, items, payments, stock] = await Promise.all([
