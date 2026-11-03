@@ -11209,3 +11209,60 @@ document.getElementById("refreshGlobalReferrals")?.addEventListener("click",asyn
   finally{button.disabled=false;}
  });
 })();
+
+
+// HEALTHOS AI — TELEMEDICINE DASHBOARD (STEP 1)
+async function loadTelemedicineDashboard(){
+ const body=document.getElementById("telemedicineRequestsBody");
+ const message=document.getElementById("telemedicineDashboardMessage");
+ if(!body||!message)return;
+ if(!currentUser||!currentClinic){message.textContent="Sign in to an authorised hospital workspace first.";message.className="message error";return;}
+ body.replaceChildren();message.textContent="Loading remote consultation requests...";
+ try{
+  const {data:rows,error}=await supabaseClient.from("healthos_patient_appointment_requests")
+   .select("id,patient_user_id,requested_at,reason,visit_type,status")
+   .eq("clinic_id",currentClinic.id).in("visit_type",["audio","video"])
+   .order("requested_at",{ascending:false}).limit(300);
+  if(error)throw error;
+  const requests=rows||[];
+  const count=status=>requests.filter(r=>r.status===status).length;
+  document.getElementById("telemedicineTotal").textContent=requests.length;
+  document.getElementById("telemedicinePending").textContent=count("requested");
+  document.getElementById("telemedicineAccepted").textContent=count("accepted");
+  document.getElementById("telemedicineCompleted").textContent=count("completed");
+  if(!requests.length){
+   const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=6;td.textContent="No audio or video consultation requests for this hospital.";tr.appendChild(td);body.appendChild(tr);
+   message.textContent="No remote consultation requests found.";message.className="message success";return;
+  }
+  const userIds=[...new Set(requests.map(r=>r.patient_user_id).filter(Boolean))];
+  let names=new Map();
+  if(userIds.length){
+   const {data:profiles,error:profileError}=await supabaseClient.from("healthos_patient_profiles").select("user_id,full_name").in("user_id",userIds);
+   if(profileError)throw profileError;
+   names=new Map((profiles||[]).map(p=>[p.user_id,p.full_name||"Patient"]));
+  }
+  requests.forEach(row=>{
+   const tr=document.createElement("tr");
+   [new Date(row.requested_at).toLocaleString(),names.get(row.patient_user_id)||"Patient",String(row.visit_type||"").toUpperCase(),row.reason||"—",String(row.status||"unknown").replaceAll("_"," ")].forEach(value=>{const td=document.createElement("td");td.textContent=value;tr.appendChild(td);});
+   const action=document.createElement("td");
+   if(row.status==="accepted"){
+    const prepare=document.createElement("button");prepare.type="button";prepare.className="primary-button";prepare.textContent="Prepare session";
+    prepare.addEventListener("click",async()=>{
+     prepare.disabled=true;prepare.textContent="Preparing...";
+     const {data,error:rpcError}=await supabaseClient.rpc("healthos_create_telemedicine_session",{p_request_id:row.id});
+     if(rpcError){message.textContent=friendlyError(rpcError);message.className="message error";prepare.disabled=false;prepare.textContent="Prepare session";return;}
+     message.textContent="Session record prepared. A configured approved telemedicine provider is still required before the patient can join.";message.className="message success";
+     prepare.textContent=data?.session_status==="awaiting_provider"?"Provider connection pending":"Session prepared";
+    });
+    action.appendChild(prepare);
+   }else if(row.status==="requested"){
+    action.textContent="Review in Patient Appointment Requests";
+   }else action.textContent="No action required";
+   tr.appendChild(action);body.appendChild(tr);
+  });
+  message.textContent=requests.length+" remote request(s) loaded for the active hospital. Patient names are retrieved only through the hospital's permitted profile access.";
+  message.className="message success";
+ }catch(error){message.textContent=friendlyError(error);message.className="message error";}
+}
+document.getElementById("telemedicineRefresh")?.addEventListener("click",loadTelemedicineDashboard);
+document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').forEach(link=>link.addEventListener("click",()=>void loadTelemedicineDashboard()));
