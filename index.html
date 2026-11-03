@@ -14,6 +14,7 @@
     <script src="pharmacy-offline.js?v=20261103-1" defer></script>
     <script src="offline-sync-center.js?v=20261103-1" defer></script>
     <script src="offline-department-tasks.js?v=20261103-1" defer></script>
+    <script src="hospital-incidents.js?v=20261103-1" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -1927,6 +1928,27 @@
   <p id="offlineSyncMessage" class="muted" role="status">No automatic background upload is performed. Reconnect, open the relevant workspace, review the queued items and explicitly submit them.</p>
  </section>
 
+
+ <section class="panel" id="hospitalIncidentReporting" style="margin:16px 0" aria-labelledby="incidentReportingHeading">
+  <h3 id="incidentReportingHeading">Hospital Incident Reporting &amp; Escalation</h3>
+  <p class="muted">Record patient-safety, medication, infection-control, security, financial, equipment, privacy and operational incidents. Submissions enter the authorised review queue; this form does not replace emergency response or statutory reporting.</p>
+  <p class="message error"><strong>Immediate danger or critical patient emergency?</strong> Activate your hospital emergency response and notify the responsible clinical lead/security team immediately. Do not wait for this form.</p>
+  <form id="hospitalIncidentForm" class="auth-form">
+   <label for="incidentCategory">Incident category</label><select id="incidentCategory" required>
+    <option value="patient_safety">Patient safety</option><option value="medication_safety">Medication safety</option><option value="infection_control">Infection prevention &amp; control</option><option value="staff_safety">Staff safety / workplace injury</option><option value="security_breach">Security breach / theft</option><option value="financial_irregularity">Financial irregularity / suspected fraud</option><option value="equipment_failure">Equipment failure</option><option value="facility_hazard">Facility hazard</option><option value="data_privacy">Data privacy / security incident</option><option value="operational_disruption">Operational disruption</option><option value="other">Other</option>
+   </select>
+   <label for="incidentSeverity">Severity</label><select id="incidentSeverity" required><option value="low">Low — no apparent harm / limited impact</option><option value="moderate">Moderate — service impact or minor harm</option><option value="high">High — serious harm or major operational/financial impact</option><option value="critical">Critical — immediate threat, catastrophic impact or major breach</option></select>
+   <label for="incidentDepartment">Department / unit</label><input id="incidentDepartment" maxlength="120" required placeholder="Department where incident occurred">
+   <label for="incidentTitle">Short incident title</label><input id="incidentTitle" maxlength="180" required>
+   <label for="incidentOccurredAt">When did it occur?</label><input id="incidentOccurredAt" type="datetime-local" required>
+   <label for="incidentSummary">What happened? (Do not include patient name or direct identifiers)</label><textarea id="incidentSummary" rows="5" maxlength="6000" required placeholder="Record factual observations: what happened, where, impact and known facts. Avoid assumptions or blame."></textarea>
+   <label for="incidentImmediateAction">Immediate action already taken (optional)</label><textarea id="incidentImmediateAction" rows="3" maxlength="2500" placeholder="Who was notified and what immediate containment or support was provided?"></textarea>
+   <label><input id="incidentEscalationRequired" type="checkbox"> Requires urgent escalation to the responsible lead</label>
+   <button id="incidentSubmitButton" type="submit" class="primary-button">Submit incident for triage</button>
+  </form>
+  <p id="incidentReportMessage" class="message" role="status" aria-live="polite">Reports are recorded as pending triage. No incident is automatically closed or deemed resolved.</p>
+  <div class="table-wrap"><table><thead><tr><th>Reference</th><th>Category</th><th>Severity</th><th>Department</th><th>Reported</th><th>Status</th></tr></thead><tbody id="incidentReportRows"><tr><td colspan="6">Submit an incident to see its reference here.</td></tr></tbody></table></div>
+ </section>
  <section class="panel" id="offlineDepartmentTaskWorkspace" style="margin:16px 0" aria-labelledby="offlineDepartmentTaskHeading">
   <h3 id="offlineDepartmentTaskHeading">Offline Department Task &amp; Handover Queue</h3>
   <p class="muted">For all hospital departments and custom departments. Capture task progress, completion claims, blockers and shift handovers during outages. Reports are encrypted locally and uploaded as pending review only. Do not enter patient-identifying or clinical details here.</p>
