@@ -6395,8 +6395,17 @@ if (refreshAppointmentsButton) {
   if(!staffContext)staffContext=await loadStaffContext();
   if(!staffContext||!staffContext.departments.length){show("Department access not identified","I could not verify an active staff department or assignment. Ask your administrator to complete your staff profile and department assignments. I cannot reveal departmental information until your access context is confirmed.");return;}
   const match=routeMatch(q);
-  if(!match){show("I couldn't find a matching guide","Try a task such as “check medicine expiry”, “record patient observations”, “reconcile a payment”, “review staff attendance”, or “report an incident”. I can guide you through registered HealthOS workflows, but I cannot search private patient records or perform actions for you.");return;}
-  if(!departmentOwns(staffContext.departments,match)){show("This information belongs to another department","Your authorised department assignment(s): "+staffContext.departments.join(", ")+". This request belongs to "+match.owner+". I can’t provide that department’s work instructions or open its restricted workspace. Contact that department or request an authorised additional assignment.");return;}
+  if(match&&!departmentOwns(staffContext.departments,match)){show("This information belongs to another department","Your authorised department assignment(s): "+staffContext.departments.join(", ")+". This request belongs to "+match.owner+". I can’t provide that department’s work instructions or open its restricted workspace. Contact that department or request an authorised additional assignment.");return;}
+  if(typeof window.healthOSDepartmentKnowledgeSearch==="function"){
+   const knowledge=await window.healthOSDepartmentKnowledgeSearch(q);
+   if(knowledge&&knowledge.length){
+    const article=knowledge[0];
+    const departmentName=departmentsLabel(article.department_id);
+    show("Knowledge Centre · "+article.title,(article.summary?article.summary+"\\n\\n":"")+article.content+(knowledge.length>1?"\\n\\nAdditional matching articles: "+knowledge.slice(1).map(x=>x.title).join("; "):""),article.workspace_section_id||null,"Open linked workspace");
+    return;
+   }
+  }
+  if(!match){show("No approved article matched","I couldn't find an approved departmental article for that question. Try different keywords or ask your department administrator to add an approved FAQ or work instruction. I can guide you through registered HealthOS workflows, but I cannot search private patient records or other departments' restricted information.");return;}
   show("Your departmental guide · "+match.owner,match.guide,match.section,"Open relevant workspace");
  }
  function setOpen(open){if(!panel||!launcher)return;panel.hidden=!open;launcher.setAttribute("aria-expanded",String(open));if(open)input.focus();}
