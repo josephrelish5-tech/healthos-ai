@@ -11,6 +11,7 @@
     <script src="app.js?v=20261103-56-conversational-knowledge" defer></script>
     <script src="pharmacy-forecast.js?v=20261103-1" defer></script>
     <script src="pharmacy-procurement-intelligence.js?v=20261103-1" defer></script>
+    <script src="healthos-analytics-forecasting.js?v=20261103-1" defer></script>
     <script src="offline-ehr.js?v=20261103-1" defer></script>
     <script src="pharmacy-offline.js?v=20261103-1" defer></script>
     <script src="offline-sync-center.js?v=20261103-1" defer></script>
@@ -2798,6 +2799,29 @@
       <div class="table-wrap"><table><thead><tr><th>Captured</th><th>Operation</th><th>Medicine / batch</th><th>Quantity</th><th>Reason / reference</th><th>Sync status</th></tr></thead><tbody id="pharmacyOfflineRows"><tr><td colspan="6">No local actions.</td></tr></tbody></table></div>
       <p class="disclaimer">Do not use this queue as authority to administer or dispense medicine. Never include patient names, phone numbers, diagnoses, or other patient identifiers. Online review and normal pharmacy controls remain mandatory. Local queue encryption is device/browser protection, not a substitute for device security.</p>
     </section>
+
+    <!-- HEALTHOS AI: ANALYTICS AND FORECASTING -->
+    <section class="panel" id="healthOSAnalyticsWorkspace" style="margin:16px 0" aria-labelledby="hosAnalyticsHeading">
+      <div class="panel-heading">
+        <div><p class="eyebrow">HOSPITAL INTELLIGENCE · AGGREGATE PERFORMANCE</p><h2 id="hosAnalyticsHeading">AI Analytics &amp; Forecasting</h2>
+        <p class="muted">Clinic-scoped operational indicators for authorised management review.</p></div>
+        <button type="button" id="hosAnalyticsRefresh" class="logout-button">Refresh analytics</button>
+      </div>
+      <div class="stats-grid">
+        <article class="stat-card"><p>Paid revenue · last 30 days</p><h3 id="hosAnalyticsRevenue">—</h3><small id="hosAnalyticsRevenueTrend">Awaiting data</small></article>
+        <article class="stat-card"><p>Pending / outstanding value</p><h3 id="hosAnalyticsOutstanding">—</h3></article>
+        <article class="stat-card"><p>Appointments recorded</p><h3 id="hosAnalyticsAppointments">—</h3></article>
+        <article class="stat-card"><p>Services recorded · last 30 days</p><h3 id="hosAnalyticsServices">—</h3></article>
+        <article class="stat-card"><p>Items at / below reorder level</p><h3 id="hosAnalyticsLowStock">—</h3></article>
+        <article class="stat-card"><p>Items expiring within 30 days</p><h3 id="hosAnalyticsExpiry">—</h3></article>
+        <article class="stat-card"><p>Attendance sessions</p><h3 id="hosAnalyticsAttendance">—</h3></article>
+        <article class="stat-card"><p>Purchase orders</p><h3 id="hosAnalyticsOrders">—</h3></article>
+      </div>
+      <h3>Operational intelligence flags</h3><ul id="hosAnalyticsInsights"><li>Sign in to load aggregate indicators.</li></ul>
+      <p id="hosAnalyticsMessage" class="message" role="status" aria-live="polite">Waiting for a secure clinic session.</p>
+      <p class="disclaimer">Initial release: read-only, rule-based analytics, not a validated predictive AI model. Figures depend on available source fields and up to 1,000 records per source. Verify all flags against source records. No patient-level details are displayed and no financial, clinical, staffing or stock records are changed.</p>
+    </section>
+    <!-- END HEALTHOS AI: ANALYTICS AND FORECASTING -->
 
     <section class="panel" id="pharmacyDemandForecastPanel" aria-labelledby="pharmacyDemandForecastHeading">
         <h3 id="pharmacyDemandForecastHeading">Smart Inventory Demand Forecast</h3>
