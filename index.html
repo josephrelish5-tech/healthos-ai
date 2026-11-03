@@ -21,6 +21,7 @@
     <script src="clinical-governance.js?v=20261103-1" defer></script>
     <script src="staff-credentialing.js?v=20261103-1" defer></script>
     <script src="clinical-decision-support.js?v=20261103-1" defer></script>
+    <script src="departmental-knowledge.js?v=20261103-1" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -3463,6 +3464,28 @@
 <p class="disclaimer">Safety boundary: this initial module is a structured review and risk-documentation workflow, not a validated diagnostic or treatment recommendation engine. It does not calculate patient-specific probabilities, prescribe medicines, interpret results autonomously or generate treatment orders. Clinicians must independently verify findings against current approved guidelines and the patient's complete record. For emergencies, activate the hospital's emergency response immediately; do not wait for this system. Do not enter unnecessary patient-identifying information.</p>
 </section>
 <!-- END HEALTHOS AI: CLINICAL DECISION SUPPORT -->
+<!-- HEALTHOS DEPARTMENTAL KNOWLEDGE CENTRE -->
+<section class="panel" id="departmentKnowledgeCentre" style="margin:16px 0">
+ <div class="panel-heading"><div><p class="eyebrow">HOSPITAL-WIDE KNOWLEDGE · DEPARTMENT-SCOPED ACCESS</p><h2>Departmental Knowledge Centre</h2><p class="muted">Department duties, approved procedures, work instructions, FAQs and workspace navigation guides.</p></div><button type="button" id="dkcRefresh" class="logout-button">Refresh</button></div>
+ <div class="stats-grid"><article class="stat-card"><p>Articles available to your assignments</p><h3 id="dkcAccessibleCount">—</h3></article></div>
+ <div class="form-group"><label for="dkcSearch">Search your departmental knowledge</label><input id="dkcSearch" type="search" placeholder="Search duties, SOPs, instructions, FAQs or policies"><button type="button" id="dkcSearchButton" class="primary-button">Search knowledge</button></div>
+ <div id="dkcArticleReader" class="panel" hidden><h3 id="dkcArticleTitle"></h3><p id="dkcArticleMeta" class="muted"></p><div id="dkcArticleContent" style="white-space:pre-wrap;line-height:1.6"></div><button type="button" id="dkcOpenWorkspace" class="primary-button">Open linked workspace</button><button type="button" id="dkcCloseReader" class="logout-button">Close</button></div>
+ <div class="table-wrap"><table><thead><tr><th>Department</th><th>Type</th><th>Title</th><th>Status</th><th>Version</th><th>Last updated</th><th>Action</th></tr></thead><tbody id="dkcRows"><tr><td colspan="7">Loading authorized knowledge...</td></tr></tbody></table></div>
+ <div id="dkcAdminPanel" hidden style="margin-top:24px"><h3>Knowledge administration</h3><p class="muted">Create draft content for a department. Review it before publishing. Only the clinic owner can manage knowledge in this release.</p>
+ <form id="dkcForm" class="auth-form">
+ <label>Department<select id="dkcDepartment" required></select></label>
+ <label>Article type<select id="dkcType"><option value="department_duty">Department duties</option><option value="standard_operating_procedure">Standard operating procedure</option><option value="work_instruction">Work instruction</option><option value="faq">Frequently asked question</option><option value="navigation_guide">Navigation guide</option><option value="policy_reference">Policy reference</option></select></label>
+ <label>Title<input id="dkcTitle" maxlength="180" required placeholder="e.g. Receiving and recording new medicine stock"></label>
+ <label>Short summary<textarea id="dkcSummary" maxlength="800" rows="2"></textarea></label>
+ <label>Full instructions / duties / answer<textarea id="dkcContent" minlength="10" maxlength="12000" rows="7" required placeholder="Write clear steps, responsibilities, required approvals, evidence and escalation instructions."></textarea></label>
+ <label>Search keywords (comma separated)<input id="dkcKeywords" maxlength="500" placeholder="stock receipt, batch, expiry, pharmacy"></label>
+ <label>Linked workspace section ID (optional)<input id="dkcWorkspace" maxlength="100" placeholder="Use an existing page section ID"></label>
+ <button type="submit" class="primary-button">Save as draft</button>
+ </form></div>
+ <p id="dkcMessage" class="message" role="status" aria-live="polite">Sign in to load your department's knowledge.</p>
+ <p class="disclaimer">Access is limited by clinic membership and active department assignments. Publishing knowledge does not grant access to patient records or operational actions. Content must be approved by the hospital's responsible owner and reviewed against current policy, law and clinical guidance before staff rely on it. Do not include patient-identifying information.</p>
+</section>
+<!-- END HEALTHOS DEPARTMENTAL KNOWLEDGE CENTRE -->
                     <footer>
     HealthOS AI · Healthcare operations and revenue protection
                     </footer>
