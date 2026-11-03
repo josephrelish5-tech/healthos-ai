@@ -5,8 +5,8 @@
  async function load(){
   const status=$("healthOSSecurityMessage"),rows=$("healthOSSecurityRows");
   if(!status||!rows)return;
-  const client=window.supabaseClient||window.supabase;
-  const clinic=window.currentClinic;
+  const client=typeof supabaseClient!=="undefined"?supabaseClient:null;
+  const clinic=typeof currentClinic!=="undefined"?currentClinic:null;
   if(!client||!clinic?.id){status.textContent="Sign in to an authorised hospital workspace.";status.className="message error";return;}
   status.textContent="Reviewing clinic-scoped operational control signals…";rows.replaceChildren();
   try{
