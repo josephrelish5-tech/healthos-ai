@@ -8968,21 +8968,30 @@ function openSection(sectionId, sectionName) {
             const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
             if (sessionError || !sessionData.session) throw new Error("Your session has expired. Sign in again.");
 
-            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100) || "statement.csv";
-            const storagePath = currentClinic.id + "/" + currentUser.id + "/" +
-                crypto.randomUUID() + "-" + safeName;
-            const { error: uploadError } = await supabaseClient.storage
-                .from(bucket)
-                .upload(storagePath, file, { contentType: "text/csv", upsert: false });
-            if (uploadError) throw uploadError;
+            const { data: uploadTicket, error: ticketError } = await supabaseClient.functions.invoke(
+                "healthos-b2-storage",
+                { body: { action: "create-upload", fileName: file.name, contentType: "text/plain", sizeBytes: file.size } }
+            );
+            if (ticketError) throw ticketError;
+            if (!uploadTicket || !uploadTicket.uploadUrl || !uploadTicket.objectKey) {
+                throw new Error("Backblaze did not return secure upload details.");
+            }
+            const uploadResponse = await fetch(uploadTicket.uploadUrl, {
+                method: "PUT",
+                headers: uploadTicket.requiredHeaders || { "Content-Type": "text/plain" },
+                body: file
+            });
+            if (!uploadResponse.ok) throw new Error("Backblaze statement upload failed (HTTP " + uploadResponse.status + ").");
+            const storagePath = uploadTicket.objectKey;
 
-            setImportMessage("Statement uploaded securely. Importing and validating CSV rows…");
+            setImportMessage("Statement uploaded to private Backblaze storage. Importing and validating CSV rows…");
             const { data: importResult, error: functionError } = await supabaseClient.functions.invoke(
                 "import-bank-statement",
                 {
                     body: {
                         clinic_id: currentClinic.id,
                         storage_path: storagePath,
+                        storage_provider: "backblaze_b2",
                         bank_or_provider: provider,
                         account_label: document.getElementById("bankStatementAccount").value.trim() || null,
                         period_start: periodStart,
