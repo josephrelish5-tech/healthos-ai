@@ -17,7 +17,7 @@ async function init(){
  departments=dept.data||[];
  isOwner=!!mem.data&&["owner","clinic_owner","super_admin"].includes(String(mem.data.role||"").toLowerCase());
  const select=$("dkcDepartment");select.replaceChildren();
- departments.forEach(d=>{const o=document.createElement("option");o.value=d.id;o.textContent=d.department_name;select.append(o);});
+ departments.forEach(d=>{const o=document.createElement("option");o.value=d.id;o.textContent=d.department_name;select.append(o);const oo=document.createElement("option");oo.value=d.id;oo.textContent=d.department_name;$("dkcOwnerDepartment")?.append(oo);});
  $("dkcAdminPanel").hidden=!isOwner;
  if(!departments.length)notify("No active departments are configured. An administrator must create departments first.");
  await load();
