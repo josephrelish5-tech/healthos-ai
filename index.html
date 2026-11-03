@@ -3000,7 +3000,8 @@
  <h3>Incoming referrals for this hospital</h3>
  <p class="muted">Only referrals explicitly approved by the patient appear in this inbox. Hospital administrators review incoming referrals.</p>
  <div class="table-wrap"><table><thead><tr><th>Received</th><th>Patient</th><th>Referring hospital</th><th>Specialty</th><th>Reason</th><th>Urgency</th><th>Decision</th></tr></thead><tbody id="globalReferralInboxBody"><tr><td colspan="7">Refresh to load incoming referrals.</td></tr></tbody></table></div>
- <p class="disclaimer">This workflow shares referral details only. It does not automatically transfer medical records. A separate patient-authorised, scoped record exchange must be completed before any clinical records are released.</p>
+ <div class="stat-card" style="margin-top:18px"><h3>Authorised FHIR record exchange</h3><p class="muted">After a referral is accepted, authorised receiving-hospital staff can retrieve only the categories the patient approved, until consent expires or is revoked.</p><pre id="referralFhirBundle" style="white-space:pre-wrap;max-height:420px;overflow:auto"></pre></div>
+ <p class="disclaimer">FHIR R4-shaped Bundle export is an initial interoperability adapter. Validate mappings and conformance with each receiving system before production exchange.</p>
 </section>
 
 <!-- END HEALTHOS AI: HOSPITAL-SIDE PATIENT CONNECTION REQUESTS -->
