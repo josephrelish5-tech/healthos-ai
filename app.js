@@ -10975,3 +10975,67 @@ document.getElementById("refreshGlobalReferrals")?.addEventListener("click",asyn
  document.getElementById("refreshUssdCareRequests")?.addEventListener("click",load);
  window.loadUssdCareRequests=load;
 })();
+
+
+// PATIENT PRIVATE BACKBLAZE DOCUMENT STORAGE
+(function initPatientPrivateFileStorage(){
+ const form=document.getElementById("patientFileUploadForm");
+ const input=document.getElementById("patientFileInput");
+ const list=document.getElementById("patientFileList");
+ const message=document.getElementById("patientFileMessage");
+ const button=document.getElementById("patientFileUploadButton");
+ if(!form||!input||!list||!message||!button)return;
+ const say=(text,error=false)=>{message.textContent=text;message.className="message"+(error?" error":" success");};
+ async function refresh(){
+  if(!currentUser)return;
+  list.replaceChildren();
+  const {data,error}=await supabaseClient.from("healthos_patient_files")
+   .select("id,object_key,file_name,content_type,size_bytes,created_at")
+   .eq("user_id",currentUser.id).order("created_at",{ascending:false}).limit(100);
+  if(error){say("Could not load your documents: "+friendlyError(error),true);return;}
+  if(!data?.length){list.textContent="No documents uploaded yet.";return;}
+  data.forEach(file=>{
+   const card=document.createElement("article");card.className="stat-card";
+   const title=document.createElement("h3");title.textContent=file.file_name;
+   const detail=document.createElement("p");detail.textContent=(file.content_type||"File")+" · "+(Number(file.size_bytes)/1024).toFixed(1)+" KB · "+new Date(file.created_at).toLocaleString();
+   const download=document.createElement("button");download.type="button";download.className="primary-button";download.textContent="Download";
+   download.addEventListener("click",async()=>{
+    download.disabled=true;
+    try{
+     const {data:link,error:linkError}=await supabaseClient.functions.invoke("healthos-b2-storage",{body:{action:"create-download",objectKey:file.object_key}});
+     if(linkError)throw linkError;
+     if(!link?.downloadUrl)throw new Error("Secure download link was not returned.");
+     const a=document.createElement("a");a.href=link.downloadUrl;a.download=file.file_name;a.rel="noopener";document.body.appendChild(a);a.click();a.remove();
+    }catch(e){say("Download failed: "+friendlyError(e),true);}
+    finally{download.disabled=false;}
+   });
+   card.append(title,detail,download);list.appendChild(card);
+  });
+ }
+ form.addEventListener("submit",async event=>{
+  event.preventDefault();
+  const file=input.files?.[0];if(!file||!currentUser)return;
+  button.disabled=true;say("Preparing secure upload…");
+  try{
+   const {data:ticket,error:ticketError}=await supabaseClient.functions.invoke("healthos-b2-storage",{
+    body:{action:"create-upload",fileName:file.name,contentType:file.type||"application/octet-stream",sizeBytes:file.size}
+   });
+   if(ticketError)throw ticketError;
+   if(!ticket?.uploadUrl||!ticket?.objectKey)throw new Error("Storage upload details were not returned.");
+   const uploaded=await fetch(ticket.uploadUrl,{method:"PUT",headers:ticket.requiredHeaders||{"Content-Type":file.type},body:file});
+   if(!uploaded.ok)throw new Error("Backblaze upload failed (HTTP "+uploaded.status+").");
+   const {error:recordError}=await supabaseClient.from("healthos_patient_files").insert({
+    user_id:currentUser.id,object_key:ticket.objectKey,file_name:file.name,
+    content_type:file.type||"application/octet-stream",size_bytes:file.size
+   });
+   if(recordError)throw recordError;
+   form.reset();say("Document uploaded securely to your private HealthOS storage.");
+   await refresh();
+  }catch(e){say("Upload failed: "+friendlyError(e),true);}
+  finally{button.disabled=false;}
+ });
+ window.loadPatientPrivateFiles=refresh;
+ const originalLoad=window.loadPatientInternationalPayments;
+ // Patient portal load sequence invokes this helper after successful profile load.
+ if(currentUser)refresh().catch(e=>say(friendlyError(e),true));
+})();
