@@ -6355,7 +6355,7 @@ if (refreshAppointmentsButton) {
 (function initializeHealthOSStaffAssistant() {
  const $=id=>document.getElementById(id),form=$("staffAssistantForm"),input=$("staffAssistantInput"),response=$("staffAssistantResponse"),title=$("staffAssistantResponseTitle"),body=$("staffAssistantResponseText"),action=$("staffAssistantActionButton"),panel=$("staffAssistant"),launcher=$("staffAssistantLauncher");
  if(!form||!input||!response||!title||!body||!action)return;
- let pendingSection=null,staffContext=null;
+ let pendingSection=null,staffContext=null,lastConversation={topic:"",answer:"",article:null,turns:0};
  const routes=[
  {owner:"Reception / Patient Access",aliases:["reception","front desk","patient access","admissions","medical records"],section:"patients",terms:["register patient","new patient","patient registration","patient demographics","patient file","patient details"],guide:"Open Patient Management and complete the required patient registration fields. Check for an existing patient before creating a duplicate record. Save only after confirming the details."},
  {owner:"Reception / Appointment Desk",aliases:["reception","front desk","appointment","patient access"],section:"appointments",terms:["appointment","schedule","booking","reschedule","appointment list","cancel appointment"],guide:"Open Appointments. Select the correct patient, date and time, enter the reason, then save. Confirm the appointment appears in the appointment list. Follow hospital policy before cancelling or changing an existing booking."},
@@ -6392,6 +6392,13 @@ if (refreshAppointmentsButton) {
  function departmentOwns(departments,route){if(route.aliases.includes("all departments"))return true;return departments.some(dep=>{const d=normalize(dep);return route.aliases.some(a=>d===normalize(a)||d.includes(normalize(a))||normalize(a).includes(d)&&d.length>3);});}
  async function handleRequest(q){
   if(!String(q||"").trim()){show("What do you need help with?","Type a task, a question about how to use HealthOS, or the name of a workspace.");return;}
+  const rawQuestion=String(q).trim();
+  const followup=/^(explain (it|that)( more simply| simply)?|make (it|that) simpler|simplify|what next|next step|continue|tell me more|why\??|how so\??|give me an example|repeat that|summari[sz]e( it| that)?|what does that mean)\??$/i.test(rawQuestion);
+  if(followup&&lastConversation.topic){
+   if(/^(what next|next step|continue)$/i.test(rawQuestion))q=lastConversation.topic+" next step";
+   else if(/^(why\??|how so\??)$/i.test(rawQuestion))q=lastConversation.topic+" explain the reason";
+   else q=lastConversation.topic+" explain the previous instructions more simply";
+  }
   if(!staffContext)staffContext=await loadStaffContext();
   if(!staffContext||!staffContext.departments.length){show("Department access not identified","I could not verify an active staff department or assignment. Ask your administrator to complete your staff profile and department assignments. I cannot reveal departmental information until your access context is confirmed.");return;}
   const match=routeMatch(q);
@@ -6403,11 +6410,16 @@ if (refreshAppointmentsButton) {
     const departmentName=article._departmentName||departmentsLabel(article.department_id);
     const source="\\n\\nSOURCE: "+article.title+" · "+departmentName+" · Version "+article.version+" · Approved knowledge article.";
     const alternatives=knowledge.length>1?"\\n\\nRELATED APPROVED ARTICLES:\\n"+knowledge.slice(1,4).map((x,i)=>(i+1)+". "+x.title+" (v"+x.version+")").join("\\n"):"";
-    show("Knowledge Centre · "+article.title,(article.summary?article.summary+"\\n\\n":"")+article.content+source+alternatives,article.workspace_section_id||null,"Open linked workspace");
+    let answer=(article.summary?article.summary+"\\n\\n":"")+article.content;
+    if(/more simply|simpler|simplify|explain the previous instructions/i.test(String(q))){answer="Here is the simpler version:\\n"+article.content.split(/(?<=[.!?])\\s+/).filter(Boolean).slice(0,5).map((line,i)=>(i+1)+". "+line.trim()).join("\\n");}
+    if(/next step/i.test(String(q))){answer="Your next step: follow the first instruction in this approved article, complete the required checks, and record the result in the linked workspace. If an approval is required, wait for the authorized reviewer.\\n\\n"+article.content.split(/(?<=[.!?])\\s+/).filter(Boolean).slice(0,2).join(" ");}
+    lastConversation={topic:rawQuestion,answer,article,turns:lastConversation.turns+1};
+    show("Knowledge Centre · "+article.title,answer+source+alternatives,article.workspace_section_id||null,"Open linked workspace");
     return;
    }
   }
   if(!match){show("No approved article matched","I couldn't find an approved departmental article for that question. Try different keywords or ask your department administrator to add an approved FAQ or work instruction. I can guide you through registered HealthOS workflows, but I cannot search private patient records or other departments' restricted information.");return;}
+  lastConversation={topic:rawQuestion,answer:match.guide,article:null,turns:lastConversation.turns+1};
   show("Your departmental guide · "+match.owner,match.guide,match.section,"Open relevant workspace");
  }
  function setOpen(open){if(!panel||!launcher)return;panel.hidden=!open;launcher.setAttribute("aria-expanded",String(open));if(open)input.focus();}
