@@ -10798,6 +10798,21 @@ async function loadInternationalPaymentWorkspace(clinic){
  const message=document.getElementById("internationalPaymentMessage");
  if(!body||!clinic?.id)return;
  body.replaceChildren();const loading=document.createElement("tr");const loadingCell=document.createElement("td");loadingCell.colSpan=7;loadingCell.textContent="Loading international payment requests…";loading.appendChild(loadingCell);body.appendChild(loading);
+ const patientSelect=document.getElementById("internationalPaymentPatient");
+ if(patientSelect){
+  patientSelect.replaceChildren(new Option("Loading approved patients…",""));
+  const links=await supabaseClient.from("healthos_patient_hospital_links").select("patient_user_id").eq("clinic_id",clinic.id).eq("status","verified");
+  if(links.error){patientSelect.replaceChildren(new Option("Unable to load approved patients",""));}
+  else{
+   const ids=[...new Set((links.data||[]).map(x=>x.patient_user_id))];
+   patientSelect.replaceChildren(new Option(ids.length?"Choose a connected patient":"No approved patient connections",""));
+   if(ids.length){
+    const profiles=await supabaseClient.from("healthos_patient_profiles").select("user_id,full_name,phone_e164").in("user_id",ids);
+    const byId=new Map((profiles.data||[]).map(x=>[x.user_id,x]));
+    ids.forEach(id=>{const p=byId.get(id);patientSelect.add(new Option((p?.full_name||"Patient")+" · "+(p?.phone_e164||id.slice(0,8)),id));});
+   }
+  }
+ }
  const {data,error}=await supabaseClient.rpc("healthos_get_clinic_international_payment_intents",{p_clinic_id:clinic.id});
  if(error){body.replaceChildren();const row=document.createElement("tr"),cell=document.createElement("td");cell.colSpan=7;cell.textContent="Payment requests are available to hospital owners and administrators only.";row.appendChild(cell);body.appendChild(row);if(message){message.textContent=friendlyError(error);message.className="message error";}return;}
  body.replaceChildren();
@@ -10805,6 +10820,27 @@ async function loadInternationalPaymentWorkspace(clinic){
  data.forEach(item=>{const row=document.createElement("tr");[item.patient_name,item.invoice_reference||"—",item.description,Number(item.amount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+" "+String(item.currency||"").trim(),String(item.status).replace(/_/g," "),item.provider_key,item.created_at?new Date(item.created_at).toLocaleString():"—"].forEach(value=>{const cell=document.createElement("td");cell.textContent=String(value??"—");row.appendChild(cell);});body.appendChild(row);});
 }
 document.getElementById("refreshInternationalPayments")?.addEventListener("click",()=>{if(currentClinic)loadInternationalPaymentWorkspace(currentClinic);});
+
+document.getElementById("internationalPaymentCreateForm")?.addEventListener("submit",async event=>{
+ event.preventDefault();const form=event.currentTarget,button=form.querySelector('button[type="submit"]'),message=document.getElementById("internationalPaymentCreateMessage");
+ if(!currentClinic?.id){return;}
+ button.disabled=true;if(message){message.textContent="Creating secure payment request…";message.className="message";}
+ try{
+  const {data,error}=await supabaseClient.rpc("healthos_create_international_payment_intent",{
+   p_clinic_id:currentClinic.id,
+   p_patient_user_id:document.getElementById("internationalPaymentPatient").value,
+   p_amount:Number(document.getElementById("internationalPaymentAmount").value),
+   p_currency:document.getElementById("internationalPaymentCurrency").value,
+   p_description:document.getElementById("internationalPaymentDescription").value.trim(),
+   p_invoice_reference:document.getElementById("internationalPaymentInvoice").value.trim()||null,
+   p_idempotency_key:crypto.randomUUID()
+  });
+  if(error)throw error;
+  if(message){message.textContent=data?.message||"Payment request created.";message.className="message success";}
+  form.reset();await loadInternationalPaymentWorkspace(currentClinic);
+ }catch(error){if(message){message.textContent=friendlyError(error);message.className="message error";}}
+ finally{button.disabled=false;}
+});
 
 async function loadPatientGlobalReferrals(){
  const target=document.getElementById("patientGlobalReferrals");if(!target||!currentUser)return;
