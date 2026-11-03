@@ -54,7 +54,14 @@
    const pending=actions.filter(a=>!a.serverId);
    if(!pending.length){say("There are no local actions waiting to upload.");return;}
    const rows=pending.map(a=>({clinic_id:o.clinic,actor_id:o.user,idempotency_key:a.id,operation_type:a.type,payload:{medicine:a.medicine,batch:a.batch,quantity:a.quantity,expiry_date:a.expiry,reason_or_reference:a.reason},captured_at:a.capturedAt,status:"pending_review"}));
-   const {data,error}=await supabaseClient.from("pharmacy_offline_operation_queue").insert(rows).select("idempotency_key,id");
+   let {data,error}=await supabaseClient.from("pharmacy_offline_operation_queue").insert(rows).select("idempotency_key,id");
+   if(error && error.code==="23505"){
+     const retry=await supabaseClient.from("pharmacy_offline_operation_queue").select("id,idempotency_key,actor_id").eq("clinic_id",o.clinic).in("idempotency_key",pending.map(a=>a.id));
+     if(retry.error)throw error;
+     const safe=(retry.data||[]).filter(r=>r.actor_id===o.user);
+     if(safe.length!==pending.length)throw error;
+     data=safe;error=null;
+   }
    if(error)throw error;
    const ids=new Map((data||[]).map(r=>[r.idempotency_key,r.id]));
    if(ids.size!==pending.length)throw Error("The server did not confirm every queued action. Keep the local queue and contact an administrator before retrying.");
