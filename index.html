@@ -19,6 +19,7 @@
     <script src="compliance-evidence-vault.js?v=20261103-1" defer></script>
     <script src="hospital-quality.js?v=20261103-1" defer></script>
     <script src="clinical-governance.js?v=20261103-1" defer></script>
+    <script src="staff-credentialing.js?v=20261103-1" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -3408,6 +3409,37 @@
  <p class="disclaimer">Patient safety first: immediately provide necessary clinical care and escalate urgent events through the hospital's approved emergency and incident channels. This register does not replace statutory reporting, a formal morbidity and mortality meeting, clinical judgment or a legally required investigation. Do not enter patient names, hospital numbers, phone numbers, addresses or identifiable clinical details. Use a separately controlled case code. Review findings and actions require authorised human governance; this module does not determine negligence or cause of death.</p>
 </section>
 <!-- END HEALTHOS AI: CLINICAL GOVERNANCE & PATIENT SAFETY -->
+
+<!-- HEALTHOS AI: STAFF CREDENTIALING, LICENSING & COMPETENCY -->
+<section class="panel" id="staffCredentialingWorkspace" style="margin:16px 0" aria-labelledby="staffCredentialHeading">
+ <div class="panel-heading"><div><p class="eyebrow">WORKFORCE GOVERNANCE · PROFESSIONAL STANDARDS</p><h2 id="staffCredentialHeading">Staff Credentialing, Professional Licensing &amp; Competency</h2><p class="muted">Maintain staff licenses, qualifications, mandatory training, competency assessments, renewal dates and scope-of-practice restrictions. Every submission requires authorised human verification.</p></div><button type="button" id="credentialRefreshButton" class="logout-button">Refresh register</button></div>
+ <div class="stats-grid">
+  <article class="stat-card"><p>Total records</p><h3 id="credentialTotal">—</h3></article>
+  <article class="stat-card"><p>Awaiting verification</p><h3 id="credentialPending">—</h3></article>
+  <article class="stat-card"><p>Expiring within 30 days</p><h3 id="credentialExpiring">—</h3></article>
+  <article class="stat-card"><p>Expired licenses</p><h3 id="credentialExpired">—</h3></article>
+ </div>
+ <h3>Add staff credential or competency record</h3>
+ <form id="staffCredentialForm" class="auth-form">
+  <div class="stats-grid"><label>Staff ID<input id="credentialStaffId" maxlength="80" required placeholder="Existing hospital staff ID"></label><label>Staff full name<input id="credentialStaffName" maxlength="150" minlength="2" required></label></div>
+  <div class="stats-grid"><label>Department<input id="credentialDepartment" maxlength="120" required placeholder="e.g. Pharmacy"></label><label>Professional role<input id="credentialRole" maxlength="120" required placeholder="e.g. Pharmacist"></label></div>
+  <label>Record category<select id="credentialRecordType" required><option value="professional_license">Professional license / registration</option><option value="qualification">Academic or professional qualification</option><option value="mandatory_training">Mandatory training</option><option value="competency_assessment">Competency assessment</option><option value="scope_restriction">Scope-of-practice restriction</option><option value="renewal">Renewal record</option></select></label>
+  <label>Credential / training / competency title<input id="credentialTitle" maxlength="180" minlength="3" required placeholder="e.g. Annual practising license"></label>
+  <div class="stats-grid"><label>Professional body<input id="credentialBody" maxlength="180" placeholder="e.g. Relevant professional council"></label><label>Registration / certificate number<input id="credentialRegistration" maxlength="120"></label></div>
+  <label>Issuing authority<input id="credentialAuthority" maxlength="180"></label>
+  <div class="stats-grid"><label>Issue date<input id="credentialIssueDate" type="date"></label><label>Expiry date<input id="credentialExpiryDate" type="date"></label></div>
+  <div class="stats-grid"><label>Completion / assessment date<input id="credentialCompletionDate" type="date"></label><label>Next competency review date<input id="credentialNextReview" type="date"></label></div>
+  <div class="stats-grid"><label>Assessor / supervisor<input id="credentialAssessor" maxlength="150"></label><label>Competency outcome<select id="credentialOutcome"><option value="not_applicable">Not applicable</option><option value="competent">Competent</option><option value="competent_with_supervision">Competent with supervision</option><option value="not_yet_competent">Not yet competent</option></select></label></div>
+  <label>Scope-of-practice restriction / supervision notes<textarea id="credentialScope" maxlength="2000" rows="2" placeholder="Record restrictions or supervision requirements. Do not use this form to grant permissions."></textarea></label>
+  <label>Evidence reference (private Evidence Vault reference)<input id="credentialEvidence" maxlength="180"></label>
+  <button id="credentialSubmitButton" class="primary-button" type="submit">Submit for credential verification</button>
+ </form>
+ <p id="credentialMessage" class="message" role="status" aria-live="polite">Sign in to load the staff credential register.</p>
+ <h3>Staff credential and competency register</h3>
+ <div class="table-wrap"><table><thead><tr><th>Staff member</th><th>Department</th><th>Professional role</th><th>Category</th><th>Record</th><th>Expiry / review</th><th>Alert</th><th>Verification</th></tr></thead><tbody id="credentialRows"><tr><td colspan="8">Sign in to load records.</td></tr></tbody></table></div>
+ <p class="disclaimer">A submitted credential is not verified merely because it is recorded here. Verification must be completed by an authorised hospital officer against the relevant professional body's official records and evidence. No external licensing authority API is connected. This register does not automatically activate, suspend or grant clinical system permissions; urgent scope restrictions must be communicated through the hospital's approved governance process.</p>
+</section>
+<!-- END HEALTHOS AI: STAFF CREDENTIALING, LICENSING & COMPETENCY -->
 
                     <footer>
     HealthOS AI · Healthcare operations and revenue protection
