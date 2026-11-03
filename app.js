@@ -1136,6 +1136,24 @@ async function loadPatientAppointmentOptions() {
  if(hError)throw hError;select.add(new Option("Choose a connected hospital",""));
  (data||[]).forEach(x=>select.add(new Option(x.public_name+" — "+x.city+", "+x.country_code,x.clinic_id)));select.disabled=false;
 }
+async function loadPatientAppointmentDepartments(clinicId) {
+ const select=document.getElementById("patientAppointmentDepartment");
+ if(!select)return;
+ select.replaceChildren(new Option("Loading hospital departments...",""));
+ select.disabled=true;
+ if(!clinicId){select.replaceChildren(new Option("Select a hospital first",""));return;}
+ const {data,error}=await supabaseClient.rpc("healthos_get_patient_departments",{p_clinic_id:clinicId});
+ if(error){select.replaceChildren(new Option("Departments unavailable — refresh or reconnect",""));throw error;}
+ select.replaceChildren(new Option("Choose the department for your concern",""));
+ (data||[]).forEach(d=>select.add(new Option(d.department_name,d.id)));
+ select.disabled=!(data||[]).length;
+ if(!(data||[]).length)select.replaceChildren(new Option("No active departments listed",""));
+}
+document.getElementById("patientAppointmentClinic")?.addEventListener("change",event=>{
+ loadPatientAppointmentDepartments(event.target.value).catch(error=>{
+  const m=document.getElementById("patientAppointmentMessage");m.textContent=friendlyError(error);m.className="message error";
+ });
+});
 async function loadPatientAppointmentList() {
  const target=document.getElementById("patientAppointmentList");if(!target||!currentUser)return;target.replaceChildren();
  const {data,error}=await supabaseClient.from("healthos_patient_appointment_requests").select("id,clinic_id,requested_at,reason,visit_type,status,created_at").eq("patient_user_id",currentUser.id).order("created_at",{ascending:false}).limit(100);
@@ -1148,10 +1166,10 @@ const patientAppointmentForm=document.getElementById("patientAppointmentForm");
 if(patientAppointmentForm)patientAppointmentForm.addEventListener("submit",async event=>{
  event.preventDefault();const message=document.getElementById("patientAppointmentMessage"),button=document.getElementById("patientAppointmentSubmit");
  if(!currentUser){message.textContent="Sign in to your patient account first.";message.className="message error";return;}
- const clinicId=document.getElementById("patientAppointmentClinic").value,dateValue=document.getElementById("patientAppointmentAt").value,when=new Date(dateValue),reason=document.getElementById("patientAppointmentReason").value.trim();
- if(!clinicId||!dateValue||Number.isNaN(when.getTime())||when<=new Date()||reason.length<3){message.textContent="Choose a connected hospital, a future date/time and enter a reason.";message.className="message error";return;}
+ const clinicId=document.getElementById("patientAppointmentClinic").value,departmentId=document.getElementById("patientAppointmentDepartment").value,dateValue=document.getElementById("patientAppointmentAt").value,when=new Date(dateValue),reason=document.getElementById("patientAppointmentReason").value.trim();
+ if(!clinicId||!departmentId||!dateValue||Number.isNaN(when.getTime())||when<=new Date()||reason.length<3){message.textContent="Choose a connected hospital and department, a future date/time and enter a reason.";message.className="message error";return;}
  button.disabled=true;button.textContent="Sending request...";
- try{const {error}=await supabaseClient.from("healthos_patient_appointment_requests").insert({patient_user_id:currentUser.id,clinic_id:clinicId,requested_at:when.toISOString(),reason,visit_type:document.getElementById("patientAppointmentType").value,patient_note:document.getElementById("patientAppointmentNote").value.trim()||null});if(error)throw error;
+ try{const {error}=await supabaseClient.from("healthos_patient_appointment_requests").insert({patient_user_id:currentUser.id,clinic_id:clinicId,department_id:departmentId,requested_at:when.toISOString(),reason,visit_type:document.getElementById("patientAppointmentType").value,patient_note:document.getElementById("patientAppointmentNote").value.trim()||null});if(error)throw error;
  message.textContent="Request sent. The hospital must confirm the appointment time.";message.className="message success";patientAppointmentForm.reset();await loadPatientAppointmentList();
  }catch(error){message.textContent=friendlyError(error);message.className="message error";}finally{button.disabled=false;button.textContent="Send appointment request";}
 });
