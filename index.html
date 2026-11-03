@@ -16,6 +16,7 @@
     <script src="healthos-patient-intake-triage.js?v=20261103-1" defer></script>
     <script src="healthos-patient-record-intelligence.js?v=20261103-1" defer></script>
     <script src="healthos-telemedicine-readiness.js?v=20261103-1" defer></script>
+    <script src="healthos-security-fraud-review.js?v=20261103-1" defer></script>
     <script src="healthos-analytics-forecasting.js?v=20261103-1" defer></script>
     <script src="offline-ehr.js?v=20261103-1" defer></script>
     <script src="pharmacy-offline.js?v=20261103-1" defer></script>
@@ -885,6 +886,7 @@
                     <a href="#telemedicineDashboard" class="nav-item">▣ Telemedicine &amp; Virtual Care</a>
                     <a href="#internationalPayments" class="nav-item">¤ International Payments</a>
                     <a href="#aiAnalytics" class="nav-item">◈ AI Intelligence &amp; Analytics</a>
+                    <a href="#healthOSSecurityReview" class="nav-item">⛨ Security &amp; Fraud Review</a>
                     <a href="#patientFlow" class="nav-item">⇄ Queue &amp; Beds</a>
                     <a href="#clinicalRecords" class="nav-item">✚ Clinical Records</a>
                     <a href="#clinicalScribe" class="nav-item">◉ AI Medical Scribe</a>
@@ -3415,6 +3417,21 @@
  <p class="disclaimer">This is the organisation and facility directory foundation. It does not yet combine financial, patient or operational records across facilities. Each clinic remains a separate data boundary; central consolidated reporting and controlled cross-facility staff assignments are planned as later implementation steps.</p>
 </section>
 <!-- END HEALTHOS AI: MULTI-FACILITY MANAGEMENT -->
+
+<!-- HEALTHOS AI: SECURITY & FRAUD REVIEW -->
+<section id="healthOSSecurityReview" class="panel" hidden>
+ <div class="panel-heading"><div><p class="eyebrow">CONTROL &amp; ACCOUNTABILITY</p><h2>Security &amp; Fraud Review</h2><p class="muted">Clinic-scoped, read-only review of stock-control, revenue-audit and performed-service billing signals.</p></div><button id="healthOSSecurityRefresh" type="button" class="primary-button">Run review</button></div>
+ <p id="healthOSSecurityMessage" class="message" role="status" aria-live="polite">Open this workspace and run a review. Signals require human investigation and are not proof of wrongdoing.</p>
+ <div class="stats-grid">
+  <article class="stat-card"><p>Review Signals</p><h3 id="healthOSSecurityCount">—</h3><p class="muted">Combined signals returned</p></article>
+  <article class="stat-card"><p>Adjustment Requests</p><h3 id="healthOSSecurityAdjustments">—</h3><p class="muted">Recent requests reviewed</p></article>
+  <article class="stat-card"><p>Stock Reductions</p><h3 id="healthOSSecurityMovements">—</h3><p class="muted">Recent negative movements</p></article>
+  <article class="stat-card"><p>Performed, Unlinked Services</p><h3 id="healthOSSecurityUnbilled">—</h3><p class="muted">Potential billing exceptions</p></article>
+ </div>
+ <div class="table-wrap"><table><thead><tr><th>Signal</th><th>Details</th><th>Recorded</th></tr></thead><tbody id="healthOSSecurityRows"><tr><td colspan="3">Run review to load signals.</td></tr></tbody></table></div>
+ <p class="disclaimer">Read-only indicators only. A stock reduction may be legitimate; an unlinked service may be a workflow delay; an audit finding may be under review. This module does not accuse staff, change inventory, create charges, issue refunds or alter financial records. Review evidence through authorised hospital procedures.</p>
+</section>
+<!-- END HEALTHOS AI: SECURITY & FRAUD REVIEW -->
 
 <!-- HEALTHOS AI: OPERATIONAL INTELLIGENCE & ANALYTICS -->
 <section id="aiAnalytics" class="panel" hidden>
