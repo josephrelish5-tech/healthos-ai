@@ -18,6 +18,7 @@
     <script src="hospital-compliance.js?v=20261103-1" defer></script>
     <script src="compliance-evidence-vault.js?v=20261103-1" defer></script>
     <script src="hospital-quality.js?v=20261103-1" defer></script>
+    <script src="clinical-governance.js?v=20261103-1" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -3370,6 +3371,43 @@
  <p class="disclaimer">This is a quality-management record system, not an accreditation decision or certificate. Targets and results require validation by qualified hospital personnel. Patient feedback should be anonymous; do not enter patient names, contact details, diagnoses or other identifiable clinical information. Submissions are immutable and pending review; authorised review/approval workflow is a subsequent governance control.</p>
 </section>
 <!-- END HEALTHOS AI: QUALITY ASSURANCE, ACCREDITATION & PERFORMANCE -->
+
+
+<!-- HEALTHOS AI: CLINICAL GOVERNANCE & PATIENT SAFETY -->
+<section class="panel" id="clinicalGovernanceWorkspace" style="margin:16px 0" aria-labelledby="clinicalGovernanceHeading">
+ <div class="panel-heading"><div><p class="eyebrow">PATIENT SAFETY · CLINICAL GOVERNANCE</p><h2 id="clinicalGovernanceHeading">Clinical Governance, Patient Safety &amp; Mortality Review</h2><p class="muted">Document mortality and morbidity reviews, serious adverse events, near misses, root-cause analyses, clinical audits and learning actions. Submissions enter a controlled human-review queue.</p></div><button type="button" id="governanceRefreshButton" class="logout-button">Refresh reviews</button></div>
+ <div class="stats-grid">
+  <article class="stat-card"><p>Mortality reviews</p><h3 id="governanceMortalityCount">—</h3></article>
+  <article class="stat-card"><p>Serious adverse events</p><h3 id="governanceAdverseCount">—</h3></article>
+  <article class="stat-card"><p>Near-miss reviews</p><h3 id="governanceNearMissCount">—</h3></article>
+  <article class="stat-card"><p>Awaiting governance review</p><h3 id="governancePendingCount">—</h3></article>
+ </div>
+ <h3>Submit a clinical governance review</h3>
+ <form id="clinicalGovernanceForm" class="auth-form">
+  <label>Review type<select id="governanceReviewType" required><option value="mortality_review">Mortality review</option><option value="morbidity_review">Morbidity review</option><option value="serious_adverse_event">Serious adverse event</option><option value="near_miss_review">Near-miss review</option><option value="root_cause_analysis">Root-cause analysis (RCA)</option><option value="clinical_audit">Clinical audit</option><option value="case_conference">Clinical case conference</option><option value="sentinel_event_review">Sentinel event review</option></select></label>
+  <label>Department<input id="governanceDepartment" maxlength="120" minlength="2" required placeholder="e.g. Emergency Department"></label>
+  <label>Event date<input id="governanceEventDate" type="date" required></label>
+  <label>Harm level<select id="governanceHarmLevel" required><option value="not_applicable">Not applicable / audit</option><option value="no_harm">No harm</option><option value="low">Low harm</option><option value="moderate">Moderate harm</option><option value="severe">Severe harm</option><option value="death">Death</option></select></label>
+  <label>Linked incident reference (optional)<input id="governanceIncidentReference" maxlength="80" placeholder="e.g. INC-20261103-AB12CD34"></label>
+  <label>Factual event summary<textarea id="governanceEventSummary" rows="4" minlength="10" maxlength="3000" required placeholder="Describe what happened, using a non-identifying case reference only."></textarea></label>
+  <label>Immediate safety actions taken<textarea id="governanceImmediateActions" rows="2" maxlength="2000" placeholder="Immediate containment, escalation or care actions"></textarea></label>
+  <label>Contributing factors<textarea id="governanceContributingFactors" rows="3" maxlength="3000" placeholder="Staffing, process, equipment, environment, communication or system factors"></textarea></label>
+  <label>Review findings<textarea id="governanceFindings" rows="3" maxlength="3000"></textarea></label>
+  <label>Recommendations / corrective actions<textarea id="governanceRecommendations" rows="3" maxlength="3000"></textarea></label>
+  <div class="stats-grid">
+   <label>Action owner / role<input id="governanceActionOwner" maxlength="150"></label>
+   <label>Action due date<input id="governanceActionDueDate" type="date"></label>
+  </div>
+  <label>Learning points<textarea id="governanceLearningPoints" rows="2" maxlength="2000"></textarea></label>
+  <label>Evidence reference (optional)<input id="governanceEvidenceReference" maxlength="180" placeholder="Evidence Vault or quality register reference"></label>
+  <button id="governanceSubmitButton" class="primary-button" type="submit">Submit confidential review for governance</button>
+ </form>
+ <p id="governanceMessage" class="message" role="status" aria-live="polite">Open this workspace to load clinical governance records.</p>
+ <h3>Clinical governance review register</h3>
+ <div class="table-wrap"><table><thead><tr><th>Reference</th><th>Review type</th><th>Department</th><th>Event date</th><th>Harm</th><th>Action owner</th><th>Due date</th><th>Status</th></tr></thead><tbody id="governanceReviewRows"><tr><td colspan="8">Sign in to load reviews.</td></tr></tbody></table></div>
+ <p class="disclaimer">Patient safety first: immediately provide necessary clinical care and escalate urgent events through the hospital's approved emergency and incident channels. This register does not replace statutory reporting, a formal morbidity and mortality meeting, clinical judgment or a legally required investigation. Do not enter patient names, hospital numbers, phone numbers, addresses or identifiable clinical details. Use a separately controlled case code. Review findings and actions require authorised human governance; this module does not determine negligence or cause of death.</p>
+</section>
+<!-- END HEALTHOS AI: CLINICAL GOVERNANCE & PATIENT SAFETY -->
 
                     <footer>
     HealthOS AI · Healthcare operations and revenue protection
