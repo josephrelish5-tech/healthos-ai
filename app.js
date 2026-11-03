@@ -11096,15 +11096,56 @@ document.getElementById("refreshGlobalReferrals")?.addEventListener("click",asyn
   const file=input.files?.[0];if(!file||!currentUser)return;
   button.disabled=true;say("Preparing secure upload…");
   try{
-   const {data:ticket,error:ticketError}=await supabaseClient.functions.invoke("healthos-b2-storage",{
-    body:{action:"create-upload",fileName:file.name,contentType:file.type||"application/octet-stream",sizeBytes:file.size,purpose:"patient_document"}
-   });
-   if(ticketError)throw ticketError;
-   if(!ticket?.uploadUrl||!ticket?.objectKey)throw new Error("Storage upload details were not returned.");
-   const uploaded=await fetch(ticket.uploadUrl,{method:"PUT",headers:ticket.requiredHeaders||{"Content-Type":file.type},body:file});
-   if(!uploaded.ok)throw new Error("Backblaze upload failed (HTTP "+uploaded.status+").");
+   let objectKey="";
+   if(file.size<=25*1024*1024){
+    const {data:ticket,error:ticketError}=await supabaseClient.functions.invoke("healthos-b2-storage",{
+     body:{action:"create-upload",fileName:file.name,contentType:file.type||"application/octet-stream",sizeBytes:file.size,purpose:"patient_document"}
+    });
+    if(ticketError)throw ticketError;
+    if(!ticket?.uploadUrl||!ticket?.objectKey)throw new Error("Storage upload details were not returned.");
+    const uploaded=await fetch(ticket.uploadUrl,{method:"PUT",headers:ticket.requiredHeaders||{"Content-Type":file.type},body:file});
+    if(!uploaded.ok)throw new Error("Backblaze upload failed (HTTP "+uploaded.status+").");
+    objectKey=ticket.objectKey;
+   }else{
+    let sessionId=null;
+    try{
+     const {data:start,error:startError}=await supabaseClient.functions.invoke("healthos-b2-storage",{
+      body:{action:"initiate-multipart",fileName:file.name,contentType:file.type||"application/octet-stream",sizeBytes:file.size,purpose:"patient_document"}
+     });
+     if(startError)throw startError;
+     if(!start?.sessionId||!start?.objectKey||!start?.partSizeBytes)throw new Error("Secure multipart session was not returned.");
+     sessionId=start.sessionId;objectKey=start.objectKey;
+     const partSize=start.partSizeBytes,totalParts=Math.ceil(file.size/partSize),parts=[];
+     for(let partNumber=1;partNumber<=totalParts;partNumber++){
+      const {data:signed,error:signedError}=await supabaseClient.functions.invoke("healthos-b2-storage",{
+       body:{action:"sign-part",sessionId,partNumber,purpose:"patient_document"}
+      });
+      if(signedError)throw signedError;
+      if(!signed?.uploadUrl)throw new Error("Secure upload URL missing for part "+partNumber+".");
+      const chunk=file.slice((partNumber-1)*partSize,Math.min(partNumber*partSize,file.size));
+      const response=await fetch(signed.uploadUrl,{method:"PUT",body:chunk});
+      if(!response.ok)throw new Error("Upload part "+partNumber+" failed (HTTP "+response.status+").");
+      const etag=response.headers.get("ETag")||response.headers.get("etag");
+      if(!etag)throw new Error("B2 did not expose the ETag for part "+partNumber+". Check bucket CORS exposes ETag.");
+      parts.push({PartNumber:partNumber,ETag:etag});
+      say("Uploading large document… "+Math.round(partNumber/totalParts*100)+"%");
+     }
+     const {data:completed,error:completeError}=await supabaseClient.functions.invoke("healthos-b2-storage",{
+      body:{action:"complete-multipart",sessionId,parts,purpose:"patient_document"}
+     });
+     if(completeError)throw completeError;
+     if(!completed?.success)throw new Error("Backblaze did not confirm multipart completion.");
+    }catch(uploadError){
+     if(sessionId){
+      await supabaseClient.functions.invoke("healthos-b2-storage",{
+       body:{action:"abort-multipart",sessionId,purpose:"patient_document"}
+      }).catch(()=>{});
+     }
+     throw uploadError;
+    }
+   }
    const {error:recordError}=await supabaseClient.from("healthos_patient_files").insert({
-    user_id:currentUser.id,object_key:ticket.objectKey,file_name:file.name,
+    user_id:currentUser.id,object_key:objectKey,file_name:file.name,
     content_type:file.type||"application/octet-stream",size_bytes:file.size
    });
    if(recordError)throw recordError;
