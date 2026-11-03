@@ -14,6 +14,7 @@
     <script src="healthos-advanced-ocr.js?v=20261103-1" defer></script>
     <script src="healthos-patient-document-ocr.js?v=20261103-2" defer></script>
     <script src="healthos-patient-intake-triage.js?v=20261103-1" defer></script>
+    <script src="healthos-patient-record-intelligence.js?v=20261103-1" defer></script>
     <script src="healthos-analytics-forecasting.js?v=20261103-1" defer></script>
     <script src="offline-ehr.js?v=20261103-1" defer></script>
     <script src="pharmacy-offline.js?v=20261103-1" defer></script>
@@ -3257,6 +3258,13 @@
  </form>
  <p id="patientShareMessage" class="message" role="status" aria-live="polite"></p>
  <div id="patientShareCodePanel" hidden class="stat-card"><h3>One-time display — share securely with the authorised recipient</h3><p id="patientShareCode" style="font-size:1.3rem;word-break:break-all"></p><p id="patientShareExpiryText" class="muted"></p><p class="disclaimer">This code is shown only now. Copy it to the patient or their authorised recipient through a verified channel. Do not place it in public messages or clinical notes. A recipient verification and scoped record-release endpoint must be connected before external record retrieval is enabled.</p></div>
+ <hr><section class="panel" id="patientRecordIntelligencePanel">
+  <p class="eyebrow">READ-ONLY CLINICAL CONTEXT</p><h3>Patient Medical Record Intelligence</h3>
+  <p class="muted">Consolidates existing clinic records into one view. This is a retrieval aid, not an AI diagnosis. Access remains subject to clinic permissions and database row-level security.</p>
+  <button type="button" id="loadPatientRecordIntelligence" class="primary-button">Load selected patient's record overview</button>
+  <p id="patientRecordIntelligenceMessage" class="message" role="status" aria-live="polite"></p>
+  <div id="patientRecordIntelligenceOutput" class="stats-grid" aria-live="polite"><p class="muted">Select a patient above, then load the overview.</p></div>
+ </section>
  <h3>Active and Previous Shares</h3><div class="table-wrap"><table><thead><tr><th>Created</th><th>Patient</th><th>Scope</th><th>Expiry</th><th>Uses</th><th>Status</th><th>Action</th></tr></thead><tbody id="patientShareBody"><tr><td colspan="7">Open this section to load shares.</td></tr></tbody></table></div>
  <p class="disclaimer">This foundation creates and revokes consent-bound access credentials. It does not yet deliver OTPs, generate downloadable QR codes, verify an external recipient, or release records outside the clinic. Those steps require a secure patient identity/recipient verification flow and approved messaging provider.</p>
 </section>
