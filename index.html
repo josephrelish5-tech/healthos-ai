@@ -13,6 +13,7 @@
     <script src="offline-ehr.js?v=20261103-1" defer></script>
     <script src="pharmacy-offline.js?v=20261103-1" defer></script>
     <script src="offline-sync-center.js?v=20261103-1" defer></script>
+    <script src="offline-department-tasks.js?v=20261103-1" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -1924,6 +1925,27 @@
    <button type="button" class="logout-button" id="offlineSyncRefresh">Refresh connection status</button>
   </div>
   <p id="offlineSyncMessage" class="muted" role="status">No automatic background upload is performed. Reconnect, open the relevant workspace, review the queued items and explicitly submit them.</p>
+ </section>
+
+ <section class="panel" id="offlineDepartmentTaskWorkspace" style="margin:16px 0" aria-labelledby="offlineDepartmentTaskHeading">
+  <h3 id="offlineDepartmentTaskHeading">Offline Department Task &amp; Handover Queue</h3>
+  <p class="muted">For all hospital departments and custom departments. Capture task progress, completion claims, blockers and shift handovers during outages. Reports are encrypted locally and uploaded as pending review only. Do not enter patient-identifying or clinical details here.</p>
+  <div class="stats-grid">
+   <article class="stat-card"><p>Connection</p><h4 id="offlineDeptTaskConnection">Checking…</h4></article>
+   <article class="stat-card"><p>Local reports</p><h4 id="offlineDeptTaskCount">0</h4></article>
+   <article class="stat-card"><p>Uploaded for review</p><h4 id="offlineDeptTaskUploaded">0</h4></article>
+  </div>
+  <form id="offlineDeptTaskForm" class="auth-form">
+   <label for="offlineDeptTaskDepartment">Department / unit</label><input id="offlineDeptTaskDepartment" type="text" maxlength="120" required placeholder="e.g. Laboratory, Accounts, Theatre">
+   <label for="offlineDeptTaskReference">Existing task reference (optional)</label><input id="offlineDeptTaskReference" type="text" maxlength="100" placeholder="Task number or reference — do not invent one">
+   <label for="offlineDeptTaskType">Report type</label><select id="offlineDeptTaskType" required><option value="progress_report">Progress report</option><option value="completion_claim">Completion claim — supervisor review required</option><option value="blocker_report">Blocker / incident requiring attention</option><option value="handover_note">Shift handover note</option></select>
+   <label for="offlineDeptTaskTitle">Short title</label><input id="offlineDeptTaskTitle" type="text" maxlength="160" required>
+   <label for="offlineDeptTaskDetails">Work summary / handover details</label><textarea id="offlineDeptTaskDetails" rows="4" maxlength="5000" required placeholder="Describe operational work only. No patient names, identifiers, diagnoses or medication details."></textarea>
+   <button type="submit" class="primary-button" id="offlineDeptTaskSave">Encrypt report on this device</button>
+  </form>
+  <div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="primary-button" id="offlineDeptTaskUnlock">Load local reports</button><button type="button" class="primary-button" id="offlineDeptTaskSync">Review &amp; upload for supervisor review</button><button type="button" class="logout-button" id="offlineDeptTaskErase">Erase local reports</button></div>
+  <p id="offlineDeptTaskMessage" class="message" role="status" aria-live="polite">Reports remain local until explicitly uploaded. Uploading does not change task status or mark work complete.</p>
+  <div class="table-wrap"><table><thead><tr><th>Captured</th><th>Department</th><th>Task reference</th><th>Report</th><th>Title</th><th>Status</th></tr></thead><tbody id="offlineDeptTaskRows"><tr><td colspan="6">No local reports loaded.</td></tr></tbody></table></div>
  </section>
  <section class="panel" id="offlineEhrWorkspace" style="margin:16px 0">
   <h3>Offline-First Patient Record Workspace</h3>
