@@ -25,7 +25,7 @@ self.addEventListener("fetch", event => {
 
   const url = new URL(request.url);
   const isAppShell = url.origin === self.location.origin &&
-    (url.pathname.endsWith("/") || /\\/(index\\.html|styles\\.css|app\\.js|pharmacy-forecast\\.js|offline-ehr\\.js|pharmacy-offline\\.js|offline-sync-center\\.js|offline-department-tasks\\.js|hospital-incidents\\.js|hospital-compliance\\.js)$/.test(url.pathname));
+    (url.pathname.endsWith("/") || /\/(index\.html|styles\.css|app\.js|pharmacy-forecast\.js|offline-ehr\.js|pharmacy-offline\.js|offline-sync-center\.js|offline-department-tasks\.js|hospital-incidents\.js|hospital-compliance\.js)$/.test(url.pathname));
   const isSupabaseLibrary = url.hostname === "cdn.jsdelivr.net" &&
     url.pathname.includes("/@supabase/supabase-js/");
 
