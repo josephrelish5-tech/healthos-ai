@@ -6379,7 +6379,7 @@ if (refreshAppointmentsButton) {
  function show(t,m,section=null,label="Open workspace"){title.textContent=t;body.textContent=m;response.hidden=false;pendingSection=section;action.hidden=!section;if(section)action.textContent=label;response.scrollIntoView({behavior:"smooth",block:"nearest"});}
  function openSection(id){const el=$(id);if(!el){show("Workspace unavailable","This workspace is not available in the current app version. Contact your administrator.");return;}const parent=el.closest(".panel");if(parent&&typeof window.showHealthOSView==="function")window.showHealthOSView(parent.id);if(panel)panel.hidden=true;if(launcher)launcher.setAttribute("aria-expanded","false");requestAnimationFrame(()=>el.scrollIntoView({behavior:"smooth",block:"start"}));}
  async function loadStaffContext(){
-  if(typeof supabaseClient==="undefined"||typeof currentUser==="undefined"||!currentUser||!currentClinic?.id)return null;
+  if(typeof supabaseClient==="undefined"||typeof currentUser==="undefined"||!currentUser||typeof currentClinic==="undefined"||!currentClinic||!currentClinic.id)return null;
   const {data:profile,error}=await supabaseClient.from("staff_profiles").select("id,department,professional_role,employment_status").eq("clinic_id",currentClinic.id).eq("user_id",currentUser.id).limit(1).maybeSingle();
   if(error||!profile||profile.employment_status&&profile.employment_status!=="active")return null;
   const departments=new Set(profile.department?[profile.department]:[]);
