@@ -6395,7 +6395,13 @@ if (refreshAppointmentsButton) {
    return {profileId:null,departments:[],role:membershipRole,isClinicOwner:true};
   }
   const {data:profile,error}=await supabaseClient.from("staff_profiles").select("id,department,professional_role,employment_status").eq("clinic_id",currentClinic.id).eq("user_id",currentUser.id).limit(1).maybeSingle();
-  if(error||!profile||profile.employment_status&&profile.employment_status!=="active")return null;
+  if(error)return null;
+  if(!profile){
+   // Active clinic members without a completed staff profile may still use general HealthOS help.
+   // Department-specific instructions and workspaces remain unavailable until an assignment exists.
+   return {profileId:null,departments:[],role:membershipRole,isClinicOwner:false,unassigned:true};
+  }
+  if(profile.employment_status&&profile.employment_status!=="active")return null;
   const departments=new Set(profile.department?[profile.department]:[]);
   const {data:assignments}=await supabaseClient.from("staff_department_assignments").select("department_id").eq("clinic_id",currentClinic.id).eq("staff_profile_id",profile.id).eq("assignment_status","active");
   const ids=[...new Set((assignments||[]).map(a=>a.department_id).filter(Boolean))];
@@ -6414,11 +6420,12 @@ if (refreshAppointmentsButton) {
    else q=lastConversation.topic+" explain the previous instructions more simply";
   }
   if(!staffContext)staffContext=await loadStaffContext();
-  if(!staffContext||(!staffContext.isClinicOwner&&!staffContext.departments.length)){show("Department access not identified","I could not verify an active staff department or assignment. Ask your administrator to complete your staff profile and department assignments. I cannot reveal departmental information until your access context is confirmed.");return;}
+  if(!staffContext){show("HealthOS access not verified","I could not verify an active membership in this hospital. Please sign in with your hospital account or contact your administrator.");return;}
   const match=routeMatch(q);
-  if(match&&!staffContext.isClinicOwner&&!departmentOwns(staffContext.departments,match)){show("This information belongs to another department","Your authorised department assignment(s): "+staffContext.departments.join(", ")+". This request belongs to "+match.owner+". I can’t provide that department’s work instructions or open its restricted workspace. Contact that department or request an authorised additional assignment.");return;}
-  // Full conversational AI: the Edge Function re-verifies the user and retrieves only RLS-authorized approved knowledge.
-  if(typeof supabaseClient!=="undefined"&&supabaseClient&&currentClinic&&currentClinic.id){
+  if(match&&!staffContext.isClinicOwner&&!departmentOwns(staffContext.departments,match)){show("Department assignment required","Your general HealthOS Help Assistant is available. This request needs an active assignment to "+match.owner+". Ask your administrator to complete or update your department assignment. I will not expose another department’s restricted instructions or workspace.");return;}
+  // Departmental conversational retrieval is enabled only for owners or staff with a verified department assignment.
+  // Staff without a department can still use general HealthOS navigation and troubleshooting guidance below.
+  if((staffContext.isClinicOwner||staffContext.departments.length)&&typeof supabaseClient!=="undefined"&&supabaseClient&&currentClinic&&currentClinic.id){
    const sendButton=$("staffAssistantSend");
    if(sendButton)sendButton.textContent="Thinking…";
    const conversationKey="healthos_ai_conversation:"+currentUser.id+":"+currentClinic.id;
@@ -6448,7 +6455,7 @@ if (refreshAppointmentsButton) {
     return;
    }
   }
-  if(!match){show("No approved article matched","I couldn't find an approved departmental article for that question. Try different keywords or ask your department administrator to add an approved FAQ or work instruction. I can guide you through registered HealthOS workflows, but I cannot search private patient records or other departments' restricted information.");return;}
+  if(!match){show("HealthOS general help","I can help you navigate HealthOS, understand available features, find the right workspace, and troubleshoot common workflow difficulties. Tell me the screen, button, task or problem you are facing. For department-specific procedures, your hospital administrator must first assign your staff profile to the correct department.");return;}
   lastConversation={topic:rawQuestion,answer:match.guide,article:null,turns:lastConversation.turns+1};
   show("Your departmental guide · "+match.owner,match.guide,match.section,"Open relevant workspace");
  }
