@@ -10789,6 +10789,16 @@ async function loadPatientGlobalReferrals(){
    decline.addEventListener("click",async()=>{if(!confirm("Decline and cancel this referral?"))return;const {error}=await supabaseClient.rpc("healthos_consent_global_referral",{p_referral_id:r.id,p_consent:false});if(error){alert(friendlyError(error));return;}await loadPatientGlobalReferrals();});
    card.append(consent,decline);
   }
+  if(["accepted","awaiting_destination_review"].includes(r.status)){
+   const scopeBox=document.createElement("fieldset"),legend=document.createElement("legend");legend.textContent="Choose records to share with this hospital";scopeBox.appendChild(legend);
+   [["encounter_summary","Encounter summaries"],["signed_notes","Signed clinical notes"],["vitals","Vital signs"],["allergies","Allergies"]].forEach(([value,label])=>{const l=document.createElement("label"),cb=document.createElement("input");cb.type="checkbox";cb.value=value;l.append(cb,document.createTextNode(" "+label));scopeBox.appendChild(l);});
+   const expiry=document.createElement("select");[24,72,168,720].forEach(hours=>expiry.add(new Option(hours===720?"30 days":hours+" hours",String(hours))));expiry.value="72";
+   const grant=document.createElement("button");grant.type="button";grant.className="primary-button";grant.textContent="Authorise selected records";
+   grant.addEventListener("click",async()=>{const scopes=[...scopeBox.querySelectorAll("input:checked")].map(x=>x.value);if(!scopes.length){alert("Select at least one record category.");return;}grant.disabled=true;const {error}=await supabaseClient.rpc("healthos_patient_consent_referral_records",{p_referral_id:r.id,p_scope_categories:scopes,p_expiry_hours:Number(expiry.value)});grant.disabled=false;if(error){alert(friendlyError(error));return;}alert("Record sharing authorised for the selected categories and expiry period.");});
+   const revoke=document.createElement("button");revoke.type="button";revoke.className="logout-button";revoke.textContent="Revoke record access";
+   revoke.addEventListener("click",async()=>{if(!confirm("Immediately revoke this referral's record access?"))return;const {error}=await supabaseClient.rpc("healthos_revoke_referral_record_consent",{p_referral_id:r.id});if(error){alert(friendlyError(error));return;}alert("Record access revoked.");});
+   card.append(scopeBox,expiry,grant,revoke);
+  }
   target.appendChild(card);
  });
 }
@@ -10824,7 +10834,14 @@ async function loadGlobalReferralInbox(){
     const reject=document.createElement("button");reject.type="button";reject.className="logout-button";reject.textContent="Decline";
     const decide=async decision=>{accept.disabled=true;reject.disabled=true;const {error}=await supabaseClient.rpc("healthos_review_global_referral",{p_referral_id:r.id,p_decision:decision,p_response:response.value.trim()||null});if(error){message.textContent=friendlyError(error);message.className="message error";accept.disabled=false;reject.disabled=false;return;}await loadGlobalReferralInbox();};
     accept.addEventListener("click",()=>decide("accepted"));reject.addEventListener("click",()=>decide("rejected"));action.append(response,accept,reject);
-   }else action.textContent=String(r.status).replace(/_/g," ");
+   }else {
+    action.textContent=String(r.status).replace(/_/g," ");
+    if(r.status==="accepted"){
+     const bundleButton=document.createElement("button");bundleButton.type="button";bundleButton.className="primary-button";bundleButton.textContent="Retrieve authorised FHIR records";
+     bundleButton.addEventListener("click",async()=>{bundleButton.disabled=true;const {data,error}=await supabaseClient.rpc("healthos_get_referral_fhir_bundle",{p_referral_id:r.id,p_access_reason:"Accepted specialist referral continuity of care"});bundleButton.disabled=false;if(error){message.textContent=friendlyError(error);message.className="message error";return;}const output=document.getElementById("referralFhirBundle");if(output)output.textContent=JSON.stringify(data,null,2);});
+     action.appendChild(bundleButton);
+    }
+   }
    tr.appendChild(action);body.appendChild(tr);
   });
   message.textContent=rows.length+" consented referral(s) loaded.";
