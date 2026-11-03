@@ -136,6 +136,7 @@ function showHealthOSView(viewId) {
     if (viewId === "adminVoiceTranslator" && typeof window.loadAdminVoiceTranslations === "function") window.loadAdminVoiceTranslations().catch(error => console.error("Administrative voice register refresh failed:", error));
     if (viewId === "patientRecordSharing" && typeof window.loadPatientRecordShares === "function") window.loadPatientRecordShares().catch(error => console.error("Patient record shares refresh failed:", error));
     if (viewId === "ussdDiagnostics" && typeof window.loadUssdDiagnosticRequests === "function") window.loadUssdDiagnosticRequests().catch(error => console.error("USSD diagnostic requests refresh failed:", error));
+    if (viewId === "ussdDiagnostics" && typeof window.loadUssdCareRequests === "function") window.loadUssdCareRequests().catch(error => console.error("USSD care request inbox refresh failed:", error));
     if (viewId === "multiFacilityManagement" && typeof window.loadMultiFacilityManagement === "function") window.loadMultiFacilityManagement().catch(error => console.error("Multi-facility workspace refresh failed:", error));
     if (viewId === "patientConnectionRequests" && typeof window.loadPatientConnectionRequests === "function") window.loadPatientConnectionRequests().catch(error => console.error("Patient connection requests refresh failed:", error));
     if (viewId === "globalReferrals") { loadGlobalReferralOptions().catch(error => { const m=document.getElementById("globalReferralMessage"); if(m){m.textContent=friendlyError(error);m.className="message error";} }); loadGlobalReferralInbox(); }
@@ -10864,3 +10865,43 @@ globalReferralForm?.addEventListener("submit",async event=>{
  finally{button.disabled=false;button.textContent="Send referral for patient consent";}
 });
 document.getElementById("refreshGlobalReferrals")?.addEventListener("click",async()=>{await loadGlobalReferralOptions();await loadGlobalReferralInbox();});
+
+
+// GLOBAL USSD CARE REQUEST INBOX
+(function initUssdCareRequestInbox(){
+ const body=document.getElementById("ussdCareRequestBody"),message=document.getElementById("ussdCareRequestMessage");
+ const say=(text,error=false)=>{if(message){message.textContent=text;message.className="message"+(error?" error":" success");}};
+ async function load(){
+  if(!body||!currentClinic)return;
+  body.replaceChildren();say("Loading incoming USSD care requests...");
+  const {data,error}=await supabaseClient.rpc("healthos_get_ussd_care_requests",{p_clinic_id:currentClinic.id});
+  if(error){say(friendlyError(error),true);return;}
+  const rows=Array.isArray(data)?data:(data||[]);
+  if(!rows.length){const tr=body.insertRow(),td=tr.insertCell();td.colSpan=9;td.textContent="No USSD care requests received.";say("No incoming requests.");return;}
+  rows.forEach(item=>{
+   const tr=body.insertRow();
+   const add=(value)=>{const td=tr.insertCell();td.textContent=value==null||value===""?"—":String(value);return td;};
+   add(new Date(item.created_at).toLocaleString());add(item.phone_number);add(item.care_type);add(item.department_name);add(item.request_reason);add(String(item.status).replaceAll("_"," "));add(item.appointment_at?new Date(item.appointment_at).toLocaleString():"—");add(item.staff_note);
+   const td=tr.insertCell(),status=document.createElement("select");
+   ["verification_required","identity_verified","accepted","scheduled","rejected","completed","cancelled"].forEach(v=>status.add(new Option(v.replaceAll("_"," "),v)));
+   status.value=item.status;
+   const appointment=document.createElement("input");appointment.type="datetime-local";appointment.setAttribute("aria-label","Appointment time");
+   if(item.appointment_at)appointment.value=new Date(item.appointment_at).toISOString().slice(0,16);
+   const note=document.createElement("input");note.maxLength=500;note.placeholder="Staff note";
+   const save=document.createElement("button");save.type="button";save.className="logout-button";save.textContent="Save";
+   save.addEventListener("click",async()=>{
+    if(status.value==="scheduled"&&!appointment.value){say("Choose an appointment date and time before scheduling.",true);return;}
+    if(["accepted","scheduled","identity_verified"].includes(status.value)&&!confirm("Confirm that the patient's identity and department eligibility have been checked?"))return;
+    save.disabled=true;
+    const {error:updateError}=await supabaseClient.rpc("healthos_update_ussd_care_request",{p_request_id:item.id,p_status:status.value,p_appointment_at:appointment.value?new Date(appointment.value).toISOString():null,p_staff_note:note.value.trim()||null});
+    save.disabled=false;
+    if(updateError){say(friendlyError(updateError),true);return;}
+    say("USSD care request updated.");await load();
+   });
+   td.append(status,appointment,note,save);
+  });
+  say(rows.length+" incoming USSD care request(s) loaded. Only your authorised clinic/department scope is returned.");
+ }
+ document.getElementById("refreshUssdCareRequests")?.addEventListener("click",load);
+ window.loadUssdCareRequests=load;
+})();
