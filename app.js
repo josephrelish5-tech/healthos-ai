@@ -8301,7 +8301,7 @@ function openSection(sectionId, sectionName) {
                         if (record.ocr_raw && record.ocr_raw.storage_provider === storageProvider) {
                             const { data: link, error: linkError } = await supabaseClient.functions.invoke(
                                 "healthos-b2-storage",
-                                { body: { action: "create-download", objectKey: record.source_file_path } }
+                                { body: { action: "create-download", objectKey: record.source_file_path, clinicId: currentClinic.id, purpose: "pos_receipt" } }
                             );
                             if (linkError) throw linkError;
                             if (!link || !link.downloadUrl) throw new Error("Secure B2 download link was not returned.");
@@ -8480,7 +8480,9 @@ function openSection(sectionId, sectionName) {
                             action: "create-upload",
                             fileName: file.name,
                             contentType: file.type,
-                            sizeBytes: file.size
+                            sizeBytes: file.size,
+                            clinicId: currentClinic.id,
+                            purpose: "pos_receipt"
                         }
                     }
                 );
@@ -8970,7 +8972,7 @@ function openSection(sectionId, sectionName) {
 
             const { data: uploadTicket, error: ticketError } = await supabaseClient.functions.invoke(
                 "healthos-b2-storage",
-                { body: { action: "create-upload", fileName: file.name, contentType: "text/plain", sizeBytes: file.size } }
+                { body: { action: "create-upload", fileName: file.name, contentType: "text/plain", sizeBytes: file.size, clinicId: currentClinic.id, purpose: "bank_statement" } }
             );
             if (ticketError) throw ticketError;
             if (!uploadTicket || !uploadTicket.uploadUrl || !uploadTicket.objectKey) {
