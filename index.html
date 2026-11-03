@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261103-36" defer></script>
+    <script src="app.js?v=20261103-37" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -317,6 +317,19 @@
                 <div id="patientHospitalResults" class="stats-grid"></div>
                 <h3>My hospital connection requests</h3>
                 <div id="patientHospitalLinks" class="stats-grid"><p class="muted">No requests loaded.</p></div>
+                <h3>Book an appointment</h3>
+                <p class="muted">Requests can be sent only to hospitals that have approved your connection. The hospital must confirm the requested time.</p>
+                <form id="patientAppointmentForm" class="auth-form">
+                    <label>Connected hospital<select id="patientAppointmentClinic" required><option value="">Loading connected hospitals...</option></select></label>
+                    <label>Preferred date and time<input id="patientAppointmentAt" type="datetime-local" required></label>
+                    <label>Consultation type<select id="patientAppointmentType"><option value="in_person">In person</option><option value="audio">Audio consultation</option><option value="video">Video consultation</option></select></label>
+                    <label>Reason for visit<input id="patientAppointmentReason" maxlength="500" minlength="3" required placeholder="Brief reason for your appointment"></label>
+                    <label>Additional note (optional)<textarea id="patientAppointmentNote" maxlength="1000" rows="2"></textarea></label>
+                    <button id="patientAppointmentSubmit" class="primary-button" type="submit">Send appointment request</button>
+                </form>
+                <p id="patientAppointmentMessage" class="message" role="status" aria-live="polite"></p>
+                <h3>My appointment requests</h3>
+                <div id="patientAppointmentList" class="stats-grid"><p class="muted">No appointment requests loaded.</p></div>
             </div>
             <button id="patientPortalBackButton" class="text-button" type="button">Return to HealthOS sign in</button>
         </section>
@@ -2893,6 +2906,12 @@
  </div>
  <p id="patientConnectionRequestsMessage" class="message" role="status" aria-live="polite">Open this page to load requests for your active hospital.</p>
  <div class="table-wrap"><table><thead><tr><th>Requested</th><th>Patient</th><th>Phone</th><th>Country</th><th>Message</th><th>Status</th><th>Review</th></tr></thead><tbody id="patientConnectionRequestsBody"><tr><td colspan="7">Requests will appear here.</td></tr></tbody></table></div>
+ <h3 style="margin-top:28px">Patient Appointment Requests</h3>
+ <p class="muted">Review requests from patients whose hospital connection has been approved.</p>
+ <div class="stats-grid"><article class="stat-card"><p>Awaiting review</p><h3 id="patientAppointmentPendingCount">—</h3></article><article class="stat-card"><p>Accepted</p><h3 id="patientAppointmentAcceptedCount">—</h3></article><article class="stat-card"><p>Rejected</p><h3 id="patientAppointmentRejectedCount">—</h3></article></div>
+ <button id="refreshPatientAppointmentRequests" type="button" class="logout-button">Refresh appointment requests</button>
+ <p id="patientAppointmentReviewMessage" class="message" role="status" aria-live="polite"></p>
+ <div class="table-wrap"><table><thead><tr><th>Requested time</th><th>Patient</th><th>Type</th><th>Reason</th><th>Status</th><th>Review</th></tr></thead><tbody id="patientAppointmentReviewBody"><tr><td colspan="6">Refresh to load appointment requests.</td></tr></tbody></table></div>
  <p class="disclaimer">Only clinic owners and administrators can review requests. Approval links the patient account to this hospital but does not grant access to clinical records. Separate patient consent and record-sharing authorisation are still required.</p>
 </section>
 <!-- END HEALTHOS AI: HOSPITAL-SIDE PATIENT CONNECTION REQUESTS -->
