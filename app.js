@@ -78,7 +78,7 @@ function showHealthOSView(viewId) {
     const mainContent = document.getElementById("dashboard");
     if (!mainContent) return;
 
-    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "multiFacilityManagement", "patientConnectionRequests", "aiAnalytics", "patientFlow", "clinicalRecords", "clinicalScribe", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
+    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "multiFacilityManagement", "patientConnectionRequests", "globalReferrals", "aiAnalytics", "patientFlow", "clinicalRecords", "clinicalScribe", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
     if (!allowedViews.includes(viewId)) {
         alert("This page is not available yet.");
         return;
@@ -94,7 +94,7 @@ function showHealthOSView(viewId) {
     const pageElements = mainContent.querySelectorAll(
         ":scope > .welcome, :scope > #dashboardMessage, :scope > .stats-grid, " +
         ":scope > #adminStaffDashboard, :scope > #patients, :scope > #appointments, " +
-        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #ussdDiagnostics, :scope > #multiFacilityManagement, :scope > #patientConnectionRequests, :scope > #aiAnalytics, :scope > #patientFlow, :scope > #clinicalRecords, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
+        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #ussdDiagnostics, :scope > #multiFacilityManagement, :scope > #patientConnectionRequests, :scope > #globalReferrals, :scope > #aiAnalytics, :scope > #patientFlow, :scope > #clinicalRecords, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
         ":scope > #pharmacy, :scope > #reports"
     );
     pageElements.forEach(element => {
@@ -1089,6 +1089,7 @@ async function openPatientPortal(user) {
     await loadPatientHospitalLinks();
     await loadPatientAppointmentOptions();
     await loadPatientAppointmentList();
+    await loadPatientGlobalReferrals();
 }
 
 async function loadPatientHospitalLinks() {
@@ -10767,3 +10768,81 @@ window.loadPatientAppointmentRequests=async function(){
 };
 const refreshPatientAppointmentRequests=document.getElementById("refreshPatientAppointmentRequests");
 if(refreshPatientAppointmentRequests)refreshPatientAppointmentRequests.addEventListener("click",()=>window.loadPatientAppointmentRequests());
+
+
+async function loadPatientGlobalReferrals(){
+ const target=document.getElementById("patientGlobalReferrals");if(!target||!currentUser)return;
+ target.replaceChildren();const {data,error}=await supabaseClient.rpc("healthos_get_my_global_referrals");if(error)throw error;
+ const rows=Array.isArray(data)?data:(data||[]);
+ if(!rows.length){target.textContent="You have no specialist referrals.";return;}
+ rows.forEach(r=>{
+  const card=document.createElement("article");card.className="stat-card";
+  const title=document.createElement("h3");title.textContent=(r.source_name||"Hospital")+" → "+(r.destination_name||"Receiving hospital");
+  const detail=document.createElement("p");detail.textContent=r.specialty+" · "+r.urgency+" · "+r.reason;
+  const status=document.createElement("strong");status.textContent="Status: "+String(r.status).replace(/_/g," ");
+  card.append(title,detail,status);
+  if(r.status==="awaiting_patient_consent"){
+   const consent=document.createElement("button");consent.type="button";consent.className="primary-button";consent.textContent="I consent to this referral";
+   consent.addEventListener("click",async()=>{consent.disabled=true;const {error}=await supabaseClient.rpc("healthos_consent_global_referral",{p_referral_id:r.id,p_consent:true});if(error){consent.disabled=false;alert(friendlyError(error));return;}await loadPatientGlobalReferrals();});
+   const decline=document.createElement("button");decline.type="button";decline.className="logout-button";decline.textContent="Decline referral";
+   decline.addEventListener("click",async()=>{if(!confirm("Decline and cancel this referral?"))return;const {error}=await supabaseClient.rpc("healthos_consent_global_referral",{p_referral_id:r.id,p_consent:false});if(error){alert(friendlyError(error));return;}await loadPatientGlobalReferrals();});
+   card.append(consent,decline);
+  }
+  target.appendChild(card);
+ });
+}
+async function loadGlobalReferralOptions(){
+ const appointment=document.getElementById("globalReferralAppointment"),destination=document.getElementById("globalReferralDestination");
+ if(!appointment||!destination||!currentClinic)return;
+ appointment.replaceChildren(new Option("Loading accepted appointments…",""));
+ destination.replaceChildren(new Option("Loading verified hospitals…",""));
+ const [{data:requests,error:rError},{data:hospitals,error:hError}]=await Promise.all([
+  supabaseClient.from("healthos_patient_appointment_requests").select("id,requested_at,reason,visit_type,linked_patient_record_id").eq("clinic_id",currentClinic.id).eq("status","accepted").not("linked_patient_record_id","is",null).order("requested_at",{ascending:false}).limit(200),
+  supabaseClient.from("healthos_hospital_directory").select("clinic_id,public_name,city,country_code").eq("verification_status","verified").eq("accepting_patient_requests",true).neq("clinic_id",currentClinic.id).order("public_name").limit(500)
+ ]);
+ if(rError)throw rError;if(hError)throw hError;
+ appointment.replaceChildren(new Option("Choose accepted appointment",""));
+ (requests||[]).forEach(x=>appointment.add(new Option(new Date(x.requested_at).toLocaleString()+" · "+x.visit_type+" · "+(x.reason||"Visit"),x.id)));
+ destination.replaceChildren(new Option("Choose receiving hospital",""));
+ (hospitals||[]).forEach(x=>destination.add(new Option(x.public_name+" — "+x.city+", "+x.country_code,x.clinic_id)));
+}
+async function loadGlobalReferralInbox(){
+ const body=document.getElementById("globalReferralInboxBody"),message=document.getElementById("globalReferralMessage");if(!body||!currentClinic)return;
+ body.replaceChildren();message.textContent="Loading incoming referrals...";
+ try{
+  const {data,error}=await supabaseClient.rpc("healthos_get_destination_referrals",{p_clinic_id:currentClinic.id});if(error)throw error;
+  const rows=Array.isArray(data)?data:(data||[]);
+  if(!rows.length){body.innerHTML='<tr><td colspan="7">No patient-consented referrals awaiting review.</td></tr>';message.textContent="No incoming referrals.";return;}
+  rows.forEach(r=>{
+   const tr=document.createElement("tr");
+   [new Date(r.created_at).toLocaleString(),r.patient_name||"Patient",r.source_name||"Hospital",r.specialty,r.reason,r.urgency].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);});
+   const action=document.createElement("td");
+   if(r.status==="awaiting_destination_review"){
+    const response=document.createElement("input");response.maxLength=500;response.placeholder="Optional response";
+    const accept=document.createElement("button");accept.type="button";accept.className="primary-button";accept.textContent="Accept";
+    const reject=document.createElement("button");reject.type="button";reject.className="logout-button";reject.textContent="Decline";
+    const decide=async decision=>{accept.disabled=true;reject.disabled=true;const {error}=await supabaseClient.rpc("healthos_review_global_referral",{p_referral_id:r.id,p_decision:decision,p_response:response.value.trim()||null});if(error){message.textContent=friendlyError(error);message.className="message error";accept.disabled=false;reject.disabled=false;return;}await loadGlobalReferralInbox();};
+    accept.addEventListener("click",()=>decide("accepted"));reject.addEventListener("click",()=>decide("rejected"));action.append(response,accept,reject);
+   }else action.textContent=String(r.status).replace(/_/g," ");
+   tr.appendChild(action);body.appendChild(tr);
+  });
+  message.textContent=rows.length+" consented referral(s) loaded.";
+ }catch(e){message.textContent=friendlyError(e);message.className="message error";}
+}
+const globalReferralForm=document.getElementById("globalReferralForm");
+globalReferralForm?.addEventListener("submit",async event=>{
+ event.preventDefault();const message=document.getElementById("globalReferralMessage"),button=document.getElementById("globalReferralSubmit");
+ button.disabled=true;button.textContent="Creating referral...";
+ try{
+  const {data,error}=await supabaseClient.rpc("healthos_create_global_referral",{
+   p_appointment_request_id:document.getElementById("globalReferralAppointment").value,
+   p_destination_clinic_id:document.getElementById("globalReferralDestination").value,
+   p_specialty:document.getElementById("globalReferralSpecialty").value.trim(),
+   p_reason:document.getElementById("globalReferralReason").value.trim(),
+   p_urgency:document.getElementById("globalReferralUrgency").value
+  });
+  if(error)throw error;message.textContent="Referral created. The patient must approve it in their portal before the receiving hospital can review it.";message.className="message success";globalReferralForm.reset();await loadGlobalReferralOptions();
+ }catch(e){message.textContent=friendlyError(e);message.className="message error";}
+ finally{button.disabled=false;button.textContent="Send referral for patient consent";}
+});
+document.getElementById("refreshGlobalReferrals")?.addEventListener("click",async()=>{await loadGlobalReferralOptions();await loadGlobalReferralInbox();});
