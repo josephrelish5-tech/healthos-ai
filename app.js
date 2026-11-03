@@ -2032,6 +2032,7 @@ await startStaffPresenceTracking(
                 refreshTasksButton.addEventListener("click", refreshMyStaffTasks);
             }
             await refreshMyStaffTasks();
+            await loadDepartmentTaskAssignmentOptions(clinic);
         }
         
         // HEALTHOS AI: SUPERVISOR REVIEW & APPROVAL
@@ -3222,6 +3223,55 @@ async function loadDepartmentPerformanceDashboard(clinic) {
 }
 
  
+// HEALTHOS AI: DEPARTMENT HEAD TASK ASSIGNMENT
+async function loadDepartmentTaskAssignmentOptions(clinic) {
+    const panel = document.getElementById("departmentTaskAssignmentPanel");
+    const staff = document.getElementById("departmentTaskAssignee");
+    const duty = document.getElementById("departmentTaskDuty");
+    const message = document.getElementById("departmentTaskAssignmentMessage");
+    if (!panel || !staff || !duty || !clinic) return;
+    panel.hidden = false;
+    staff.replaceChildren(new Option("Loading authorised team...", ""));
+    const { data, error } = await supabaseClient.rpc("get_task_assignment_options", { p_clinic_id: clinic.id });
+    if (error) { panel.hidden = true; console.error("Department task assignment access:", error); return; }
+    const assignments = Array.isArray(data?.staff_assignments) ? data.staff_assignments : [];
+    if (!assignments.length) { panel.hidden = true; return; }
+    staff.replaceChildren(new Option("Select team member", ""));
+    assignments.forEach(item => staff.add(new Option(item.name + " (" + item.staff_id + ") — " + item.department_name + (item.unit_name ? " / " + item.unit_name : ""), item.assignment_id)));
+    duty.replaceChildren(new Option("No approved duty linked", ""));
+    (data.approved_duties || []).forEach(item => duty.add(new Option(item.department_name + " — " + item.title, item.id)));
+    message.textContent = "Your assignment scope is limited by your active department leadership appointment.";
+    message.className = "message";
+}
+const departmentTaskForm = document.getElementById("departmentTaskAssignmentForm");
+if (departmentTaskForm) departmentTaskForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!currentClinic || !currentUser) return;
+    const button = document.getElementById("createDepartmentTaskButton");
+    const message = document.getElementById("departmentTaskAssignmentMessage");
+    button.disabled = true;
+    const due = document.getElementById("departmentTaskDueAt").value;
+    const { data, error } = await supabaseClient.rpc("create_supervised_staff_task", {
+        p_clinic_id: currentClinic.id,
+        p_assignment_id: document.getElementById("departmentTaskAssignee").value,
+        p_title: document.getElementById("departmentTaskTitle").value.trim(),
+        p_description: document.getElementById("departmentTaskDescription").value.trim() || null,
+        p_priority: document.getElementById("departmentTaskPriority").value,
+        p_due_at: due ? new Date(due).toISOString() : null,
+        p_duty_id: document.getElementById("departmentTaskDuty").value || null
+    });
+    button.disabled = false;
+    if (error) { message.textContent = friendlyError(error); message.className = "message error"; return; }
+    message.textContent = "Task assigned. The team member can accept, work on, and submit it for review.";
+    message.className = "message success";
+    departmentTaskForm.reset();
+    await loadDepartmentTaskAssignmentOptions(currentClinic);
+    if (typeof loadDepartmentPerformanceDashboard === "function") loadDepartmentPerformanceDashboard(currentClinic);
+    if (typeof loadHospitalDepartmentCommand === "function") loadHospitalDepartmentCommand(currentClinic);
+});
+const refreshDepartmentTaskOptions = document.getElementById("refreshDepartmentTaskOptions");
+if (refreshDepartmentTaskOptions) refreshDepartmentTaskOptions.addEventListener("click", () => { if (currentClinic) loadDepartmentTaskAssignmentOptions(currentClinic); });
+
 // HEALTHOS AI: TASK ASSIGNMENT PANEL
 async function loadTaskAssignmentOptions(clinic) {
     const form = document.getElementById("taskAssignmentForm");
