@@ -1036,6 +1036,33 @@
  </table></div>
 </div>
 
+<section class="panel" id="departmentKnowledgeReviewPanel" style="margin-top:24px" aria-labelledby="departmentKnowledgeReviewHeading">
+ <div class="panel-heading">
+  <div><p class="eyebrow">HEALTHOS AI KNOWLEDGE GOVERNANCE</p><h3 id="departmentKnowledgeReviewHeading">Department Knowledge Review</h3>
+  <p class="muted">Review, correct and approve departmental duties, FAQs and work instructions before staff can use them.</p></div>
+  <button type="button" class="btn btn-secondary" id="refreshDepartmentKnowledge">Refresh drafts</button>
+ </div>
+ <p id="departmentKnowledgeMessage" class="message" role="status" aria-live="polite">Administrator verification required.</p>
+ <label for="departmentKnowledgeSelect">Draft article</label>
+ <select id="departmentKnowledgeSelect"><option value="">Load drafts to review</option></select>
+ <div class="stats-grid" style="margin-top:14px">
+  <article class="stat-card"><p>Department</p><h3 id="knowledgeDepartmentLabel">—</h3></article>
+  <article class="stat-card"><p>Article type</p><h3 id="knowledgeTypeLabel">—</h3></article>
+  <article class="stat-card"><p>Review status</p><h3 id="knowledgeStatusLabel">—</h3></article>
+ </div>
+ <label for="knowledgeArticleTitle">Article title</label>
+ <input id="knowledgeArticleTitle" type="text" maxlength="180" placeholder="Article title">
+ <label for="knowledgeArticleSummary">Summary</label>
+ <textarea id="knowledgeArticleSummary" rows="2" maxlength="1000" placeholder="Short summary"></textarea>
+ <label for="knowledgeArticleContent">Knowledge content</label>
+ <textarea id="knowledgeArticleContent" rows="12" maxlength="12000" placeholder="Review and edit the departmental guidance here"></textarea>
+ <div class="button-row" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+  <button type="button" class="btn btn-secondary" id="saveDepartmentKnowledgeDraft">Save changes as draft</button>
+  <button type="button" class="primary-button" id="publishDepartmentKnowledgeArticle">Approve and publish</button>
+ </div>
+ <p class="disclaimer">Only verified clinic administrators can publish. Published guidance becomes available to staff assigned to that department. AI guidance does not replace hospital policy, clinical judgement or statutory approvals.</p>
+</section>
+
 </div>
 
 <nav class="workspace-page-nav" aria-label="Staff management pages">
