@@ -3898,6 +3898,138 @@ async function loadBillingData(clinic) {
             }
         }
 
+        // DEPARTMENT CASH DECLARATION + INDEPENDENT FINANCE VERIFICATION
+        const cashDepositForm = document.getElementById("departmentCashDepositForm");
+        const cashDepositMessage = document.getElementById("cashDepositMessage");
+        const cashDepositDepartment = document.getElementById("cashDepositDepartment");
+        const cashDepositRows = document.getElementById("departmentCashDepositRows");
+        const { data: cashDepartments, error: cashDepartmentsError } = await supabaseClient
+            .from("clinic_departments")
+            .select("id,department_name")
+            .eq("clinic_id", clinic.id)
+            .eq("is_active", true)
+            .order("department_name");
+        if (cashDepartmentsError) throw cashDepartmentsError;
+        if (cashDepositDepartment) {
+            const previous = cashDepositDepartment.value;
+            cashDepositDepartment.replaceChildren();
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = "Select department";
+            cashDepositDepartment.appendChild(placeholder);
+            (cashDepartments || []).forEach(department => {
+                const option = document.createElement("option");
+                option.value = department.id;
+                option.textContent = department.department_name;
+                cashDepositDepartment.appendChild(option);
+            });
+            if (previous) cashDepositDepartment.value = previous;
+        }
+        const cashDate = document.getElementById("cashDepositDate");
+        if (cashDate && !cashDate.value) cashDate.value = new Date().toISOString().slice(0,10);
+        if (cashDepositForm && cashDepositForm.dataset.bound !== "true") {
+            cashDepositForm.dataset.bound = "true";
+            cashDepositForm.addEventListener("submit", async event => {
+                event.preventDefault();
+                const submit = document.getElementById("submitCashDeposit");
+                submit.disabled = true;
+                if (cashDepositMessage) cashDepositMessage.textContent = "Submitting declaration…";
+                try {
+                    const payload = {
+                        clinic_id: clinic.id,
+                        department_id: cashDepositDepartment.value,
+                        shift_date: cashDate.value,
+                        shift_label: document.getElementById("cashDepositShift").value.trim(),
+                        currency: document.getElementById("cashDepositCurrency").value,
+                        declared_cash_amount: Number(document.getElementById("cashDepositDeclared").value),
+                        cash_bag_reference: document.getElementById("cashDepositBag").value.trim() || null,
+                        notes: document.getElementById("cashDepositNotes").value.trim() || null,
+                        recorded_by: currentUser.id
+                    };
+                    if (!payload.department_id || !payload.shift_label || !Number.isFinite(payload.declared_cash_amount) || payload.declared_cash_amount < 0) throw new Error("Complete the department, shift and valid cash amount.");
+                    const { error } = await supabaseClient.from("department_cash_deposits").insert(payload);
+                    if (error) throw error;
+                    cashDepositForm.reset();
+                    if (cashDate) cashDate.value = new Date().toISOString().slice(0,10);
+                    if (cashDepositMessage) cashDepositMessage.textContent = "Cash declaration submitted. It is awaiting independent Finance verification.";
+                    await loadBillingData(clinic);
+                } catch (error) {
+                    if (cashDepositMessage) cashDepositMessage.textContent = "Submission failed: " + (error.message || "Check your department permissions.");
+                } finally {
+                    submit.disabled = false;
+                }
+            });
+        }
+        const { data: cashDeposits, error: cashDepositsError } = await supabaseClient
+            .from("department_cash_deposits")
+            .select("id,department_id,shift_date,shift_label,currency,declared_cash_amount,deposited_amount,bank_reference,status,recorded_by,created_at")
+            .eq("clinic_id", clinic.id)
+            .order("created_at", { ascending: false })
+            .limit(100);
+        if (cashDepositsError) throw cashDepositsError;
+        if (cashDepositRows) {
+            cashDepositRows.replaceChildren();
+            if (!cashDeposits || !cashDeposits.length) {
+                const empty = document.createElement("tr");
+                const cell = document.createElement("td");
+                cell.colSpan = 7;
+                cell.textContent = "No department cash declarations submitted.";
+                empty.appendChild(cell);
+                cashDepositRows.appendChild(empty);
+            } else {
+                const deptNames = new Map((cashDepartments || []).map(d => [d.id,d.department_name]));
+                cashDeposits.forEach(item => {
+                    const row = document.createElement("tr");
+                    const money = value => value == null ? "Awaiting verification" : new Intl.NumberFormat("en-NG",{style:"currency",currency:item.currency,maximumFractionDigits:2}).format(Number(value));
+                    const vals = [item.shift_date + " / " + item.shift_label,deptNames.get(item.department_id) || "Department",money(item.declared_cash_amount),money(item.deposited_amount),item.bank_reference || "—",item.status.replace(/_/g," ")];
+                    vals.forEach(value => { const cell=document.createElement("td"); cell.textContent=String(value); row.appendChild(cell); });
+                    const actionCell=document.createElement("td");
+                    if (item.status === "submitted") {
+                        const verify=document.createElement("button");
+                        verify.type="button"; verify.className="secondary-button"; verify.textContent="Verify / review";
+                        verify.addEventListener("click", async () => {
+                            const decision=window.prompt("Enter VERIFIED or REJECTED. Only an independent authorised Finance reviewer can complete this action.");
+                            if (!decision || !["VERIFIED","REJECTED"].includes(decision.trim().toUpperCase())) return;
+                            const status=decision.trim().toLowerCase();
+                            let update={status,reviewed_by:currentUser.id,reviewed_at:new Date().toISOString()};
+                            const note=window.prompt("Finance review note (required):");
+                            if (!note || note.trim().length<3) return;
+                            update.review_notes=note.trim();
+                            if (status==="verified") {
+                                const amount=window.prompt("Enter the bank-confirmed deposited amount:");
+                                const bankRef=window.prompt("Enter the bank statement / deposit reference:");
+                                const evidence=window.prompt("Enter the secure evidence file path (deposit slip / bank proof):");
+                                if (amount===null || !Number.isFinite(Number(amount)) || Number(amount)<0 || !bankRef?.trim() || !evidence?.trim()) {
+                                    if(cashDepositMessage) cashDepositMessage.textContent="Verification requires a valid banked amount, bank reference and evidence path.";
+                                    return;
+                                }
+                                update.deposited_amount=Number(amount);
+                                update.bank_reference=bankRef.trim();
+                                update.bank_evidence_path=evidence.trim();
+                                update.bank_booked_at=new Date().toISOString();
+                            }
+                            verify.disabled=true;
+                            try {
+                                const {error}=await supabaseClient.from("department_cash_deposits").update(update).eq("id",item.id).eq("clinic_id",clinic.id).eq("status","submitted");
+                                if(error) throw error;
+                                if(cashDepositMessage) cashDepositMessage.textContent="Finance review saved. Original cash declaration remains unchanged.";
+                                await loadBillingData(clinic);
+                            } catch(error) {
+                                if(cashDepositMessage) cashDepositMessage.textContent="Review not saved: "+(error.message || "Check Finance review permissions and ensure the reviewer is not the recorder.");
+                                verify.disabled=false;
+                            }
+                        });
+                        actionCell.appendChild(verify);
+                    } else {
+                        actionCell.textContent="Locked after review";
+                    }
+                    row.appendChild(actionCell);
+                    cashDepositRows.appendChild(row);
+                });
+            }
+        }
+        // END DEPARTMENT CASH DECLARATION + INDEPENDENT FINANCE VERIFICATION
+
         const departmentPaymentsBody =
             document.getElementById("departmentPaymentsBody");
 
