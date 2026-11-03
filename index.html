@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261103-35" defer></script>
+    <script src="app.js?v=20261103-36" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -785,6 +785,7 @@
                     <a href="#patientRecordSharing" class="nav-item">▣ Patient Record Sharing</a>
                     <a href="#ussdDiagnostics" class="nav-item">⌘ USSD Diagnostics</a>
                     <a href="#multiFacilityManagement" class="nav-item">▦ Multi-Facility Management</a>
+                    <a href="#patientConnectionRequests" class="nav-item">♧ Patient Connection Requests</a>
                     <a href="#aiAnalytics" class="nav-item">◈ AI Intelligence &amp; Analytics</a>
                     <a href="#patientFlow" class="nav-item">⇄ Queue &amp; Beds</a>
                     <a href="#clinicalRecords" class="nav-item">✚ Clinical Records</a>
@@ -2881,6 +2882,20 @@
  <p class="disclaimer">USSD gateway connection is not active. This is the facility-side request and tracking foundation; staff currently log enquiries received through an external USSD channel. No diagnosis, test result or sensitive clinical information is sent by USSD. Identity, consent, clinical appropriateness, payment and sample collection must be verified by authorised staff before testing.</p>
 </section>
 
+
+<!-- HEALTHOS AI: HOSPITAL-SIDE PATIENT CONNECTION REQUESTS -->
+<section id="patientConnectionRequests" class="panel" hidden>
+ <div class="panel-heading"><div><p class="eyebrow">GLOBAL PATIENT ACCESS</p><h2>Patient Connection Requests</h2><p class="muted">Review requests from patients who want to connect their HealthOS account to this hospital.</p></div><button id="refreshPatientConnectionRequests" type="button" class="logout-button">Refresh requests</button></div>
+ <div class="stats-grid">
+  <article class="stat-card"><p>Pending requests</p><h3 id="patientConnectionPendingCount">—</h3></article>
+  <article class="stat-card"><p>Approved</p><h3 id="patientConnectionApprovedCount">—</h3></article>
+  <article class="stat-card"><p>Rejected</p><h3 id="patientConnectionRejectedCount">—</h3></article>
+ </div>
+ <p id="patientConnectionRequestsMessage" class="message" role="status" aria-live="polite">Open this page to load requests for your active hospital.</p>
+ <div class="table-wrap"><table><thead><tr><th>Requested</th><th>Patient</th><th>Phone</th><th>Country</th><th>Message</th><th>Status</th><th>Review</th></tr></thead><tbody id="patientConnectionRequestsBody"><tr><td colspan="7">Requests will appear here.</td></tr></tbody></table></div>
+ <p class="disclaimer">Only clinic owners and administrators can review requests. Approval links the patient account to this hospital but does not grant access to clinical records. Separate patient consent and record-sharing authorisation are still required.</p>
+</section>
+<!-- END HEALTHOS AI: HOSPITAL-SIDE PATIENT CONNECTION REQUESTS -->
 
 <!-- HEALTHOS AI: MULTI-FACILITY MANAGEMENT -->
 <section id="multiFacilityManagement" class="panel" hidden>
