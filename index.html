@@ -965,6 +965,28 @@
                             </article>
 
                         </div>
+
+<div class="panel" id="hospitalDepartmentCommandPanel" style="margin-top:24px">
+ <div class="panel-heading">
+  <div><p class="eyebrow">HOSPITAL COMMAND</p><h3>Department Operations Overview</h3>
+  <p class="muted">Central oversight of incoming patient requests and assigned department staffing.</p></div>
+  <button type="button" class="btn btn-secondary" id="refreshDepartmentCommand">Refresh overview</button>
+ </div>
+ <p class="message" id="departmentCommandMessage" role="status">Loading department operations...</p>
+ <div class="stats-grid">
+  <article class="stat-card"><p>Active Departments</p><h3 id="commandDepartmentTotal">—</h3></article>
+  <article class="stat-card"><p>Assigned Staff</p><h3 id="commandStaffTotal">—</h3></article>
+  <article class="stat-card"><p>Pending Requests</p><h3 id="commandPendingTotal">—</h3></article>
+  <article class="stat-card"><p>Accepted Requests</p><h3 id="commandAcceptedTotal">—</h3></article>
+  <article class="stat-card"><p>Rejected Requests</p><h3 id="commandRejectedTotal">—</h3></article>
+  <article class="stat-card"><p>Completed Appointments</p><h3 id="commandCompletedTotal">—</h3></article>
+ </div>
+ <div class="table-wrap"><table>
+  <thead><tr><th>Department</th><th>Active staff</th><th>Pending</th><th>Accepted</th><th>Rejected</th><th>Completed</th></tr></thead>
+  <tbody id="departmentCommandTableBody"><tr><td colspan="6">Loading...</td></tr></tbody>
+ </table></div>
+</div>
+
 </div>
 
 <nav class="workspace-page-nav" aria-label="Staff management pages">
