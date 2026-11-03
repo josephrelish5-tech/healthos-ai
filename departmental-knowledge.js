@@ -58,7 +58,7 @@ const synonymGroups=[
  ["quality","accreditation","indicator","improvement"]
 ];
 function expandTokens(tokens){const out=new Set(tokens);synonymGroups.forEach(group=>{if(group.some(x=>tokens.includes(x)))group.forEach(x=>out.add(x));});return [...out];}
-function tokenize(text){return String(text||"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g," ").split(/\\s+/).filter(t=>t.length>1&&!stopWords.has(t));}
+function tokenize(text){return String(text||"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g," ").split(/\s+/).filter(t=>t.length>1&&!stopWords.has(t));}
 window.healthOSDepartmentKnowledgeSearch=async function(query){
  if(!clinicId()||!currentUser)return null;
  if(!departments.length)await init();
@@ -76,7 +76,7 @@ window.healthOSDepartmentKnowledgeSearch=async function(query){
   const uniqueMatched=[...new Set(matched)];
   const coverage=uniqueMatched.length/Math.max(1,tokens.length);
   if(coverage<0.25)score=0;
-  return {...a,_score:score,_matched:uniqueMatched,_coverage:coverage};
+  return {...a,_departmentName:departments.find(d=>d.id===a.department_id)?.department_name||'Assigned department',_score:score,_matched:uniqueMatched,_coverage:coverage};
  }).filter(a=>a._score>=3).sort((a,b)=>b._score-a._score||new Date(b.updated_at)-new Date(a.updated_at));
  return scored.slice(0,5);
 };
