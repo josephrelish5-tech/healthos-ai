@@ -11132,3 +11132,101 @@ async function loadTelemedicineDashboard(){
 }
 document.getElementById("telemedicineRefresh")?.addEventListener("click",loadTelemedicineDashboard);
 document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').forEach(link=>link.addEventListener("click",()=>void loadTelemedicineDashboard()));
+
+
+// ============================================================
+// HEALTHOS AI: DEPARTMENTAL KNOWLEDGE REVIEW & PUBLISH WORKSPACE
+// ============================================================
+(function(){
+ "use strict";
+ const $=id=>document.getElementById(id);
+ const select=$("departmentKnowledgeSelect");
+ const message=$("departmentKnowledgeMessage");
+ const title=$("knowledgeArticleTitle");
+ const summary=$("knowledgeArticleSummary");
+ const content=$("knowledgeArticleContent");
+ if(!select||!message||!title||!summary||!content)return;
+ let drafts=[];
+ let selected=null;
+ function say(text,error=false){message.textContent=text;message.className=error?"message error":"message";}
+ function clearEditor(){
+  selected=null;title.value="";summary.value="";content.value="";
+  $("knowledgeDepartmentLabel").textContent="—";
+  $("knowledgeTypeLabel").textContent="—";
+  $("knowledgeStatusLabel").textContent="—";
+ }
+ async function loadDrafts(){
+  if(!currentUser||!currentClinic||!managementVerified||!supabaseClient){
+   say("Verify administrator access to manage departmental knowledge.",true);return;
+  }
+  say("Loading departmental draft articles...");
+  select.replaceChildren(new Option("Loading drafts...",""));
+  clearEditor();
+  const [{data:articles,error:articleError},{data:departments,error:departmentError}]=await Promise.all([
+   supabaseClient.from("department_knowledge_articles").select("id,department_id,article_type,title,summary,content,status,review_status").eq("clinic_id",currentClinic.id).eq("status","draft").order("department_id").order("article_type").limit(500),
+   supabaseClient.from("clinic_departments").select("id,department_name").eq("clinic_id",currentClinic.id).eq("is_active",true)
+  ]);
+  if(articleError||departmentError){
+   console.error("Department knowledge review load failed",articleError||departmentError);
+   say("Could not load draft knowledge. Confirm administrator permissions and database connectivity.",true);
+   select.replaceChildren(new Option("Unable to load drafts",""));return;
+  }
+  const names=new Map((departments||[]).map(d=>[d.id,d.department_name]));
+  drafts=(articles||[]).map(a=>({...a,department_name:names.get(a.department_id)||"Department"}));
+  select.replaceChildren(new Option(drafts.length? "Choose a draft article":"No draft articles found",""));
+  drafts.forEach(a=>select.add(new Option(a.department_name+" — "+a.article_type.replaceAll("_"," ")+" — "+a.title,a.id)));
+  say(drafts.length+" draft articles available across your active departments. Review and edit each article before publishing.");
+ }
+ function showSelected(){
+  selected=drafts.find(a=>a.id===select.value)||null;
+  if(!selected){clearEditor();return;}
+  title.value=selected.title||"";
+  summary.value=selected.summary||"";
+  content.value=selected.content||"";
+  $("knowledgeDepartmentLabel").textContent=selected.department_name;
+  $("knowledgeTypeLabel").textContent=selected.article_type.replaceAll("_"," ");
+  $("knowledgeStatusLabel").textContent=(selected.review_status||"not_started")+" · draft";
+  say("Review the article carefully. Save keeps it as a draft; publish makes it available to authorised staff in this department.");
+ }
+ async function saveDraft(publish){
+  if(!currentUser||!currentClinic||!managementVerified||!selected){
+   say("Select a draft and verify administrator access first.",true);return;
+  }
+  const cleanTitle=title.value.trim(),cleanSummary=summary.value.trim(),cleanContent=content.value.trim();
+  if(cleanTitle.length<3||cleanContent.length<10){
+   say("Enter an article title and at least 10 characters of guidance content.",true);return;
+  }
+  const button=$(publish?"publishDepartmentKnowledgeArticle":"saveDepartmentKnowledgeDraft");
+  button.disabled=true;
+  const now=new Date().toISOString();
+  const update={
+   title:cleanTitle,summary:cleanSummary,content:cleanContent,
+   updated_by:currentUser.id,updated_at:now
+  };
+  if(publish){
+   update.status="published";
+   update.review_status="approved";
+   update.reviewed_by=currentUser.id;
+   update.reviewed_at=now;
+   update.published_at=now;
+  }
+  const {error}=await supabaseClient.from("department_knowledge_articles").update(update).eq("id",selected.id).eq("clinic_id",currentClinic.id);
+  button.disabled=false;
+  if(error){
+   console.error("Department knowledge save failed",error);
+   say("Could not save this article. Check owner permissions and try again.",true);return;
+  }
+  say(publish?"Article approved and published. Assigned staff in "+selected.department_name+" can now access it.":"Draft changes saved. The article remains unpublished.");
+  await loadDrafts();
+ }
+ $("refreshDepartmentKnowledge")?.addEventListener("click",loadDrafts);
+ select.addEventListener("change",showSelected);
+ $("saveDepartmentKnowledgeDraft")?.addEventListener("click",()=>saveDraft(false));
+ $("publishDepartmentKnowledgeArticle")?.addEventListener("click",()=>saveDraft(true));
+ // Load only after the administrator has completed the existing verification flow.
+ const start=()=>{if(currentUser&&currentClinic&&managementVerified)loadDrafts();};
+ document.addEventListener("healthos:management-verified",start);
+ setTimeout(start,1200);
+ console.log("HealthOS departmental knowledge review workspace initialized.");
+})();
+// END HEALTHOS AI: DEPARTMENTAL KNOWLEDGE REVIEW WORKSPACE
