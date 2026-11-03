@@ -16,6 +16,7 @@
     <script src="offline-department-tasks.js?v=20261103-1" defer></script>
     <script src="hospital-incidents.js?v=20261103-1" defer></script>
     <script src="hospital-compliance.js?v=20261103-1" defer></script>
+    <script src="compliance-evidence-vault.js?v=20261103-1" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -1956,6 +1957,23 @@
   </form>
   <p id="complianceMessage" class="message" role="status">Submissions are recorded as pending review. Only authorised review workflows should verify, close or certify an item.</p>
   <div class="table-wrap"><table><thead><tr><th>Reference</th><th>Type</th><th>Framework</th><th>Requirement / finding</th><th>Department</th><th>Severity</th><th>Due</th><th>Status</th></tr></thead><tbody id="complianceRows"><tr><td colspan="8">Sign in to load the clinic compliance register.</td></tr></tbody></table></div>
+ </section>
+
+
+ <section class="panel" id="complianceEvidenceVault" style="margin:16px 0" aria-labelledby="complianceEvidenceHeading">
+  <h3 id="complianceEvidenceHeading">Compliance Evidence Vault &amp; Documentation Pack</h3>
+  <p class="muted">Store inspection reports, policies, certificates, audit evidence and corrective-action documents in a private clinic-scoped vault. Maximum file size: 15 MB. Do not upload patient records or unnecessary personal data.</p>
+  <form id="complianceEvidenceForm" class="auth-form">
+   <label for="evidenceComplianceReference">Link evidence to compliance register reference</label><select id="evidenceComplianceReference" required><option value="">Load register references…</option></select>
+   <label for="complianceEvidenceFile">Evidence document (PDF, PNG, JPEG, TXT, CSV, DOCX or XLSX)</label><input id="complianceEvidenceFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.txt,.csv,.docx,.xlsx" required>
+   <label for="complianceEvidenceCaption">Evidence description (optional)</label><input id="complianceEvidenceCaption" maxlength="1000" placeholder="What does this document demonstrate?">
+   <button id="complianceEvidenceUpload" type="submit" class="primary-button">Upload evidence securely</button>
+  </form>
+  <p id="complianceEvidenceMessage" class="message" role="status">Evidence files are private and accessible only to active members of this clinic.</p>
+  <div class="table-wrap"><table><thead><tr><th>File</th><th>Compliance reference</th><th>Description</th><th>Uploaded</th><th>Action</th></tr></thead><tbody id="complianceEvidenceRows"><tr><td colspan="5">Load the vault to view evidence.</td></tr></tbody></table></div>
+  <div class="panel-heading" style="margin-top:18px"><div><h4>Regulatory Documentation Pack Generator</h4><p class="muted">Generate a clinic-scoped, dated evidence index for review. Exported pack is a working document, not an official certificate or legal opinion.</p></div></div>
+  <button type="button" id="generateCompliancePack" class="primary-button">Generate documentation pack</button>
+  <p id="compliancePackMessage" class="message" role="status">The pack includes compliance register entries and linked evidence inventory. Use your browser's Print → Save as PDF to create a PDF copy.</p>
  </section>
 
  <section class="panel" id="hospitalIncidentReporting" style="margin:16px 0" aria-labelledby="incidentReportingHeading">
