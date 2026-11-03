@@ -3939,7 +3939,8 @@ async function loadBillingData(clinic) {
                         duplicate_invoice_reference: "Duplicate invoice reference detected",
                         receipt_not_bank_matched: "Accepted department receipt not yet bank-reconciled",
                         invoice_payment_variance: "Recorded invoice payments differ from accepted receipts",
-                        unallocated_bank_credit: "Positive bank deposit has no exact invoice or accepted receipt reference"
+                        unallocated_bank_credit: "Positive bank deposit has no exact invoice or accepted receipt reference",
+                        duplicate_payment_reference: "Repeated accepted payment reference — verify for possible duplicate capture"
                     };
                     const moneyText = value => value == null ? "—" :
                         new Intl.NumberFormat("en-NG", {style:"currency",currency:item.currency || "NGN",maximumFractionDigits:2}).format(Number(value));
