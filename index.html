@@ -361,6 +361,13 @@
                     </label>
                     <button id="patientFileUploadButton" class="primary-button" type="submit">Upload securely</button>
                 </form>
+                <section class="panel" id="patientDocumentOcrPanel" aria-labelledby="patientDocumentOcrHeading">
+                    <h4 id="patientDocumentOcrHeading">Medical Document OCR Preview</h4>
+                    <p class="muted">Preview text from a selected prescription, laboratory report or medical document in this browser before secure upload. The extracted text is not automatically added to your medical record or sent to an AI service. Always retain and verify the original document.</p>
+                    <button type="button" id="patientDocumentOcrButton" class="secondary-button" disabled>Read selected document</button>
+                    <p id="patientDocumentOcrStatus" class="message" role="status" aria-live="polite">Choose a PDF or image above to prepare a local OCR preview.</p>
+                    <details id="patientDocumentOcrResult" hidden><summary>Review extracted text</summary><pre id="patientDocumentOcrText" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre></details>
+                </section>
                 <p id="patientFileMessage" class="message" role="status" aria-live="polite"></p>
                 <div id="patientFileList" class="stats-grid"><p class="muted">No documents loaded.</p></div>
                 <h3>Specialist referrals requiring your decision</h3>
