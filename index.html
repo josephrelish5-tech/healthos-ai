@@ -3471,7 +3471,7 @@
  <div class="form-group"><label for="dkcSearch">Search your departmental knowledge</label><input id="dkcSearch" type="search" placeholder="Search duties, SOPs, instructions, FAQs or policies"><button type="button" id="dkcSearchButton" class="primary-button">Search knowledge</button></div>
  <div id="dkcArticleReader" class="panel" hidden><h3 id="dkcArticleTitle"></h3><p id="dkcArticleMeta" class="muted"></p><div id="dkcArticleContent" style="white-space:pre-wrap;line-height:1.6"></div><button type="button" id="dkcOpenWorkspace" class="primary-button">Open linked workspace</button><button type="button" id="dkcCloseReader" class="logout-button">Close</button></div>
  <div class="table-wrap"><table><thead><tr><th>Department</th><th>Type</th><th>Title</th><th>Status</th><th>Version</th><th>Last updated</th><th>Action</th></tr></thead><tbody id="dkcRows"><tr><td colspan="7">Loading authorized knowledge...</td></tr></tbody></table></div>
- <div id="dkcAdminPanel" hidden style="margin-top:24px"><h3>Knowledge administration</h3><p class="muted">Create draft content for a department. Review it before publishing. Only the clinic owner can manage knowledge in this release.</p>
+ <div id="dkcAdminPanel" hidden style="margin-top:24px"><h3>Knowledge administration</h3><p class="muted">Create draft content for a department. Review it before publishing. Clinic owners create drafts. A different owner account must independently review before publication. Published content is tracked in immutable version history.</p>
  <form id="dkcForm" class="auth-form">
  <label>Department<select id="dkcDepartment" required></select></label>
  <label>Article type<select id="dkcType"><option value="department_duty">Department duties</option><option value="standard_operating_procedure">Standard operating procedure</option><option value="work_instruction">Work instruction</option><option value="faq">Frequently asked question</option><option value="navigation_guide">Navigation guide</option><option value="policy_reference">Policy reference</option></select></label>
@@ -3479,7 +3479,7 @@
  <label>Short summary<textarea id="dkcSummary" maxlength="800" rows="2"></textarea></label>
  <label>Full instructions / duties / answer<textarea id="dkcContent" minlength="10" maxlength="12000" rows="7" required placeholder="Write clear steps, responsibilities, required approvals, evidence and escalation instructions."></textarea></label>
  <label>Search keywords (comma separated)<input id="dkcKeywords" maxlength="500" placeholder="stock receipt, batch, expiry, pharmacy"></label>
- <label>Linked workspace section ID (optional)<input id="dkcWorkspace" maxlength="100" placeholder="Use an existing page section ID"></label>
+ <label>Next review due date<input id="dkcReviewDue" type="date"></label><label>Linked workspace section ID (optional)<input id="dkcWorkspace" maxlength="100" placeholder="Use an existing page section ID"></label>
  <button type="submit" class="primary-button">Save as draft</button>
  </form></div>
  <p id="dkcMessage" class="message" role="status" aria-live="polite">Sign in to load your department's knowledge.</p>
