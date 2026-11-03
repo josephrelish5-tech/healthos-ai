@@ -9592,7 +9592,7 @@ function openSection(sectionId, sectionName) {
     if(previous)patientSelect.value=previous;
    }
   }
-  const {data,error}=await supabaseClient.from("ussd_diagnostic_requests").select("id,patient_id,phone_number,patient_reference,service_code,requested_service,request_channel,status,created_at,patients(first_name,last_name,patient_number)").eq("clinic_id",currentClinic.id).order("created_at",{ascending:false}).limit(300);
+  const {data,error}=await supabaseClient.from("ussd_diagnostic_requests").select("id,patient_id,phone_number,patient_reference,service_code,requested_service,request_channel,status,appointment_at,assigned_department,created_at,patients(first_name,last_name,patient_number)").eq("clinic_id",currentClinic.id).order("created_at",{ascending:false}).limit(300);
   if(error){body.replaceChildren();const row=body.insertRow();const td=cell(row,"Could not load requests: "+error.message);td.colSpan=8;return;}
   const rows=data||[];
   $u("ussdNewCount").textContent=rows.filter(x=>x.status==="new").length;
@@ -9604,21 +9604,21 @@ function openSection(sectionId, sectionName) {
   rows.forEach(item=>{
    const row=body.insertRow(),p=item.patients||{};
    cell(row,date(item.created_at));cell(row,[p.patient_number,p.first_name,p.last_name,item.patient_reference].filter(Boolean).join(" — "));
-   cell(row,item.phone_number);cell(row,item.request_channel.replaceAll("_"," "));cell(row,item.service_code);cell(row,item.requested_service);cell(row,item.status.replaceAll("_"," "));
+   cell(row,item.phone_number);cell(row,item.request_channel.replaceAll("_"," "));cell(row,item.service_code);cell(row,item.requested_service);cell(row,item.assigned_department||"Laboratory");cell(row,item.appointment_at?date(item.appointment_at):"Not scheduled");cell(row,item.status.replaceAll("_"," "));
    const action=cell(row,"");
    const select=document.createElement("select");
    ["new","verification_required","accepted","scheduled","sample_collected","completed","cancelled","rejected"].forEach(status=>{const option=document.createElement("option");option.value=status;option.textContent=status.replaceAll("_"," ");select.appendChild(option);});
    select.value=item.status;
-   const note=document.createElement("input");note.type="text";note.maxLength=500;note.placeholder="Staff note (optional)";note.setAttribute("aria-label","Staff review note");
+   const note=document.createElement("input");note.type="text";note.maxLength=500;note.placeholder="Staff note (optional)";note.setAttribute("aria-label","Staff review note");\n   const appointment=document.createElement("input");appointment.type="datetime-local";appointment.setAttribute("aria-label","Appointment date and time");if(item.appointment_at)appointment.value=new Date(item.appointment_at).toISOString().slice(0,16);
    const save=document.createElement("button");save.type="button";save.className="logout-button";save.textContent="Update";
    save.addEventListener("click",async()=>{
     if(!window.confirm("Save this diagnostic request status? Confirm patient identity and test suitability before accepting or scheduling."))return;
     save.disabled=true;
-    const {error:updateError}=await supabaseClient.from("ussd_diagnostic_requests").update({status:select.value,staff_note:note.value.trim()||null,reviewed_by:currentUser.id,reviewed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",item.id).eq("clinic_id",currentClinic.id);
+    if(select.value==="scheduled"&&!appointment.value){say("Choose an appointment date and time before scheduling.",true);save.disabled=false;return;}\n    const {error:updateError}=await supabaseClient.from("ussd_diagnostic_requests").update({status:select.value,appointment_at:appointment.value?new Date(appointment.value).toISOString():null,staff_note:note.value.trim()||null,reviewed_by:currentUser.id,reviewed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",item.id).eq("clinic_id",currentClinic.id);
     if(updateError){say("Could not update request: "+updateError.message,true);save.disabled=false;return;}
     say("Diagnostic request updated.");await loadUssdDiagnosticRequests();
    });
-   action.append(select,note,save);
+   action.append(select,appointment,note,save);
   });
   say("Loaded "+rows.length+" diagnostic request(s).");
  }
