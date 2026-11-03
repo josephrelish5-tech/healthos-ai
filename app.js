@@ -6351,257 +6351,98 @@ if (refreshAppointmentsButton) {
 // ============================================================
 // ============================================================
 // HEALTHOS AI STAFF ASSISTANT
-// Guided staff workflow — prototype version
-// ============================================================
-
+// Department-aware navigation and work guidance. This assistant never bypasses RLS.
 (function initializeHealthOSStaffAssistant() {
-    const form = document.getElementById("staffAssistantForm");
-    const input = document.getElementById("staffAssistantInput");
-    const response = document.getElementById("staffAssistantResponse");
-    const responseTitle = document.getElementById("staffAssistantResponseTitle");
-    const responseText = document.getElementById("staffAssistantResponseText");
-    const actionButton = document.getElementById("staffAssistantActionButton");
+    const form=document.getElementById("staffAssistantForm");
+    const input=document.getElementById("staffAssistantInput");
+    const response=document.getElementById("staffAssistantResponse");
+    const responseTitle=document.getElementById("staffAssistantResponseTitle");
+    const responseText=document.getElementById("staffAssistantResponseText");
+    const actionButton=document.getElementById("staffAssistantActionButton");
+    const panel=document.getElementById("staffAssistant");
+    const launcher=document.getElementById("staffAssistantLauncher");
+    const closeButton=document.getElementById("staffAssistantClose");
+    if(!form||!input||!response||!responseTitle||!responseText||!actionButton)return;
 
-    if (!form || !input || !response || !responseTitle || !responseText || !actionButton) {
-        console.warn("HealthOS Staff Assistant: Required HTML elements were not found.");
+    let pendingSection=null;
+    let staffContext=null;
+    const routes=[
+      {owner:"Reception / Patient Access",aliases:["reception","front desk","patient access","admissions","medical records"],section:"patients",terms:["register patient","new patient","patient registration","patient demographics","patient file"]},
+      {owner:"Reception / Appointment Desk",aliases:["reception","front desk","appointment","patient access"],section:"appointments",terms:["appointment","schedule","booking","reschedule","appointment list"]},
+      {owner:"Patient Flow / Admissions",aliases:["reception","admissions","nursing","patient flow"],section:"patientFlow",terms:["queue","waiting patient","triage queue","admission","bed allocation","patient flow"]},
+      {owner:"Clinical / Nursing",aliases:["clinical","nursing","doctor","medical","emergency","outpatient","inpatient"],section:"clinicalRecords",terms:["clinical record","clinical note","encounter","vitals","patient assessment","medical history","consultation note"]},
+      {owner:"Clinical / Medical Scribe",aliases:["clinical","nursing","doctor","medical"],section:"clinicalScribe",terms:["medical scribe","scribe","transcribe","voice note","clinical dictation"]},
+      {owner:"Clinical / Decision Support",aliases:["clinical","nursing","doctor","medical","emergency"],section:"clinicalDecisionSupportWorkspace",terms:["clinical decision support","risk review","clinical risk","allergy safety","medication allergy","vital trend","clinical alert"]},
+      {owner:"Pharmacy",aliases:["pharmacy","pharmacist","dispensary"],section:"pharmacy",terms:["medicine stock","drug inventory","pharmacy inventory","medicine batch","expiry","low stock","barcode","dispensing","prescription stock"]},
+      {owner:"Pharmacy / Dispensing",aliases:["pharmacy","pharmacist","dispensary"],section:"pharmacyDispensingWorkspace",terms:["dispense","dispensing","dispensing history"]},
+      {owner:"Pharmacy / Procurement",aliases:["pharmacy","procurement","purchasing"],section:"pharmacyProcurementWorkspace",terms:["pharmacy supplier","purchase order","receive medicine","goods receipt","supplier payment"]},
+      {owner:"Finance / Billing",aliases:["finance","accounts","billing","cashier","revenue","audit"],section:"billing",terms:["billing","invoice","payment","outstanding","revenue","refund","pos reconciliation","cashier"]},
+      {owner:"Service Operations",aliases:["clinical","nursing","laboratory","radiology","theatre","service operations"],section:"serviceCapture",terms:["record service","performed service","procedure","laboratory test","scan performed","service capture"]},
+      {owner:"Human Resources / Staff Management",aliases:["human resources","hr","admin","management"],section:"adminStaffDashboard",terms:["staff attendance","staff shift","staff roster","staff online","staff credential","staff license","staff competency","staff management"]},
+      {owner:"Compliance / Risk",aliases:["compliance","quality","admin","management","risk"],section:"hospitalComplianceWorkspace",terms:["compliance","inspection","regulatory","audit register","corrective action","evidence vault","accreditation"]},
+      {owner:"Quality Assurance",aliases:["quality","compliance","admin","management"],section:"hospitalQualityWorkspace",terms:["quality indicator","quality improvement","accreditation","patient feedback","performance indicator"]},
+      {owner:"Clinical Governance",aliases:["clinical","nursing","doctor","medical","quality","management"],section:"clinicalGovernanceWorkspace",terms:["mortality review","morbidity","adverse event","near miss","root cause","clinical governance","patient safety review"]},
+      {owner:"Hospital Incident / Safety",aliases:["all departments","security","clinical","nursing","management","risk"],section:"hospitalIncidentReporting",terms:["report incident","incident report","safety incident","security incident","hazard","data breach","near miss report"]},
+      {owner:"Department Task Workspace",aliases:["all departments"],section:"offlineDepartmentTaskWorkspace",terms:["department task","handover","blocker","task progress","completion report","offline task"]}
+    ];
+    function show(title,message,sectionId=null,label="Open workspace"){
+      responseTitle.textContent=title;responseText.textContent=message;response.hidden=false;
+      pendingSection=sectionId;actionButton.hidden=!sectionId;if(sectionId)actionButton.textContent=label;
+      response.scrollIntoView({behavior:"smooth",block:"nearest"});
+    }
+    function openSection(id,name){
+      const section=document.getElementById(id);
+      if(!section){show("Workspace not available",name+" is not currently available in this version. Contact your system administrator.");return;}
+      const parent=section.closest(".panel");
+      if(parent&&typeof window.showHealthOSView==="function")window.showHealthOSView(parent.id);
+      if(panel)panel.hidden=true;if(launcher)launcher.setAttribute("aria-expanded","false");
+      requestAnimationFrame(()=>section.scrollIntoView({behavior:"smooth",block:"start"}));
+    }
+    function normalize(s){return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
+    async function loadStaffContext(){
+      if(typeof supabaseClient==="undefined"||typeof currentUser==="undefined"||!currentUser||!currentClinic||!currentClinic.id)return null;
+      const {data,error}=await supabaseClient.from("staff_profiles").select("department,professional_role,employment_status").eq("clinic_id",currentClinic.id).eq("user_id",currentUser.id).limit(1).maybeSingle();
+      if(error){console.warn("Department assistant profile lookup failed",error);return null;}
+      if(!data||data.employment_status&&data.employment_status!=="active")return null;
+      return {department:data.department||"",role:data.professional_role||""};
+    }
+    function ownsRoute(department,route){
+      const d=normalize(department),aliases=route.aliases||[];
+      if(aliases.includes("all departments"))return true;
+      return aliases.some(a=>d.includes(normalize(a))||normalize(a).includes(d)&&d.length>3);
+    }
+    function bestMatch(query){
+      const q=normalize(query);
+      return routes.map(r=>({...r,score:r.terms.reduce((n,t)=>n+(q.includes(normalize(t))?normalize(t).split(" ").length:0),0)})).filter(r=>r.score>0).sort((a,b)=>b.score-a.score)[0]||null;
+    }
+    async function handleRequest(request){
+      const q=String(request||"").trim();
+      if(!q){show("What do you need help with?","Describe the task or information you are trying to find.");return;}
+      if(!staffContext)staffContext=await loadStaffContext();
+      if(!staffContext){
+        show("Department access not identified","I could not verify your active staff department. Please sign in with your staff account or ask an administrator to complete your staff profile. I can’t disclose or route you into department-specific workspaces until your department is verified.");
         return;
-    }
-    // HEALTHOS AI: FLOATING ASSISTANT OPEN/CLOSE CONTROLS
-
-    const assistantPanel = document.getElementById("staffAssistant");
-    const assistantLauncher = document.getElementById("staffAssistantLauncher");
-    const assistantCloseButton = document.getElementById("staffAssistantClose");
-
-    function setAssistantOpen(isOpen) {
-        if (!assistantPanel || !assistantLauncher) {
-            console.warn("HealthOS AI: Assistant panel or launcher not found.");
-            return;
-        }
-
-        assistantPanel.hidden = !isOpen;
-        assistantLauncher.setAttribute("aria-expanded", String(isOpen));
-
-        if (isOpen && input) {
-            input.focus();
-        }
-
-        if (!isOpen) {
-            assistantLauncher.focus();
-        }
-    }
-
-    if (assistantLauncher) {
-        assistantLauncher.addEventListener("click", function() {
-            setAssistantOpen(true);
-        });
-    }
-
-    if (assistantCloseButton) {
-        assistantCloseButton.addEventListener("click", function() {
-            setAssistantOpen(false);
-        });
-    }
-
-    document.addEventListener("keydown", function(event) {
-        if (event.key === "Escape" && assistantPanel && !assistantPanel.hidden) {
-            setAssistantOpen(false);
-        }
-    });
-
-    // END FLOATING ASSISTANT CONTROLS
-    let pendingSection = null;
-
-    function showResponse(title, message, sectionId = null, buttonLabel = "Open task") {
-        responseTitle.textContent = title;
-        responseText.textContent = message;
-        response.hidden = false;
-
-        pendingSection = sectionId;
-        actionButton.hidden = !sectionId;
-
-        if (sectionId) {
-            actionButton.textContent = buttonLabel;
-        }
-
-        response.scrollIntoView({
-            behavior: "smooth",
-            block: "nearest"
-        });
-    }
-
-    
-function openSection(sectionId, sectionName) {
-    const section = document.getElementById(sectionId);
-
-    if (!section) {
-        setAssistantOpen(false);
-
-        alert(
-            sectionName +
-            " is not available yet. This section needs to be connected."
-        );
-
+      }
+      const match=bestMatch(q);
+      if(!match){
+        show("I couldn't match that request","Try describing the task, for example: “check medicine expiry”, “find today's appointments”, “record a clinical note”, or “review outstanding invoices”. I can guide you to registered workspaces, not search confidential records outside your permissions.");
         return;
+      }
+      if(!ownsRoute(staffContext.department,match)){
+        show("This belongs to another department", "Your registered department is "+staffContext.department+". The request you entered belongs to "+match.owner+". I can’t provide that department’s operational information or open its restricted workspace. Please contact that department or request an authorised additional assignment from your administrator.");
+        return;
+      }
+      show("Found your departmental workspace", "This request matches "+match.owner+". I’ll take you to the relevant HealthOS workspace. You will still need the permissions required by that workspace to view or change records.",match.section);
     }
-
-    // Find the page containing the requested section.
-    const targetPanel = section.closest(".panel");
-
-    // Open the correct dashboard page.
-    if (
-        targetPanel &&
-        typeof window.showHealthOSView === "function"
-    ) {
-        window.showHealthOSView(targetPanel.id);
-    }
-
-    // Close the floating assistant.
-    setAssistantOpen(false);
-
-    // Scroll to the requested section.
-    requestAnimationFrame(function() {
-        section.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-    });
-
-    console.log(
-        "HealthOS AI opened: " + sectionName
-    );
-}
-
-    function handleRequest(request) {
-        const text = request.toLowerCase().trim();
-
-        if (!text) {
-            showResponse(
-                "Tell me what you need",
-                "For example, ask me to record a completed service or review billing."
-            );
-            return;
-        }
-
-        if (
-            text.includes("service") ||
-            text.includes("procedure") ||
-            text.includes("treatment") ||
-            text.includes("consultation") ||
-            text.includes("record a performed")
-        ) {
-            openSection("serviceCapture", "Service Capture");
-            return;
-        }
-
-        if (
-            text.includes("billing") ||
-            text.includes("invoice") ||
-            text.includes("payment") ||
-            text.includes("unpaid") ||
-            text.includes("revenue")
-        ) {
-            openSection("billing", "Billing");
-            return;
-        }
-
-        if (
-            text.includes("patient") ||
-            text.includes("register") ||
-            text.includes("find a patient")
-        ) {
-            const patientForm = document.getElementById("patientForm");
-
-            if (patientForm) {
-                openSection("patientForm", "Patient Registration");
-            } else {
-                showResponse(
-                    "Patient management",
-                    "The patient registration workflow is not connected to this assistant yet. I will not claim a patient has been registered or found."
-                );
-            }
-            return;
-        }
-
-        if (
-            text.includes("appointment") ||
-            text.includes("schedule") ||
-            text.includes("booking")
-        ) {
-            const appointmentForm = document.getElementById("appointmentForm");
-
-            if (appointmentForm) {
-                openSection("appointmentForm", "Appointments");
-            } else {
-                showResponse(
-                    "Appointment management",
-                    "The appointment workflow is not connected to this assistant yet. No appointment has been created or changed."
-                );
-            }
-            return;
-        }
-
-        if (
-            text.includes("help") ||
-            text.includes("what can you do") ||
-            text.includes("how can you help")
-        ) {
-            showResponse(
-                "Here is how I can help",
-                "I can guide you to Service Capture and Billing. Patient registration and appointment management may not be connected yet. This prototype uses simple keyword matching; it is not yet a full AI system."
-            );
-            return;
-        }
-
-        showResponse(
-            "Let me guide you",
-            "I did not recognise that request. Try asking about recording a service, reviewing billing, registering a patient, or managing appointments."
-        );
-    }
-
-    form.addEventListener("submit", function(event) {
-        event.preventDefault();
-        handleRequest(input.value);
-    });
-
-    document.querySelectorAll("[data-assistant-action]").forEach(function(button) {
-        button.addEventListener("click", function() {
-            const task = button.dataset.assistantAction;
-
-            const requests = {
-                patient: "register a patient",
-                appointment: "manage appointments",
-                service: "record a performed service",
-                billing: "review billing",
-                help: "what can you help me do"
-            };
-
-            handleRequest(requests[task] || "help");
-        });
-    });
-
-    actionButton.addEventListener("click", function() {
-        if (!pendingSection) return;
-
-        const section = document.getElementById(pendingSection);
-
-        if (!section) {
-            showResponse(
-                "Task not available",
-                "That section could not be found. Please refresh the dashboard."
-            );
-            return;
-        }
-
-        section.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-        });
-    });
-
-    console.log("HealthOS Staff Assistant initialized successfully.");
+    function setOpen(open){if(!panel||!launcher)return;panel.hidden=!open;launcher.setAttribute("aria-expanded",String(open));if(open)input.focus();}
+    launcher?.addEventListener("click",()=>setOpen(true));
+    closeButton?.addEventListener("click",()=>setOpen(false));
+    document.addEventListener("keydown",e=>{if(e.key==="Escape"&&panel&&!panel.hidden)setOpen(false);});
+    form.addEventListener("submit",async e=>{e.preventDefault();const button=document.getElementById("staffAssistantSend");if(button)button.disabled=true;try{await handleRequest(input.value);}catch(err){console.error(err);show("Assistant temporarily unavailable","I could not verify your department or match this request. Please try again or contact your administrator.");}finally{if(button)button.disabled=false;}});
+    document.querySelectorAll("[data-assistant-action]").forEach(btn=>btn.addEventListener("click",()=>{const tasks={patient:"register a patient",appointment:"manage appointments",service:"record a performed service",billing:"review billing"};handleRequest(tasks[btn.dataset.assistantAction]||"help");}));
+    actionButton.addEventListener("click",()=>{if(pendingSection)openSection(pendingSection,"Requested workspace");});
+    console.log("HealthOS department-aware staff guide initialized.");
 })();
- 
-// ============================================================
 // END HEALTHOS AI STAFF ASSISTANT
 // ============================================================
 // ============================================================
