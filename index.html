@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261103-40-leadership" defer></script>
+    <script src="app.js?v=20261103-41-telemedicine" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -331,6 +331,9 @@
                 <p id="patientAppointmentMessage" class="message" role="status" aria-live="polite"></p>
                 <h3>My appointment requests</h3>
                 <div id="patientAppointmentList" class="stats-grid"><p class="muted">No appointment requests loaded.</p></div>
+                <h3>Remote consultations</h3>
+                <p class="muted">Accepted audio/video appointments appear here. A secure consultation room becomes available only after the hospital connects an approved telemedicine provider.</p>
+                <div id="patientTelemedicineSessions" class="stats-grid"><p class="muted">No remote consultations loaded.</p></div>
             </div>
             <button id="patientPortalBackButton" class="text-button" type="button">Return to HealthOS sign in</button>
         </section>
