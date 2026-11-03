@@ -11163,7 +11163,7 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
   select.replaceChildren(new Option("Loading drafts...",""));
   clearEditor();
   const [{data:articles,error:articleError},{data:departments,error:departmentError}]=await Promise.all([
-   supabaseClient.from("department_knowledge_articles").select("id,department_id,article_type,title,summary,content,status,review_status").eq("clinic_id",currentClinic.id).eq("status","draft").order("department_id").order("article_type").limit(500),
+   supabaseClient.from("department_knowledge_articles").select("id,department_id,article_type,title,summary,content,status,review_status,reviewed_by,version").eq("clinic_id",currentClinic.id).eq("status","draft").order("department_id").order("article_type").limit(500),
    supabaseClient.from("clinic_departments").select("id,department_name").eq("clinic_id",currentClinic.id).eq("is_active",true)
   ]);
   if(articleError||departmentError){
@@ -11199,15 +11199,21 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
   const button=$(publish?"publishDepartmentKnowledgeArticle":"saveDepartmentKnowledgeDraft");
   button.disabled=true;
   const now=new Date().toISOString();
+  if(publish&&(selected.review_status!=="approved"||!selected.reviewed_by||selected.reviewed_by===currentUser.id)){
+   say("Independent review is required before publication. Ask a different authorised clinic owner to approve this article in the Departmental Knowledge Centre.",true);return;
+  }
   const update={
    title:cleanTitle,summary:cleanSummary,content:cleanContent,
-   updated_by:currentUser.id,updated_at:now
+   updated_by:currentUser.id,updated_at:now,
+   version:(Number(selected.version)||1)+1
   };
-  if(publish){
+  if(!publish){
+   update.review_status="pending_review";
+   update.reviewed_by=null;
+   update.reviewed_at=null;
+   update.review_notes=null;
+  }else{
    update.status="published";
-   update.review_status="approved";
-   update.reviewed_by=currentUser.id;
-   update.reviewed_at=now;
    update.published_at=now;
   }
   const {error}=await supabaseClient.from("department_knowledge_articles").update(update).eq("id",selected.id).eq("clinic_id",currentClinic.id);
