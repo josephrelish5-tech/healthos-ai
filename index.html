@@ -10,6 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js?v=20261103-47-b2-patient-files" defer></script>
     <script src="pharmacy-forecast.js?v=20261103-1" defer></script>
+    <script src="offline-ehr.js?v=20261103-1" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -1904,6 +1905,27 @@
   <button type="button" class="logout-button" id="offlineVitalsErase">Erase this device's queued observations</button>
   <p id="offlineVitalsStatus" class="message" role="status" aria-live="polite">No offline observations loaded.</p>
   <div class="table-wrap"><table><thead><tr><th>Captured</th><th>Encounter</th><th>Observations</th><th>Status</th><th>Details</th></tr></thead><tbody id="offlineVitalsBody"><tr><td colspan="5">No queued observations.</td></tr></tbody></table></div>
+ </section>
+ <section class="panel" id="offlineEhrWorkspace" style="margin:16px 0">
+  <h3>Offline-First Patient Record Workspace</h3>
+  <p class="muted">While online, explicitly cache the selected patient’s limited clinical summary for up to 8 hours. Cached content is encrypted in this browser and bound to your signed-in user and clinic. Offline notes remain local drafts until you reconnect, review them and explicitly save them as unsigned clinical drafts.</p>
+  <div class="stats-grid">
+   <article class="stat-card"><p>Connection</p><h4 id="offlineEhrConnection">Checking…</h4></article>
+   <article class="stat-card"><p>Cached record</p><h4 id="offlineEhrCacheState">Not cached</h4></article>
+   <article class="stat-card"><p>Local drafts</p><h4 id="offlineEhrDraftCount">0</h4></article>
+  </div>
+  <button type="button" class="primary-button" id="offlineEhrCacheButton">Encrypt selected patient record for offline use</button>
+  <button type="button" class="logout-button" id="offlineEhrLoadButton">Unlock this device’s cached record</button>
+  <h4>Offline clinical note draft</h4>
+  <label>Note type<select id="offlineEhrNoteType"><option value="progress">Progress</option><option value="consultation">Consultation</option><option value="assessment">Assessment</option><option value="plan">Plan</option></select></label>
+  <label>Clinical note<textarea id="offlineEhrNoteText" rows="5" maxlength="12000" placeholder="Enter a clinical draft. Do not sign or treat this as a completed medical record."></textarea></label>
+  <button type="button" class="primary-button" id="offlineEhrSaveDraft">Save encrypted offline draft</button>
+  <button type="button" class="primary-button" id="offlineEhrReviewSync">Review &amp; save drafts to clinical record</button>
+  <button type="button" class="logout-button" id="offlineEhrErase">Erase cached patient record and local drafts</button>
+  <p id="offlineEhrMessage" class="message" role="status" aria-live="polite">Select a patient and encounter while online to begin.</p>
+  <div id="offlineEhrRecordPreview" class="panel" aria-live="polite">No cached record unlocked.</div>
+  <div class="table-wrap"><table><thead><tr><th>Captured</th><th>Type</th><th>Draft</th><th>Sync status</th></tr></thead><tbody id="offlineEhrDraftBody"><tr><td colspan="4">No local drafts.</td></tr></tbody></table></div>
+  <p class="disclaimer">Offline cache is a convenience copy, not the authoritative record. Never rely on it for emergency decisions without checking source records. Draft sync appends an unsigned note only after online encounter ownership/status verification; no existing note is overwritten. This browser feature has not yet undergone formal security or clinical validation.</p>
  </section>
  <h3>Latest Observations</h3><div class="table-wrap"><table><thead><tr><th>Recorded</th><th>Temperature</th><th>Blood Pressure</th><th>Pulse</th><th>Respiratory</th><th>SpO₂</th><th>Weight</th></tr></thead><tbody id="clinicalVitalsBody"><tr><td colspan="7">Select an encounter to view observations.</td></tr></tbody></table></div>
  <hr><div id="clinicalDecisionSupport">
