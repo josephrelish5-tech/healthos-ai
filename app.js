@@ -9593,14 +9593,14 @@ function openSection(sectionId, sectionName) {
    }
   }
   const {data,error}=await supabaseClient.from("ussd_diagnostic_requests").select("id,patient_id,phone_number,patient_reference,service_code,requested_service,request_channel,status,appointment_at,assigned_department,created_at,patients(first_name,last_name,patient_number)").eq("clinic_id",currentClinic.id).order("created_at",{ascending:false}).limit(300);
-  if(error){body.replaceChildren();const row=body.insertRow();const td=cell(row,"Could not load requests: "+error.message);td.colSpan=8;return;}
+  if(error){body.replaceChildren();const row=body.insertRow();const td=cell(row,"Could not load requests: "+error.message);td.colSpan=10;return;}
   const rows=data||[];
   $u("ussdNewCount").textContent=rows.filter(x=>x.status==="new").length;
   $u("ussdVerifyCount").textContent=rows.filter(x=>x.status==="verification_required").length;
   $u("ussdAcceptedCount").textContent=rows.filter(x=>["accepted","scheduled"].includes(x.status)).length;
   $u("ussdCompletedCount").textContent=rows.filter(x=>x.status==="completed").length;
   body.replaceChildren();
-  if(!rows.length){const row=body.insertRow();const td=cell(row,"No diagnostic requests registered.");td.colSpan=8;return;}
+  if(!rows.length){const row=body.insertRow();const td=cell(row,"No diagnostic requests registered.");td.colSpan=10;return;}
   rows.forEach(item=>{
    const row=body.insertRow(),p=item.patients||{};
    cell(row,date(item.created_at));cell(row,[p.patient_number,p.first_name,p.last_name,item.patient_reference].filter(Boolean).join(" — "));
