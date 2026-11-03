@@ -8712,7 +8712,7 @@ function openSection(sectionId, sectionName) {
         if (!supabaseClient || !currentClinic || !currentUser) return;
         const { data: imports, error: importError } = await supabaseClient
             .from("bank_statement_imports")
-            .select("id,created_at,bank_or_provider,account_label,period_start,period_end,import_status,row_count")
+            .select("id,created_at,bank_or_provider,account_label,period_start,period_end,import_status,row_count,storage_provider")
             .eq("clinic_id", currentClinic.id)
             .order("created_at", { ascending: false })
             .limit(20);
@@ -8745,6 +8745,33 @@ function openSection(sectionId, sectionName) {
             addCell(row, [item.period_start || "", item.period_end || ""].filter(Boolean).join(" to ") || "—");
             addCell(row, item.row_count == null ? "—" : item.row_count);
             addCell(row, item.import_status);
+            const actionCell = document.createElement("td");
+            if (item.storage_provider === "backblaze_b2") {
+                const downloadButton = document.createElement("button");
+                downloadButton.type = "button";
+                downloadButton.className = "secondary-button";
+                downloadButton.textContent = "Download evidence";
+                downloadButton.addEventListener("click", async () => {
+                    downloadButton.disabled = true;
+                    try {
+                        const { data: ticket, error } = await supabaseClient.functions.invoke(
+                            "healthos-b2-storage",
+                            { body: { action: "create-download", importId: item.id, clinicId: currentClinic.id, purpose: "bank_statement" } }
+                        );
+                        if (error) throw error;
+                        if (!ticket || !ticket.downloadUrl) throw new Error("Secure download link was not returned.");
+                        window.open(ticket.downloadUrl, "_blank", "noopener,noreferrer");
+                    } catch (downloadError) {
+                        setImportMessage("Evidence download failed: " + (downloadError.message || "Please retry."), "error");
+                    } finally {
+                        downloadButton.disabled = false;
+                    }
+                });
+                actionCell.appendChild(downloadButton);
+            } else {
+                actionCell.textContent = "Legacy evidence";
+            }
+            row.appendChild(actionCell);
             historyRows.appendChild(row);
         });
 
