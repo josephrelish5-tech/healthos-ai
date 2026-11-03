@@ -6380,13 +6380,22 @@ if (refreshAppointmentsButton) {
  function openSection(id){const el=$(id);if(!el){show("Workspace unavailable","This workspace is not available in the current app version. Contact your administrator.");return;}const parent=el.closest(".panel");if(parent&&typeof window.showHealthOSView==="function")window.showHealthOSView(parent.id);if(panel)panel.hidden=true;if(launcher)launcher.setAttribute("aria-expanded","false");requestAnimationFrame(()=>el.scrollIntoView({behavior:"smooth",block:"start"}));}
  async function loadStaffContext(){
   if(typeof supabaseClient==="undefined"||typeof currentUser==="undefined"||!currentUser||typeof currentClinic==="undefined"||!currentClinic||!currentClinic.id)return null;
+  const {data:membership,error:membershipError}=await supabaseClient.from("clinic_memberships").select("role").eq("clinic_id",currentClinic.id).eq("user_id",currentUser.id).eq("status","active").maybeSingle();
+  if(membershipError||!membership)return null;
+  const membershipRole=String(membership.role||"").toLowerCase();
+  const isClinicOwner=["owner","admin","clinic_owner","super_admin"].includes(membershipRole);
+  if(isClinicOwner){
+   const {data:allDepartments,error:departmentError}=await supabaseClient.from("clinic_departments").select("department_name").eq("clinic_id",currentClinic.id).eq("is_active",true).order("department_name");
+   if(departmentError)return null;
+   return {profileId:null,departments:(allDepartments||[]).map(d=>d.department_name),role:membershipRole,isClinicOwner:true};
+  }
   const {data:profile,error}=await supabaseClient.from("staff_profiles").select("id,department,professional_role,employment_status").eq("clinic_id",currentClinic.id).eq("user_id",currentUser.id).limit(1).maybeSingle();
   if(error||!profile||profile.employment_status&&profile.employment_status!=="active")return null;
   const departments=new Set(profile.department?[profile.department]:[]);
   const {data:assignments}=await supabaseClient.from("staff_department_assignments").select("department_id").eq("clinic_id",currentClinic.id).eq("staff_profile_id",profile.id).eq("assignment_status","active");
   const ids=[...new Set((assignments||[]).map(a=>a.department_id).filter(Boolean))];
   if(ids.length){const {data:deptRows}=await supabaseClient.from("clinic_departments").select("department_name").eq("clinic_id",currentClinic.id).eq("is_active",true).in("id",ids);(deptRows||[]).forEach(d=>departments.add(d.department_name));}
-  return {profileId:profile.id,departments:[...departments],role:profile.professional_role||""};
+  return {profileId:profile.id,departments:[...departments],role:profile.professional_role||"",isClinicOwner:false};
  }
  function routeMatch(q){const words=normalize(q);return routes.map(r=>({...r,score:r.terms.reduce((n,t)=>{const term=normalize(t);return n+(words.includes(term)?term.split(" ").length:0);},0)})).filter(r=>r.score>0).sort((a,b)=>b.score-a.score)[0]||null;}
  function departmentOwns(departments,route){if(route.aliases.includes("all departments"))return true;return departments.some(dep=>{const d=normalize(dep);return route.aliases.some(a=>d===normalize(a)||d.includes(normalize(a))||normalize(a).includes(d)&&d.length>3);});}
@@ -6400,9 +6409,9 @@ if (refreshAppointmentsButton) {
    else q=lastConversation.topic+" explain the previous instructions more simply";
   }
   if(!staffContext)staffContext=await loadStaffContext();
-  if(!staffContext||!staffContext.departments.length){show("Department access not identified","I could not verify an active staff department or assignment. Ask your administrator to complete your staff profile and department assignments. I cannot reveal departmental information until your access context is confirmed.");return;}
+  if(!staffContext||(!staffContext.isClinicOwner&&!staffContext.departments.length)){show("Department access not identified","I could not verify an active staff department or assignment. Ask your administrator to complete your staff profile and department assignments. I cannot reveal departmental information until your access context is confirmed.");return;}
   const match=routeMatch(q);
-  if(match&&!departmentOwns(staffContext.departments,match)){show("This information belongs to another department","Your authorised department assignment(s): "+staffContext.departments.join(", ")+". This request belongs to "+match.owner+". I can’t provide that department’s work instructions or open its restricted workspace. Contact that department or request an authorised additional assignment.");return;}
+  if(match&&!staffContext.isClinicOwner&&!departmentOwns(staffContext.departments,match)){show("This information belongs to another department","Your authorised department assignment(s): "+staffContext.departments.join(", ")+". This request belongs to "+match.owner+". I can’t provide that department’s work instructions or open its restricted workspace. Contact that department or request an authorised additional assignment.");return;}
   // Full conversational AI: the Edge Function re-verifies the user and retrieves only RLS-authorized approved knowledge.
   if(typeof supabaseClient!=="undefined"&&supabaseClient&&currentClinic&&currentClinic.id){
    const sendButton=$("staffAssistantSend");
