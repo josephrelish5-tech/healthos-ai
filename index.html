@@ -3471,6 +3471,8 @@
  <div class="form-group"><label for="dkcSearch">Search your departmental knowledge</label><input id="dkcSearch" type="search" placeholder="Search duties, SOPs, instructions, FAQs or policies"><button type="button" id="dkcSearchButton" class="primary-button">Search knowledge</button></div>
  <div id="dkcArticleReader" class="panel" hidden><h3 id="dkcArticleTitle"></h3><p id="dkcArticleMeta" class="muted"></p><div id="dkcArticleContent" style="white-space:pre-wrap;line-height:1.6"></div><button type="button" id="dkcOpenWorkspace" class="primary-button">Open linked workspace</button><button type="button" id="dkcCloseReader" class="logout-button">Close</button></div>
  <div class="table-wrap"><table><thead><tr><th>Department</th><th>Type</th><th>Title</th><th>Status</th><th>Version</th><th>Last updated</th><th>Action</th></tr></thead><tbody id="dkcRows"><tr><td colspan="7">Loading authorized knowledge...</td></tr></tbody></table></div>
+ <div class="stats-grid" style="margin-top:16px"><article class="stat-card"><p>Knowledge review alerts</p><h3 id="dkcGovernanceAlerts">Loading review status…</h3></article></div>
+ <div class="panel" style="margin-top:16px"><h3>Potential instruction overlaps</h3><div id="dkcOverlapAlerts" class="muted">Checking published knowledge for likely overlaps…</div><p class="stat-note">Automated heuristic only. Similar wording does not prove a contradiction; a qualified human must review each flag.</p></div>
  <div id="dkcAdminPanel" hidden style="margin-top:24px"><h3>Knowledge administration</h3><p class="muted">Create draft content for a department. Review it before publishing. Clinic owners create drafts. A different owner account must independently review before publication. Published content is tracked in immutable version history.</p>
  <form id="dkcForm" class="auth-form">
  <label>Department<select id="dkcDepartment" required></select></label>
@@ -3481,7 +3483,10 @@
  <label>Search keywords (comma separated)<input id="dkcKeywords" maxlength="500" placeholder="stock receipt, batch, expiry, pharmacy"></label>
  <label>Next review due date<input id="dkcReviewDue" type="date"></label><label>Linked workspace section ID (optional)<input id="dkcWorkspace" maxlength="100" placeholder="Use an existing page section ID"></label>
  <button type="submit" class="primary-button">Save as draft</button>
- </form></div>
+ </form>
+ <div class="panel" style="margin-top:18px"><h3>Department knowledge ownership</h3><p class="muted">Assign named staff as knowledge editors, reviewers or stewards. This records responsibility; it does not independently grant article editing or publication privileges.</p>
+ <form id="dkcOwnerForm" class="auth-form"><label>Department<select id="dkcOwnerDepartment" required></select></label><label>Staff user UUID<input id="dkcOwnerUser" required maxlength="36" placeholder="Paste the staff account UUID"></label><label>Responsibility<select id="dkcOwnerRole"><option value="knowledge_editor">Knowledge editor</option><option value="knowledge_reviewer">Knowledge reviewer</option><option value="knowledge_steward">Knowledge steward</option></select></label><button type="submit" class="primary-button">Assign responsibility</button></form>
+ <div class="table-wrap"><table><thead><tr><th>Department</th><th>Staff user UUID</th><th>Responsibility</th><th>Status</th><th>Action</th></tr></thead><tbody id="dkcOwnerRows"></tbody></table></div></div></div>
  <p id="dkcMessage" class="message" role="status" aria-live="polite">Sign in to load your department's knowledge.</p>
  <p class="disclaimer">Access is limited by clinic membership and active department assignments. Publishing knowledge does not grant access to patient records or operational actions. Content must be approved by the hospital's responsible owner and reviewed against current policy, law and clinical guidance before staff rely on it. Do not include patient-identifying information.</p>
 </section>
