@@ -1922,6 +1922,15 @@
    <p id="clinicalAllergySafetyMessage" class="message" role="status" aria-live="polite">Select an encounter to review recorded allergies.</p>
    <div class="table-wrap"><table><thead><tr><th>Allergen</th><th>Recorded reaction</th><th>Severity</th><th>Record status</th></tr></thead><tbody id="clinicalAllergySafetyBody"><tr><td colspan="4">No patient selected.</td></tr></tbody></table></div>
   </section>
+  <section class="panel" id="clinicalMedicationNameCheck">
+   <h4>Medication–Allergy Name-Match Screen</h4>
+   <p class="muted">Enter a medicine being considered and run a limited name-match against this patient's recorded allergies. This is not a drug-interaction, cross-reactivity or prescribing check. A lack of a match does not establish safety.</p>
+   <label>Medicine / active ingredient under consideration<input id="clinicalMedicineCandidate" maxlength="200" autocomplete="off" placeholder="Enter generic name or active ingredient"></label>
+   <button type="button" id="runMedicationAllergyCheck" class="logout-button">Check recorded allergy names</button>
+   <p id="clinicalMedicationAllergyCheckMessage" class="message" role="status" aria-live="polite">Select the clinical encounter, then enter a medicine.</p>
+   <div id="clinicalMedicationAllergyCheckResult" class="panel" aria-live="polite">No check performed.</div>
+   <p class="disclaimer">This screen only flags text matches between the entered medicine name and recorded allergen names. It does not identify pharmacological cross-allergies, drug interactions, contraindications, dose errors or current medication use. Confirm the complete allergy history and consult an authorised pharmacist / clinician and approved clinical reference before prescribing or dispensing.</p>
+  </section>
   <section class="panel" id="clinicalMedicationHistoryPanel">
    <h4>Medication Reconciliation — Dispensing History</h4>
    <p class="muted">Historical pharmacy dispensing records for this patient. This is not an active prescription list and does not confirm what the patient is currently taking. Reconcile with the patient and their current medication containers or records.</p>
