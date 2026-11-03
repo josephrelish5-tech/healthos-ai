@@ -3849,7 +3849,7 @@ async function loadBillingData(clinic) {
         const { data: departmentPayments, error: departmentPaymentsError } =
             await supabaseClient
                 .from("pos_receipts")
-                .select("id, created_at, transaction_at, payment_provider, transaction_reference, invoice_reference, payment_method, amount, captured_department, acceptance_status, reconciliation_status")
+                .select("id, created_at, transaction_at, payment_provider, transaction_reference, invoice_reference, payment_method, amount, currency, captured_department, acceptance_status, reconciliation_status")
                 .eq("clinic_id", clinic.id)
                 .order("created_at", { ascending: false })
                 .limit(1000);
