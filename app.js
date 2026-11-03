@@ -6351,97 +6351,61 @@ if (refreshAppointmentsButton) {
 // ============================================================
 // ============================================================
 // HEALTHOS AI STAFF ASSISTANT
-// Department-aware navigation and work guidance. This assistant never bypasses RLS.
+// Department-aware knowledge guide and workspace navigator.
 (function initializeHealthOSStaffAssistant() {
-    const form=document.getElementById("staffAssistantForm");
-    const input=document.getElementById("staffAssistantInput");
-    const response=document.getElementById("staffAssistantResponse");
-    const responseTitle=document.getElementById("staffAssistantResponseTitle");
-    const responseText=document.getElementById("staffAssistantResponseText");
-    const actionButton=document.getElementById("staffAssistantActionButton");
-    const panel=document.getElementById("staffAssistant");
-    const launcher=document.getElementById("staffAssistantLauncher");
-    const closeButton=document.getElementById("staffAssistantClose");
-    if(!form||!input||!response||!responseTitle||!responseText||!actionButton)return;
-
-    let pendingSection=null;
-    let staffContext=null;
-    const routes=[
-      {owner:"Reception / Patient Access",aliases:["reception","front desk","patient access","admissions","medical records"],section:"patients",terms:["register patient","new patient","patient registration","patient demographics","patient file"]},
-      {owner:"Reception / Appointment Desk",aliases:["reception","front desk","appointment","patient access"],section:"appointments",terms:["appointment","schedule","booking","reschedule","appointment list"]},
-      {owner:"Patient Flow / Admissions",aliases:["reception","admissions","nursing","patient flow"],section:"patientFlow",terms:["queue","waiting patient","triage queue","admission","bed allocation","patient flow"]},
-      {owner:"Clinical / Nursing",aliases:["clinical","nursing","doctor","medical","emergency","outpatient","inpatient"],section:"clinicalRecords",terms:["clinical record","clinical note","encounter","vitals","patient assessment","medical history","consultation note"]},
-      {owner:"Clinical / Medical Scribe",aliases:["clinical","nursing","doctor","medical"],section:"clinicalScribe",terms:["medical scribe","scribe","transcribe","voice note","clinical dictation"]},
-      {owner:"Clinical / Decision Support",aliases:["clinical","nursing","doctor","medical","emergency"],section:"clinicalDecisionSupportWorkspace",terms:["clinical decision support","risk review","clinical risk","allergy safety","medication allergy","vital trend","clinical alert"]},
-      {owner:"Pharmacy",aliases:["pharmacy","pharmacist","dispensary"],section:"pharmacy",terms:["medicine stock","drug inventory","pharmacy inventory","medicine batch","expiry","low stock","barcode","dispensing","prescription stock"]},
-      {owner:"Pharmacy / Dispensing",aliases:["pharmacy","pharmacist","dispensary"],section:"pharmacyDispensingWorkspace",terms:["dispense","dispensing","dispensing history"]},
-      {owner:"Pharmacy / Procurement",aliases:["pharmacy","procurement","purchasing"],section:"pharmacyProcurementWorkspace",terms:["pharmacy supplier","purchase order","receive medicine","goods receipt","supplier payment"]},
-      {owner:"Finance / Billing",aliases:["finance","accounts","billing","cashier","revenue","audit"],section:"billing",terms:["billing","invoice","payment","outstanding","revenue","refund","pos reconciliation","cashier"]},
-      {owner:"Service Operations",aliases:["clinical","nursing","laboratory","radiology","theatre","service operations"],section:"serviceCapture",terms:["record service","performed service","procedure","laboratory test","scan performed","service capture"]},
-      {owner:"Human Resources / Staff Management",aliases:["human resources","hr","admin","management"],section:"adminStaffDashboard",terms:["staff attendance","staff shift","staff roster","staff online","staff credential","staff license","staff competency","staff management"]},
-      {owner:"Compliance / Risk",aliases:["compliance","quality","admin","management","risk"],section:"hospitalComplianceWorkspace",terms:["compliance","inspection","regulatory","audit register","corrective action","evidence vault","accreditation"]},
-      {owner:"Quality Assurance",aliases:["quality","compliance","admin","management"],section:"hospitalQualityWorkspace",terms:["quality indicator","quality improvement","accreditation","patient feedback","performance indicator"]},
-      {owner:"Clinical Governance",aliases:["clinical","nursing","doctor","medical","quality","management"],section:"clinicalGovernanceWorkspace",terms:["mortality review","morbidity","adverse event","near miss","root cause","clinical governance","patient safety review"]},
-      {owner:"Hospital Incident / Safety",aliases:["all departments","security","clinical","nursing","management","risk"],section:"hospitalIncidentReporting",terms:["report incident","incident report","safety incident","security incident","hazard","data breach","near miss report"]},
-      {owner:"Department Task Workspace",aliases:["all departments"],section:"offlineDepartmentTaskWorkspace",terms:["department task","handover","blocker","task progress","completion report","offline task"]}
-    ];
-    function show(title,message,sectionId=null,label="Open workspace"){
-      responseTitle.textContent=title;responseText.textContent=message;response.hidden=false;
-      pendingSection=sectionId;actionButton.hidden=!sectionId;if(sectionId)actionButton.textContent=label;
-      response.scrollIntoView({behavior:"smooth",block:"nearest"});
-    }
-    function openSection(id,name){
-      const section=document.getElementById(id);
-      if(!section){show("Workspace not available",name+" is not currently available in this version. Contact your system administrator.");return;}
-      const parent=section.closest(".panel");
-      if(parent&&typeof window.showHealthOSView==="function")window.showHealthOSView(parent.id);
-      if(panel)panel.hidden=true;if(launcher)launcher.setAttribute("aria-expanded","false");
-      requestAnimationFrame(()=>section.scrollIntoView({behavior:"smooth",block:"start"}));
-    }
-    function normalize(s){return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();}
-    async function loadStaffContext(){
-      if(typeof supabaseClient==="undefined"||typeof currentUser==="undefined"||!currentUser||!currentClinic||!currentClinic.id)return null;
-      const {data,error}=await supabaseClient.from("staff_profiles").select("department,professional_role,employment_status").eq("clinic_id",currentClinic.id).eq("user_id",currentUser.id).limit(1).maybeSingle();
-      if(error){console.warn("Department assistant profile lookup failed",error);return null;}
-      if(!data||data.employment_status&&data.employment_status!=="active")return null;
-      return {department:data.department||"",role:data.professional_role||""};
-    }
-    function ownsRoute(department,route){
-      const d=normalize(department),aliases=route.aliases||[];
-      if(aliases.includes("all departments"))return true;
-      return aliases.some(a=>d.includes(normalize(a))||normalize(a).includes(d)&&d.length>3);
-    }
-    function bestMatch(query){
-      const q=normalize(query);
-      return routes.map(r=>({...r,score:r.terms.reduce((n,t)=>n+(q.includes(normalize(t))?normalize(t).split(" ").length:0),0)})).filter(r=>r.score>0).sort((a,b)=>b.score-a.score)[0]||null;
-    }
-    async function handleRequest(request){
-      const q=String(request||"").trim();
-      if(!q){show("What do you need help with?","Describe the task or information you are trying to find.");return;}
-      if(!staffContext)staffContext=await loadStaffContext();
-      if(!staffContext){
-        show("Department access not identified","I could not verify your active staff department. Please sign in with your staff account or ask an administrator to complete your staff profile. I can’t disclose or route you into department-specific workspaces until your department is verified.");
-        return;
-      }
-      const match=bestMatch(q);
-      if(!match){
-        show("I couldn't match that request","Try describing the task, for example: “check medicine expiry”, “find today's appointments”, “record a clinical note”, or “review outstanding invoices”. I can guide you to registered workspaces, not search confidential records outside your permissions.");
-        return;
-      }
-      if(!ownsRoute(staffContext.department,match)){
-        show("This belongs to another department", "Your registered department is "+staffContext.department+". The request you entered belongs to "+match.owner+". I can’t provide that department’s operational information or open its restricted workspace. Please contact that department or request an authorised additional assignment from your administrator.");
-        return;
-      }
-      show("Found your departmental workspace", "This request matches "+match.owner+". I’ll take you to the relevant HealthOS workspace. You will still need the permissions required by that workspace to view or change records.",match.section);
-    }
-    function setOpen(open){if(!panel||!launcher)return;panel.hidden=!open;launcher.setAttribute("aria-expanded",String(open));if(open)input.focus();}
-    launcher?.addEventListener("click",()=>setOpen(true));
-    closeButton?.addEventListener("click",()=>setOpen(false));
-    document.addEventListener("keydown",e=>{if(e.key==="Escape"&&panel&&!panel.hidden)setOpen(false);});
-    form.addEventListener("submit",async e=>{e.preventDefault();const button=document.getElementById("staffAssistantSend");if(button)button.disabled=true;try{await handleRequest(input.value);}catch(err){console.error(err);show("Assistant temporarily unavailable","I could not verify your department or match this request. Please try again or contact your administrator.");}finally{if(button)button.disabled=false;}});
-    document.querySelectorAll("[data-assistant-action]").forEach(btn=>btn.addEventListener("click",()=>{const tasks={patient:"register a patient",appointment:"manage appointments",service:"record a performed service",billing:"review billing"};handleRequest(tasks[btn.dataset.assistantAction]||"help");}));
-    actionButton.addEventListener("click",()=>{if(pendingSection)openSection(pendingSection,"Requested workspace");});
-    console.log("HealthOS department-aware staff guide initialized.");
+ const $=id=>document.getElementById(id),form=$("staffAssistantForm"),input=$("staffAssistantInput"),response=$("staffAssistantResponse"),title=$("staffAssistantResponseTitle"),body=$("staffAssistantResponseText"),action=$("staffAssistantActionButton"),panel=$("staffAssistant"),launcher=$("staffAssistantLauncher");
+ if(!form||!input||!response||!title||!body||!action)return;
+ let pendingSection=null,staffContext=null;
+ const routes=[
+ {owner:"Reception / Patient Access",aliases:["reception","front desk","patient access","admissions","medical records"],section:"patients",terms:["register patient","new patient","patient registration","patient demographics","patient file","patient details"],guide:"Open Patient Management and complete the required patient registration fields. Check for an existing patient before creating a duplicate record. Save only after confirming the details."},
+ {owner:"Reception / Appointment Desk",aliases:["reception","front desk","appointment","patient access"],section:"appointments",terms:["appointment","schedule","booking","reschedule","appointment list","cancel appointment"],guide:"Open Appointments. Select the correct patient, date and time, enter the reason, then save. Confirm the appointment appears in the appointment list. Follow hospital policy before cancelling or changing an existing booking."},
+ {owner:"Patient Flow / Admissions",aliases:["reception","admissions","nursing","patient flow"],section:"patientFlow",terms:["queue","waiting patient","triage queue","admission","bed allocation","patient flow"],guide:"Open Patient Flow to review the queue and admission workflow. Verify the patient's identity and the authorised clinical/admission decision before changing queue or bed status. Emergency triage must follow the hospital's clinical escalation protocol."},
+ {owner:"Clinical / Nursing",aliases:["clinical","nursing","doctor","medical","emergency","outpatient","inpatient"],section:"clinicalRecords",terms:["clinical record","clinical note","encounter","vitals","patient assessment","medical history","consultation note","observations"],guide:"Open Clinical Records. Select the correct patient and encounter, document findings and observations, and save the note for the required review. Confirm entries against the source record; do not enter another patient's information."},
+ {owner:"Clinical / Medical Scribe",aliases:["clinical","nursing","doctor","medical"],section:"clinicalScribe",terms:["medical scribe","scribe","transcribe","voice note","clinical dictation"],guide:"Open the Medical Scribe workspace. Obtain required patient consent, select the correct encounter, capture or enter the clinician's dictation, review the generated draft, correct errors and obtain clinician confirmation before it becomes part of the record."},
+ {owner:"Clinical / Decision Support",aliases:["clinical","nursing","doctor","medical","emergency"],section:"clinicalDecisionSupportWorkspace",terms:["clinical decision support","risk review","clinical risk","allergy safety","medication allergy","vital trend","clinical alert"],guide:"Open Clinical Decision Support and record the clinical context, findings and risk factors. Treat prompts as decision-support information only. A licensed clinician must independently assess the patient and document the clinical decision. Activate emergency pathways immediately when needed."},
+ {owner:"Pharmacy",aliases:["pharmacy","pharmacist","dispensary"],section:"pharmacy",terms:["medicine stock","drug inventory","pharmacy inventory","medicine batch","expiry","low stock","barcode","dispensing","prescription stock"],guide:"Open Pharmacy Inventory. Search for the medicine, confirm the correct product and batch, enter quantity and expiry details, and save. Check expiry and stock alerts before dispensing. Stock adjustments and dispensing must follow authorised pharmacy controls."},
+ {owner:"Pharmacy / Dispensing",aliases:["pharmacy","pharmacist","dispensary"],section:"pharmacyDispensingWorkspace",terms:["dispense","dispensing","dispensing history"],guide:"Open Pharmacy Dispensing. Verify the authorised prescription, patient, medicine, strength, batch and quantity. Record the dispensing event and review the confirmation. Do not dispense on the basis of an assistant response."},
+ {owner:"Pharmacy / Procurement",aliases:["pharmacy","procurement","purchasing"],section:"pharmacyProcurementWorkspace",terms:["pharmacy supplier","purchase order","receive medicine","goods receipt","supplier payment"],guide:"Open Pharmacy Procurement. Select the approved supplier, create or review the purchase order, and match received goods to the order, delivery note, batch and expiry details. Record discrepancies for authorised review."},
+ {owner:"Finance / Billing",aliases:["finance","accounts","billing","cashier","revenue","audit"],section:"billing",terms:["billing","invoice","payment","outstanding","revenue","refund","pos reconciliation","cashier","reconcile"],guide:"Open Billing / Finance. Match each charge to an authorised service or approved fee, verify the invoice and payment reference, and reconcile against the approved payment evidence. Refunds, write-offs and adjustments require the appropriate approval and audit trail."},
+ {owner:"Service Operations",aliases:["clinical","nursing","laboratory","radiology","theatre","service operations"],section:"serviceCapture",terms:["record service","performed service","procedure","laboratory test","scan performed","service capture"],guide:"Open Service Capture. Record only a service that was actually performed and supported by the required evidence. Confirm the request, authorisation, performing staff member and completion details so Finance can reconcile the charge."},
+ {owner:"Human Resources / Staff Management",aliases:["human resources","hr","admin","management"],section:"adminStaffDashboard",terms:["staff attendance","staff shift","staff roster","staff online","staff credential","staff license","staff competency","staff management"],guide:"Open Staff Management. Review the staff member, department, assigned shift and attendance records. Online presence is not the same as being on duty. Credential verification and changes to staff access must be completed by authorised officers."},
+ {owner:"Compliance / Risk",aliases:["compliance","quality","admin","management","risk"],section:"hospitalComplianceWorkspace",terms:["compliance","inspection","regulatory","audit register","corrective action","evidence vault","accreditation"],guide:"Open the Compliance Register to record the obligation or finding, accountable officer, due date and evidence reference. Upload supporting documents through the private Evidence Vault. A submitted record is not proof of regulatory compliance until reviewed by an authorised officer."},
+ {owner:"Quality Assurance",aliases:["quality","compliance","admin","management"],section:"hospitalQualityWorkspace",terms:["quality indicator","quality improvement","accreditation","patient feedback","performance indicator"],guide:"Open Quality Assurance. Select the record type, define the indicator or improvement objective, enter the measurement period and accountable owner, and submit supporting evidence for review."},
+ {owner:"Clinical Governance",aliases:["clinical","nursing","doctor","medical","quality","management"],section:"clinicalGovernanceWorkspace",terms:["mortality review","morbidity","adverse event","near miss","root cause","clinical governance","patient safety review"],guide:"Open Clinical Governance. Record the event and review type, immediate safety actions, contributing factors, findings, recommendations and action owner. Protect patient confidentiality and follow the hospital's formal governance and escalation process."},
+ {owner:"Hospital Incident / Safety",aliases:["all departments","security","clinical","nursing","management","risk"],section:"hospitalIncidentReporting",terms:["report incident","incident report","safety incident","security incident","hazard","data breach","near miss report"],guide:"Open Incident Reporting. Record what happened, where and when, the severity and immediate actions taken. Escalate urgent patient-safety, security or privacy events through the hospital's emergency process without waiting for this form."},
+ {owner:"Department Task Workspace",aliases:["all departments"],section:"offlineDepartmentTaskWorkspace",terms:["department task","handover","blocker","task progress","completion report","offline task"],guide:"Open Department Tasks to record progress, a completion claim, a blocker or a handover. Include a task reference and concise evidence. Submissions are review requests and do not automatically approve or close the underlying task."}
+ ];
+ const normalize=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+ function show(t,m,section=null,label="Open workspace"){title.textContent=t;body.textContent=m;response.hidden=false;pendingSection=section;action.hidden=!section;if(section)action.textContent=label;response.scrollIntoView({behavior:"smooth",block:"nearest"});}
+ function openSection(id){const el=$(id);if(!el){show("Workspace unavailable","This workspace is not available in the current app version. Contact your administrator.");return;}const parent=el.closest(".panel");if(parent&&typeof window.showHealthOSView==="function")window.showHealthOSView(parent.id);if(panel)panel.hidden=true;if(launcher)launcher.setAttribute("aria-expanded","false");requestAnimationFrame(()=>el.scrollIntoView({behavior:"smooth",block:"start"}));}
+ async function loadStaffContext(){
+  if(typeof supabaseClient==="undefined"||typeof currentUser==="undefined"||!currentUser||!currentClinic?.id)return null;
+  const {data:profile,error}=await supabaseClient.from("staff_profiles").select("id,department,professional_role,employment_status").eq("clinic_id",currentClinic.id).eq("user_id",currentUser.id).limit(1).maybeSingle();
+  if(error||!profile||profile.employment_status&&profile.employment_status!=="active")return null;
+  const departments=new Set(profile.department?[profile.department]:[]);
+  const {data:assignments}=await supabaseClient.from("staff_department_assignments").select("department_id").eq("clinic_id",currentClinic.id).eq("staff_profile_id",profile.id).eq("assignment_status","active");
+  const ids=[...new Set((assignments||[]).map(a=>a.department_id).filter(Boolean))];
+  if(ids.length){const {data:deptRows}=await supabaseClient.from("clinic_departments").select("department_name").eq("clinic_id",currentClinic.id).eq("is_active",true).in("id",ids);(deptRows||[]).forEach(d=>departments.add(d.department_name));}
+  return {profileId:profile.id,departments:[...departments],role:profile.professional_role||""};
+ }
+ function routeMatch(q){const words=normalize(q);return routes.map(r=>({...r,score:r.terms.reduce((n,t)=>{const term=normalize(t);return n+(words.includes(term)?term.split(" ").length:0);},0)})).filter(r=>r.score>0).sort((a,b)=>b.score-a.score)[0]||null;}
+ function departmentOwns(departments,route){if(route.aliases.includes("all departments"))return true;return departments.some(dep=>{const d=normalize(dep);return route.aliases.some(a=>d===normalize(a)||d.includes(normalize(a))||normalize(a).includes(d)&&d.length>3);});}
+ async function handleRequest(q){
+  if(!String(q||"").trim()){show("What do you need help with?","Type a task, a question about how to use HealthOS, or the name of a workspace.");return;}
+  if(!staffContext)staffContext=await loadStaffContext();
+  if(!staffContext||!staffContext.departments.length){show("Department access not identified","I could not verify an active staff department or assignment. Ask your administrator to complete your staff profile and department assignments. I cannot reveal departmental information until your access context is confirmed.");return;}
+  const match=routeMatch(q);
+  if(!match){show("I couldn't find a matching guide","Try a task such as “check medicine expiry”, “record patient observations”, “reconcile a payment”, “review staff attendance”, or “report an incident”. I can guide you through registered HealthOS workflows, but I cannot search private patient records or perform actions for you.");return;}
+  if(!departmentOwns(staffContext.departments,match)){show("This information belongs to another department","Your authorised department assignment(s): "+staffContext.departments.join(", ")+". This request belongs to "+match.owner+". I can’t provide that department’s work instructions or open its restricted workspace. Contact that department or request an authorised additional assignment.");return;}
+  show("Your departmental guide · "+match.owner,match.guide,match.section,"Open relevant workspace");
+ }
+ function setOpen(open){if(!panel||!launcher)return;panel.hidden=!open;launcher.setAttribute("aria-expanded",String(open));if(open)input.focus();}
+ launcher?.addEventListener("click",()=>setOpen(true));$("staffAssistantClose")?.addEventListener("click",()=>setOpen(false));
+ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&panel&&!panel.hidden)setOpen(false);});
+ form.addEventListener("submit",async e=>{e.preventDefault();const b=$("staffAssistantSend");if(b)b.disabled=true;try{await handleRequest(input.value);}catch(err){console.error("HealthOS guide error",err);show("Guide temporarily unavailable","I could not verify your department assignments. Please try again or contact your administrator.");}finally{if(b)b.disabled=false;}});
+ document.querySelectorAll("[data-assistant-action]").forEach(b=>b.addEventListener("click",()=>{const q={patient:"register patient",appointment:"manage appointments",service:"record performed service",billing:"review billing"}[b.dataset.assistantAction]||"help";handleRequest(q);}));
+ action.addEventListener("click",()=>{if(pendingSection)openSection(pendingSection);});
+ console.log("HealthOS departmental knowledge guide initialized.");
 })();
 // END HEALTHOS AI STAFF ASSISTANT
 // ============================================================
