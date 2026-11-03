@@ -6385,9 +6385,9 @@ if (refreshAppointmentsButton) {
   const membershipRole=String(membership.role||"").toLowerCase();
   const isClinicOwner=["owner","admin","clinic_owner","super_admin"].includes(membershipRole);
   if(isClinicOwner){
-   const {data:allDepartments,error:departmentError}=await supabaseClient.from("clinic_departments").select("department_name").eq("clinic_id",currentClinic.id).eq("is_active",true).order("department_name");
-   if(departmentError)return null;
-   return {profileId:null,departments:(allDepartments||[]).map(d=>d.department_name),role:membershipRole,isClinicOwner:true};
+   // Owner access is established by the active clinic_memberships row.
+   // Do not make assistant access depend on a separate departments-table read.
+   return {profileId:null,departments:[],role:membershipRole,isClinicOwner:true};
   }
   const {data:profile,error}=await supabaseClient.from("staff_profiles").select("id,department,professional_role,employment_status").eq("clinic_id",currentClinic.id).eq("user_id",currentUser.id).limit(1).maybeSingle();
   if(error||!profile||profile.employment_status&&profile.employment_status!=="active")return null;
