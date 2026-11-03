@@ -138,6 +138,7 @@ function showHealthOSView(viewId) {
     if (viewId === "ussdDiagnostics" && typeof window.loadUssdDiagnosticRequests === "function") window.loadUssdDiagnosticRequests().catch(error => console.error("USSD diagnostic requests refresh failed:", error));
     if (viewId === "multiFacilityManagement" && typeof window.loadMultiFacilityManagement === "function") window.loadMultiFacilityManagement().catch(error => console.error("Multi-facility workspace refresh failed:", error));
     if (viewId === "patientConnectionRequests" && typeof window.loadPatientConnectionRequests === "function") window.loadPatientConnectionRequests().catch(error => console.error("Patient connection requests refresh failed:", error));
+    if (viewId === "globalReferrals") { loadGlobalReferralOptions().catch(error => { const m=document.getElementById("globalReferralMessage"); if(m){m.textContent=friendlyError(error);m.className="message error";} }); loadGlobalReferralInbox(); }
     if (viewId === "aiAnalytics" && typeof window.loadAIAnalytics === "function") window.loadAIAnalytics().catch(error => console.error("AI analytics refresh failed:", error));
 }
 
