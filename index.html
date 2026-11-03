@@ -249,7 +249,78 @@
                 Use fictional demonstration information only. Do not enter
                 real patient information into this prototype.
             </p>
+            <div style="border-top:1px solid #e5eaf1;margin-top:20px;padding-top:16px">
+                <p><strong>Are you here as a patient?</strong></p>
+                <button id="openPatientAccessButton" class="text-button" type="button">Open patient access</button>
+            </div>
         </section>
+
+        <!-- HEALTHOS AI: GLOBAL PATIENT ACCESS PORTAL -->
+        <section id="patientPortal" class="auth-screen setup-screen" hidden>
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">HEALTHOS AI · PATIENT ACCESS</p>
+                    <h2>Healthcare, connected.</h2>
+                    <p>Find verified hospitals, request a connection, and manage your healthcare access.</p>
+                </div>
+            </div>
+            <form id="patientAuthForm" class="auth-form">
+                <label>Full name
+                    <input id="patientFullName" type="text" minlength="2" maxlength="150" autocomplete="name" required>
+                </label>
+                <label>Email address
+                    <input id="patientEmail" type="email" autocomplete="email" required>
+                </label>
+                <label>Password
+                    <input id="patientPassword" type="password" minlength="8" autocomplete="new-password" required>
+                </label>
+                <button id="patientAuthSubmit" class="primary-button" type="submit">Create patient account</button>
+                <button id="patientAuthModeToggle" class="text-button" type="button">Already have an account? Sign in</button>
+            </form>
+            <p id="patientAuthMessage" class="message" role="status" aria-live="polite"></p>
+            <div id="patientPortalWorkspace" hidden>
+                <h3>Your patient profile</h3>
+                <form id="patientProfileForm" class="auth-form">
+                    <label>Full name
+                        <input id="patientProfileName" type="text" minlength="2" maxlength="150" required>
+                    </label>
+                    <label>Phone number (international format)
+                        <input id="patientProfilePhone" type="tel" maxlength="20" placeholder="+234...">
+                    </label>
+                    <label>Country code
+                        <input id="patientProfileCountry" type="text" minlength="2" maxlength="2" placeholder="NG">
+                    </label>
+                    <label>Preferred language
+                        <select id="patientProfileLanguage">
+                            <option value="en">English</option>
+                            <option value="ha">Hausa</option>
+                            <option value="yo">Yoruba</option>
+                            <option value="ig">Igbo</option>
+                            <option value="fr">French</option>
+                            <option value="ar">Arabic</option>
+                        </select>
+                    </label>
+                    <button class="primary-button" type="submit">Save patient profile</button>
+                </form>
+                <p id="patientProfileMessage" class="message" role="status" aria-live="polite"></p>
+                <h3>Find a hospital</h3>
+                <div class="auth-form">
+                    <label>Country code
+                        <input id="hospitalSearchCountry" type="text" maxlength="2" placeholder="NG">
+                    </label>
+                    <label>City
+                        <input id="hospitalSearchCity" type="text" maxlength="120" placeholder="Lagos">
+                    </label>
+                    <button id="searchHospitalsButton" class="primary-button" type="button">Search verified hospitals</button>
+                </div>
+                <p id="hospitalSearchMessage" class="message" role="status" aria-live="polite"></p>
+                <div id="patientHospitalResults" class="stats-grid"></div>
+                <h3>My hospital connection requests</h3>
+                <div id="patientHospitalLinks" class="stats-grid"><p class="muted">No requests loaded.</p></div>
+            </div>
+            <button id="patientPortalBackButton" class="text-button" type="button">Return to HealthOS sign in</button>
+        </section>
+        <!-- END GLOBAL PATIENT ACCESS PORTAL -->
         <section id="passwordRecoveryPanel" class="auth-screen" hidden>
             <h2>Reset your password</h2>
 
