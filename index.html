@@ -857,6 +857,7 @@
                     <a href="#multiFacilityManagement" class="nav-item">▦ Multi-Facility Management</a>
                     <a href="#patientConnectionRequests" class="nav-item">♧ Patient Connection Requests</a>
                     <a href="#globalReferrals" class="nav-item">⇄ Global Specialist Referrals</a>
+                    <a href="#telemedicineDashboard" class="nav-item">▣ Telemedicine &amp; Virtual Care</a>
                     <a href="#internationalPayments" class="nav-item">¤ International Payments</a>
                     <a href="#aiAnalytics" class="nav-item">◈ AI Intelligence &amp; Analytics</a>
                     <a href="#patientFlow" class="nav-item">⇄ Queue &amp; Beds</a>
@@ -3094,6 +3095,34 @@
 </section>
 
 <!-- END HEALTHOS AI: HOSPITAL-SIDE PATIENT CONNECTION REQUESTS -->
+
+<!-- HEALTHOS AI: TELEMEDICINE DASHBOARD — STEP 1 -->
+<section id="telemedicineDashboard" class="panel" hidden>
+ <div class="panel-heading">
+  <div><p class="eyebrow">VIRTUAL CARE OPERATIONS</p><h2>Telemedicine &amp; Virtual Consultation</h2>
+   <p class="muted">Manage remote consultation requests for the active hospital. Each hospital sees only records permitted by its clinic access policies.</p></div>
+  <button type="button" id="telemedicineRefresh" class="primary-button">Refresh consultations</button>
+ </div>
+ <p id="telemedicineDashboardMessage" class="message" role="status" aria-live="polite">Open this workspace to load remote consultation requests.</p>
+ <div class="stats-grid">
+  <article class="stat-card"><p>Remote Requests</p><h3 id="telemedicineTotal">—</h3><p class="muted">Audio and video requests</p></article>
+  <article class="stat-card"><p>Awaiting Review</p><h3 id="telemedicinePending">—</h3><p class="muted">Not yet accepted</p></article>
+  <article class="stat-card"><p>Accepted</p><h3 id="telemedicineAccepted">—</h3><p class="muted">Ready for scheduling / preparation</p></article>
+  <article class="stat-card"><p>Completed</p><h3 id="telemedicineCompleted">—</h3><p class="muted">Marked completed by hospital workflow</p></article>
+ </div>
+ <h3>Remote Consultation Requests</h3>
+ <div class="table-wrap"><table><thead><tr><th>Requested</th><th>Patient</th><th>Visit type</th><th>Reason</th><th>Status</th><th>Next action</th></tr></thead>
+ <tbody id="telemedicineRequestsBody"><tr><td colspan="6">Refresh to load remote requests.</td></tr></tbody></table></div>
+ <h3 style="margin-top:26px">Consultation workflow</h3>
+ <div class="stats-grid">
+  <article class="stat-card"><h3>1. Review</h3><p class="muted">Verify the patient and request through the hospital appointment inbox.</p></article>
+  <article class="stat-card"><h3>2. Prepare</h3><p class="muted">Prepare an authorised audio/video session after accepting the request.</p></article>
+  <article class="stat-card"><h3>3. Consult</h3><p class="muted">A secure video/audio provider must be configured before a patient can join.</p></article>
+  <article class="stat-card"><h3>4. Document &amp; bill</h3><p class="muted">Authorised clinicians document the encounter; approved charges flow through hospital billing and audit.</p></article>
+ </div>
+ <p class="disclaimer">Step 1 provides the hospital-side telemedicine dashboard and request visibility. It does not yet provide live video/audio rooms. Do not use this dashboard as proof that a consultation has occurred. Clinical notes, prescriptions and charges must be recorded only by authorised staff after the actual consultation.</p>
+</section>
+<!-- END HEALTHOS AI: TELEMEDICINE DASHBOARD — STEP 1 -->
 
 <!-- HEALTHOS AI: MULTI-FACILITY MANAGEMENT -->
 <section id="multiFacilityManagement" class="panel" hidden>
