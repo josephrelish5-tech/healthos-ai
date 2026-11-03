@@ -1163,6 +1163,22 @@ async function loadPatientAppointmentList() {
  const ids=[...new Set(data.map(x=>x.clinic_id))];const {data:hospitals,error:hError}=await supabaseClient.from("healthos_hospital_directory").select("clinic_id,public_name").in("clinic_id",ids);if(hError)throw hError;
  const names=new Map((hospitals||[]).map(x=>[x.clinic_id,x.public_name]));
  data.forEach(row=>{const card=document.createElement("article");card.className="stat-card";const title=document.createElement("h3");title.textContent=names.get(row.clinic_id)||"Hospital";const date=document.createElement("p");date.textContent=new Date(row.requested_at).toLocaleString();const reason=document.createElement("p");reason.textContent=row.visit_type.replace(/_/g," ")+" · "+row.reason;const status=document.createElement("strong");status.textContent="Status: "+row.status;card.append(title,date,reason,status);target.appendChild(card);});
+ await loadPatientTelemedicineSessions();
+}
+async function loadPatientTelemedicineSessions(){
+ const target=document.getElementById("patientTelemedicineSessions");if(!target||!currentUser)return;
+ target.replaceChildren();const {data,error}=await supabaseClient.rpc("healthos_get_my_telemedicine_sessions");
+ if(error)throw error;const rows=Array.isArray(data)?data:(data||[]);
+ if(!rows.length){target.textContent="No remote consultation sessions have been prepared yet.";return;}
+ rows.forEach(row=>{
+  const card=document.createElement("article");card.className="stat-card";
+  const title=document.createElement("h3");title.textContent=row.hospital_name||"Hospital";
+  const date=document.createElement("p");date.textContent=new Date(row.scheduled_at).toLocaleString();
+  const channel=document.createElement("p");channel.textContent=(row.channel||"").toUpperCase()+" consultation";
+  const status=document.createElement("strong");
+  status.textContent=row.session_status==="awaiting_provider"?"Waiting for hospital to connect its secure consultation provider":row.session_status.replace(/_/g," ");
+  card.append(title,date,channel,status);target.appendChild(card);
+ });
 }
 const patientAppointmentForm=document.getElementById("patientAppointmentForm");
 if(patientAppointmentForm)patientAppointmentForm.addEventListener("submit",async event=>{
@@ -10678,7 +10694,20 @@ async function loadDepartmentAppointmentInbox(departmentId) {
      await loadDepartmentAppointmentInbox(departmentId);
     });
     action.append(selector,accept,reject);
-   }else action.textContent=row.linked_appointment_id?"Linked appointment: "+row.linked_appointment_id:"No action required";
+   }else {
+    action.textContent=row.linked_appointment_id?"Linked appointment: "+row.linked_appointment_id:"No action required";
+    if(row.status==="accepted"&&["audio","video"].includes(row.visit_type)){
+     const prepare=document.createElement("button");prepare.type="button";prepare.className="primary-button";prepare.textContent="Prepare remote consultation";
+     prepare.addEventListener("click",async()=>{
+      prepare.disabled=true;prepare.textContent="Preparing...";
+      const {data,error}=await supabaseClient.rpc("healthos_create_telemedicine_session",{p_request_id:row.id});
+      if(error){message.textContent=friendlyError(error);message.className="message error";prepare.disabled=false;prepare.textContent="Prepare remote consultation";return;}
+      message.textContent="Remote consultation session created. Provider connection is still required before the patient can join.";message.className="message success";
+      prepare.textContent=data?.session_status==="awaiting_provider"?"Provider connection pending":"Session prepared";
+     });
+     action.appendChild(prepare);
+    }
+   }
    tr.appendChild(action);body.appendChild(tr);
   });
   message.textContent=data.length+" request(s) loaded for this department. Patient records are matched only when accepting.";
