@@ -334,6 +334,9 @@
                 <h3>Remote consultations</h3>
                 <p class="muted">Accepted audio/video appointments appear here. A secure consultation room becomes available only after the hospital connects an approved telemedicine provider.</p>
                 <div id="patientTelemedicineSessions" class="stats-grid"><p class="muted">No remote consultations loaded.</p></div>
+                <h3>International healthcare payments</h3>
+                <p class="muted">View payment requests from connected hospitals. Online checkout is shown only when a verified payment provider is configured.</p>
+                <div id="patientInternationalPayments" class="stats-grid"><p class="muted">No payment requests loaded.</p></div>
                 <h3>Specialist referrals requiring your decision</h3>
                 <p class="muted">Review the receiving hospital and reason. Your consent is required before the receiving hospital can review the referral.</p>
                 <div id="patientGlobalReferrals" class="stats-grid"><p class="muted">No referrals awaiting your decision.</p></div>
@@ -842,6 +845,7 @@
                     <a href="#multiFacilityManagement" class="nav-item">▦ Multi-Facility Management</a>
                     <a href="#patientConnectionRequests" class="nav-item">♧ Patient Connection Requests</a>
                     <a href="#globalReferrals" class="nav-item">⇄ Global Specialist Referrals</a>
+                    <a href="#internationalPayments" class="nav-item">¤ International Payments</a>
                     <a href="#aiAnalytics" class="nav-item">◈ AI Intelligence &amp; Analytics</a>
                     <a href="#patientFlow" class="nav-item">⇄ Queue &amp; Beds</a>
                     <a href="#clinicalRecords" class="nav-item">✚ Clinical Records</a>
@@ -2100,7 +2104,16 @@
 
 </section>
 
-<!-- END SERVICE CAPTURE MODULE -->
+
+<section class="panel" id="internationalPayments" hidden>
+ <div class="panel-heading"><div><p class="eyebrow">GLOBAL HEALTHCARE NETWORK</p><h2>International Healthcare Payments</h2><p class="muted">Multi-currency payment requests, provider status and settlement visibility. Department receipts and Finance bank reconciliation remain separate and are not double-counted as invoices.</p></div><button id="refreshInternationalPayments" type="button" class="logout-button">Refresh</button></div>
+ <div class="stats-grid"><article class="stat-card"><h3>Payment architecture</h3><p>Provider-neutral payment intents with ISO currency codes, idempotency and server-side status control.</p></article><article class="stat-card"><h3>Provider connection</h3><p>No live gateway is configured yet. Checkout links and paid status remain disabled until provider credentials and signed webhooks are installed.</p></article><article class="stat-card"><h3>Money safety</h3><p>Original currency and amount are retained. FX conversion is not estimated or invented; card details are never stored by HealthOS.</p></article></div>
+ <h3>Hospital payment requests</h3><p class="muted">Owner/admin view of requests issued to connected patients. Patient identity is displayed from the patient profile.</p>
+ <div class="table-wrap"><table><thead><tr><th>Patient</th><th>Invoice reference</th><th>Description</th><th>Amount</th><th>Status</th><th>Provider</th><th>Created</th></tr></thead><tbody id="internationalPaymentRows"><tr><td colspan="7">Open this page as a hospital owner/admin to load payment requests.</td></tr></tbody></table></div>
+ <p id="internationalPaymentMessage" class="message" role="status" aria-live="polite"></p>
+ <p class="disclaimer">A payment request is not a charge or proof of payment. Provider confirmation must arrive through a verified server webhook before a request can become paid. Finance must continue reconciling actual settlement against bank/POS records.</p>
+</section>
+\n<!-- END SERVICE CAPTURE MODULE -->
                     <section class="panel" id="billing">
                         <div class="panel-heading">
                             <div>
