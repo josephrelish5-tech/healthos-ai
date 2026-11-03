@@ -3852,10 +3852,50 @@ async function loadBillingData(clinic) {
                 .select("id, created_at, transaction_at, payment_provider, transaction_reference, invoice_reference, payment_method, amount, captured_department, acceptance_status, reconciliation_status")
                 .eq("clinic_id", clinic.id)
                 .order("created_at", { ascending: false })
-                .limit(100);
+                .limit(1000);
 
         if (departmentPaymentsError) {
             throw departmentPaymentsError;
+        }
+
+        // DEPARTMENTAL FINANCIAL ACCOUNTABILITY — receipt capture visibility.
+        // Accepted and reconciled are separate controls; neither is treated as a new invoice.
+        const departmentSummaryBody = document.getElementById("departmentFinancialSummaryBody");
+        if (departmentSummaryBody) {
+            departmentSummaryBody.replaceChildren();
+            const groups = new Map();
+            (departmentPayments || []).forEach(payment => {
+                const department = (payment.captured_department || "Department not recorded").trim();
+                const currency = String(payment.currency || "NGN").trim().toUpperCase();
+                const key = department + "::" + currency;
+                if (!groups.has(key)) groups.set(key, {department,currency,count:0,captured:0,accepted:0,reconciled:0,pending:0,unassigned:department === "Department not recorded"});
+                const item = groups.get(key);
+                const amount = Number(payment.amount || 0);
+                item.count += 1;
+                item.captured += amount;
+                if (payment.acceptance_status === "accepted") item.accepted += amount;
+                else item.pending += amount;
+                if (payment.reconciliation_status === "reconciled") item.reconciled += amount;
+            });
+            if (!groups.size) {
+                const row = document.createElement("tr");
+                const cell = document.createElement("td");
+                cell.colSpan = 7;
+                cell.textContent = "No department receipts available for this clinic.";
+                row.appendChild(cell);
+                departmentSummaryBody.appendChild(row);
+            } else {
+                [...groups.values()].sort((a,b) => a.department.localeCompare(b.department)).forEach(item => {
+                    const row = document.createElement("tr");
+                    const money = value => new Intl.NumberFormat("en-NG",{style:"currency",currency:item.currency,maximumFractionDigits:2}).format(value);
+                    [item.department,item.currency,String(item.count),money(item.captured),money(item.accepted),money(item.reconciled),money(item.pending)].forEach(value => {
+                        const cell = document.createElement("td");
+                        cell.textContent = String(value);
+                        row.appendChild(cell);
+                    });
+                    departmentSummaryBody.appendChild(row);
+                });
+            }
         }
 
         const departmentPaymentsBody =
