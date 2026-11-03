@@ -647,6 +647,27 @@
     </div>
     <div class="panel-heading">
         <div>
+            <h3>Department Appointment Inbox</h3>
+            <p class="muted">Only requests routed to your selected assigned department appear here.</p>
+        </div>
+        <button type="button" class="btn btn-secondary" id="refreshDepartmentAppointmentInbox">Refresh inbox</button>
+    </div>
+    <div class="stats-grid" id="departmentAppointmentCounts">
+        <article class="stat-card"><p>Pending</p><h3 id="departmentApptPending">0</h3></article>
+        <article class="stat-card"><p>Accepted</p><h3 id="departmentApptAccepted">0</h3></article>
+        <article class="stat-card"><p>Rejected</p><h3 id="departmentApptRejected">0</h3></article>
+        <article class="stat-card"><p>Completed</p><h3 id="departmentApptCompleted">0</h3></article>
+    </div>
+    <p class="message" id="departmentAppointmentInboxMessage" role="status">Choose an assigned department to load its requests.</p>
+    <div class="table-container">
+        <table>
+            <thead><tr><th>Request received</th><th>Patient</th><th>Preferred consultation</th><th>Type</th><th>Reason</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="departmentAppointmentInboxBody"><tr><td colspan="7">Select your department.</td></tr></tbody>
+        </table>
+    </div>
+
+    <div class="panel-heading">
+        <div>
             <h3>My Duties & Responsibilities</h3>
             <p class="muted">Only duties approved by your hospital are shown as active responsibilities.</p>
         </div>
