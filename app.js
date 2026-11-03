@@ -8301,7 +8301,7 @@ function openSection(sectionId, sectionName) {
                         if (record.ocr_raw && record.ocr_raw.storage_provider === storageProvider) {
                             const { data: link, error: linkError } = await supabaseClient.functions.invoke(
                                 "healthos-b2-storage",
-                                { body: { action: "create-download", objectKey: record.source_file_path, clinicId: currentClinic.id, purpose: "pos_receipt" } }
+                                { body: { action: "create-download", receiptId: record.id, clinicId: currentClinic.id, purpose: "pos_receipt" } }
                             );
                             if (linkError) throw linkError;
                             if (!link || !link.downloadUrl) throw new Error("Secure B2 download link was not returned.");
