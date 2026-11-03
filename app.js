@@ -385,6 +385,7 @@ adminVerificationForm.addEventListener("submit", async function (event) {
         // HEALTHOS AI: LOAD ADMIN STAFF DASHBOARD
         await loadAdminStaffDashboard(currentClinic);
         await loadDepartmentPerformanceDashboard(currentClinic);
+        await loadHospitalDepartmentCommand(currentClinic);
     // HEALTHOS AI: AUTOMATIC ADMIN STAFF DASHBOARD REFRESH
 if (window.healthOSAdminStaffRefresh) {
     clearInterval(window.healthOSAdminStaffRefresh);
@@ -394,6 +395,7 @@ window.healthOSAdminStaffRefresh = setInterval(async function () {
     if (currentUser && currentClinic && managementVerified) {
         await loadAdminStaffDashboard(currentClinic);
         await loadDepartmentPerformanceDashboard(currentClinic);
+        await loadHospitalDepartmentCommand(currentClinic);
     }
 }, 15000);
 // END HEALTHOS AI: AUTOMATIC ADMIN STAFF DASHBOARD REFRESH    
@@ -3100,6 +3102,44 @@ async function loadStaffShiftRoster(clinic) {
 /* END HEALTHOS AI: LIVE HOSPITAL-WIDE SHIFT ROSTER */
 
 
+async function loadHospitalDepartmentCommand(clinic) {
+ const message=document.getElementById("departmentCommandMessage");
+ const body=document.getElementById("departmentCommandTableBody");
+ if(!message||!body)return;
+ if(!currentUser||!currentClinic||!managementVerified||clinic.id!==currentClinic.id){
+  message.textContent="Verified owner or administrator access is required.";message.className="message error";return;
+ }
+ message.textContent="Refreshing department operations...";message.className="message";
+ body.replaceChildren();
+ try{
+  const {data,error}=await supabaseClient.rpc("healthos_get_department_command_overview",{p_clinic_id:clinic.id});
+  if(error)throw error;
+  const departments=Array.isArray(data?.departments)?data.departments:[];
+  const totals=departments.reduce((a,d)=>{
+   a.staff+=Number(d.active_staff||0);a.pending+=Number(d.pending_requests||0);
+   a.accepted+=Number(d.accepted_requests||0);a.rejected+=Number(d.rejected_requests||0);
+   a.completed+=Number(d.completed_appointments||0);return a;
+  },{staff:0,pending:0,accepted:0,rejected:0,completed:0});
+  const set=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=String(value);};
+  set("commandDepartmentTotal",departments.length);set("commandStaffTotal",totals.staff);
+  set("commandPendingTotal",totals.pending);set("commandAcceptedTotal",totals.accepted);
+  set("commandRejectedTotal",totals.rejected);set("commandCompletedTotal",totals.completed);
+  if(!departments.length){
+   const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=6;td.textContent="No active departments configured.";tr.appendChild(td);body.appendChild(tr);
+  }else departments.forEach(d=>{
+   const tr=document.createElement("tr");
+   [d.department_name||"Department",d.active_staff||0,d.pending_requests||0,d.accepted_requests||0,d.rejected_requests||0,d.completed_appointments||0].forEach(value=>{
+    const td=document.createElement("td");td.textContent=String(value);tr.appendChild(td);
+   });
+   body.appendChild(tr);
+  });
+  message.textContent="Live department overview updated. Staff and request totals are based on active department assignments and routed appointment requests.";
+  message.className="message success";
+ }catch(error){message.textContent=friendlyError(error);message.className="message error";const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=6;td.textContent="Unable to load department overview.";tr.appendChild(td);body.appendChild(tr);}
+}
+const refreshDepartmentCommand=document.getElementById("refreshDepartmentCommand");
+if(refreshDepartmentCommand)refreshDepartmentCommand.addEventListener("click",()=>{if(currentClinic)void loadHospitalDepartmentCommand(currentClinic);});
+
 // HEALTHOS AI: DEPARTMENT PERFORMANCE DASHBOARD
 async function loadDepartmentPerformanceDashboard(clinic) {
     const message = document.getElementById("departmentPerformanceMessage");
@@ -3246,6 +3286,7 @@ if (taskAssignmentForm) {
         taskAssignmentForm.reset();
         button.disabled = false;
         await loadDepartmentPerformanceDashboard(currentClinic);
+        await loadHospitalDepartmentCommand(currentClinic);
     });
 }
 const refreshTaskAssignmentOptions = document.getElementById("refreshTaskAssignmentOptions");
