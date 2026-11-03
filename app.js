@@ -11410,3 +11410,114 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
  console.log("HealthOS departmental knowledge review workspace initialized.");
 })();
 // END HEALTHOS AI: DEPARTMENTAL KNOWLEDGE REVIEW WORKSPACE
+
+
+// HEALTHOS AI — DEPARTMENTAL EXPENDITURE & EXPENSE CONTROL
+(function initDepartmentExpenseControl(){
+ "use strict";
+ const $=id=>document.getElementById(id);
+ const panel=$("departmentExpenseControlPanel");
+ if(!panel)return;
+ const message=$("departmentExpenseMessage");
+ const requestRows=$("departmentExpenseRows");
+ const limitRows=$("departmentSpendingLimitRows");
+ const requestForm=$("departmentExpenseRequestForm");
+ const limitForm=$("departmentSpendingLimitForm");
+ let busy=false;
+ const say=(text,error=false)=>{if(message){message.textContent=text;message.className=error?"message error":"message";}};
+ const money=(amount,currency)=>{try{return new Intl.NumberFormat("en-NG",{style:"currency",currency:currency||"NGN"}).format(Number(amount)||0);}catch(_){return (currency||"")+" "+amount;}};
+ async function load(){
+  if(busy)return;busy=true;
+  try{
+   if(!currentUser||!currentClinic||!supabaseClient){say("Sign in to an authorised hospital workspace first.",true);return;}
+   say("Loading expenditure requests and spending limits…");
+   const [{data:departments,error:deptError},{data:requests,error:reqError},{data:limits,error:limitError}]=await Promise.all([
+    supabaseClient.from("clinic_departments").select("id,department_name").eq("clinic_id",currentClinic.id).eq("is_active",true).order("department_name"),
+    supabaseClient.from("department_expense_requests").select("id,department_id,requested_by,category,description,vendor_or_payee,requested_amount,approved_amount,currency,evidence_path,status,reviewed_by,paid_by,created_at").eq("clinic_id",currentClinic.id).order("created_at",{ascending:false}).limit(150),
+    supabaseClient.from("department_spending_limits").select("id,department_id,category,currency,monthly_limit,effective_from,effective_to").eq("clinic_id",currentClinic.id).order("effective_from",{ascending:false}).limit(150)
+   ]);
+   if(deptError)throw deptError;if(reqError)throw reqError;if(limitError)throw limitError;
+   const deptMap=new Map((departments||[]).map(d=>[d.id,d.department_name]));
+   ["expenseDepartment","spendingLimitDepartment"].forEach(id=>{
+    const select=$(id);if(!select)return;const prior=select.value;
+    select.replaceChildren(new Option("Select department",""));
+    (departments||[]).forEach(d=>select.add(new Option(d.department_name,d.id)));
+    if(prior)select.value=prior;
+   });
+   requestRows.replaceChildren();
+   if(!requests?.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=7;td.textContent="No expense requests recorded.";tr.appendChild(td);requestRows.appendChild(tr);}
+   (requests||[]).forEach(row=>{
+    const tr=document.createElement("tr");
+    [deptMap.get(row.department_id)||"Department",row.category+(row.vendor_or_payee?" / "+row.vendor_or_payee:""),money(row.requested_amount,row.currency),row.approved_amount==null?"—":money(row.approved_amount,row.currency),row.status,row.requested_by+" / "+(row.reviewed_by||"—")+" / "+(row.paid_by||"—")].forEach(value=>{const td=document.createElement("td");td.textContent=String(value);tr.appendChild(td);});
+    const action=document.createElement("td");
+    if(row.status==="submitted"){
+     const approve=document.createElement("button");approve.type="button";approve.className="primary-button";approve.textContent="Approve";
+     approve.addEventListener("click",()=>review(row,"approved"));
+     const reject=document.createElement("button");reject.type="button";reject.className="secondary-button";reject.textContent="Reject";
+     reject.addEventListener("click",()=>review(row,"rejected"));
+     action.append(approve,reject);
+    }else if(row.status==="approved"){
+     const pay=document.createElement("button");pay.type="button";pay.className="primary-button";pay.textContent="Record payment";
+     pay.addEventListener("click",()=>recordPayment(row,pay));action.appendChild(pay);
+    }else action.textContent="No action";
+    tr.appendChild(action);requestRows.appendChild(tr);
+   });
+   limitRows.replaceChildren();
+   if(!limits?.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=5;td.textContent="No spending limits recorded.";tr.appendChild(td);limitRows.appendChild(tr);}
+   (limits||[]).forEach(row=>{const tr=document.createElement("tr");[deptMap.get(row.department_id)||"Department",row.category,row.currency,money(row.monthly_limit,row.currency),row.effective_from].forEach(value=>{const td=document.createElement("td");td.textContent=String(value);tr.appendChild(td);});limitRows.appendChild(tr);});
+   say((requests||[]).length+" request(s) and "+(limits||[]).length+" spending limit(s) loaded. Budget limits are monitoring controls; they do not automatically approve or pay requests.");
+  }catch(error){console.error("Department expenditure load failed",error);say("Could not load expenditure controls: "+(error.message||"Check access permissions."),true);}
+  finally{busy=false;}
+ }
+ async function review(row,decision){
+  if(!currentUser||currentUser.id===row.requested_by){say("The requester cannot review their own request.",true);return;}
+  const note=prompt((decision==="approved"?"Approval":"Rejection")+" note (required):");
+  if(!note||!note.trim()){say("A review note is required.",true);return;}
+  let approvedAmount=null;
+  if(decision==="approved"){
+   const raw=prompt("Approved amount (maximum requested: "+row.requested_amount+" "+row.currency+"):",String(row.requested_amount));
+   if(raw===null)return;approvedAmount=Number(raw);
+   if(!Number.isFinite(approvedAmount)||approvedAmount<=0||approvedAmount>Number(row.requested_amount)){say("Enter a valid positive amount no greater than the requested amount.",true);return;}
+  }
+  const update={status:decision,reviewed_by:currentUser.id,reviewed_at:new Date().toISOString(),review_notes:note.trim(),approved_amount:approvedAmount};
+  const {error}=await supabaseClient.from("department_expense_requests").update(update).eq("id",row.id).eq("clinic_id",currentClinic.id).eq("status","submitted");
+  if(error){say("Review failed: "+error.message,true);return;}
+  say("Request "+decision+". Payment remains a separate action.");await load();
+ }
+ async function recordPayment(row,button){
+  if(!currentUser||currentUser.id===row.requested_by||currentUser.id===row.reviewed_by){say("Requester and approver cannot record this payment.",true);return;}
+  const reference=prompt("Enter bank / payment reference to record the completed payment:");
+  if(!reference||!reference.trim()){say("Payment reference is required.",true);return;}
+  button.disabled=true;
+  const {error}=await supabaseClient.from("department_expense_requests").update({status:"paid",paid_by:currentUser.id,paid_at:new Date().toISOString(),payment_reference:reference.trim()}).eq("id",row.id).eq("clinic_id",currentClinic.id).eq("status","approved");
+  button.disabled=false;
+  if(error){say("Payment recording failed: "+error.message,true);return;}
+  say("Payment recorded against the approved request. This records evidence of payment; it does not initiate a bank transfer.");await load();
+ }
+ requestForm?.addEventListener("submit",async event=>{
+  event.preventDefault();const button=$("submitDepartmentExpense");button.disabled=true;
+  try{
+   if(!currentUser||!currentClinic)throw new Error("Sign in to an authorised clinic first.");
+   const payload={clinic_id:currentClinic.id,department_id:$("expenseDepartment").value,requested_by:currentUser.id,category:$("expenseCategory").value.trim(),description:$("expenseDescription").value.trim(),vendor_or_payee:$("expensePayee").value.trim()||null,requested_amount:Number($("expenseAmount").value),currency:$("expenseCurrency").value,evidence_path:$("expenseEvidence").value.trim()||null};
+   if(!payload.department_id||!payload.category||!payload.description||!Number.isFinite(payload.requested_amount)||payload.requested_amount<=0)throw new Error("Complete the department, category, description and valid amount.");
+   const {error}=await supabaseClient.from("department_expense_requests").insert(payload);if(error)throw error;
+   requestForm.reset();say("Expense request submitted. It is awaiting independent approval.");await load();
+  }catch(error){say("Submission failed: "+error.message,true);}finally{button.disabled=false;}
+ });
+ limitForm?.addEventListener("submit",async event=>{
+  event.preventDefault();const button=limitForm.querySelector("button[type=submit]");button.disabled=true;
+  try{
+   if(!currentUser||!currentClinic)throw new Error("Sign in to an authorised clinic first.");
+   const payload={clinic_id:currentClinic.id,department_id:$("spendingLimitDepartment").value,category:$("spendingLimitCategory").value.trim(),currency:$("spendingLimitCurrency").value,monthly_limit:Number($("spendingLimitAmount").value),approved_by:currentUser.id};
+   if(!payload.department_id||!payload.category||!Number.isFinite(payload.monthly_limit)||payload.monthly_limit<0)throw new Error("Complete the department, category and valid monthly limit.");
+   const {error}=await supabaseClient.from("department_spending_limits").insert(payload);if(error)throw error;
+   limitForm.reset();say("Monthly spending limit saved.");await load();
+  }catch(error){say("Could not save spending limit: "+error.message,true);}finally{button.disabled=false;}
+ });
+ $("refreshDepartmentExpenses")?.addEventListener("click",load);
+ document.querySelectorAll('.sidebar .nav-item[href="#billingReview"]').forEach(link=>link.addEventListener("click",()=>setTimeout(load,250)));
+ document.addEventListener("healthos:clinic-ready",load);
+ setTimeout(()=>{if(currentUser&&currentClinic)load();},1800);
+ console.log("HealthOS departmental expenditure control workspace initialized.");
+})();
+// END DEPARTMENTAL EXPENDITURE & EXPENSE CONTROL
