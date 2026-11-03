@@ -9609,12 +9609,14 @@ function openSection(sectionId, sectionName) {
    const select=document.createElement("select");
    ["new","verification_required","accepted","scheduled","sample_collected","completed","cancelled","rejected"].forEach(status=>{const option=document.createElement("option");option.value=status;option.textContent=status.replaceAll("_"," ");select.appendChild(option);});
    select.value=item.status;
-   const note=document.createElement("input");note.type="text";note.maxLength=500;note.placeholder="Staff note (optional)";note.setAttribute("aria-label","Staff review note");\n   const appointment=document.createElement("input");appointment.type="datetime-local";appointment.setAttribute("aria-label","Appointment date and time");if(item.appointment_at)appointment.value=new Date(item.appointment_at).toISOString().slice(0,16);
+   const note=document.createElement("input");note.type="text";note.maxLength=500;note.placeholder="Staff note (optional)";note.setAttribute("aria-label","Staff review note");
+   const appointment=document.createElement("input");appointment.type="datetime-local";appointment.setAttribute("aria-label","Appointment date and time");if(item.appointment_at)appointment.value=new Date(item.appointment_at).toISOString().slice(0,16);
    const save=document.createElement("button");save.type="button";save.className="logout-button";save.textContent="Update";
    save.addEventListener("click",async()=>{
     if(!window.confirm("Save this diagnostic request status? Confirm patient identity and test suitability before accepting or scheduling."))return;
     save.disabled=true;
-    if(select.value==="scheduled"&&!appointment.value){say("Choose an appointment date and time before scheduling.",true);save.disabled=false;return;}\n    const {error:updateError}=await supabaseClient.from("ussd_diagnostic_requests").update({status:select.value,appointment_at:appointment.value?new Date(appointment.value).toISOString():null,staff_note:note.value.trim()||null,reviewed_by:currentUser.id,reviewed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",item.id).eq("clinic_id",currentClinic.id);
+    if(select.value==="scheduled"&&!appointment.value){say("Choose an appointment date and time before scheduling.",true);save.disabled=false;return;}
+    const {error:updateError}=await supabaseClient.from("ussd_diagnostic_requests").update({status:select.value,appointment_at:appointment.value?new Date(appointment.value).toISOString():null,staff_note:note.value.trim()||null,reviewed_by:currentUser.id,reviewed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("id",item.id).eq("clinic_id",currentClinic.id);
     if(updateError){say("Could not update request: "+updateError.message,true);save.disabled=false;return;}
     say("Diagnostic request updated.");await loadUssdDiagnosticRequests();
    });
