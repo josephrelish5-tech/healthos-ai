@@ -337,6 +337,16 @@
                 <h3>International healthcare payments</h3>
                 <p class="muted">View payment requests from connected hospitals. Online checkout is shown only when a verified payment provider is configured.</p>
                 <div id="patientInternationalPayments" class="stats-grid"><p class="muted">No payment requests loaded.</p></div>
+                <h3>My Medical Documents</h3>
+                <p class="muted">Privately store your own medical documents, laboratory reports and diagnostic images. Only your signed-in account can list and retrieve these files in this initial release.</p>
+                <form id="patientFileUploadForm" class="auth-form">
+                    <label>Select a document
+                        <input id="patientFileInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.mp3,.wav,.webm,.docx" required>
+                    </label>
+                    <button id="patientFileUploadButton" class="primary-button" type="submit">Upload securely</button>
+                </form>
+                <p id="patientFileMessage" class="message" role="status" aria-live="polite"></p>
+                <div id="patientFileList" class="stats-grid"><p class="muted">No documents loaded.</p></div>
                 <h3>Specialist referrals requiring your decision</h3>
                 <p class="muted">Review the receiving hospital and reason. Your consent is required before the receiving hospital can review the referral.</p>
                 <div id="patientGlobalReferrals" class="stats-grid"><p class="muted">No referrals awaiting your decision.</p></div>
