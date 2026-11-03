@@ -6423,8 +6423,24 @@ if (refreshAppointmentsButton) {
   if(!staffContext){show("HealthOS access not verified","I could not verify an active membership in this hospital. Please sign in with your hospital account or contact your administrator.");return;}
   const match=routeMatch(q);
   if(match&&!staffContext.isClinicOwner&&!departmentOwns(staffContext.departments,match)){show("Department assignment required","Your general HealthOS Help Assistant is available. This request needs an active assignment to "+match.owner+". Ask your administrator to complete or update your department assignment. I will not expose another department’s restricted instructions or workspace.");return;}
-  // Approved departmental knowledge is retrieved locally through the RLS-protected
-  // department_knowledge_articles table. No unimplemented Edge Function is called.
+  // Use the authenticated conversational knowledge function first. Its database
+  // client forwards the signed-in user's JWT, so departmental article access remains
+  // governed by Supabase Row-Level Security.
+  if(supabaseClient&&supabaseClient.functions){
+   try{
+    const {data:aiData,error:aiError}=await supabaseClient.functions.invoke("healthos-conversational-knowledge",{
+     body:{question:String(q).trim(),clinic_id:currentClinic.id}
+    });
+    if(!aiError&&aiData&&aiData.answer){
+     lastConversation={topic:rawQuestion,answer:aiData.answer,article:null,turns:lastConversation.turns+1};
+     const citations=(aiData.sources||[]).map(s=>s.title+" · Version "+s.version).join("\\n");
+     show("Ask HealthOS · Verified knowledge",aiData.answer+(citations?"\\n\\nSOURCES:\\n"+citations:""));
+     return;
+    }
+    if(aiError)console.warn("Ask HealthOS conversational function unavailable; using approved local guidance.",aiError.message);
+    else if(aiData&&aiData.error)console.warn("Ask HealthOS knowledge response:",aiData.error);
+   }catch(aiErr){console.warn("Ask HealthOS conversational request failed; using approved local guidance.",aiErr);}
+  }
   if(typeof window.healthOSDepartmentKnowledgeSearch==="function"){
    const knowledge=await window.healthOSDepartmentKnowledgeSearch(q);
    if(knowledge&&knowledge.length){
