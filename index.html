@@ -15,6 +15,7 @@
     <script src="offline-sync-center.js?v=20261103-1" defer></script>
     <script src="offline-department-tasks.js?v=20261103-1" defer></script>
     <script src="hospital-incidents.js?v=20261103-1" defer></script>
+    <script src="hospital-compliance.js?v=20261103-1" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -1928,6 +1929,34 @@
   <p id="offlineSyncMessage" class="muted" role="status">No automatic background upload is performed. Reconnect, open the relevant workspace, review the queued items and explicitly submit them.</p>
  </section>
 
+
+
+ <section class="panel" id="hospitalComplianceWorkspace" style="margin:16px 0" aria-labelledby="hospitalComplianceHeading">
+  <h3 id="hospitalComplianceHeading">Hospital-wide Compliance, Risk &amp; Audit Register</h3>
+  <p class="muted">Track regulatory obligations, internal policies, inspections, audit findings and corrective actions across every department. New entries are immutable submissions awaiting authorised human review; this register does not certify legal or regulatory compliance.</p>
+  <div class="stats-grid">
+   <article class="stat-card"><p>Register entries</p><h3 id="complianceTotal">—</h3><p class="muted">Visible to this clinic</p></article>
+   <article class="stat-card"><p>Obligations</p><h3 id="complianceObligations">—</h3><p class="muted">Regulatory and policy requirements</p></article>
+   <article class="stat-card"><p>Findings</p><h3 id="complianceFindings">—</h3><p class="muted">Inspection and audit findings</p></article>
+   <article class="stat-card"><p>Overdue items</p><h3 id="complianceOverdue">—</h3><p class="muted">Past due date; requires review</p></article>
+  </div>
+  <form id="complianceRegisterForm" class="auth-form">
+   <label for="complianceRecordType">Record type</label><select id="complianceRecordType" required><option value="obligation">Regulatory / policy obligation</option><option value="inspection_finding">Inspection or audit finding</option><option value="corrective_action">Corrective / preventive action (CAPA)</option><option value="audit_review">Internal audit review</option></select>
+   <label for="complianceFramework">Framework / source</label><select id="complianceFramework" required><option value="NDPA 2023 / data protection">NDPA 2023 / data protection</option><option value="National Health Act / health regulation">National Health Act / health regulation</option><option value="Nigerian health facility licensing / state requirements">Health facility licensing / state requirements</option><option value="Accreditation / quality standard">Accreditation / quality standard</option><option value="Infection prevention and control">Infection prevention and control</option><option value="Occupational health and safety">Occupational health and safety</option><option value="Hospital internal policy">Hospital internal policy</option><option value="Financial control / audit requirement">Financial control / audit requirement</option><option value="Other regulatory or contractual requirement">Other regulatory or contractual requirement</option></select>
+   <label for="complianceTitle">Requirement / finding title</label><input id="complianceTitle" maxlength="220" minlength="4" required>
+   <label for="complianceDepartment">Department / unit</label><input id="complianceDepartment" maxlength="120" minlength="2" required placeholder="e.g. Pharmacy, Finance, Medical Records">
+   <label for="complianceOfficer">Responsible officer / role</label><input id="complianceOfficer" maxlength="160" minlength="2" required placeholder="Name or accountable role">
+   <label for="complianceSeverity">Risk / finding severity</label><select id="complianceSeverity"><option value="low">Low</option><option value="moderate" selected>Moderate</option><option value="high">High</option><option value="critical">Critical</option></select>
+   <label for="complianceDueDate">Due date (if applicable)</label><input id="complianceDueDate" type="date">
+   <label for="complianceFrequency">Review frequency (obligations)</label><select id="complianceFrequency"><option value="">Not specified</option><option value="once">One-time</option><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="six_monthly">Every six months</option><option value="annually">Annually</option></select>
+   <label for="complianceDescription">Requirement, evidence observed, gap and action required</label><textarea id="complianceDescription" rows="5" maxlength="8000" minlength="10" required placeholder="Record the source, facts, impact, control gap and proposed corrective action. Avoid patient identifiers."></textarea>
+   <label for="complianceEvidence">Evidence reference (optional; document ID or approved storage reference only)</label><input id="complianceEvidence" maxlength="1000" placeholder="Do not paste public or unsecured patient-document links">
+   <label for="complianceRelated">Related incident / audit reference (optional)</label><input id="complianceRelated" maxlength="100">
+   <button id="complianceSubmitButton" type="submit" class="primary-button">Submit to compliance review queue</button>
+  </form>
+  <p id="complianceMessage" class="message" role="status">Submissions are recorded as pending review. Only authorised review workflows should verify, close or certify an item.</p>
+  <div class="table-wrap"><table><thead><tr><th>Reference</th><th>Type</th><th>Framework</th><th>Requirement / finding</th><th>Department</th><th>Severity</th><th>Due</th><th>Status</th></tr></thead><tbody id="complianceRows"><tr><td colspan="8">Sign in to load the clinic compliance register.</td></tr></tbody></table></div>
+ </section>
 
  <section class="panel" id="hospitalIncidentReporting" style="margin:16px 0" aria-labelledby="incidentReportingHeading">
   <h3 id="incidentReportingHeading">Hospital Incident Reporting &amp; Escalation</h3>
