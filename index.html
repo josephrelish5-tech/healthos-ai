@@ -20,6 +20,7 @@
     <script src="hospital-quality.js?v=20261103-1" defer></script>
     <script src="clinical-governance.js?v=20261103-1" defer></script>
     <script src="staff-credentialing.js?v=20261103-1" defer></script>
+    <script src="clinical-decision-support.js?v=20261103-1" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -3441,6 +3442,27 @@
 </section>
 <!-- END HEALTHOS AI: STAFF CREDENTIALING, LICENSING & COMPETENCY -->
 
+<!-- HEALTHOS AI: CLINICAL DECISION SUPPORT -->
+<section class="panel" id="clinicalDecisionSupportWorkspace" style="margin:16px 0" aria-labelledby="cdsHeading">
+<div class="panel-heading"><div><p class="eyebrow">CLINICAL INTELLIGENCE · CLINICIAN-LED DECISIONS</p><h2 id="cdsHeading">AI Clinical Decision Support</h2><p class="muted">Structured clinical risk review and evidence-informed considerations. This workspace supports—not replaces—the licensed clinician's assessment.</p></div><button type="button" id="cdsRefreshButton" class="logout-button">Refresh reviews</button></div>
+<div class="stats-grid"><article class="stat-card"><p>Total reviews</p><h3 id="cdsTotal">—</h3></article><article class="stat-card"><p>Awaiting clinician review</p><h3 id="cdsPending">—</h3></article><article class="stat-card"><p>Urgent / emergency flags</p><h3 id="cdsUrgent">—</h3></article></div>
+<h3>Record a clinical decision-support review</h3>
+<form id="cdsForm" class="auth-form">
+<div class="stats-grid"><label>Encounter reference<input id="cdsEncounterReference" maxlength="100" placeholder="Use approved encounter code"></label><label>Patient reference<input id="cdsPatientReference" maxlength="100" placeholder="Use approved non-identifying code only"></label></div>
+<label>Department<input id="cdsDepartment" maxlength="120" required placeholder="e.g. Emergency Department"></label>
+<label>Clinical review domain<select id="cdsDomain" required><option value="deterioration_risk">Patient deterioration risk</option><option value="medication_safety">Medication safety</option><option value="allergy_safety">Allergy safety</option><option value="infection_risk">Infection risk</option><option value="maternal_child_health">Maternal and child health</option><option value="chronic_disease">Chronic disease management</option><option value="diagnostic_review">Diagnostic review</option><option value="care_pathway">Care pathway review</option><option value="other">Other</option></select></label>
+<label>Clinical context<textarea id="cdsContext" rows="4" minlength="10" maxlength="5000" required placeholder="Document relevant clinical context using approved patient identifiers only."></textarea></label>
+<label>Relevant findings / observations<textarea id="cdsFindings" rows="3" maxlength="3000"></textarea></label>
+<label>Known risk factors<textarea id="cdsRiskFactors" rows="3" maxlength="3000"></textarea></label>
+<label>Evidence-informed considerations for clinician review<textarea id="cdsConsiderations" rows="3" maxlength="3000" placeholder="Document questions, guideline references or considerations for a qualified clinician to assess."></textarea></label>
+<label>Review urgency<select id="cdsUrgency" required><option value="routine">Routine review</option><option value="prompt_review">Prompt review</option><option value="urgent_clinician_review">Urgent clinician review</option><option value="emergency_escalation">Emergency escalation required</option></select></label>
+<button id="cdsSubmitButton" class="primary-button" type="submit">Submit for clinician review</button>
+</form>
+<p id="cdsMessage" class="message" role="status" aria-live="polite">Sign in to load decision-support reviews.</p>
+<h3>Clinical decision-support review register</h3><div class="table-wrap"><table><thead><tr><th>Encounter</th><th>Department</th><th>Review domain</th><th>Urgency</th><th>Status</th><th>Submitted</th><th>Disposition</th></tr></thead><tbody id="cdsRows"><tr><td colspan="7">Sign in to load reviews.</td></tr></tbody></table></div>
+<p class="disclaimer">Safety boundary: this initial module is a structured review and risk-documentation workflow, not a validated diagnostic or treatment recommendation engine. It does not calculate patient-specific probabilities, prescribe medicines, interpret results autonomously or generate treatment orders. Clinicians must independently verify findings against current approved guidelines and the patient's complete record. For emergencies, activate the hospital's emergency response immediately; do not wait for this system. Do not enter unnecessary patient-identifying information.</p>
+</section>
+<!-- END HEALTHOS AI: CLINICAL DECISION SUPPORT -->
                     <footer>
     HealthOS AI · Healthcare operations and revenue protection
                     </footer>
