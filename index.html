@@ -2468,6 +2468,13 @@
                             </table>
                         </div>
 
+                        <section class="panel" id="departmentFinancialAccountabilityPanel" style="margin:18px 0">
+                            <h3>Departmental Financial Accountability — Collection Snapshot</h3>
+                            <p class="muted">Summarises recorded department receipts by capture department and currency. Captured, Finance-accepted and bank-reconciled amounts are shown separately. Pending acceptance and unreconciled amounts remain visible; these figures are not a substitute for the ledger or bank statement.</p>
+                            <div class="table-wrap"><table><thead><tr><th>Department</th><th>Currency</th><th>Receipts</th><th>Captured</th><th>Finance accepted</th><th>Bank reconciled</th><th>Awaiting acceptance</th></tr></thead><tbody id="departmentFinancialSummaryBody"><tr><td colspan="7">Open Billing Review to calculate departmental collection totals.</td></tr></tbody></table></div>
+                            <p class="stat-note">Control note: a receipt is counted under its recorded captured_department. Missing department attribution is displayed as “Department not recorded” and should be corrected through an authorised review, not silently reassigned.</p>
+                        </section>
+
                         <h3>Department Payments — Hospital-wide Capture</h3>
                         <p class="muted">Payments recorded by authorised departments appear here for management monitoring. Acceptance by Finance does not mean bank settlement has been reconciled.</p>
                         <div class="table-wrap">
