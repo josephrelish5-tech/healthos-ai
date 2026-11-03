@@ -78,7 +78,7 @@ function showHealthOSView(viewId) {
     const mainContent = document.getElementById("dashboard");
     if (!mainContent) return;
 
-    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "multiFacilityManagement", "patientConnectionRequests", "globalReferrals", "internationalPayments", "aiAnalytics", "patientFlow", "clinicalRecords", "clinicalScribe", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
+    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "multiFacilityManagement", "patientConnectionRequests", "globalReferrals", "internationalPayments", "telemedicineDashboard", "aiAnalytics", "patientFlow", "clinicalRecords", "clinicalScribe", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
     if (!allowedViews.includes(viewId)) {
         alert("This page is not available yet.");
         return;
@@ -94,7 +94,7 @@ function showHealthOSView(viewId) {
     const pageElements = mainContent.querySelectorAll(
         ":scope > .welcome, :scope > #dashboardMessage, :scope > .stats-grid, " +
         ":scope > #adminStaffDashboard, :scope > #patients, :scope > #appointments, " +
-        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #ussdDiagnostics, :scope > #multiFacilityManagement, :scope > #patientConnectionRequests, :scope > #globalReferrals, :scope > #aiAnalytics, :scope > #patientFlow, :scope > #clinicalRecords, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
+        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #ussdDiagnostics, :scope > #multiFacilityManagement, :scope > #patientConnectionRequests, :scope > #globalReferrals, :scope > #telemedicineDashboard, :scope > #aiAnalytics, :scope > #patientFlow, :scope > #clinicalRecords, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
         ":scope > #pharmacy, :scope > #reports"
     );
     pageElements.forEach(element => {
@@ -141,6 +141,7 @@ function showHealthOSView(viewId) {
     if (viewId === "patientConnectionRequests" && typeof window.loadPatientConnectionRequests === "function") window.loadPatientConnectionRequests().catch(error => console.error("Patient connection requests refresh failed:", error));
     if (viewId === "globalReferrals") { loadGlobalReferralOptions().catch(error => { const m=document.getElementById("globalReferralMessage"); if(m){m.textContent=friendlyError(error);m.className="message error";} }); loadGlobalReferralInbox(); }
     if (viewId === "internationalPayments" && currentClinic && managementVerified) loadInternationalPaymentWorkspace(currentClinic).catch(error => console.error("International payment workspace failed:",error));
+    if (viewId === "telemedicineDashboard" && typeof loadTelemedicineDashboard === "function") loadTelemedicineDashboard();
     if (viewId === "aiAnalytics" && typeof window.loadAIAnalytics === "function") window.loadAIAnalytics().catch(error => console.error("AI analytics refresh failed:", error));
 }
 
