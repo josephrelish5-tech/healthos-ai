@@ -3213,6 +3213,7 @@ async function loadDepartmentPerformanceDashboard(clinic) {
                 : "authorised departments only") +
             ". Task figures are based on tasks created within the last 30 days.";
         message.className = "message success";
+        await loadDepartmentTaskEscalations(clinic);
     } catch (error) {
         console.error("Department performance report failed:", error);
         message.textContent =
@@ -3223,6 +3224,62 @@ async function loadDepartmentPerformanceDashboard(clinic) {
 }
 
  
+// HEALTHOS AI: DEPARTMENT TASK ESCALATION REPORT
+async function loadDepartmentTaskEscalations(clinic) {
+    const body = document.getElementById("departmentTaskEscalationsBody");
+    const message = document.getElementById("departmentTaskEscalationsMessage");
+    if (!body || !message || !clinic || !currentUser || !managementVerified) return;
+    body.replaceChildren();
+    message.textContent = "Loading overdue, blocked and review-pending tasks...";
+    message.className = "message";
+    const { data, error } = await supabaseClient.rpc("get_department_task_escalations", {
+        p_clinic_id: clinic.id
+    });
+    if (error) {
+        message.textContent = friendlyError(error);
+        message.className = "message error";
+        return;
+    }
+    const items = Array.isArray(data?.items) ? data.items : [];
+    if (!items.length) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 7;
+        cell.textContent = "No overdue, blocked or review-pending tasks in your authorised scope.";
+        row.appendChild(cell);
+        body.appendChild(row);
+    } else {
+        items.forEach(item => {
+            const row = document.createElement("tr");
+            const issue = item.escalation_type === "overdue" ? "OVERDUE" :
+                item.escalation_type === "blocked" ? "BLOCKED" : "AWAITING REVIEW";
+            const due = item.due_at ? new Date(item.due_at).toLocaleString() : "No deadline";
+            const values = [
+                issue + (item.hours_overdue > 0 ? " • " + item.hours_overdue + "h late" : ""),
+                item.task_title || "Untitled task",
+                (item.department_name || "—") + (item.unit_name ? " / " + item.unit_name : ""),
+                (item.assignee_name || "Unassigned") + (item.staff_id ? " (" + item.staff_id + ")" : ""),
+                String(item.priority || "normal").toUpperCase(),
+                due,
+                String(item.status || "—").replaceAll("_", " ")
+            ];
+            values.forEach(value => {
+                const cell = document.createElement("td");
+                cell.textContent = String(value);
+                row.appendChild(cell);
+            });
+            body.appendChild(row);
+        });
+    }
+    message.textContent = items.length + " escalation(s) found. Scope: " +
+        (data.scope === "hospital_wide" ? "hospital-wide" : "your authorised departments") + ".";
+    message.className = "message success";
+}
+const refreshEscalationsButton = document.getElementById("refreshDepartmentTaskEscalations");
+if (refreshEscalationsButton) refreshEscalationsButton.addEventListener("click", () => {
+    if (currentClinic) void loadDepartmentTaskEscalations(currentClinic);
+});
+
 // HEALTHOS AI: DEPARTMENT HEAD TASK ASSIGNMENT
 async function loadDepartmentTaskAssignmentOptions(clinic) {
     const panel = document.getElementById("departmentTaskAssignmentPanel");
