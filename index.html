@@ -675,6 +675,20 @@
     <div class="stats-grid" id="staffWorkspaceDuties">
         <p class="muted">Loading approved duties...</p>
     </div>
+    <section id="departmentTaskAssignmentPanel" class="panel" hidden>
+        <div class="panel-heading"><div><h3>Department Task Assignment</h3><p class="muted">Department heads and authorised supervisors can assign work only within their approved department or unit.</p></div><button type="button" class="secondary-button" id="refreshDepartmentTaskOptions">Refresh team</button></div>
+        <form id="departmentTaskAssignmentForm" class="form-grid">
+            <label>Assign to team member<select id="departmentTaskAssignee" required><option value="">Loading team...</option></select></label>
+            <label>Approved duty (optional)<select id="departmentTaskDuty"><option value="">No approved duty linked</option></select></label>
+            <label>Task title<input id="departmentTaskTitle" type="text" minlength="3" maxlength="200" required></label>
+            <label>Instructions<textarea id="departmentTaskDescription" rows="3" maxlength="3000"></textarea></label>
+            <label>Priority<select id="departmentTaskPriority"><option value="normal">Normal</option><option value="low">Low</option><option value="high">High</option><option value="urgent">Urgent</option></select></label>
+            <label>Deadline (optional)<input id="departmentTaskDueAt" type="datetime-local"></label>
+            <button id="createDepartmentTaskButton" class="primary-button" type="submit">Assign Department Task</button>
+        </form>
+        <p id="departmentTaskAssignmentMessage" class="message" role="status" aria-live="polite">Checking your leadership permissions...</p>
+    </section>
+
     <div class="panel-heading">
         <div>
             <h3>My Tasks</h3>
