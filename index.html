@@ -3366,6 +3366,18 @@
   <article class="stat-card"><h3>3. Consult</h3><p class="muted">A secure video/audio provider must be configured before a patient can join.</p></article>
   <article class="stat-card"><h3>4. Document &amp; bill</h3><p class="muted">Authorised clinicians document the encounter; approved charges flow through hospital billing and audit.</p></article>
  </div>
+ <h3 style="margin-top:26px">Virtual Care Safety &amp; Session Readiness</h3>
+ <p class="muted">Complete these checks with the patient before starting any remote consultation. This checklist is a staff aid and is not saved as clinical evidence.</p>
+ <div class="stats-grid">
+  <article class="stat-card"><h3>Patient identity</h3><label><input type="checkbox" class="telemedicine-readiness-check"> Verify patient identity using hospital-approved identifiers.</label></article>
+  <article class="stat-card"><h3>Consent</h3><label><input type="checkbox" class="telemedicine-readiness-check"> Confirm and document informed consent for remote care in the authorised hospital record.</label></article>
+  <article class="stat-card"><h3>Privacy</h3><label><input type="checkbox" class="telemedicine-readiness-check"> Confirm patient is in a private, safe location and understands who is present.</label></article>
+  <article class="stat-card"><h3>Emergency plan</h3><label><input type="checkbox" class="telemedicine-readiness-check"> Confirm patient's current location and a local emergency contact / escalation plan.</label></article>
+  <article class="stat-card"><h3>Connection</h3><label><input type="checkbox" class="telemedicine-readiness-check"> Confirm audio/video quality and an alternative contact method if disconnected.</label></article>
+  <article class="stat-card"><h3>Clinical handoff</h3><label><input type="checkbox" class="telemedicine-readiness-check"> Confirm an authorised clinician is assigned and the correct encounter is available.</label></article>
+ </div>
+ <p id="telemedicineReadinessStatus" class="message" role="status" aria-live="polite">0 of 6 readiness checks completed. This checklist does not start a call or record consent.</p>
+ <div class="panel-heading" style="margin-top:12px"><div><h3>Session controls</h3><p class="muted">Live video, audio rooms, patient join links and electronic consent capture remain unavailable until an approved provider and secure server-side integration are configured.</p></div><span class="demo-badge">PROVIDER NOT CONNECTED</span></div>
  <p class="disclaimer">Step 1 provides the hospital-side telemedicine dashboard and request visibility. It does not yet provide live video/audio rooms. Do not use this dashboard as proof that a consultation has occurred. Clinical notes, prescriptions and charges must be recorded only by authorised staff after the actual consultation.</p>
 </section>
 <!-- END HEALTHOS AI: TELEMEDICINE DASHBOARD — STEP 1 -->
