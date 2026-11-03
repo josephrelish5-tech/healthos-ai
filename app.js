@@ -1085,6 +1085,8 @@ async function openPatientPortal(user) {
     document.getElementById("patientProfileCountry").value = profile.country_code || "";
     document.getElementById("patientProfileLanguage").value = profile.preferred_language || "en";
     await loadPatientHospitalLinks();
+    await loadPatientAppointmentOptions();
+    await loadPatientAppointmentList();
 }
 
 async function loadPatientHospitalLinks() {
@@ -1122,6 +1124,37 @@ async function loadPatientHospitalLinks() {
         target.appendChild(card);
     });
 }
+
+
+async function loadPatientAppointmentOptions() {
+ const select=document.getElementById("patientAppointmentClinic"); if(!select||!currentUser)return;
+ select.replaceChildren();
+ const {data:links,error}=await supabaseClient.from("healthos_patient_hospital_links").select("clinic_id").eq("patient_user_id",currentUser.id).eq("status","verified");
+ if(error)throw error; const ids=[...new Set((links||[]).map(x=>x.clinic_id))];
+ if(!ids.length){select.add(new Option("Connect to a hospital and wait for approval first",""));select.disabled=true;return;}
+ const {data,error:hError}=await supabaseClient.from("healthos_hospital_directory").select("clinic_id,public_name,city,country_code").in("clinic_id",ids);
+ if(hError)throw hError;select.add(new Option("Choose a connected hospital",""));
+ (data||[]).forEach(x=>select.add(new Option(x.public_name+" — "+x.city+", "+x.country_code,x.clinic_id)));select.disabled=false;
+}
+async function loadPatientAppointmentList() {
+ const target=document.getElementById("patientAppointmentList");if(!target||!currentUser)return;target.replaceChildren();
+ const {data,error}=await supabaseClient.from("healthos_patient_appointment_requests").select("id,clinic_id,requested_at,reason,visit_type,status,created_at").eq("patient_user_id",currentUser.id).order("created_at",{ascending:false}).limit(100);
+ if(error)throw error;if(!data?.length){target.textContent="No appointment requests yet.";return;}
+ const ids=[...new Set(data.map(x=>x.clinic_id))];const {data:hospitals,error:hError}=await supabaseClient.from("healthos_hospital_directory").select("clinic_id,public_name").in("clinic_id",ids);if(hError)throw hError;
+ const names=new Map((hospitals||[]).map(x=>[x.clinic_id,x.public_name]));
+ data.forEach(row=>{const card=document.createElement("article");card.className="stat-card";const title=document.createElement("h3");title.textContent=names.get(row.clinic_id)||"Hospital";const date=document.createElement("p");date.textContent=new Date(row.requested_at).toLocaleString();const reason=document.createElement("p");reason.textContent=row.visit_type.replace(/_/g," ")+" · "+row.reason;const status=document.createElement("strong");status.textContent="Status: "+row.status;card.append(title,date,reason,status);target.appendChild(card);});
+}
+const patientAppointmentForm=document.getElementById("patientAppointmentForm");
+if(patientAppointmentForm)patientAppointmentForm.addEventListener("submit",async event=>{
+ event.preventDefault();const message=document.getElementById("patientAppointmentMessage"),button=document.getElementById("patientAppointmentSubmit");
+ if(!currentUser){message.textContent="Sign in to your patient account first.";message.className="message error";return;}
+ const clinicId=document.getElementById("patientAppointmentClinic").value,dateValue=document.getElementById("patientAppointmentAt").value,when=new Date(dateValue),reason=document.getElementById("patientAppointmentReason").value.trim();
+ if(!clinicId||!dateValue||Number.isNaN(when.getTime())||when<=new Date()||reason.length<3){message.textContent="Choose a connected hospital, a future date/time and enter a reason.";message.className="message error";return;}
+ button.disabled=true;button.textContent="Sending request...";
+ try{const {error}=await supabaseClient.from("healthos_patient_appointment_requests").insert({patient_user_id:currentUser.id,clinic_id:clinicId,requested_at:when.toISOString(),reason,visit_type:document.getElementById("patientAppointmentType").value,patient_note:document.getElementById("patientAppointmentNote").value.trim()||null});if(error)throw error;
+ message.textContent="Request sent. The hospital must confirm the appointment time.";message.className="message success";patientAppointmentForm.reset();await loadPatientAppointmentList();
+ }catch(error){message.textContent=friendlyError(error);message.className="message error";}finally{button.disabled=false;button.textContent="Send appointment request";}
+});
 
 const openPatientAccessButton = document.getElementById("openPatientAccessButton");
 if (openPatientAccessButton) openPatientAccessButton.addEventListener("click", () => {
@@ -10393,3 +10426,21 @@ function openSection(sectionId, sectionName) {
  window.addEventListener("online",()=>say("Connection restored. Review queued observations and sync when ready."));
  init();
 })();
+
+
+window.loadPatientAppointmentRequests=async function(){
+ const body=document.getElementById("patientAppointmentReviewBody"),message=document.getElementById("patientAppointmentReviewMessage");if(!body||!message)return;
+ if(!currentUser||!currentClinic){message.textContent="Open an authorised hospital workspace first.";message.className="message error";return;}
+ body.replaceChildren();message.textContent="Loading appointment requests...";
+ try{
+ const {data,error}=await supabaseClient.from("healthos_patient_appointment_requests").select("id,patient_user_id,requested_at,reason,visit_type,status").eq("clinic_id",currentClinic.id).order("created_at",{ascending:false}).limit(200);if(error)throw error;
+ const rows=data||[];document.getElementById("patientAppointmentPendingCount").textContent=rows.filter(x=>x.status==="requested").length;document.getElementById("patientAppointmentAcceptedCount").textContent=rows.filter(x=>x.status==="accepted").length;document.getElementById("patientAppointmentRejectedCount").textContent=rows.filter(x=>x.status==="rejected").length;
+ if(!rows.length){body.innerHTML='<tr><td colspan="6">No appointment requests yet.</td></tr>';message.textContent="No requests found.";return;}
+ const uids=[...new Set(rows.map(x=>x.patient_user_id))];const {data:profiles,error:pError}=await supabaseClient.from("healthos_patient_profiles").select("user_id,full_name").in("user_id",uids);if(pError)throw pError;const names=new Map((profiles||[]).map(x=>[x.user_id,x.full_name]));
+ rows.forEach(row=>{const tr=document.createElement("tr");[new Date(row.requested_at).toLocaleString(),names.get(row.patient_user_id)||"Patient",row.visit_type.replace(/_/g," "),row.reason,row.status].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);});const action=document.createElement("td");
+ if(row.status==="requested"){["accepted","rejected"].forEach(next=>{const btn=document.createElement("button");btn.type="button";btn.className=next==="accepted"?"primary-button":"logout-button";btn.textContent=next==="accepted"?"Accept":"Reject";btn.addEventListener("click",async()=>{if(!confirm((next==="accepted"?"Accept":"Reject")+" this appointment request?"))return;btn.disabled=true;const {error:updateError}=await supabaseClient.from("healthos_patient_appointment_requests").update({status:next,reviewed_at:new Date().toISOString(),reviewed_by:currentUser.id,updated_at:new Date().toISOString()}).eq("id",row.id).eq("clinic_id",currentClinic.id).eq("status","requested");if(updateError){message.textContent=friendlyError(updateError);message.className="message error";btn.disabled=false;return;}await window.loadPatientAppointmentRequests();});action.appendChild(btn);});}else action.textContent="No action";tr.appendChild(action);body.appendChild(tr);});
+ message.textContent=rows.length+" appointment request(s) loaded.";message.className="message success";
+ }catch(error){message.textContent=friendlyError(error);message.className="message error";}
+};
+const refreshPatientAppointmentRequests=document.getElementById("refreshPatientAppointmentRequests");
+if(refreshPatientAppointmentRequests)refreshPatientAppointmentRequests.addEventListener("click",()=>window.loadPatientAppointmentRequests());
