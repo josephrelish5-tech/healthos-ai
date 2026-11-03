@@ -198,6 +198,8 @@ function showOnly(screen) {
     if (recoveryPanel) recoveryPanel.hidden = screen !== "passwordRecovery";
     clinicSetup.hidden = screen !== "clinic";
     appPanel.hidden = screen !== "dashboard";
+    const patientPortal = document.getElementById("patientPortal");
+    if (patientPortal) patientPortal.hidden = screen !== "patientPortal";
     adminVerification.hidden = screen !== "verification";
     // HEALTHOS AI: STAFF REGISTRATION PANEL VISIBILITY
     const staffRegistrationPanel =
@@ -1038,7 +1040,243 @@ async function startStaffPresenceTracking(
 // END HEALTHOS AI: STAFF LOGIN AND ONLINE PRESENCE
 // Find the signed-in user's clinic.
 // Load the signed-in user's verified clinic workspace.
+// HEALTHOS AI: GLOBAL PATIENT ACCESS
+let patientAuthIsSignUp = true;
+const patientAuthForm = document.getElementById("patientAuthForm");
+const patientAuthModeToggle = document.getElementById("patientAuthModeToggle");
+const patientAuthSubmit = document.getElementById("patientAuthSubmit");
+const patientAuthMessage = document.getElementById("patientAuthMessage");
+
+function setPatientAuthMessage(message, type = "") {
+    if (!patientAuthMessage) return;
+    patientAuthMessage.textContent = message;
+    patientAuthMessage.className = "message" + (type ? " " + type : "");
+}
+
+function setPatientAuthMode(isSignUp) {
+    patientAuthIsSignUp = isSignUp;
+    document.getElementById("patientFullName").parentElement.hidden = !isSignUp;
+    document.getElementById("patientFullName").required = isSignUp;
+    document.getElementById("patientPassword").autocomplete = isSignUp ? "new-password" : "current-password";
+    patientAuthSubmit.textContent = isSignUp ? "Create patient account" : "Sign in";
+    patientAuthModeToggle.textContent = isSignUp ? "Already have an account? Sign in" : "New patient? Create an account";
+    setPatientAuthMessage("");
+}
+
+async function openPatientPortal(user) {
+    currentUser = user;
+    currentUserLabel.textContent = user.email || "Patient account";
+    managementVerified = false;
+    currentClinic = null;
+    showOnly("patientPortal");
+    document.getElementById("patientAuthForm").hidden = true;
+    document.getElementById("patientPortalWorkspace").hidden = false;
+    logoutButton.hidden = false;
+    const profileResult = await supabaseClient
+        .from("healthos_patient_profiles")
+        .select("full_name, phone_e164, country_code, preferred_language")
+        .eq("user_id", user.id)
+        .maybeSingle();
+    if (profileResult.error) throw profileResult.error;
+    const profile = profileResult.data || {};
+    document.getElementById("patientProfileName").value = profile.full_name || user.user_metadata?.full_name || "";
+    document.getElementById("patientProfilePhone").value = profile.phone_e164 || "";
+    document.getElementById("patientProfileCountry").value = profile.country_code || "";
+    document.getElementById("patientProfileLanguage").value = profile.preferred_language || "en";
+    await loadPatientHospitalLinks();
+}
+
+async function loadPatientHospitalLinks() {
+    const target = document.getElementById("patientHospitalLinks");
+    if (!target || !currentUser) return;
+    target.replaceChildren();
+    const { data, error } = await supabaseClient
+        .from("healthos_patient_hospital_links")
+        .select("id, clinic_id, status, requested_at")
+        .eq("patient_user_id", currentUser.id)
+        .order("requested_at", { ascending: false });
+    if (error) throw error;
+    if (!data || !data.length) {
+        target.textContent = "You have not requested a hospital connection yet.";
+        return;
+    }
+    const clinicIds = [...new Set(data.map(row => row.clinic_id))];
+    const directoryResult = await supabaseClient
+        .from("healthos_hospital_directory")
+        .select("clinic_id, public_name, city, country_code")
+        .in("clinic_id", clinicIds);
+    if (directoryResult.error) throw directoryResult.error;
+    const names = new Map((directoryResult.data || []).map(row => [row.clinic_id, row]));
+    data.forEach(row => {
+        const hospital = names.get(row.clinic_id);
+        const card = document.createElement("article");
+        card.className = "stat-card";
+        const title = document.createElement("h3");
+        title.textContent = hospital ? hospital.public_name : "Hospital";
+        const detail = document.createElement("p");
+        detail.textContent = hospital ? hospital.city + ", " + hospital.country_code : "Hospital listing unavailable";
+        const status = document.createElement("p");
+        status.textContent = "Request status: " + row.status.replace(/_/g, " ");
+        card.append(title, detail, status);
+        target.appendChild(card);
+    });
+}
+
+const openPatientAccessButton = document.getElementById("openPatientAccessButton");
+if (openPatientAccessButton) openPatientAccessButton.addEventListener("click", () => {
+    setPatientAuthMode(true);
+    document.getElementById("patientAuthForm").hidden = false;
+    document.getElementById("patientPortalWorkspace").hidden = true;
+    setPatientAuthMessage("");
+    showOnly("patientPortal");
+});
+if (patientAuthModeToggle) patientAuthModeToggle.addEventListener("click", () => setPatientAuthMode(!patientAuthIsSignUp));
+const patientPortalBackButton = document.getElementById("patientPortalBackButton");
+if (patientPortalBackButton) patientPortalBackButton.addEventListener("click", () => showOnly("auth"));
+
+if (patientAuthForm) patientAuthForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!supabaseClient) return setPatientAuthMessage("Account service is not ready. Refresh and try again.", "error");
+    const email = document.getElementById("patientEmail").value.trim();
+    const password = document.getElementById("patientPassword").value;
+    const fullName = document.getElementById("patientFullName").value.trim();
+    patientAuthSubmit.disabled = true;
+    patientAuthSubmit.textContent = patientAuthIsSignUp ? "Creating account..." : "Signing in...";
+    try {
+        let user;
+        if (patientAuthIsSignUp) {
+            const { data, error } = await supabaseClient.auth.signUp({
+                email, password,
+                options: { data: { full_name: fullName, account_type: "patient" }, emailRedirectTo: window.location.origin }
+            });
+            if (error) throw error;
+            user = data.user;
+            if (!data.session) {
+                setPatientAuthMessage("Patient account request received. Confirm your email, then return here and sign in.", "success");
+                return;
+            }
+        } else {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            if (error) throw error;
+            user = data.user;
+            if (user.user_metadata?.account_type !== "patient") {
+                await supabaseClient.auth.signOut();
+                throw new Error("This account is not registered as a patient account. Use the hospital or staff sign-in instead.");
+            }
+        }
+        if (!user || user.user_metadata?.account_type !== "patient") {
+            throw new Error("Patient account type could not be verified. Please contact support.");
+        }
+        await openPatientPortal(user);
+        setPatientAuthMessage("You are signed in to your patient account.", "success");
+    } catch (error) {
+        console.error("Patient portal authentication failed:", error);
+        setPatientAuthMessage(friendlyError(error), "error");
+    } finally {
+        patientAuthSubmit.disabled = false;
+        patientAuthSubmit.textContent = patientAuthIsSignUp ? "Create patient account" : "Sign in";
+    }
+});
+
+const patientProfileForm = document.getElementById("patientProfileForm");
+if (patientProfileForm) patientProfileForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!currentUser) return;
+    const message = document.getElementById("patientProfileMessage");
+    const fullName = document.getElementById("patientProfileName").value.trim();
+    const country = document.getElementById("patientProfileCountry").value.trim().toUpperCase();
+    const payload = {
+        user_id: currentUser.id,
+        full_name: fullName,
+        phone_e164: document.getElementById("patientProfilePhone").value.trim() || null,
+        country_code: country || null,
+        preferred_language: document.getElementById("patientProfileLanguage").value,
+        updated_at: new Date().toISOString()
+    };
+    if (country && !/^[A-Z]{2}$/.test(country)) {
+        message.textContent = "Enter a valid two-letter country code, such as NG or GB.";
+        message.className = "message error";
+        return;
+    }
+    const { error } = await supabaseClient.from("healthos_patient_profiles").upsert(payload, { onConflict: "user_id" });
+    message.textContent = error ? friendlyError(error) : "Patient profile saved.";
+    message.className = "message " + (error ? "error" : "success");
+});
+
+const searchHospitalsButton = document.getElementById("searchHospitalsButton");
+if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async () => {
+    const target = document.getElementById("patientHospitalResults");
+    const message = document.getElementById("hospitalSearchMessage");
+    const country = document.getElementById("hospitalSearchCountry").value.trim().toUpperCase();
+    const city = document.getElementById("hospitalSearchCity").value.trim();
+    target.replaceChildren();
+    if (!country || !/^[A-Z]{2}$/.test(country) || !city) {
+        message.textContent = "Enter a two-letter country code and city to search.";
+        message.className = "message error";
+        return;
+    }
+    searchHospitalsButton.disabled = true;
+    message.textContent = "Searching verified hospitals...";
+    message.className = "message";
+    try {
+        const { data, error } = await supabaseClient
+            .from("healthos_hospital_directory")
+            .select("clinic_id, public_name, city, country_code, specialties")
+            .eq("country_code", country)
+            .ilike("city", city)
+            .eq("verification_status", "verified")
+            .eq("accepting_patient_requests", true)
+            .order("public_name")
+            .limit(50);
+        if (error) throw error;
+        if (!data || !data.length) {
+            message.textContent = "No verified hospitals accepting patient requests were found in that city.";
+            return;
+        }
+        message.textContent = data.length + " verified hospital listing(s) found.";
+        data.forEach(hospital => {
+            const card = document.createElement("article");
+            card.className = "stat-card";
+            const title = document.createElement("h3");
+            title.textContent = hospital.public_name;
+            const location = document.createElement("p");
+            location.textContent = hospital.city + ", " + hospital.country_code;
+            const specialties = document.createElement("p");
+            specialties.textContent = (hospital.specialties || []).join(", ") || "Specialties not listed";
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "primary-button";
+            button.textContent = "Request connection";
+            button.addEventListener("click", async () => {
+                button.disabled = true;
+                const { error: requestError } = await supabaseClient
+                    .from("healthos_patient_hospital_links")
+                    .upsert({ patient_user_id: currentUser.id, clinic_id: hospital.clinic_id, status: "pending" }, { onConflict: "patient_user_id,clinic_id", ignoreDuplicates: true });
+                if (requestError) {
+                    setPatientAuthMessage(friendlyError(requestError), "error");
+                    button.disabled = false;
+                    return;
+                }
+                button.textContent = "Request submitted";
+                await loadPatientHospitalLinks();
+            });
+            card.append(title, location, specialties, button);
+            target.appendChild(card);
+        });
+    } catch (error) {
+        message.textContent = friendlyError(error);
+        message.className = "message error";
+    } finally {
+        searchHospitalsButton.disabled = false;
+    }
+});
+// END GLOBAL PATIENT ACCESS
+
 async function openWorkspace(user) {
+    if (user.user_metadata?.account_type === "patient") {
+        await openPatientPortal(user);
+        return;
+    }
     currentUser = user;
     currentUserLabel.textContent =
         user.email || "Signed-in user";
