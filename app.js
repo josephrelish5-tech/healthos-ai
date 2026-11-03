@@ -8305,7 +8305,14 @@ function openSection(sectionId, sectionName) {
                             );
                             if (linkError) throw linkError;
                             if (!link || !link.downloadUrl) throw new Error("Secure B2 download link was not returned.");
-                            window.open(link.downloadUrl, "_blank", "noopener,noreferrer");
+                            const evidenceLink = document.createElement("a");
+                            evidenceLink.href = link.downloadUrl;
+                            evidenceLink.target = "_blank";
+                            evidenceLink.rel = "noopener noreferrer";
+                            evidenceLink.style.display = "none";
+                            document.body.appendChild(evidenceLink);
+                            evidenceLink.click();
+                            evidenceLink.remove();
                         } else {
                             // Backward compatibility: older receipts remain in the legacy Supabase bucket.
                             const { data: signed, error: signedError } =
