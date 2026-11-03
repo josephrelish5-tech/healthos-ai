@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js?v=20261103-47-b2-patient-files" defer></script>
+    <script src="pharmacy-forecast.js?v=20261103-1" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -2597,6 +2598,25 @@
             </tbody>
         </table>
     </div>
+
+    <section class="panel" id="pharmacyDemandForecastPanel" aria-labelledby="pharmacyDemandForecastHeading">
+        <h3 id="pharmacyDemandForecastHeading">Smart Inventory Demand Forecast</h3>
+        <p class="muted">Clinic-scoped, rule-based planning from recorded dispensing activity and current batch stock. This is an estimate, not an AI prediction or purchase order.</p>
+        <div class="stats-grid">
+            <article class="stat-card"><p>Medicines Analysed</p><h3 id="pharmacyForecastMedicineCount">—</h3></article>
+            <article class="stat-card"><p>Urgent Review</p><h3 id="pharmacyForecastUrgentCount">—</h3></article>
+            <article class="stat-card"><p>Insufficient History</p><h3 id="pharmacyForecastHistoryCount">—</h3></article>
+        </div>
+        <button type="button" id="pharmacyForecastRefresh">Refresh Forecast</button>
+        <p id="pharmacyForecastMessage" class="muted" role="status" aria-live="polite">Open the Pharmacy workspace to calculate the forecast.</p>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Medicine</th><th>Available Stock</th><th>Used (30d)</th><th>Avg./Day</th><th>Days Cover</th><th>30d Demand</th><th>Expiring Stock (30d)</th><th>Planning Signal</th></tr></thead>
+                <tbody id="pharmacyForecastRows"><tr><td colspan="8">Forecast not yet calculated.</td></tr></tbody>
+            </table>
+        </div>
+        <p class="disclaimer">Forecast method: recent 30-day dispensing rate is preferred; otherwise the 90-day average is used. Expired batches are excluded from usable stock. Review supplier lead times, pending purchase orders, seasonality and physical stock before acting. No stock is changed and no order is placed automatically.</p>
+    </section>
 
     <section class="panel" id="pharmacyStockControlWorkspace" aria-labelledby="pharmacyStockControlHeading">
         <h3 id="pharmacyStockControlHeading">Stock Adjustments & Department Transfers</h3>
