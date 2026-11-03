@@ -6407,14 +6407,15 @@ if (refreshAppointmentsButton) {
   if(typeof supabaseClient!=="undefined"&&supabaseClient&&currentClinic&&currentClinic.id){
    const sendButton=$("staffAssistantSend");
    if(sendButton)sendButton.textContent="Thinking…";
-   const conversationKey="healthos_ai_conversation:"+currentUser.id+":"+currentClinic.id;\n   const conversationId=window.healthOSConversationId||localStorage.getItem(conversationKey)||null;
+   const conversationKey="healthos_ai_conversation:"+currentUser.id+":"+currentClinic.id;
+   const conversationId=window.healthOSConversationId||localStorage.getItem(conversationKey)||null;
    const {data:aiData,error:aiError}=await supabaseClient.functions.invoke("healthos-conversational-knowledge",{
     body:{question:String(q).slice(0,1500),clinic_id:currentClinic.id,conversation_id:conversationId}
    });
    if(sendButton)sendButton.textContent="Get assistance";
    if(!aiError&&aiData&&aiData.answer){
-    const sources=(aiData.sources||[]).map(s=>"• "+s.title+" (v"+s.version+")").join("\\n");
-    const answer=aiData.answer+(sources?"\\n\\nSOURCES\\n"+sources:"");
+    const sources=(aiData.sources||[]).map(s=>"• "+s.title+" (v"+s.version+")").join("\n");
+    const answer=aiData.answer+(sources?"\n\nSOURCES\n"+sources:"");
     if(aiData.conversation_id){window.healthOSConversationId=aiData.conversation_id;localStorage.setItem(conversationKey,aiData.conversation_id);}
     lastConversation={topic:rawQuestion,answer,article:null,turns:lastConversation.turns+1};
     show("HealthOS AI · Conversational Knowledge",answer,null);
