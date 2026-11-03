@@ -2108,6 +2108,16 @@
 <section class="panel" id="internationalPayments" hidden>
  <div class="panel-heading"><div><p class="eyebrow">GLOBAL HEALTHCARE NETWORK</p><h2>International Healthcare Payments</h2><p class="muted">Multi-currency payment requests, provider status and settlement visibility. Department receipts and Finance bank reconciliation remain separate and are not double-counted as invoices.</p></div><button id="refreshInternationalPayments" type="button" class="logout-button">Refresh</button></div>
  <div class="stats-grid"><article class="stat-card"><h3>Payment architecture</h3><p>Provider-neutral payment intents with ISO currency codes, idempotency and server-side status control.</p></article><article class="stat-card"><h3>Provider connection</h3><p>No live gateway is configured yet. Checkout links and paid status remain disabled until provider credentials and signed webhooks are installed.</p></article><article class="stat-card"><h3>Money safety</h3><p>Original currency and amount are retained. FX conversion is not estimated or invented; card details are never stored by HealthOS.</p></article></div>
+ <h3>Issue a patient payment request</h3>
+ <form id="internationalPaymentCreateForm" class="auth-form">
+  <label>Connected patient<select id="internationalPaymentPatient" required><option value="">Loading approved patients…</option></select></label>
+  <label>Payment description<input id="internationalPaymentDescription" maxlength="300" required placeholder="Consultation fee, laboratory service, etc."></label>
+  <label>Invoice reference (optional)<input id="internationalPaymentInvoice" maxlength="120"></label>
+  <label>Amount<input id="internationalPaymentAmount" type="number" min="0.01" step="0.01" required></label>
+  <label>Currency<select id="internationalPaymentCurrency" required><option value="NGN">NGN — Nigerian naira (default)</option><option value="USD">USD — US dollar</option><option value="GBP">GBP — British pound</option><option value="EUR">EUR — Euro</option><option value="GHS">GHS — Ghanaian cedi</option><option value="KES">KES — Kenyan shilling</option><option value="ZAR">ZAR — South African rand</option></select></label>
+  <button class="primary-button" type="submit">Create payment request</button>
+ </form>
+ <p id="internationalPaymentCreateMessage" class="message" role="status" aria-live="polite"></p>
  <h3>Hospital payment requests</h3><p class="muted">Owner/admin view of requests issued to connected patients. Patient identity is displayed from the patient profile.</p>
  <div class="table-wrap"><table><thead><tr><th>Patient</th><th>Invoice reference</th><th>Description</th><th>Amount</th><th>Status</th><th>Provider</th><th>Created</th></tr></thead><tbody id="internationalPaymentRows"><tr><td colspan="7">Open this page as a hospital owner/admin to load payment requests.</td></tr></tbody></table></div>
  <p id="internationalPaymentMessage" class="message" role="status" aria-live="polite"></p>
