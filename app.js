@@ -78,7 +78,7 @@ function showHealthOSView(viewId) {
     const mainContent = document.getElementById("dashboard");
     if (!mainContent) return;
 
-    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "multiFacilityManagement", "patientConnectionRequests", "globalReferrals", "aiAnalytics", "patientFlow", "clinicalRecords", "clinicalScribe", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
+    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "multiFacilityManagement", "patientConnectionRequests", "globalReferrals", "internationalPayments", "aiAnalytics", "patientFlow", "clinicalRecords", "clinicalScribe", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
     if (!allowedViews.includes(viewId)) {
         alert("This page is not available yet.");
         return;
@@ -140,6 +140,7 @@ function showHealthOSView(viewId) {
     if (viewId === "multiFacilityManagement" && typeof window.loadMultiFacilityManagement === "function") window.loadMultiFacilityManagement().catch(error => console.error("Multi-facility workspace refresh failed:", error));
     if (viewId === "patientConnectionRequests" && typeof window.loadPatientConnectionRequests === "function") window.loadPatientConnectionRequests().catch(error => console.error("Patient connection requests refresh failed:", error));
     if (viewId === "globalReferrals") { loadGlobalReferralOptions().catch(error => { const m=document.getElementById("globalReferralMessage"); if(m){m.textContent=friendlyError(error);m.className="message error";} }); loadGlobalReferralInbox(); }
+    if (viewId === "internationalPayments" && currentClinic && managementVerified) loadInternationalPaymentWorkspace(currentClinic).catch(error => console.error("International payment workspace failed:",error));
     if (viewId === "aiAnalytics" && typeof window.loadAIAnalytics === "function") window.loadAIAnalytics().catch(error => console.error("AI analytics refresh failed:", error));
 }
 
@@ -1092,6 +1093,7 @@ async function openPatientPortal(user) {
     await loadPatientAppointmentOptions();
     await loadPatientAppointmentList();
     await loadPatientGlobalReferrals();
+    await loadPatientInternationalPayments();
 }
 
 async function loadPatientHospitalLinks() {
@@ -10771,6 +10773,38 @@ window.loadPatientAppointmentRequests=async function(){
 const refreshPatientAppointmentRequests=document.getElementById("refreshPatientAppointmentRequests");
 if(refreshPatientAppointmentRequests)refreshPatientAppointmentRequests.addEventListener("click",()=>window.loadPatientAppointmentRequests());
 
+
+
+async function loadPatientInternationalPayments(){
+ const target=document.getElementById("patientInternationalPayments");
+ if(!target||!currentUser)return;
+ target.replaceChildren();
+ const {data,error}=await supabaseClient.rpc("healthos_get_my_international_payment_intents");
+ if(error)throw error;
+ const rows=Array.isArray(data)?data:[];
+ if(!rows.length){target.textContent="No hospital payment requests have been issued to your account.";return;}
+ rows.forEach(item=>{
+  const card=document.createElement("article");card.className="stat-card";
+  const title=document.createElement("h3");title.textContent=item.hospital_name||"Connected hospital";
+  const detail=document.createElement("p");detail.textContent=(item.description||"Healthcare payment")+" · "+(item.invoice_reference||"No invoice reference");
+  const amount=document.createElement("strong");amount.textContent=Number(item.amount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+" "+String(item.currency||"").trim();
+  const status=document.createElement("p");status.textContent="Status: "+String(item.status).replace(/_/g," ");
+  const provider=document.createElement("p");provider.textContent=item.provider_key==="unconfigured"?"Online checkout not yet available":("Payment provider: "+item.provider_key);
+  card.append(title,detail,amount,status,provider);target.appendChild(card);
+ });
+}
+async function loadInternationalPaymentWorkspace(clinic){
+ const body=document.getElementById("internationalPaymentRows");
+ const message=document.getElementById("internationalPaymentMessage");
+ if(!body||!clinic?.id)return;
+ body.replaceChildren();const loading=document.createElement("tr");const loadingCell=document.createElement("td");loadingCell.colSpan=7;loadingCell.textContent="Loading international payment requests…";loading.appendChild(loadingCell);body.appendChild(loading);
+ const {data,error}=await supabaseClient.rpc("healthos_get_clinic_international_payment_intents",{p_clinic_id:clinic.id});
+ if(error){body.replaceChildren();const row=document.createElement("tr"),cell=document.createElement("td");cell.colSpan=7;cell.textContent="Payment requests are available to hospital owners and administrators only.";row.appendChild(cell);body.appendChild(row);if(message){message.textContent=friendlyError(error);message.className="message error";}return;}
+ body.replaceChildren();
+ if(!data?.length){const row=document.createElement("tr"),cell=document.createElement("td");cell.colSpan=7;cell.textContent="No international payment requests have been issued.";row.appendChild(cell);body.appendChild(row);return;}
+ data.forEach(item=>{const row=document.createElement("tr");[item.patient_name,item.invoice_reference||"—",item.description,Number(item.amount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})+" "+String(item.currency||"").trim(),String(item.status).replace(/_/g," "),item.provider_key,item.created_at?new Date(item.created_at).toLocaleString():"—"].forEach(value=>{const cell=document.createElement("td");cell.textContent=String(value??"—");row.appendChild(cell);});body.appendChild(row);});
+}
+document.getElementById("refreshInternationalPayments")?.addEventListener("click",()=>{if(currentClinic)loadInternationalPaymentWorkspace(currentClinic);});
 
 async function loadPatientGlobalReferrals(){
  const target=document.getElementById("patientGlobalReferrals");if(!target||!currentUser)return;
