@@ -9,15 +9,16 @@
   if(!client||!clinic?.id){status.textContent="Sign in to an authorised hospital workspace.";status.className="message error";return;}
   status.textContent="Reviewing clinic-scoped financial, stock and accountability signals…";rows.replaceChildren();
   try{
-   const [adjustments,movements,findings,services,intents,audit]=await Promise.all([
+   const [adjustments,movements,findings,services,intents,audit,reconciliation]=await Promise.all([
     client.from("pharmacy_stock_adjustment_requests").select("id,quantity_before,quantity_after,quantity_delta,reason_code,status,requested_by,reviewed_by,created_at").eq("clinic_id",clinic.id).order("created_at",{ascending:false}).limit(300),
     client.from("pharmacy_stock_movements").select("id,movement_type,quantity_delta,reason,reference,performed_by,created_at").eq("clinic_id",clinic.id).lt("quantity_delta",0).order("created_at",{ascending:false}).limit(300),
     client.from("revenue_audit_findings").select("id,finding_type,description,expected_amount,observed_amount,status,detected_at").eq("clinic_id",clinic.id).is("resolved_at",null).order("detected_at",{ascending:false}).limit(300),
     client.from("service_events").select("id,service_name_snapshot,unit_price,quantity,event_status,performed_at,billing_transaction_id,recorded_by").eq("clinic_id",clinic.id).in("event_status",["performed","completed"]).is("billing_transaction_id",null).order("performed_at",{ascending:false}).limit(300),
     client.from("healthos_international_payment_intents").select("id,invoice_reference,amount,currency,provider_key,provider_reference,status,provider_amount,provider_currency,created_by,created_at,updated_at").eq("clinic_id",clinic.id).order("created_at",{ascending:false}).limit(300),
-    client.from("healthos_security_audit_events").select("id,actor_user_id,table_name,record_id,operation,occurred_at,previous_hash,event_hash").eq("clinic_id",clinic.id).order("id",{ascending:false}).limit(300)
+    client.from("healthos_security_audit_events").select("id,actor_user_id,table_name,record_id,operation,occurred_at,previous_hash,event_hash").eq("clinic_id",clinic.id).order("id",{ascending:false}).limit(300),
+    client.from("healthos_payment_reconciliation_signals").select("signal_type,reference,observed_value,details,occurred_at").eq("clinic_id",clinic.id).order("occurred_at",{ascending:false}).limit(500)
    ]);
-   for(const r of [adjustments,movements,findings,services,intents,audit])if(r.error)throw r.error;
+   for(const r of [adjustments,movements,findings,services,intents,audit,reconciliation])if(r.error)throw r.error;
    const flags=[];
    (adjustments.data||[]).forEach(r=>{
     if(r.requested_by&&r.reviewed_by&&r.requested_by===r.reviewed_by)flags.push(["Stock adjustment: same requester/reviewer","Request "+r.id+" · segregation-of-duties exception",r.created_at]);
@@ -25,6 +26,10 @@
    });
    (movements.data||[]).forEach(r=>flags.push(["Stock reduction for review",(r.movement_type||"Stock movement")+" · "+(r.reason||"No reason recorded")+" · quantity "+r.quantity_delta+" · reference "+(r.reference||"none"),r.created_at]));
    (findings.data||[]).forEach(r=>flags.push(["Open revenue audit finding",(r.finding_type||"Finding")+" · "+(r.description||"Review required"),r.detected_at]));
+   (reconciliation.data||[]).forEach(r=>{
+    const kind=String(r.signal_type||"Payment reconciliation signal").replace(/_/g," ");
+    flags.push(["Payment reconciliation: "+kind,(r.reference||"No reference")+" · "+(r.details||"Authorised review required")+(r.observed_value!==null&&r.observed_value!==undefined?" · observed "+r.observed_value:""),r.occurred_at]);
+   });
    (services.data||[]).forEach(r=>flags.push(["Performed service without linked billing",(r.service_name_snapshot||"Service")+" · "+(Number(r.unit_price||0)*Number(r.quantity||1)).toLocaleString()+" estimated value",r.performed_at]));
    const intentIds=(intents.data||[]).map(x=>x.id);
    if(intentIds.length){
@@ -55,7 +60,7 @@
    $("healthOSSecurityUnbilled").textContent=(services.data||[]).length;
    if(!flags.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=3;td.textContent="No review signals found in the retrieved records.";tr.appendChild(td);rows.appendChild(tr);}
    else flags.slice(0,150).forEach(flag=>{const tr=document.createElement("tr");flag.forEach((v,n)=>{const td=document.createElement("td");td.textContent=n===2&&v?new Date(v).toLocaleString():String(v??"—");tr.appendChild(td);});rows.appendChild(tr);});
-   status.textContent="Read-only review complete. "+flags.length+" signal(s) require authorised human review. These are indicators, not proof of misconduct. No payment, refund, stock or clinical record was changed. Refund coverage depends on provider events being recorded.";
+   status.textContent="Read-only review complete. "+flags.length+" signal(s) require authorised human review, including "+(reconciliation.data||[]).length+" payment reconciliation signal(s). These are indicators, not proof of misconduct. No payment, refund, stock or clinical record was changed. Reconciliation coverage depends on imported bank data and verified provider events being recorded.";
    status.className="message "+(flags.length?"":"success");
   }catch(error){status.textContent="Security review could not complete: "+(error.message||"Check table access and permissions.");status.className="message error";}
  }
