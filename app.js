@@ -6380,6 +6380,11 @@ if (refreshAppointmentsButton) {
  function openSection(id){const el=$(id);if(!el){show("Workspace unavailable","This workspace is not available in the current app version. Contact your administrator.");return;}const parent=el.closest(".panel");if(parent&&typeof window.showHealthOSView==="function")window.showHealthOSView(parent.id);if(panel)panel.hidden=true;if(launcher)launcher.setAttribute("aria-expanded","false");requestAnimationFrame(()=>el.scrollIntoView({behavior:"smooth",block:"start"}));}
  async function loadStaffContext(){
   if(typeof supabaseClient==="undefined"||typeof currentUser==="undefined"||!currentUser||typeof currentClinic==="undefined"||!currentClinic||!currentClinic.id)return null;
+  // A successful management verification already re-authenticated this user and confirmed an active owner/admin membership.
+  // Reuse that verified authorization so the assistant does not incorrectly block clinic administrators on a second profile lookup.
+  if(typeof managementVerified!=="undefined"&&managementVerified){
+   return {profileId:null,departments:[],role:"owner",isClinicOwner:true};
+  }
   const {data:membership,error:membershipError}=await supabaseClient.from("clinic_memberships").select("role").eq("clinic_id",currentClinic.id).eq("user_id",currentUser.id).eq("status","active").maybeSingle();
   if(membershipError||!membership)return null;
   const membershipRole=String(membership.role||"").toLowerCase();
