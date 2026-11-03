@@ -78,7 +78,7 @@ function showHealthOSView(viewId) {
     const mainContent = document.getElementById("dashboard");
     if (!mainContent) return;
 
-    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "multiFacilityManagement", "aiAnalytics", "patientFlow", "clinicalRecords", "clinicalScribe", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
+    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "multiFacilityManagement", "patientConnectionRequests", "aiAnalytics", "patientFlow", "clinicalRecords", "clinicalScribe", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
     if (!allowedViews.includes(viewId)) {
         alert("This page is not available yet.");
         return;
@@ -94,7 +94,7 @@ function showHealthOSView(viewId) {
     const pageElements = mainContent.querySelectorAll(
         ":scope > .welcome, :scope > #dashboardMessage, :scope > .stats-grid, " +
         ":scope > #adminStaffDashboard, :scope > #patients, :scope > #appointments, " +
-        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #ussdDiagnostics, :scope > #multiFacilityManagement, :scope > #aiAnalytics, :scope > #patientFlow, :scope > #clinicalRecords, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
+        ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #ussdDiagnostics, :scope > #multiFacilityManagement, :scope > #patientConnectionRequests, :scope > #aiAnalytics, :scope > #patientFlow, :scope > #clinicalRecords, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
         ":scope > #pharmacy, :scope > #reports"
     );
     pageElements.forEach(element => {
@@ -137,6 +137,7 @@ function showHealthOSView(viewId) {
     if (viewId === "patientRecordSharing" && typeof window.loadPatientRecordShares === "function") window.loadPatientRecordShares().catch(error => console.error("Patient record shares refresh failed:", error));
     if (viewId === "ussdDiagnostics" && typeof window.loadUssdDiagnosticRequests === "function") window.loadUssdDiagnosticRequests().catch(error => console.error("USSD diagnostic requests refresh failed:", error));
     if (viewId === "multiFacilityManagement" && typeof window.loadMultiFacilityManagement === "function") window.loadMultiFacilityManagement().catch(error => console.error("Multi-facility workspace refresh failed:", error));
+    if (viewId === "patientConnectionRequests" && typeof window.loadPatientConnectionRequests === "function") window.loadPatientConnectionRequests().catch(error => console.error("Patient connection requests refresh failed:", error));
     if (viewId === "aiAnalytics" && typeof window.loadAIAnalytics === "function") window.loadAIAnalytics().catch(error => console.error("AI analytics refresh failed:", error));
 }
 
@@ -1270,6 +1271,116 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
         searchHospitalsButton.disabled = false;
     }
 });
+
+/* HEALTHOS AI: HOSPITAL-SIDE PATIENT CONNECTION REQUEST REVIEW
+ * RLS on healthos_patient_hospital_links is the authoritative clinic-owner/admin boundary.
+ * A verified connection never grants clinical-record access.
+ */
+window.loadPatientConnectionRequests = async function loadPatientConnectionRequests() {
+    const body = document.getElementById("patientConnectionRequestsBody");
+    const message = document.getElementById("patientConnectionRequestsMessage");
+    if (!body || !message) return;
+    if (!supabaseClient || !currentUser || !currentClinic) {
+        message.textContent = "Sign in to an active hospital workspace first.";
+        message.className = "message error";
+        return;
+    }
+    body.replaceChildren();
+    message.textContent = "Loading requests for this hospital...";
+    message.className = "message";
+    try {
+        const { data: links, error } = await supabaseClient
+            .from("healthos_patient_hospital_links")
+            .select("id, patient_user_id, status, patient_message, requested_at")
+            .eq("clinic_id", currentClinic.id)
+            .order("requested_at", { ascending: false })
+            .limit(200);
+        if (error) throw error;
+        const rows = links || [];
+        const pending = rows.filter(x => x.status === "pending").length;
+        document.getElementById("patientConnectionPendingCount").textContent = pending;
+        document.getElementById("patientConnectionApprovedCount").textContent = rows.filter(x => x.status === "verified").length;
+        document.getElementById("patientConnectionRejectedCount").textContent = rows.filter(x => x.status === "rejected").length;
+        if (!rows.length) {
+            const tr = body.insertRow(), td = tr.insertCell();
+            td.colSpan = 7;
+            td.textContent = "No patient connection requests have been received.";
+            message.textContent = "Request inbox loaded.";
+            message.className = "message success";
+            return;
+        }
+        const userIds = [...new Set(rows.map(x => x.patient_user_id))];
+        const { data: profiles, error: profileError } = await supabaseClient
+            .from("healthos_patient_profiles")
+            .select("user_id, full_name, phone_e164, country_code")
+            .in("user_id", userIds);
+        if (profileError) throw profileError;
+        const profileMap = new Map((profiles || []).map(x => [x.user_id, x]));
+        rows.forEach(row => {
+            const profile = profileMap.get(row.patient_user_id);
+            const tr = body.insertRow();
+            [
+                new Date(row.requested_at).toLocaleString(),
+                profile?.full_name || "Patient profile unavailable",
+                profile?.phone_e164 || "—",
+                profile?.country_code || "—",
+                row.patient_message || "—",
+                row.status.replace(/_/g, " ")
+            ].forEach(value => {
+                const td = tr.insertCell();
+                td.textContent = value;
+            });
+            const action = tr.insertCell();
+            if (row.status === "pending") {
+                ["Approve", "Reject"].forEach(label => {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = label === "Approve" ? "primary-button" : "logout-button";
+                    button.textContent = label;
+                    button.style.margin = "3px";
+                    button.addEventListener("click", async () => {
+                        if (!confirm(label + " this patient's hospital connection request? This does not share clinical records.")) return;
+                        button.disabled = true;
+                        const nextStatus = label === "Approve" ? "verified" : "rejected";
+                        const { data: auth } = await supabaseClient.auth.getUser();
+                        const { error: updateError } = await supabaseClient
+                            .from("healthos_patient_hospital_links")
+                            .update({ status: nextStatus, reviewed_at: new Date().toISOString(), reviewed_by: auth.user.id })
+                            .eq("id", row.id)
+                            .eq("clinic_id", currentClinic.id)
+                            .eq("status", "pending");
+                        if (updateError) {
+                            message.textContent = friendlyError(updateError);
+                            message.className = "message error";
+                            button.disabled = false;
+                            return;
+                        }
+                        message.textContent = "Request " + (nextStatus === "verified" ? "approved" : "rejected") + ".";
+                        message.className = "message success";
+                        await window.loadPatientConnectionRequests();
+                    });
+                    action.appendChild(button);
+                });
+            } else {
+                action.textContent = "Reviewed";
+            }
+        });
+        message.textContent = rows.length + " request(s) loaded for " + (currentClinic.name || "this hospital") + ".";
+        message.className = "message success";
+    } catch (error) {
+        console.error("Patient connection request loading failed:", error);
+        body.replaceChildren();
+        const tr = body.insertRow(), td = tr.insertCell();
+        td.colSpan = 7;
+        td.textContent = "Requests could not be loaded. Check your hospital management permissions and database policies.";
+        message.textContent = friendlyError(error);
+        message.className = "message error";
+    }
+};
+document.getElementById("refreshPatientConnectionRequests")?.addEventListener("click", () => {
+    window.loadPatientConnectionRequests?.();
+});
+
 // END GLOBAL PATIENT ACCESS
 
 async function openWorkspace(user) {
