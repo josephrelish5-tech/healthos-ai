@@ -10,6 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js?v=20261103-56-conversational-knowledge" defer></script>
     <script src="pharmacy-forecast.js?v=20261103-1" defer></script>
+    <script src="pharmacy-procurement-intelligence.js?v=20261103-1" defer></script>
     <script src="offline-ehr.js?v=20261103-1" defer></script>
     <script src="pharmacy-offline.js?v=20261103-1" defer></script>
     <script src="offline-sync-center.js?v=20261103-1" defer></script>
@@ -2815,6 +2816,19 @@
             </table>
         </div>
         <p class="disclaimer">Forecast method: recent 30-day dispensing rate is preferred; otherwise the 90-day average is used. Expired batches are excluded from usable stock. Review supplier lead times, pending purchase orders, seasonality and physical stock before acting. No stock is changed and no order is placed automatically.</p>
+    </section>
+
+    <section class="panel" id="pharmacyProcurementIntelligence" aria-labelledby="procurementIntelHeading">
+      <div class="panel-heading"><div><p class="eyebrow">PHARMACY · FINANCIAL CONTROL</p><h3 id="procurementIntelHeading">Procurement &amp; Spending Intelligence</h3><p class="muted">Read-only exception detection across purchase orders, receipts, supplier payments and stock expiry.</p></div><button type="button" id="procurementIntelRefresh" class="logout-button">Refresh review</button></div>
+      <div class="stats-grid">
+        <article class="stat-card"><p>Purchase orders reviewed</p><h3 id="procurementOrderCount">—</h3></article>
+        <article class="stat-card"><p>Pending supplier payments</p><h3 id="procurementPendingPaymentCount">—</h3></article>
+        <article class="stat-card"><p>Exceptions for human review</p><h3 id="procurementIssueCount">—</h3></article>
+        <article class="stat-card"><p>Recorded PO value</p><h3 id="procurementSpendTotal">—</h3></article>
+      </div>
+      <p id="procurementIntelMessage" class="message" role="status" aria-live="polite">Open Pharmacy to review procurement exceptions.</p>
+      <div class="table-wrap"><table><thead><tr><th>Flag</th><th>Reference</th><th>Finding</th><th>Amount</th><th>Recommended human review</th></tr></thead><tbody id="procurementIntelRows"><tr><td colspan="5">Not yet calculated.</td></tr></tbody></table></div>
+      <p class="disclaimer">These are deterministic review flags, not findings of fraud or proof of wrongdoing. AI does not create orders, approve invoices, release payments or change stock. Verify every flag against original purchase orders, supplier invoices, delivery notes, goods-receipt records and bank evidence. A same-account approval flag is advisory and must be checked against the hospital's configured separation-of-duties policy.</p>
     </section>
 
     <section class="panel" id="pharmacyStockControlWorkspace" aria-labelledby="pharmacyStockControlHeading">
