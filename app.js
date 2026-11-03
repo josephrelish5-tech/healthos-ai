@@ -6403,18 +6403,33 @@ if (refreshAppointmentsButton) {
   if(!staffContext||!staffContext.departments.length){show("Department access not identified","I could not verify an active staff department or assignment. Ask your administrator to complete your staff profile and department assignments. I cannot reveal departmental information until your access context is confirmed.");return;}
   const match=routeMatch(q);
   if(match&&!departmentOwns(staffContext.departments,match)){show("This information belongs to another department","Your authorised department assignment(s): "+staffContext.departments.join(", ")+". This request belongs to "+match.owner+". I can’t provide that department’s work instructions or open its restricted workspace. Contact that department or request an authorised additional assignment.");return;}
+  // Full conversational AI: the Edge Function re-verifies the user and retrieves only RLS-authorized approved knowledge.
+  if(typeof supabaseClient!=="undefined"&&supabaseClient&&currentClinic&&currentClinic.id){
+   const sendButton=$("staffAssistantSend");
+   if(sendButton)sendButton.textContent="Thinking…";
+   const prior=window.healthOSAssistantHistory||[];
+   const {data:aiData,error:aiError}=await supabaseClient.functions.invoke("healthos-conversational-knowledge",{
+    body:{question:String(q).slice(0,1500),clinic_id:currentClinic.id,history:prior.slice(-8)}
+   });
+   if(sendButton)sendButton.textContent="Get assistance";
+   if(!aiError&&aiData&&aiData.answer){
+    const sources=(aiData.sources||[]).map(s=>"• "+s.title+" (v"+s.version+")").join("\\n");
+    const answer=aiData.answer+(sources?"\\n\\nSOURCES\\n"+sources:"");
+    window.healthOSAssistantHistory=[...prior,{role:"user",content:String(q).slice(0,1200)},{role:"assistant",content:aiData.answer.slice(0,1200)}].slice(-10);
+    lastConversation={topic:rawQuestion,answer,article:null,turns:lastConversation.turns+1};
+    show("HealthOS AI · Conversational Knowledge",answer,null);
+    return;
+   }
+   if(aiError)console.warn("Conversational knowledge unavailable; using restricted local guide:",aiError.message);
+  }
   if(typeof window.healthOSDepartmentKnowledgeSearch==="function"){
    const knowledge=await window.healthOSDepartmentKnowledgeSearch(q);
    if(knowledge&&knowledge.length){
     const article=knowledge[0];
-    const departmentName=article._departmentName||departmentsLabel(article.department_id);
-    const source="\\n\\nSOURCE: "+article.title+" · "+departmentName+" · Version "+article.version+" · Approved knowledge article.";
-    const alternatives=knowledge.length>1?"\\n\\nRELATED APPROVED ARTICLES:\\n"+knowledge.slice(1,4).map((x,i)=>(i+1)+". "+x.title+" (v"+x.version+")").join("\\n"):"";
-    let answer=(article.summary?article.summary+"\\n\\n":"")+article.content;
-    if(/more simply|simpler|simplify|explain the previous instructions/i.test(String(q))){answer="Here is the simpler version:\\n"+article.content.split(/(?<=[.!?])\\s+/).filter(Boolean).slice(0,5).map((line,i)=>(i+1)+". "+line.trim()).join("\\n");}
-    if(/next step/i.test(String(q))){answer="Your next step: follow the first instruction in this approved article, complete the required checks, and record the result in the linked workspace. If an approval is required, wait for the authorized reviewer.\\n\\n"+article.content.split(/(?<=[.!?])\\s+/).filter(Boolean).slice(0,2).join(" ");}
+    const departmentName=article._departmentName||"Assigned department";
+    const answer=(article.summary?article.summary+"\\n\\n":"")+article.content+"\\n\\nSOURCE: "+article.title+" · "+departmentName+" · Version "+article.version+".";
     lastConversation={topic:rawQuestion,answer,article,turns:lastConversation.turns+1};
-    show("Knowledge Centre · "+article.title,answer+source+alternatives,article.workspace_section_id||null,"Open linked workspace");
+    show("Approved departmental guidance · "+article.title,answer,article.workspace_section_id||null,"Open linked workspace");
     return;
    }
   }
