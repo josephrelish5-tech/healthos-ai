@@ -8,7 +8,7 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261103-41-telemedicine" defer></script>
+    <script src="app.js?v=20261103-42-referrals" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -334,6 +334,9 @@
                 <h3>Remote consultations</h3>
                 <p class="muted">Accepted audio/video appointments appear here. A secure consultation room becomes available only after the hospital connects an approved telemedicine provider.</p>
                 <div id="patientTelemedicineSessions" class="stats-grid"><p class="muted">No remote consultations loaded.</p></div>
+                <h3>Specialist referrals requiring your decision</h3>
+                <p class="muted">Review the receiving hospital and reason. Your consent is required before the receiving hospital can review the referral.</p>
+                <div id="patientGlobalReferrals" class="stats-grid"><p class="muted">No referrals awaiting your decision.</p></div>
             </div>
             <button id="patientPortalBackButton" class="text-button" type="button">Return to HealthOS sign in</button>
         </section>
@@ -838,6 +841,7 @@
                     <a href="#ussdDiagnostics" class="nav-item">⌘ USSD Diagnostics</a>
                     <a href="#multiFacilityManagement" class="nav-item">▦ Multi-Facility Management</a>
                     <a href="#patientConnectionRequests" class="nav-item">♧ Patient Connection Requests</a>
+                    <a href="#globalReferrals" class="nav-item">⇄ Global Specialist Referrals</a>
                     <a href="#aiAnalytics" class="nav-item">◈ AI Intelligence &amp; Analytics</a>
                     <a href="#patientFlow" class="nav-item">⇄ Queue &amp; Beds</a>
                     <a href="#clinicalRecords" class="nav-item">✚ Clinical Records</a>
@@ -2980,6 +2984,25 @@
  <div class="table-wrap"><table><thead><tr><th>Requested time</th><th>Patient</th><th>Type</th><th>Reason</th><th>Status</th><th>Review</th></tr></thead><tbody id="patientAppointmentReviewBody"><tr><td colspan="6">Refresh to load appointment requests.</td></tr></tbody></table></div>
  <p class="disclaimer">Only clinic owners and administrators can review requests. Approval links the patient account to this hospital but does not grant access to clinical records. Separate patient consent and record-sharing authorisation are still required.</p>
 </section>
+
+<section id="globalReferrals" class="panel" hidden>
+ <div class="panel-heading"><div><p class="eyebrow">GLOBAL CARE NETWORK</p><h2>Specialist Referrals</h2><p class="muted">Refer a patient to another verified hospital. The patient must explicitly approve each referral before the receiving hospital can see referral details.</p></div><button id="refreshGlobalReferrals" type="button" class="logout-button">Refresh referrals</button></div>
+ <h3>Create a referral</h3>
+ <form id="globalReferralForm" class="auth-form">
+  <label>Accepted hospital appointment<select id="globalReferralAppointment" required><option value="">Loading accepted appointments…</option></select></label>
+  <label>Receiving hospital<select id="globalReferralDestination" required><option value="">Loading verified hospitals…</option></select></label>
+  <label>Specialty requested<input id="globalReferralSpecialty" maxlength="120" required placeholder="e.g. Cardiology"></label>
+  <label>Clinical referral reason<textarea id="globalReferralReason" minlength="5" maxlength="2000" required></textarea></label>
+  <label>Urgency<select id="globalReferralUrgency"><option value="routine">Routine</option><option value="soon">Soon</option><option value="urgent">Urgent</option></select></label>
+  <button id="globalReferralSubmit" class="primary-button" type="submit">Send referral for patient consent</button>
+ </form>
+ <p id="globalReferralMessage" class="message" role="status" aria-live="polite"></p>
+ <h3>Incoming referrals for this hospital</h3>
+ <p class="muted">Only referrals explicitly approved by the patient appear in this inbox. Hospital administrators review incoming referrals.</p>
+ <div class="table-wrap"><table><thead><tr><th>Received</th><th>Patient</th><th>Referring hospital</th><th>Specialty</th><th>Reason</th><th>Urgency</th><th>Decision</th></tr></thead><tbody id="globalReferralInboxBody"><tr><td colspan="7">Refresh to load incoming referrals.</td></tr></tbody></table></div>
+ <p class="disclaimer">This workflow shares referral details only. It does not automatically transfer medical records. A separate patient-authorised, scoped record exchange must be completed before any clinical records are released.</p>
+</section>
+
 <!-- END HEALTHOS AI: HOSPITAL-SIDE PATIENT CONNECTION REQUESTS -->
 
 <!-- HEALTHOS AI: MULTI-FACILITY MANAGEMENT -->
