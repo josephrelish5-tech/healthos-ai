@@ -11,6 +11,7 @@
     <script src="app.js?v=20261103-47-b2-patient-files" defer></script>
     <script src="pharmacy-forecast.js?v=20261103-1" defer></script>
     <script src="offline-ehr.js?v=20261103-1" defer></script>
+    <script src="pharmacy-offline.js?v=20261103-1" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -2621,6 +2622,41 @@
             </tbody>
         </table>
     </div>
+
+
+    <section class="panel" id="pharmacyOfflineWorkspace" aria-labelledby="pharmacyOfflineHeading">
+      <h3 id="pharmacyOfflineHeading">Offline Pharmacy Operations Queue</h3>
+      <p class="muted">Capture pharmacy work during a network interruption. Entries are encrypted on this device and uploaded as pending-review evidence when online. Sync does not change stock, dispense medicine, approve adjustments, or create charges. A pharmacist/supervisor must verify each entry before execution.</p>
+      <div class="stats-grid">
+        <article class="stat-card"><p>Connection</p><h3 id="pharmacyOfflineConnection">Checking…</h3></article>
+        <article class="stat-card"><p>Local queued actions</p><h3 id="pharmacyOfflineCount">0</h3></article>
+        <article class="stat-card"><p>Pending server review</p><h3 id="pharmacyOfflinePending">—</h3></article>
+      </div>
+      <form id="pharmacyOfflineForm" class="auth-form">
+        <label>Operation type
+          <select id="pharmacyOfflineType" required>
+            <option value="receipt_intent">Medicine received / stock receipt</option>
+            <option value="dispensing_intent">Medicine dispensing record</option>
+            <option value="adjustment_request">Stock adjustment request</option>
+            <option value="transfer_request">Stock transfer request</option>
+          </select>
+        </label>
+        <label>Medicine name<input id="pharmacyOfflineMedicine" maxlength="200" required></label>
+        <label>Batch number (if known)<input id="pharmacyOfflineBatch" maxlength="100"></label>
+        <label>Quantity<input id="pharmacyOfflineQuantity" type="number" min="1" step="1" required></label>
+        <label>Expiry date (if applicable)<input id="pharmacyOfflineExpiry" type="date"></label>
+        <label>Reason / reference / destination (required)<textarea id="pharmacyOfflineReason" rows="3" maxlength="1000" required placeholder="Supplier delivery reference, dispensing context without patient identifiers, adjustment reason, or destination store"></textarea></label>
+        <button id="pharmacyOfflineSave" type="submit" class="primary-button">Save encrypted offline action</button>
+      </form>
+      <div class="button-group">
+        <button id="pharmacyOfflineUnlock" type="button" class="logout-button">Load this device’s queue</button>
+        <button id="pharmacyOfflineSync" type="button" class="primary-button">Upload queue for review</button>
+        <button id="pharmacyOfflineErase" type="button" class="logout-button">Erase local queue</button>
+      </div>
+      <p id="pharmacyOfflineMessage" class="message" role="status" aria-live="polite">No local queue loaded.</p>
+      <div class="table-wrap"><table><thead><tr><th>Captured</th><th>Operation</th><th>Medicine / batch</th><th>Quantity</th><th>Reason / reference</th><th>Sync status</th></tr></thead><tbody id="pharmacyOfflineRows"><tr><td colspan="6">No local actions.</td></tr></tbody></table></div>
+      <p class="disclaimer">Do not use this queue as authority to administer or dispense medicine. Never include patient names, phone numbers, diagnoses, or other patient identifiers. Online review and normal pharmacy controls remain mandatory. Local queue encryption is device/browser protection, not a substitute for device security.</p>
+    </section>
 
     <section class="panel" id="pharmacyDemandForecastPanel" aria-labelledby="pharmacyDemandForecastHeading">
         <h3 id="pharmacyDemandForecastHeading">Smart Inventory Demand Forecast</h3>
