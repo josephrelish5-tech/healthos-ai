@@ -11054,7 +11054,7 @@ document.getElementById("refreshGlobalReferrals")?.addEventListener("click",asyn
    download.addEventListener("click",async()=>{
     download.disabled=true;
     try{
-     const {data:link,error:linkError}=await supabaseClient.functions.invoke("healthos-b2-storage",{body:{action:"create-download",objectKey:file.object_key}});
+     const {data:link,error:linkError}=await supabaseClient.functions.invoke("healthos-b2-storage",{body:{action:"create-download",objectKey:file.object_key,purpose:"patient_document"}});
      if(linkError)throw linkError;
      if(!link?.downloadUrl)throw new Error("Secure download link was not returned.");
      const a=document.createElement("a");a.href=link.downloadUrl;a.download=file.file_name;a.rel="noopener";document.body.appendChild(a);a.click();a.remove();
@@ -11070,7 +11070,7 @@ document.getElementById("refreshGlobalReferrals")?.addEventListener("click",asyn
   button.disabled=true;say("Preparing secure upload…");
   try{
    const {data:ticket,error:ticketError}=await supabaseClient.functions.invoke("healthos-b2-storage",{
-    body:{action:"create-upload",fileName:file.name,contentType:file.type||"application/octet-stream",sizeBytes:file.size}
+    body:{action:"create-upload",fileName:file.name,contentType:file.type||"application/octet-stream",sizeBytes:file.size,purpose:"patient_document"}
    });
    if(ticketError)throw ticketError;
    if(!ticket?.uploadUrl||!ticket?.objectKey)throw new Error("Storage upload details were not returned.");
