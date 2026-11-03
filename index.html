@@ -17,6 +17,7 @@
     <script src="hospital-incidents.js?v=20261103-1" defer></script>
     <script src="hospital-compliance.js?v=20261103-1" defer></script>
     <script src="compliance-evidence-vault.js?v=20261103-1" defer></script>
+    <script src="hospital-quality.js?v=20261103-1" defer></script>
     <style>
         [hidden] { display: none !important; }
 
@@ -3326,6 +3327,49 @@
  <p class="disclaimer">These indicators are calculated from records currently available to your signed-in clinic account. They are operational summaries and rule-based alerts, not autonomous clinical decisions or a trained predictive AI model. Financial totals use the latest 5,000 billing records; confirm against the Finance and Revenue Audit workspaces before accounting decisions. Patient data remains clinic-scoped.</p>
 </section>
 <!-- END HEALTHOS AI: OPERATIONAL INTELLIGENCE & ANALYTICS -->
+
+
+<!-- HEALTHOS AI: QUALITY ASSURANCE, ACCREDITATION & PERFORMANCE -->
+<section class="panel" id="hospitalQualityWorkspace" style="margin:16px 0" aria-labelledby="hospitalQualityHeading">
+ <div class="panel-heading"><div><p class="eyebrow">CLINICAL GOVERNANCE &amp; SERVICE QUALITY</p><h2 id="hospitalQualityHeading">Quality Assurance, Accreditation &amp; Performance</h2><p class="muted">Record quality indicators, improvement projects, accreditation assessments and patient experience feedback. Every submission is retained for authorised review.</p></div><button type="button" id="qualityRefreshButton" class="logout-button">Refresh register</button></div>
+ <div class="stats-grid">
+  <article class="stat-card"><p>Quality indicators</p><h3 id="qualityIndicatorCount">—</h3></article>
+  <article class="stat-card"><p>Improvement plans</p><h3 id="qualityImprovementCount">—</h3></article>
+  <article class="stat-card"><p>Accreditation assessments</p><h3 id="qualityAccreditationCount">—</h3></article>
+  <article class="stat-card"><p>Patient feedback entries</p><h3 id="qualityFeedbackCount">—</h3></article>
+ </div>
+ <h3>Submit a quality or performance record</h3>
+ <form id="hospitalQualityForm" class="auth-form">
+  <label>Record category<select id="qualityRecordType" required><option value="quality_indicator">Quality indicator / KPI</option><option value="improvement_plan">Quality improvement plan (PDSA / PDCA)</option><option value="accreditation_assessment">Accreditation standard assessment</option><option value="patient_feedback">Patient experience feedback (anonymous)</option></select></label>
+  <label>Title / indicator / standard<input id="qualityTitle" maxlength="180" minlength="3" required placeholder="e.g. Average outpatient waiting time"></label>
+  <label>Department<input id="qualityDepartment" maxlength="120" minlength="2" required placeholder="e.g. Outpatient Department"></label>
+  <label>Accountable owner / role<input id="qualityOwner" maxlength="150" placeholder="Responsible officer or role"></label>
+  <label>Framework / standard<input id="qualityFramework" maxlength="180" placeholder="e.g. Facility quality standard / internal policy"></label>
+  <label>Definition / assessment findings<textarea id="qualityDefinition" rows="2" maxlength="2000" placeholder="How the indicator is calculated or what the standard requires"></textarea></label>
+  <div class="stats-grid">
+   <label>Measurement unit<input id="qualityUnit" maxlength="50" placeholder="minutes, %, count"></label>
+   <label>Target value<input id="qualityTarget" type="number" step="any"></label>
+   <label>Actual value<input id="qualityActual" type="number" step="any"></label>
+   <label>Baseline value<input id="qualityBaseline" type="number" step="any"></label>
+  </div>
+  <div class="stats-grid">
+   <label>Reporting period start<input id="qualityPeriodStart" type="date"></label>
+   <label>Reporting period end<input id="qualityPeriodEnd" type="date"></label>
+   <label>Due date<input id="qualityDueDate" type="date"></label>
+   <label>Patient feedback rating<select id="qualityRating"><option value="">Not applicable</option><option value="1">1 — Very poor</option><option value="2">2 — Poor</option><option value="3">3 — Fair</option><option value="4">4 — Good</option><option value="5">5 — Excellent</option></select></label>
+  </div>
+  <label>Improvement target / desired outcome<textarea id="qualityImprovementTarget" rows="2" maxlength="1200"></textarea></label>
+  <label>Improvement actions / PDSA or PDCA plan<textarea id="qualityActionPlan" rows="3" maxlength="3000"></textarea></label>
+  <label>Outcome summary / anonymous feedback<textarea id="qualityOutcome" rows="2" maxlength="2000"></textarea></label>
+  <label>Evidence reference (optional)<input id="qualityEvidenceReference" maxlength="180" placeholder="Compliance register or Evidence Vault reference"></label>
+  <button id="qualitySubmitButton" class="primary-button" type="submit">Submit for authorised review</button>
+ </form>
+ <p id="qualityMessage" class="message" role="status" aria-live="polite">Open this workspace to load the clinic quality register.</p>
+ <h3>Quality, accreditation &amp; improvement register</h3>
+ <div class="table-wrap"><table><thead><tr><th>Reference</th><th>Category</th><th>Title</th><th>Department</th><th>Owner</th><th>Target / Actual</th><th>Due</th><th>Status</th></tr></thead><tbody id="qualityRecordsBody"><tr><td colspan="8">Sign in to load records.</td></tr></tbody></table></div>
+ <p class="disclaimer">This is a quality-management record system, not an accreditation decision or certificate. Targets and results require validation by qualified hospital personnel. Patient feedback should be anonymous; do not enter patient names, contact details, diagnoses or other identifiable clinical information. Submissions are immutable and pending review; authorised review/approval workflow is a subsequent governance control.</p>
+</section>
+<!-- END HEALTHOS AI: QUALITY ASSURANCE, ACCREDITATION & PERFORMANCE -->
 
                     <footer>
     HealthOS AI · Healthcare operations and revenue protection
