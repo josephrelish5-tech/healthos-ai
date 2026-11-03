@@ -65,7 +65,7 @@ Deno.serve(async (req: Request) => {
     "apikey": serviceKey,
     "Authorization": `Bearer ${serviceKey}`,
     "Content-Type": "application/json",
-    "Prefer": "return=minimal",
+    "Prefer": "return=representation",
   };
 
   for (const entry of entries) {
@@ -106,22 +106,19 @@ Deno.serve(async (req: Request) => {
           }),
         });
         if (!insertResponse.ok) return response("Could not save intake request", 502);
+        const insertedRows = await insertResponse.json();
+        const insertedId = insertedRows?.[0]?.id;
 
         // The webhook uses the clinic owner as the system actor because no
         // authenticated staff member initiated this external message.
         // Consent remains false until staff records an appropriate consent process.
-        const savedRows = await fetch(
-          `${supabaseUrl}/rest/v1/whatsapp_intake_requests?clinic_id=eq.${encodeURIComponent(clinic.id)}&contact_phone=eq.${encodeURIComponent(String(msg.from))}&order=created_at.desc&limit=1&select=id`,
-          { headers: { ...dbHeaders, "Prefer": "return=representation" } },
-        );
-        const saved = savedRows.ok ? await savedRows.json() : [];
-        if (saved?.[0]?.id) {
+        if (insertedId) {
           await fetch(`${supabaseUrl}/rest/v1/whatsapp_intake_activity`, {
             method: "POST",
             headers: dbHeaders,
             body: JSON.stringify({
               clinic_id: clinic.id,
-              intake_request_id: saved[0].id,
+              intake_request_id: insertedId,
               activity_type: "received_via_whatsapp",
               activity_note: "Inbound WhatsApp text received. Consent has not been confirmed; staff review required.",
               created_by: clinic.owner_user_id,
