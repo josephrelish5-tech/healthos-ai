@@ -1,7 +1,7 @@
 /* HealthOS AI offline application shell.
    Deliberately excludes all authenticated API responses and patient data. */
-const CACHE_NAME = "healthos-shell-v37";
-const APP_SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./pharmacy-forecast.js", "./offline-ehr.js", "./pharmacy-offline.js", "./offline-sync-center.js", "./offline-department-tasks.js", "./hospital-incidents.js", "./hospital-compliance.js", "./compliance-evidence-vault.js", "./hospital-quality.js", "./clinical-governance.js", "./staff-credentialing.js", "./clinical-decision-support.js", "./departmental-knowledge.js"];
+const CACHE_NAME = "healthos-shell-v38";
+const APP_SHELL = ["./", "./index.html", "./styles.css", "./app.js?v=20261103-49-auth-startup-fix", "./pharmacy-forecast.js", "./offline-ehr.js", "./pharmacy-offline.js", "./offline-sync-center.js", "./offline-department-tasks.js", "./hospital-incidents.js", "./hospital-compliance.js", "./compliance-evidence-vault.js", "./hospital-quality.js", "./clinical-governance.js", "./staff-credentialing.js", "./clinical-decision-support.js", "./departmental-knowledge.js"];
 
 self.addEventListener("install", event => {
   event.waitUntil((async () => {
@@ -47,7 +47,7 @@ self.addEventListener("fetch", event => {
   }
 
   event.respondWith((async () => {
-    const cached = await caches.match(request, { ignoreSearch: true });
+    const cached = await caches.match(request, { ignoreSearch: false });
     if (cached) return cached;
     try {
       const fresh = await fetch(request);
