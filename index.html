@@ -2514,7 +2514,37 @@
                             </table>
                         </div>
 
-                        <section class="panel" id="revenueLeakageAuditPanel" hidden>
+                        
+                        <section class="panel" id="departmentExpenseControlPanel" style="margin:18px 0">
+                            <h3>Departmental Expenditure &amp; Expense Control</h3>
+                            <p class="muted">Submit departmental spending requests, set monthly category limits, approve independently, and record payment separately. Approval is not payment. Requester, approver and payer must be different people. Evidence is currently recorded by secure object reference; upload integration is a later step.</p>
+                            <form id="departmentExpenseRequestForm" class="form-grid">
+                                <label>Department<select id="expenseDepartment" required><option value="">Loading departments…</option></select></label>
+                                <label>Expense category<input id="expenseCategory" maxlength="80" required placeholder="e.g. Utilities, maintenance"></label>
+                                <label>Vendor / payee<input id="expensePayee" maxlength="160" placeholder="Supplier or payee"></label>
+                                <label>Currency<select id="expenseCurrency"><option value="NGN">NGN</option><option value="USD">USD</option><option value="GBP">GBP</option><option value="EUR">EUR</option></select></label>
+                                <label>Amount requested<input id="expenseAmount" type="number" min="0.01" step="0.01" required></label>
+                                <label>Evidence object reference<input id="expenseEvidence" maxlength="500" placeholder="Optional secure file/object reference"></label>
+                                <label class="full-width">Reason / description<textarea id="expenseDescription" maxlength="1500" required></textarea></label>
+                                <div class="full-width"><button class="primary-button" id="submitDepartmentExpense" type="submit">Submit expense request</button></div>
+                            </form>
+                            <hr>
+                            <h4>Department monthly spending limit</h4>
+                            <form id="departmentSpendingLimitForm" class="form-grid">
+                                <label>Department<select id="spendingLimitDepartment" required><option value="">Select department</option></select></label>
+                                <label>Category<input id="spendingLimitCategory" maxlength="80" required></label>
+                                <label>Currency<select id="spendingLimitCurrency"><option value="NGN">NGN</option><option value="USD">USD</option><option value="GBP">GBP</option><option value="EUR">EUR</option></select></label>
+                                <label>Monthly limit<input id="spendingLimitAmount" type="number" min="0" step="0.01" required></label>
+                                <div class="full-width"><button class="secondary-button" type="submit">Save spending limit</button></div>
+                            </form>
+                            <p id="departmentExpenseMessage" class="message" role="status" aria-live="polite">Open Billing Review to load expenditure requests.</p>
+                            <div class="table-wrap"><table><thead><tr><th>Department</th><th>Category / payee</th><th>Requested</th><th>Approved</th><th>Status</th><th>Requester / reviewer / payer</th><th>Action</th></tr></thead><tbody id="departmentExpenseRows"><tr><td colspan="7">Expense requests will load here.</td></tr></tbody></table></div>
+                            <h4>Active monthly spending limits</h4>
+                            <div class="table-wrap"><table><thead><tr><th>Department</th><th>Category</th><th>Currency</th><th>Monthly limit</th><th>Effective from</th></tr></thead><tbody id="departmentSpendingLimitRows"><tr><td colspan="5">Spending limits will load here.</td></tr></tbody></table></div>
+                            <button class="secondary-button" type="button" id="refreshDepartmentExpenses">Refresh expenditure controls</button>
+                        </section>
+
+<section class="panel" id="revenueLeakageAuditPanel" hidden>
                             <h3>Invoice-to-Bank Reconciliation &amp; Revenue Leakage Audit</h3>
                             <p class="muted">Cross-checks performed services, invoice references, department receipts and recorded payments. Each flag requires Finance review; HealthOS AI does not automatically change invoices, payments or accounting balances.</p>
                             <p id="revenueLeakageAuditMessage" class="message" role="status" aria-live="polite">Revenue audit findings will appear here.</p>
