@@ -6401,7 +6401,9 @@ if (refreshAppointmentsButton) {
    if(knowledge&&knowledge.length){
     const article=knowledge[0];
     const departmentName=departmentsLabel(article.department_id);
-    show("Knowledge Centre · "+article.title,(article.summary?article.summary+"\\n\\n":"")+article.content+(knowledge.length>1?"\\n\\nAdditional matching articles: "+knowledge.slice(1).map(x=>x.title).join("; "):""),article.workspace_section_id||null,"Open linked workspace");
+    const source="\\n\\nSOURCE: "+article.title+" · "+departmentName+" · Version "+article.version+" · Approved knowledge article.";
+    const alternatives=knowledge.length>1?"\\n\\nRELATED APPROVED ARTICLES:\\n"+knowledge.slice(1,4).map((x,i)=>(i+1)+". "+x.title+" (v"+x.version+")").join("\\n"):"";
+    show("Knowledge Centre · "+article.title,(article.summary?article.summary+"\\n\\n":"")+article.content+source+alternatives,article.workspace_section_id||null,"Open linked workspace");
     return;
    }
   }
