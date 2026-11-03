@@ -6407,15 +6407,15 @@ if (refreshAppointmentsButton) {
   if(typeof supabaseClient!=="undefined"&&supabaseClient&&currentClinic&&currentClinic.id){
    const sendButton=$("staffAssistantSend");
    if(sendButton)sendButton.textContent="Thinking…";
-   const prior=window.healthOSAssistantHistory||[];
+   const conversationId=window.healthOSConversationId||null;
    const {data:aiData,error:aiError}=await supabaseClient.functions.invoke("healthos-conversational-knowledge",{
-    body:{question:String(q).slice(0,1500),clinic_id:currentClinic.id,history:prior.slice(-8)}
+    body:{question:String(q).slice(0,1500),clinic_id:currentClinic.id,conversation_id:conversationId}
    });
    if(sendButton)sendButton.textContent="Get assistance";
    if(!aiError&&aiData&&aiData.answer){
     const sources=(aiData.sources||[]).map(s=>"• "+s.title+" (v"+s.version+")").join("\\n");
     const answer=aiData.answer+(sources?"\\n\\nSOURCES\\n"+sources:"");
-    window.healthOSAssistantHistory=[...prior,{role:"user",content:String(q).slice(0,1200)},{role:"assistant",content:aiData.answer.slice(0,1200)}].slice(-10);
+    if(aiData.conversation_id)window.healthOSConversationId=aiData.conversation_id;
     lastConversation={topic:rawQuestion,answer,article:null,turns:lastConversation.turns+1};
     show("HealthOS AI · Conversational Knowledge",answer,null);
     return;
