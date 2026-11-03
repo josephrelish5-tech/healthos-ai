@@ -4,7 +4,7 @@
  "use strict";
  const $=id=>document.getElementById(id), DB="healthos_offline_ehr_v1", STORE="vault", KEY="ehr_bundle", TTL=8*60*60*1000;
  let bundle=null;
- const owner=()=>window.currentUser&&window.currentClinic?{user:window.currentUser.id,clinic:window.currentClinic.id}:null;
+ const owner=()=>currentUser&&currentClinic?{user:currentUser.id,clinic:currentClinic.id}:null;
  const say=(m,e=false)=>{const el=$("offlineEhrMessage");if(el){el.textContent=m;el.className="message"+(e?" error":" success");}};
  function db(){return new Promise((ok,no)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(STORE))r.result.createObjectStore(STORE);};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);});}
  async function get(){const d=await db();return new Promise((ok,no)=>{const r=d.transaction(STORE).objectStore(STORE).get(KEY);r.onsuccess=()=>{d.close();ok(r.result||null);};r.onerror=()=>{d.close();no(r.error);};});}
@@ -42,7 +42,7 @@
  }
  async function cacheRecord(){
   if(!navigator.onLine)throw Error("Connect to the internet before caching a patient record.");
-  const clinic=window.currentClinic?.id,user=window.currentUser?.id;
+  const clinic=currentClinic?.id,user=currentUser?.id;
   if(!clinic||!user)throw Error("Sign in to an authorised clinic workspace first.");
   const patientId=$("clinicalPatientSelect")?.value,encounterId=$("clinicalVitalsEncounter")?.value;
   if(!patientId||!encounterId)throw Error("Select the patient and an open encounter first.");
@@ -76,14 +76,14 @@
   if(!pending.length){say("There are no unsaved drafts.");return;}
   const confirmed=confirm("Review "+pending.length+" draft(s) in the table. Save them as unsigned clinical notes for the cached encounter? This appends notes and never overwrites existing records.");
   if(!confirmed)return;
-  const {data:enc,error}=await supabaseClient.from("clinical_encounters").select("id,patient_id,status,clinician_id").eq("id",bundle.encounter.id).eq("clinic_id",window.currentClinic.id).maybeSingle();
+  const {data:enc,error}=await supabaseClient.from("clinical_encounters").select("id,patient_id,status,clinician_id").eq("id",bundle.encounter.id).eq("clinic_id",currentClinic.id).maybeSingle();
   if(error)throw error;
-  if(!enc||enc.patient_id!==bundle.patient.id||enc.clinician_id!==window.currentUser.id||!["open","in_progress"].includes(enc.status)){pending.forEach(d=>d.status="conflict: encounter changed, closed or access revoked");await persist();render();say("Conflict detected. Drafts remain encrypted locally; no clinical note was saved.",true);return;}
+  if(!enc||enc.patient_id!==bundle.patient.id||enc.clinician_id!==currentUser.id||!["open","in_progress"].includes(enc.status)){pending.forEach(d=>d.status="conflict: encounter changed, closed or access revoked");await persist();render();say("Conflict detected. Drafts remain encrypted locally; no clinical note was saved.",true);return;}
   let saved=0,failed=0;
   for(const d of pending){
-   const {error:writeError}=await supabaseClient.from("clinical_notes").insert({id:d.id,clinic_id:window.currentClinic.id,encounter_id:enc.id,note_type:d.noteType,note_text:d.text,status:"draft",author_id:window.currentUser.id});
+   const {error:writeError}=await supabaseClient.from("clinical_notes").insert({id:d.id,clinic_id:currentClinic.id,encounter_id:enc.id,note_type:d.noteType,note_text:d.text,status:"draft",author_id:currentUser.id});
    if(!writeError){d.status="saved as unsigned draft";saved++;}
-   else if(writeError.code==="23505"){const {data:existing}=await supabaseClient.from("clinical_notes").select("id,encounter_id,author_id,status").eq("id",d.id).eq("clinic_id",window.currentClinic.id).maybeSingle();if(existing&&existing.encounter_id===enc.id&&existing.author_id===window.currentUser.id&&existing.status==="draft"){d.status="saved as unsigned draft";saved++;}else{d.status="conflict";failed++;}}
+   else if(writeError.code==="23505"){const {data:existing}=await supabaseClient.from("clinical_notes").select("id,encounter_id,author_id,status").eq("id",d.id).eq("clinic_id",currentClinic.id).maybeSingle();if(existing&&existing.encounter_id===enc.id&&existing.author_id===currentUser.id&&existing.status==="draft"){d.status="saved as unsigned draft";saved++;}else{d.status="conflict";failed++;}}
    else{d.status="sync error: "+writeError.message;failed++;}
   }
   await persist();render();say("Sync result: "+saved+" unsigned draft(s) saved; "+failed+" conflict/error(s). Review them in the live clinical record.");
