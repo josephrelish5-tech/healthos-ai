@@ -143,6 +143,7 @@ function showHealthOSView(viewId) {
     if (viewId === "internationalPayments" && currentClinic && managementVerified) loadInternationalPaymentWorkspace(currentClinic).catch(error => console.error("International payment workspace failed:",error));
     if (viewId === "telemedicineDashboard" && typeof loadTelemedicineDashboard === "function") loadTelemedicineDashboard();
     if (viewId === "aiAnalytics" && typeof window.loadAIAnalytics === "function") window.loadAIAnalytics().catch(error => console.error("AI analytics refresh failed:", error));
+    if (viewId === "healthOSSecurityReview" && typeof window.loadHealthOSSecurityReview === "function") window.loadHealthOSSecurityReview().catch(error => console.error("Security review failed:", error));
 }
 
 document.querySelectorAll(".sidebar .nav-item").forEach(link => {
