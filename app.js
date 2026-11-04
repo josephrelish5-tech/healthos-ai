@@ -11966,3 +11966,87 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
  console.log("HealthOS departmental expenditure control workspace initialized.");
 })();
 // END DEPARTMENTAL EXPENDITURE & EXPENSE CONTROL
+
+
+// HEALTHOS AI — HOSPITAL-WIDE DEPARTMENT PROCUREMENT WORKSPACE
+(function initHealthOSDepartmentProcurement(){
+ "use strict";
+ const $=id=>document.getElementById(id);
+ const panel=$("departmentProcurementWorkspace");
+ if(!panel)return;
+ const form=$("healthosDepartmentProcurementForm"), rows=$("healthosProcRows"), events=$("healthosProcEvents"), message=$("healthosProcMessage");
+ let loading=false;
+ const say=(value,isError=false)=>{message.textContent=value;message.className=isError?"message error":"message";};
+ const money=(v,c)=>{try{return new Intl.NumberFormat("en-NG",{style:"currency",currency:c||"NGN"}).format(Number(v)||0);}catch(_){return (c||"")+" "+v;}};
+ const cell=(tr,value)=>{const td=document.createElement("td");td.textContent=String(value??"—");tr.appendChild(td);return td;};
+ async function load(){
+  if(loading)return;loading=true;
+  try{
+   if(!currentUser||!currentClinic||!supabaseClient){say("Sign in to an authorised hospital workspace first.",true);return;}
+   const clinicId=currentClinic.id;
+   const [d,r,e]=await Promise.all([
+    supabaseClient.from("clinic_departments").select("id,department_name").eq("clinic_id",clinicId).eq("is_active",true).order("department_name"),
+    supabaseClient.from("healthos_department_procurement_requests").select("id,department_id,request_number,category,purpose,currency,requested_total,status,budget_control_status,requested_by,reviewed_by,created_at").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(150),
+    supabaseClient.from("healthos_department_procurement_events").select("id,request_id,event_type,actor_id,details,created_at").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(100)
+   ]);
+   if(d.error)throw d.error;if(r.error)throw r.error;
+   const departments=d.data||[], requests=r.data||[], audit=e.error?[]:(e.data||[]);
+   const deptMap=new Map(departments.map(x=>[x.id,x.department_name]));
+   const select=$("healthosProcDepartment"), previous=select.value;
+   select.replaceChildren(new Option("Select department",""));
+   departments.forEach(x=>select.add(new Option(x.department_name,x.id)));
+   if(previous)select.value=previous;
+   rows.replaceChildren();
+   if(!requests.length){const tr=document.createElement("tr");cell(tr,"No procurement requests recorded.").colSpan=8;rows.appendChild(tr);}
+   requests.forEach(request=>{
+    const tr=document.createElement("tr");
+    cell(tr,request.request_number);cell(tr,deptMap.get(request.department_id)||"Department");
+    cell(tr,request.category+" — "+request.purpose);cell(tr,money(request.requested_total,request.currency));
+    cell(tr,request.budget_control_status);cell(tr,request.status);
+    cell(tr,request.requested_by+" / "+(request.reviewed_by||"—"));
+    const action=cell(tr,"");
+    if(request.status==="submitted"){
+     const approve=document.createElement("button");approve.type="button";approve.className="primary-button";approve.textContent="Approve";
+     approve.addEventListener("click",()=>review(request,"approved"));
+     const reject=document.createElement("button");reject.type="button";reject.className="secondary-button";reject.textContent="Reject";
+     reject.addEventListener("click",()=>review(request,"rejected"));action.append(approve,reject);
+    }else action.textContent="No action";
+    rows.appendChild(tr);
+   });
+   events.replaceChildren();
+   if(!audit.length){const tr=document.createElement("tr");cell(tr,e.error?"Audit history is not available to this account.":"No audit events recorded.").colSpan=5;events.appendChild(tr);}
+   audit.forEach(event=>{const tr=document.createElement("tr");cell(tr,new Date(event.created_at).toLocaleString("en-NG"));cell(tr,requests.find(x=>x.id===event.request_id)?.request_number||event.request_id);cell(tr,event.event_type);cell(tr,event.actor_id);cell(tr,JSON.stringify(event.details||{}));events.appendChild(tr);});
+   say(requests.length+" procurement request(s), "+audit.length+" audit event(s) loaded. Budget flags are controls for review, not proof of misuse.");
+  }catch(error){console.error("Department procurement workspace load failed",error);say("Could not load procurement workspace: "+(error.message||"Check access permissions."),true);}
+  finally{loading=false;}
+ }
+ async function review(request,decision){
+  if(!currentUser||currentUser.id===request.requested_by){say("The requester cannot approve or reject their own request.",true);return;}
+  const note=prompt((decision==="approved"?"Approval":"Rejection")+" note (required):");
+  if(!note||!note.trim())return;
+  try{
+   const {error}=await supabaseClient.rpc("healthos_review_department_procurement_request",{p_clinic_id:currentClinic.id,p_request_id:request.id,p_decision:decision,p_review_notes:note.trim()});
+   if(error)throw error;say("Request "+decision+". Any purchase order must be created through the controlled procurement process.");await load();
+  }catch(error){say("Review failed: "+error.message,true);}
+ }
+ form?.addEventListener("submit",async event=>{
+  event.preventDefault();const button=$("healthosProcSubmit");button.disabled=true;
+  try{
+   if(!currentUser||!currentClinic)throw new Error("Sign in to an authorised clinic first.");
+   let items;try{items=JSON.parse($("healthosProcItems").value);}catch(_){throw new Error("Item lines must be valid JSON.");}
+   if(!Array.isArray(items)||!items.length)throw new Error("Enter at least one item line.");
+   const payload={p_clinic_id:currentClinic.id,p_department_id:$("healthosProcDepartment").value,p_request_number:$("healthosProcRequestNumber").value.trim(),p_category:$("healthosProcCategory").value.trim(),p_purpose:$("healthosProcPurpose").value.trim(),p_currency:$("healthosProcCurrency").value,p_items:items};
+   if(!payload.p_department_id||!payload.p_request_number||!payload.p_category||!payload.p_purpose)throw new Error("Complete all required request fields.");
+   const {data,error}=await supabaseClient.rpc("healthos_create_department_procurement_request",payload);
+   if(error)throw error;form.reset();say("Department procurement request submitted. Request ID: "+data);await load();
+  }catch(error){say("Submission failed: "+(error.message||"Unknown error"),true);}
+  finally{button.disabled=false;}
+ });
+ $("healthosProcRefresh")?.addEventListener("click",load);
+ document.querySelectorAll('.sidebar .nav-item[href="#billingReview"]').forEach(link=>link.addEventListener("click",()=>setTimeout(load,350)));
+ document.addEventListener("healthos:clinic-ready",load);
+ document.addEventListener("healthos:management-verified",load);
+ setTimeout(()=>{if(currentUser&&currentClinic)load();},2200);
+ console.log("HealthOS hospital-wide department procurement workspace initialized.");
+})();
+// END HOSPITAL-WIDE DEPARTMENT PROCUREMENT WORKSPACE
