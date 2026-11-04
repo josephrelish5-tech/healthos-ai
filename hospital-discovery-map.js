@@ -46,50 +46,64 @@
     if (!hospitals.length) {
       const empty = document.createElement("div");
       empty.className = "hospital-map-empty";
-      empty.innerHTML = "<strong>No verified hospitals found yet</strong><p>Try another city, state or LGA. Only hospitals that have completed verification are shown here.</p>";
+      empty.innerHTML = "<strong>No hospitals found in this search area</strong><p>Try a wider search area or another location.</p>";
       target.appendChild(empty);
       return;
     }
-    hospitals.forEach(h => {
-      const card = document.createElement("article");
-      card.className = "hospital-discovery-card";
-      card.dataset.hospitalCard = h.hospital_id;
-      const title = document.createElement("h3");
-      title.textContent = h.hospital_name || "Hospital";
-      const verified = document.createElement("span");
-      verified.className = "hospital-verified-badge";
-      verified.textContent = "Verified";
-      const address = document.createElement("p");
-      address.textContent = [h.address, h.local_government_area, h.city, h.state, h.country_code].filter(Boolean).join(", ") || "Address not provided";
-      const distance = document.createElement("p");
-      distance.className = "hospital-distance";
-      distance.textContent = h.distance_km == null ? "Distance unavailable" : Number(h.distance_km).toFixed(1) + " km away";
-      const specialty = document.createElement("p");
-      specialty.textContent = "Specialties: " + ((h.specialties || []).join(", ") || "Not listed");
-      const services = document.createElement("p");
-      services.textContent = "Services: " + ((h.public_services || []).join(", ") || "Contact hospital for details");
-      const actions = document.createElement("div");
-      actions.className = "hospital-card-actions";
-      const mapButton = document.createElement("button");
-      mapButton.type = "button"; mapButton.className = "secondary-button"; mapButton.textContent = "Show on map";
-      mapButton.addEventListener("click", () => selectHospital(h.hospital_id));
-      const directions = document.createElement("a");
-      directions.className = "primary-button"; directions.href = directionsUrl(h);
-      directions.target = "_blank"; directions.rel = "noopener noreferrer";
-      directions.textContent = "Get directions";
-      const connect = document.createElement("button");
-      connect.type = "button"; connect.className = "secondary-button";
-      connect.textContent = "Request connection";
-      connect.addEventListener("click", () => {
-        if (typeof window.requestHospitalConnection === "function") {
-          window.requestHospitalConnection(h.hospital_id, connect);
-        } else {
-          connect.disabled = false;
+
+    const groups = [
+      { key: "network", title: "HealthOS AI Network Hospitals" },
+      { key: "other", title: "Other Hospitals Near You" }
+    ];
+    groups.forEach(group => {
+      const items = hospitals.filter(h => (h.listing_group || "network") === group.key);
+      if (!items.length) return;
+      const section = document.createElement("section");
+      section.className = "hospital-discovery-group";
+      const heading = document.createElement("h2");
+      heading.textContent = group.title;
+      section.appendChild(heading);
+      items.forEach(h => {
+        const card = document.createElement("article");
+        card.className = "hospital-discovery-card";
+        card.dataset.hospitalCard = h.hospital_id;
+        const title = document.createElement("h3");
+        title.textContent = h.hospital_name || "Hospital";
+        const badge = document.createElement("span");
+        badge.className = "hospital-verified-badge";
+        badge.textContent = group.key === "network" ? "HealthOS AI member" : "Nearby hospital";
+        const address = document.createElement("p");
+        address.textContent = [h.address, h.local_government_area, h.city, h.state, h.country_code].filter(Boolean).join(", ") || "Address not provided";
+        const distance = document.createElement("p");
+        distance.className = "hospital-distance";
+        distance.textContent = h.distance_km == null ? "Distance unavailable" : Number(h.distance_km).toFixed(1) + " km away";
+        const specialty = document.createElement("p");
+        specialty.textContent = "Specialties: " + ((h.specialties || []).join(", ") || "Not listed");
+        const services = document.createElement("p");
+        services.textContent = "Services: " + ((h.public_services || []).join(", ") || "Contact hospital for details");
+        const actions = document.createElement("div");
+        actions.className = "hospital-card-actions";
+        const mapButton = document.createElement("button");
+        mapButton.type = "button"; mapButton.className = "secondary-button"; mapButton.textContent = "Show on map";
+        mapButton.addEventListener("click", () => selectHospital(h.hospital_id));
+        const directions = document.createElement("a");
+        directions.className = "primary-button"; directions.href = directionsUrl(h);
+        directions.target = "_blank"; directions.rel = "noopener noreferrer";
+        directions.textContent = "Get directions";
+        actions.append(mapButton, directions);
+        if (h.connection_available) {
+          const connect = document.createElement("button");
+          connect.type = "button"; connect.className = "secondary-button";
+          connect.textContent = "Request connection";
+          connect.addEventListener("click", () => {
+            if (typeof window.requestHospitalConnection === "function") window.requestHospitalConnection(h.hospital_id, connect);
+          });
+          actions.appendChild(connect);
         }
+        card.append(title, badge, address, distance, specialty, services, actions);
+        section.appendChild(card);
       });
-      actions.append(mapButton, directions, connect);
-      card.append(title, verified, address, distance, specialty, services, actions);
-      target.appendChild(card);
+      target.appendChild(section);
     });
   }
 
