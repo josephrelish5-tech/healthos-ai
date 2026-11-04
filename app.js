@@ -9136,7 +9136,7 @@ if (refreshAppointmentsButton) {
     async function loadStockControl() {
         try {
             const c = context();
-            const [inventoryResult, locationResult, adjustmentResult, transferResult] = await Promise.all([
+            const [inventoryResult, locationResult, adjustmentResult, transferResult, eventsResult] = await Promise.all([
                 supabaseClient.from("pharmacy_inventory")
                     .select("id,medicine_name,batch_number,quantity,expiry_date,location_id")
                     .eq("clinic_id", c.clinicId).order("medicine_name"),
@@ -9148,9 +9148,12 @@ if (refreshAppointmentsButton) {
                     .eq("clinic_id", c.clinicId).order("created_at", {ascending:false}).limit(100),
                 supabaseClient.from("pharmacy_stock_transfers")
                     .select("id,transfer_number,inventory_id,source_location_id,destination_location_id,medicine_name,batch_number,quantity,status")
-                    .eq("clinic_id", c.clinicId).order("created_at", {ascending:false}).limit(100)
+                    .eq("clinic_id", c.clinicId).order("created_at", {ascending:false}).limit(100),
+                supabaseClient.from("pharmacy_stock_control_events")
+                    .select("id,inventory_id,adjustment_request_id,transfer_id,event_type,actor_id,quantity_before,quantity_after,metadata,occurred_at")
+                    .eq("clinic_id", c.clinicId).order("occurred_at", {ascending:false}).limit(200)
             ]);
-            for (const r of [inventoryResult,locationResult,adjustmentResult,transferResult]) if (r.error) throw r.error;
+            for (const r of [inventoryResult,locationResult,adjustmentResult,transferResult,eventsResult]) if (r.error) throw r.error;
             inventoryRows = inventoryResult.data || [];
             locations = locationResult.data || [];
             const locationMap = new Map(locations.map(x => [x.id, x.location_name]));
@@ -9218,7 +9221,36 @@ if (refreshAppointmentsButton) {
                 });
                 transferBody.appendChild(row);
             });
-            say("Stock controls loaded. Existing batches are assigned to their stock locations.",false);
+
+            const eventBody=byId("pharmacyStockCustodyEventsBody");
+            if(eventBody) {
+                eventBody.replaceChildren();
+                const eventRows=eventsResult.data || [];
+                if(!eventRows.length) {
+                    const row=document.createElement("tr"); cell(row,"No stock custody events recorded yet."); eventBody.appendChild(row);
+                }
+                const labels={
+                    adjustment_requested:"Adjustment requested", adjustment_approved:"Adjustment approved",
+                    adjustment_rejected:"Adjustment rejected", transfer_requested:"Transfer requested",
+                    transfer_approved:"Transfer approved", transfer_rejected:"Transfer rejected",
+                    transfer_dispatched:"Transfer dispatched", transfer_received:"Transfer received"
+                };
+                eventRows.forEach(ev=>{
+                    const row=document.createElement("tr");
+                    const item=inventoryMap.get(ev.inventory_id);
+                    cell(row,new Date(ev.occurred_at).toLocaleString());
+                    cell(row,labels[ev.event_type] || ev.event_type);
+                    cell(row,item ? item.medicine_name+" / "+item.batch_number : "Stock batch");
+                    cell(row,ev.quantity_before==null ? "—" : ev.quantity_before+" → "+(ev.quantity_after==null?"—":ev.quantity_after));
+                    cell(row,ev.actor_id);
+                    const meta=ev.metadata || {};
+                    const detail=Object.entries(meta).filter(([key,value])=>value!==null && value!=="")
+                        .map(([key,value])=>key.replace(/_/g," ")+": "+String(value)).join(" · ");
+                    cell(row,detail || (ev.transfer_id || ev.adjustment_request_id || "—"));
+                    eventBody.appendChild(row);
+                });
+            }
+            say("Stock controls and immutable custody events loaded. Review, dispatch and receipt are recorded separately.",false);
         } catch(e) {
             console.error("Pharmacy stock control load error:",e);
             say(e.message || "Unable to load stock controls.",true);
