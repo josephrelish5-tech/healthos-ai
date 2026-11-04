@@ -1276,3 +1276,14 @@ th {
 .hospital-card-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
 .hospital-card-actions .primary-button,.hospital-card-actions .secondary-button { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; padding:9px 12px; font-size:13px; }
 @media(max-width:850px) { .hospital-discovery-layout { grid-template-columns:1fr; } #hospitalDiscoveryMap { min-height:320px; } .hospital-discovery-cards { max-height:none; } }
+
+
+/* Hospital owner registration */
+.registration-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}
+.registration-grid label{display:flex;flex-direction:column;gap:7px;font-weight:600}
+.registration-grid input,.registration-grid select,.registration-grid textarea{width:100%;min-width:0;padding:11px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#172b4d;font:inherit}
+.registration-wide{grid-column:1/-1}
+.registration-actions{display:flex;gap:12px;margin:14px 0}
+#hospitalOwnerRegistration{background:#fff;border:1px solid #dbe3ed;border-radius:12px;padding:24px;margin:20px 0}
+#hospitalOwnerRegistration h3{margin-top:24px}
+@media(max-width:700px){.registration-grid{grid-template-columns:1fr}.registration-wide{grid-column:auto}#hospitalOwnerRegistration{padding:16px}}
