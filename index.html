@@ -906,6 +906,8 @@
                 <aside class="sidebar">
                     <p class="menu-heading">MAIN MENU</p>
                     <a href="#dashboard" class="nav-item active">▦ Dashboard</a>
+
+                    <a href="#hospitalOwnerRegistration" class="nav-item" id="openHospitalRegistration">▣ Hospital Registration</a>
                     <a href="#staffManagement" class="nav-item">♙ Staff Management</a>
                     <a href="#patients" class="nav-item">♙ Patients</a>
                     <a href="#appointments" class="nav-item">▣ Appointments</a>
@@ -939,6 +941,54 @@
                 </aside>
 
                 <div class="main-content" id="dashboard">
+
+                    <section id="hospitalOwnerRegistration" class="workspace-section" hidden>
+                        <div class="panel-heading">
+                            <div>
+                                <p class="eyebrow">FACILITY VERIFICATION</p>
+                                <h2>Hospital Owner Registration</h2>
+                                <p class="muted">Submit your hospital's official details and supporting documents. Public discovery is enabled only after verification approval.</p>
+                            </div>
+                        </div>
+                        <form id="hospitalOwnerRegistrationForm" class="auth-form">
+                            <div class="registration-grid">
+                                <label>Official legal hospital name<input name="official_legal_name" required maxlength="200"></label>
+                                <label>Registered entity name<input name="registered_entity_name" maxlength="200"></label>
+                                <label>Hospital category<select name="hospital_category" required><option value="">Select category</option><option>Teaching Hospital</option><option>General Hospital</option><option>Specialist Hospital</option><option>Private Hospital</option><option>Primary Healthcare Centre</option><option>Clinic</option><option>Diagnostic Centre</option><option>Other</option></select></label>
+                                <label>Ownership type<select name="ownership_type" required><option value="">Select ownership</option><option>Federal Government</option><option>State Government</option><option>Local Government</option><option>Private</option><option>Faith-based</option><option>NGO</option><option>Other</option></select></label>
+                                <label>Registration number<input name="registration_number" required maxlength="100"></label>
+                                <label>Licensing authority<input name="licensing_authority" required maxlength="200" placeholder="e.g. State Ministry of Health"></label>
+                                <label>Licence number<input name="licence_number" required maxlength="100"></label>
+                                <label>Licence expiry date<input name="licence_expiry_date" type="date"></label>
+                                <label>Country code<input name="country_code" value="NG" required maxlength="2"></label>
+                                <label>State<input name="state" required maxlength="100"></label>
+                                <label>Local Government Area<input name="local_government_area" required maxlength="120"></label>
+                                <label>City / Town<input name="city" required maxlength="120"></label>
+                                <label class="registration-wide">Full physical address<textarea name="full_address" required maxlength="500" rows="2"></textarea></label>
+                                <label>Postal code<input name="postal_code" maxlength="20"></label>
+                                <label>Latitude<input name="latitude" type="number" step="any" min="-90" max="90"></label>
+                                <label>Longitude<input name="longitude" type="number" step="any" min="-180" max="180"></label>
+                                <label>Official phone<input name="official_phone" type="tel" required maxlength="40"></label>
+                                <label>Official email<input name="official_email" type="email" required maxlength="254"></label>
+                                <label>Emergency phone<input name="emergency_phone" type="tel" maxlength="40"></label>
+                                <label>Website<input name="website_url" type="url" maxlength="300" placeholder="https://"></label>
+                            </div>
+                            <div class="registration-actions">
+                                <button type="button" id="hospitalUseLocation" class="secondary-button">Use my location</button>
+                            </div>
+                            <h3>Required verification documents</h3>
+                            <p class="muted">PDF, JPG, PNG or WEBP; maximum 10 MB each.</p>
+                            <div class="registration-grid">
+                                <label>Facility licence<input type="file" name="facility_licence" accept=".pdf,.jpg,.jpeg,.png,.webp" required></label>
+                                <label>Registration certificate<input type="file" name="registration_certificate" accept=".pdf,.jpg,.jpeg,.png,.webp" required></label>
+                                <label>Owner identity<input type="file" name="owner_identity" accept=".pdf,.jpg,.jpeg,.png,.webp" required></label>
+                                <label>Proof of address<input type="file" name="proof_of_address" accept=".pdf,.jpg,.jpeg,.png,.webp" required></label>
+                            </div>
+                            <button class="primary-button" type="submit">Submit hospital for verification</button>
+                            <p id="hospitalOwnerRegistrationMessage" class="message" role="status" aria-live="polite"></p>
+                        </form>
+                    </section>
+
                     <section class="welcome">
                         <div>
                             <p class="eyebrow">OVERVIEW</p>
