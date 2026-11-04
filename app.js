@@ -8904,6 +8904,108 @@ if (refreshAppointmentsButton) {
     const reconciliationRows = document.getElementById("posReconciliationMatchRows");
     const reconciliationMessage = document.getElementById("reconciliationMessage");
     const generateMatchesButton = document.getElementById("generateReconciliationMatches");
+    const closingDateInput = document.getElementById("financialClosingDate");
+    const closingButton = document.getElementById("generateDailyFinancialClosing");
+    const closingMessage = document.getElementById("financialClosingMessage");
+    const closingRows = document.getElementById("dailyFinancialClosingRows");
+
+    function setClosingMessage(message, type) {
+        if (!closingMessage) return;
+        closingMessage.textContent = message;
+        closingMessage.className = "message" + (type ? " " + type : "");
+    }
+
+    function closingMoney(value, currency) {
+        const amount = Number(value || 0);
+        try {
+            return new Intl.NumberFormat("en-NG", { style: "currency", currency: currency || "NGN", maximumFractionDigits: 2 }).format(amount);
+        } catch (_) {
+            return (currency || "") + " " + amount.toLocaleString("en-NG", { maximumFractionDigits: 2 });
+        }
+    }
+
+    function renderDailyClosingRows(items) {
+        if (!closingRows) return;
+        closingRows.replaceChildren();
+        if (!items || !items.length) {
+            const tr = document.createElement("tr");
+            const td = document.createElement("td");
+            td.colSpan = 9;
+            td.textContent = "No closing snapshots are available.";
+            tr.appendChild(td);
+            closingRows.appendChild(tr);
+            return;
+        }
+        items.forEach(item => {
+            const s = item.summary || {};
+            const billing = s.billing || {};
+            const pos = s.accepted_pos_receipts || {};
+            const bank = s.bank_statement || {};
+            const cash = s.department_cash || {};
+            const refunds = s.refunds || {};
+            const tr = document.createElement("tr");
+            const values = [
+                item.business_date + " / " + item.currency,
+                closingMoney(billing.invoiced_amount, item.currency),
+                closingMoney(billing.amount_paid_recorded, item.currency),
+                closingMoney(pos.amount, item.currency),
+                closingMoney(bank.credits, item.currency),
+                closingMoney(bank.debits, item.currency),
+                closingMoney(cash.declared_amount, item.currency),
+                closingMoney(cash.bank_verified_deposit_amount, item.currency),
+                closingMoney(refunds.pending_amount, item.currency) + " / " +
+                    closingMoney(refunds.approved_amount, item.currency) + " / " +
+                    closingMoney(refunds.processed_amount, item.currency)
+            ];
+            values.forEach(value => {
+                const td = document.createElement("td");
+                td.textContent = value;
+                tr.appendChild(td);
+            });
+            closingRows.appendChild(tr);
+        });
+    }
+
+    async function loadDailyClosingHistory() {
+        if (!closingRows || !supabaseClient || !currentClinic) return;
+        const { data, error } = await supabaseClient
+            .from("healthos_daily_financial_closings")
+            .select("id,business_date,currency,summary,generated_at")
+            .eq("clinic_id", currentClinic.id)
+            .order("generated_at", { ascending: false })
+            .limit(30);
+        if (error) throw error;
+        renderDailyClosingRows(data || []);
+    }
+
+    if (closingDateInput) closingDateInput.value = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Lagos" });
+    if (closingButton) {
+        closingButton.addEventListener("click", async () => {
+            if (!currentClinic || !supabaseClient) return;
+            const businessDate = closingDateInput && closingDateInput.value;
+            if (!businessDate) {
+                setClosingMessage("Select the hospital business date first.", "error");
+                return;
+            }
+            closingButton.disabled = true;
+            setClosingMessage("Generating the daily financial snapshot…");
+            try {
+                const { data, error } = await supabaseClient.rpc("healthos_generate_daily_financial_closing", {
+                    p_clinic_id: currentClinic.id,
+                    p_business_date: businessDate
+                });
+                if (error) throw error;
+                renderDailyClosingRows(data || []);
+                setClosingMessage("Daily closing snapshot generated and locked. Corrections require a new snapshot; previous snapshots remain unchanged.", "success");
+                await loadDailyClosingHistory();
+            } catch (error) {
+                setClosingMessage("Could not generate the daily closing: " + (error.message || "Check Finance reconciliation permission."), "error");
+            } finally {
+                closingButton.disabled = false;
+            }
+        });
+    }
+
 
     function setReconciliationMessage(text, type) {
         if (!reconciliationMessage) return;
