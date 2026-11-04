@@ -1313,3 +1313,15 @@ th {
 .patient-discovery-shortcut{margin:0 0 18px}
 .patient-discovery-shortcut p{margin:6px 0 10px}
 @media(max-width:600px){.public-discovery-screen{padding:0 10px 24px}.public-discovery-hero{padding:17px}}
+
+
+/* Google Maps-style presentation for HealthOS discovery (CARTO Voyager tiles). */
+.healthos-map-stage{position:relative;width:100%;border-radius:14px;overflow:hidden;background:#e9edf2;box-shadow:0 3px 14px rgba(20,40,60,.12)}
+.healthos-map-stage #hospitalDiscoveryMap{height:420px!important;min-height:420px!important;border-radius:14px}
+.healthos-map-locate{position:absolute;z-index:500;right:14px;bottom:18px;display:flex;align-items:center;gap:7px;padding:10px 13px;border:1px solid #d5dce5;border-radius:24px;background:#fff;color:#263746;font-weight:700;box-shadow:0 2px 9px rgba(0,0,0,.2)}
+.healthos-map-locate:active{transform:scale(.97)}
+.healthos-user-location-icon{background:transparent;border:0}
+.healthos-user-location-dot{display:block;width:18px;height:18px;border:3px solid #fff;border-radius:50%;background:#4285f4;box-shadow:0 1px 6px rgba(0,0,0,.45)}
+#hospitalDiscoveryMap .leaflet-control-zoom a{width:38px;height:38px;line-height:38px;font-size:22px;color:#263746}
+#hospitalDiscoveryMap .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.88);padding:2px 5px}
+@media(max-width:850px){.healthos-map-stage #hospitalDiscoveryMap{height:420px!important;min-height:420px!important}}
