@@ -12064,7 +12064,7 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    if(!currentClinic||!currentUser||!supabaseClient){say("Sign in to an authorised clinic workspace first.",true);return;}
    const cid=currentClinic.id;
    const [rq,rf,sp,qt,po,ev,depts]=await Promise.all([
-    supabaseClient.from("healthos_department_procurement_requests").select("id,request_number,department_id,requested_total,currency,status,requested_by").eq("clinic_id",cid).eq("status","approved").order("created_at",{ascending:false}).limit(100),
+    supabaseClient.from("healthos_department_procurement_requests").select("id,request_number,department_id,requested_total,currency,status,requested_by").eq("clinic_id",cid).order("created_at",{ascending:false}).limit(150),
     supabaseClient.from("healthos_department_quote_requests").select("id,procurement_request_id,quote_request_number,status").eq("clinic_id",cid).order("created_at",{ascending:false}).limit(100),
     supabaseClient.from("pharmacy_suppliers").select("id,supplier_name").eq("clinic_id",cid).eq("is_active",true).eq("verification_status","verified").order("supplier_name"),
     supabaseClient.from("healthos_department_supplier_quotes").select("id,quote_request_id,supplier_id,quote_reference,currency,status,submitted_by,valid_until").eq("clinic_id",cid).order("submitted_at",{ascending:false}).limit(150),
@@ -12075,7 +12075,7 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    for(const x of [rq,rf,sp,qt,po,depts])if(x.error)throw x.error;
    requests=rq.data||[];rfqs=rf.data||[];suppliers=sp.data||[];
    const reqSel=$("healthosSourceRequest"),oldReq=reqSel.value;reqSel.replaceChildren(new Option("Select approved request",""));
-   requests.filter(r=>!rfqs.some(f=>f.procurement_request_id===r.id)).forEach(x=>reqSel.add(new Option(x.request_number+" — "+money(x.requested_total,x.currency),x.id)));if(oldReq)reqSel.value=oldReq;
+   requests.filter(r=>r.status==="approved"&&!rfqs.some(f=>f.procurement_request_id===r.id)).forEach(x=>reqSel.add(new Option(x.request_number+" — "+money(x.requested_total,x.currency),x.id)));if(oldReq)reqSel.value=oldReq;
    const rfSel=$("healthosQuoteRequestSelect"),oldRf=rfSel.value;rfSel.replaceChildren(new Option("Select open RFQ",""));rfqs.filter(x=>x.status==="open").forEach(x=>rfSel.add(new Option(x.quote_request_number,x.id)));if(oldRf)rfSel.value=oldRf;
    const spSel=$("healthosQuoteSupplier"),oldSp=spSel.value;spSel.replaceChildren(new Option("Select verified supplier",""));suppliers.forEach(x=>spSel.add(new Option(x.supplier_name,x.id)));if(oldSp)spSel.value=oldSp;
    const quoteItems=await supabaseClient.from("healthos_department_supplier_quote_items").select("quote_id,line_total").eq("clinic_id",cid);if(quoteItems.error)throw quoteItems.error;
