@@ -3942,5 +3942,34 @@
             </div>
         </section>
     </main>
+
+<script>
+/* Independent public-directory navigation: does not depend on app.js initialisation. */
+window.openHealthOSHospitalDiscovery = function () {
+    var publicScreen = document.getElementById("publicHospitalDiscoveryScreen");
+    if (!publicScreen) {
+        alert("Hospital Discovery is temporarily unavailable. Please refresh the page.");
+        return;
+    }
+    ["authPanel","patientPortal","appPanel","clinicSetup","adminVerification","staffWorkspace","staffRegistrationPanel","passwordRecoveryPanel"].forEach(function (id) {
+        var panel = document.getElementById(id);
+        if (panel) panel.hidden = true;
+    });
+    publicScreen.hidden = false;
+    window.scrollTo(0, 0);
+    window.setTimeout(function () {
+        if (window.HealthOSHospitalDiscovery && typeof window.HealthOSHospitalDiscovery.refresh === "function") {
+            window.HealthOSHospitalDiscovery.refresh();
+        }
+    }, 150);
+};
+document.addEventListener("DOMContentLoaded", function () {
+    var publicButton = document.getElementById("openPublicHospitalDiscoveryButton");
+    var patientButton = document.getElementById("patientOpenHospitalDiscoveryButton");
+    if (publicButton) publicButton.addEventListener("click", window.openHealthOSHospitalDiscovery);
+    if (patientButton) patientButton.addEventListener("click", window.openHealthOSHospitalDiscovery);
+});
+</script>
+
 </body>
 </html>
