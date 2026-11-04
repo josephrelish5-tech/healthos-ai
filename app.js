@@ -1366,15 +1366,15 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
         return;
     }
     if (!cityValue && !state && !region && !lga && !(latitudeValue && longitudeValue)) {
-        message.textContent = "Enter a city, state, region or LGA, or choose Use my location.";
+        message.textContent = "Enter a city, state or LGA, or choose Use my location.";
         message.className = "message error";
         return;
     }
     searchHospitalsButton.disabled = true;
-    message.textContent = "Searching verified hospitals…";
+    message.textContent = "Searching nearby hospitals…";
     message.className = "message";
     try {
-        const { data, error } = await supabaseClient.rpc("healthos_search_hospitals", {
+        const baseParams = {
             p_latitude: latitudeValue ? Number(latitudeValue) : null,
             p_longitude: longitudeValue ? Number(longitudeValue) : null,
             p_radius_km: latitudeValue && longitudeValue ? 50 : null,
@@ -1386,18 +1386,27 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
             p_specialty: specialty || null,
             p_limit: 50,
             p_offset: 0
-        });
+        };
+        let { data, error } = await supabaseClient.rpc("healthos_search_hospitals_v2", baseParams);
         if (error) throw error;
-        const hospitals = data || [];
-        if (window.HealthOSHospitalDiscovery) {
-            window.HealthOSHospitalDiscovery.render(hospitals);
+        let hospitals = data || [];
+        if (latitudeValue && longitudeValue && hospitals.length < 5) {
+            message.textContent = "Expanding your search area…";
+            const expanded = await supabaseClient.rpc("healthos_search_hospitals_v2", {
+                ...baseParams, p_radius_km: 100
+            });
+            if (expanded.error) throw expanded.error;
+            hospitals = expanded.data || [];
         }
+        if (window.HealthOSHospitalDiscovery) window.HealthOSHospitalDiscovery.render(hospitals);
         if (!hospitals.length) {
-            message.textContent = "No verified hospitals match this search yet. Try a wider area or another location.";
+            message.textContent = "No hospitals found in this area. Try another location or search again later.";
             message.className = "message";
             return;
         }
-        message.textContent = hospitals.length + " verified hospital profile(s) found.";
+        const networkCount = hospitals.filter(h => h.listing_group === "network").length;
+        const otherCount = hospitals.length - networkCount;
+        message.textContent = networkCount + " HealthOS AI network hospital(s) and " + otherCount + " other nearby hospital(s) found.";
         message.className = "message success";
     } catch (error) {
         console.error("Hospital discovery search failed:", error);
