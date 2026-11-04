@@ -1318,6 +1318,37 @@ if (patientProfileForm) patientProfileForm.addEventListener("submit", async even
     message.className = "message " + (error ? "error" : "success");
 });
 
+const useMyHospitalLocationButton = document.getElementById("useMyHospitalLocationButton");
+if (useMyHospitalLocationButton) useMyHospitalLocationButton.addEventListener("click", () => {
+    const message = document.getElementById("hospitalSearchMessage");
+    const latitudeInput = document.getElementById("hospitalSearchLatitude");
+    const longitudeInput = document.getElementById("hospitalSearchLongitude");
+    if (!navigator.geolocation) {
+        message.textContent = "Location is unavailable in this browser. You can still search using the location fields.";
+        message.className = "message";
+        return;
+    }
+    useMyHospitalLocationButton.disabled = true;
+    message.textContent = "Requesting permission to use your location…";
+    message.className = "message";
+    navigator.geolocation.getCurrentPosition(position => {
+        latitudeInput.value = position.coords.latitude.toFixed(6);
+        longitudeInput.value = position.coords.longitude.toFixed(6);
+        useMyHospitalLocationButton.disabled = false;
+        message.textContent = "Your location is ready. Tap Search hospitals to find verified facilities nearby.";
+        message.className = "message success";
+    }, error => {
+        useMyHospitalLocationButton.disabled = false;
+        const reason = error && error.code === 1
+            ? "Location permission was not granted."
+            : error && error.code === 3
+                ? "Your location request timed out."
+                : "Your location could not be determined.";
+        message.textContent = reason + " You can still search by entering your city, state or LGA manually.";
+        message.className = "message";
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+});
+
 const searchHospitalsButton = document.getElementById("searchHospitalsButton");
 if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async () => {
     const message = document.getElementById("hospitalSearchMessage");
