@@ -7504,6 +7504,9 @@ if (refreshAppointmentsButton) {
                 details.batch_number ? "Batch: " + details.batch_number : "",
                 details.amount ? "Amount: " + formatNaira(details.amount) : "",
                 details.delivery_note_reference ? "Delivery note: " + details.delivery_note_reference : "",
+                details.supplier_invoice_reference ? "Invoice: " + details.supplier_invoice_reference : "",
+                details.invoice_variance !== undefined ? "Invoice variance: " + formatNaira(details.invoice_variance) : "",
+                details.verification_status ? "Verification: " + details.verification_status : "",
                 details.review_notes || ""
             ].filter(Boolean).join(" · ") || "See event evidence";
             [
@@ -7786,19 +7789,21 @@ if (refreshAppointmentsButton) {
                 const context = getPharmacyContext();
                 const quantity = Number(document.getElementById("pharmacyReceiveQuantity").value);
                 if (!Number.isInteger(quantity) || quantity < 1) throw new Error("Received quantity must be a whole number above zero.");
-                const result = await supabaseClient.rpc("receive_pharmacy_purchase_order_item", {
+                const result = await supabaseClient.rpc("receive_pharmacy_purchase_order_item_v2", {
                     p_clinic_id: context.clinicId,
                     p_purchase_order_item_id: procurementItemSelect.value,
                     p_receipt_number: document.getElementById("pharmacyGoodsReceiptNumber").value.trim(),
                     p_batch_number: document.getElementById("pharmacyGoodsBatchNumber").value.trim(),
                     p_expiry_date: document.getElementById("pharmacyGoodsExpiryDate").value,
                     p_quantity: quantity,
+                    p_supplier_invoice_reference: document.getElementById("pharmacySupplierInvoiceReference").value.trim(),
+                    p_supplier_invoice_line_amount: Number(document.getElementById("pharmacySupplierInvoiceLineAmount").value),
                     p_delivery_note_reference: document.getElementById("pharmacyDeliveryNote").value.trim() || null,
                     p_notes: document.getElementById("pharmacyGoodsReceiptNotes").value.trim() || null
                 });
                 if (result.error) throw result.error;
                 procurementReceiveForm.reset();
-                showProcurementMessage("Goods received. A new inventory batch and receipt record have been created.", false);
+                showProcurementMessage("Goods receipt saved. Invoice value was checked against the approved PO line; any variance is flagged for review.", false);
                 await loadPharmacyInventory();
                 await loadPharmacyProcurementWorkspace();
             } catch (error) {
