@@ -1335,8 +1335,9 @@ if (useMyHospitalLocationButton) useMyHospitalLocationButton.addEventListener("c
         latitudeInput.value = position.coords.latitude.toFixed(6);
         longitudeInput.value = position.coords.longitude.toFixed(6);
         useMyHospitalLocationButton.disabled = false;
-        message.textContent = "Your location is ready. Tap Search hospitals to find verified facilities nearby.";
+        message.textContent = "Your location is ready. Searching for verified hospitals nearby…";
         message.className = "message success";
+        document.getElementById("searchHospitalsButton")?.click();
     }, error => {
         useMyHospitalLocationButton.disabled = false;
         const reason = error && error.code === 1
