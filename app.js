@@ -1219,26 +1219,28 @@ if (openPatientAccessButton) openPatientAccessButton.addEventListener("click", (
 if (patientAuthModeToggle) patientAuthModeToggle.addEventListener("click", () => setPatientAuthMode(!patientAuthIsSignUp));
 
 /* Public and patient entry points for hospital discovery. */
-function openHealthOSHospitalDiscovery() {
-    // Use an explicit public-screen transition, independent of authentication state.
-    const screens = ["authPanel", "patientPortal", "appPanel", "clinicSetup", "adminVerification", "staffWorkspace", "staffRegistrationPanel", "passwordRecoveryPanel"];
-    screens.forEach(id => {
+window.openHealthOSHospitalDiscovery = function () {
+    const publicScreen = document.getElementById("publicHospitalDiscoveryScreen");
+    if (!publicScreen) {
+        console.error("HealthOS: public hospital discovery screen not found.");
+        return;
+    }
+    // Hide every top-level workspace screen, then reveal the public directory.
+    ["authPanel","patientPortal","appPanel","clinicSetup","adminVerification","staffWorkspace","staffRegistrationPanel","passwordRecoveryPanel"].forEach(id => {
         const panel = document.getElementById(id);
         if (panel) panel.hidden = true;
     });
-    const publicScreen = document.getElementById("publicHospitalDiscoveryScreen");
-    if (publicScreen) publicScreen.hidden = false;
-    else {
-        console.error("Public hospital discovery screen is missing.");
-        return;
-    }
-    window.scrollTo({ top: 0, behavior: "auto" });
+    publicScreen.hidden = false;
+    publicScreen.removeAttribute("aria-hidden");
+    window.scrollTo(0, 0);
     requestAnimationFrame(() => {
         if (window.HealthOSHospitalDiscovery) window.HealthOSHospitalDiscovery.refresh();
+        const searchButton = document.getElementById("searchHospitalsButton");
+        if (searchButton) searchButton.focus({ preventScroll: true });
     });
-}
-document.getElementById("openPublicHospitalDiscoveryButton")?.addEventListener("click", openHealthOSHospitalDiscovery);
-document.getElementById("patientOpenHospitalDiscoveryButton")?.addEventListener("click", openHealthOSHospitalDiscovery);
+};
+document.getElementById("openPublicHospitalDiscoveryButton")?.addEventListener("click", window.openHealthOSHospitalDiscovery);
+document.getElementById("patientOpenHospitalDiscoveryButton")?.addEventListener("click", window.openHealthOSHospitalDiscovery);
 document.getElementById("hospitalDiscoveryBackButton")?.addEventListener("click", () => {
     const patientPortal = document.getElementById("patientPortal");
     showOnly(currentUser && patientPortal && !patientPortal.hidden ? "patientPortal" : "auth");
