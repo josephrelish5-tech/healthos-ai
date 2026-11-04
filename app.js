@@ -1283,71 +1283,90 @@ if (patientProfileForm) patientProfileForm.addEventListener("submit", async even
 
 const searchHospitalsButton = document.getElementById("searchHospitalsButton");
 if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async () => {
-    const target = document.getElementById("patientHospitalResults");
     const message = document.getElementById("hospitalSearchMessage");
     const country = document.getElementById("hospitalSearchCountry").value.trim().toUpperCase();
-    const city = document.getElementById("hospitalSearchCity").value.trim();
-    target.replaceChildren();
-    if (!country || !/^[A-Z]{2}$/.test(country) || !city) {
-        message.textContent = "Enter a two-letter country code and city to search.";
+    const cityValue = document.getElementById("hospitalSearchCity").value.trim();
+    const latitudeValue = document.getElementById("hospitalSearchLatitude").value.trim();
+    const longitudeValue = document.getElementById("hospitalSearchLongitude").value.trim();
+    const state = document.getElementById("hospitalSearchState").value.trim();
+    const region = document.getElementById("hospitalSearchRegion").value.trim();
+    const lga = document.getElementById("hospitalSearchLga").value.trim();
+    const specialty = document.getElementById("hospitalSearchSpecialty").value.trim();
+    if (!country || !/^[A-Z]{2}$/.test(country)) {
+        message.textContent = "Enter a valid two-letter country code.";
+        message.className = "message error";
+        return;
+    }
+    if (!cityValue && !state && !region && !lga && !(latitudeValue && longitudeValue)) {
+        message.textContent = "Enter a city, state, region or LGA, or choose Use my location.";
         message.className = "message error";
         return;
     }
     searchHospitalsButton.disabled = true;
-    message.textContent = "Searching verified hospitals...";
+    message.textContent = "Searching verified hospitals…";
     message.className = "message";
     try {
-        const { data, error } = await supabaseClient
-            .from("healthos_hospital_directory")
-            .select("clinic_id, public_name, city, country_code, specialties")
-            .eq("country_code", country)
-            .ilike("city", city)
-            .eq("verification_status", "verified")
-            .eq("accepting_patient_requests", true)
-            .order("public_name")
-            .limit(50);
+        const { data, error } = await supabaseClient.rpc("healthos_search_hospitals", {
+            p_latitude: latitudeValue ? Number(latitudeValue) : null,
+            p_longitude: longitudeValue ? Number(longitudeValue) : null,
+            p_radius_km: latitudeValue && longitudeValue ? 50 : null,
+            p_country_code: country,
+            p_region: region || null,
+            p_state: state || null,
+            p_city: cityValue && cityValue.toLowerCase() !== "nearby" ? cityValue : null,
+            p_lga: lga || null,
+            p_specialty: specialty || null,
+            p_limit: 50,
+            p_offset: 0
+        });
         if (error) throw error;
-        if (!data || !data.length) {
-            message.textContent = "No verified hospitals accepting patient requests were found in that city.";
+        const hospitals = data || [];
+        if (window.HealthOSHospitalDiscovery) {
+            window.HealthOSHospitalDiscovery.render(hospitals);
+        }
+        if (!hospitals.length) {
+            message.textContent = "No verified hospitals match this search yet. Try a wider area or another location.";
+            message.className = "message";
             return;
         }
-        message.textContent = data.length + " verified hospital listing(s) found.";
-        data.forEach(hospital => {
-            const card = document.createElement("article");
-            card.className = "stat-card";
-            const title = document.createElement("h3");
-            title.textContent = hospital.public_name;
-            const location = document.createElement("p");
-            location.textContent = hospital.city + ", " + hospital.country_code;
-            const specialties = document.createElement("p");
-            specialties.textContent = (hospital.specialties || []).join(", ") || "Specialties not listed";
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = "primary-button";
-            button.textContent = "Request connection";
-            button.addEventListener("click", async () => {
-                button.disabled = true;
-                const { error: requestError } = await supabaseClient
-                    .from("healthos_patient_hospital_links")
-                    .upsert({ patient_user_id: currentUser.id, clinic_id: hospital.clinic_id, status: "pending" }, { onConflict: "patient_user_id,clinic_id", ignoreDuplicates: true });
-                if (requestError) {
-                    setPatientAuthMessage(friendlyError(requestError), "error");
-                    button.disabled = false;
-                    return;
-                }
-                button.textContent = "Request submitted";
-                await loadPatientHospitalLinks();
-            });
-            card.append(title, location, specialties, button);
-            target.appendChild(card);
-        });
+        message.textContent = hospitals.length + " verified hospital profile(s) found.";
+        message.className = "message success";
     } catch (error) {
+        console.error("Hospital discovery search failed:", error);
         message.textContent = friendlyError(error);
         message.className = "message error";
     } finally {
         searchHospitalsButton.disabled = false;
     }
 });
+
+window.requestHospitalConnection = async function (hospitalId, button) {
+    if (!currentUser) {
+        setPatientAuthMessage("Sign in to your patient account before requesting a hospital connection.", "error");
+        return;
+    }
+    button.disabled = true;
+    try {
+        const { data: hospital, error: lookupError } = await supabaseClient
+            .from("healthos_hospital_directory")
+            .select("clinic_id")
+            .eq("id", hospitalId)
+            .eq("verification_status", "verified")
+            .maybeSingle();
+        if (lookupError) throw lookupError;
+        if (!hospital || !hospital.clinic_id) throw new Error("This hospital listing is not available for connection requests.");
+        const { error } = await supabaseClient
+            .from("healthos_patient_hospital_links")
+            .upsert({ patient_user_id: currentUser.id, clinic_id: hospital.clinic_id, status: "pending" },
+                { onConflict: "patient_user_id,clinic_id", ignoreDuplicates: true });
+        if (error) throw error;
+        button.textContent = "Request submitted";
+        await loadPatientHospitalLinks();
+    } catch (error) {
+        setPatientAuthMessage(friendlyError(error), "error");
+        button.disabled = false;
+    }
+};
 
 /* HEALTHOS AI: HOSPITAL-SIDE PATIENT CONNECTION REQUEST REVIEW
  * RLS on healthos_patient_hospital_links is the authoritative clinic-owner/admin boundary.
