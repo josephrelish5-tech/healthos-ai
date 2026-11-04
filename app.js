@@ -1235,8 +1235,6 @@ function openHealthOSHospitalDiscovery() {
     window.scrollTo({ top: 0, behavior: "auto" });
     requestAnimationFrame(() => {
         if (window.HealthOSHospitalDiscovery) window.HealthOSHospitalDiscovery.refresh();
-        const map = document.getElementById("hospitalDiscoveryMap");
-        if (map && window.google?.maps) window.google.maps.event.trigger(window.HealthOSHospitalDiscoveryMap, "resize");
     });
 }
 document.getElementById("openPublicHospitalDiscoveryButton")?.addEventListener("click", openHealthOSHospitalDiscovery);
