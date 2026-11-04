@@ -1287,3 +1287,15 @@ th {
 #hospitalOwnerRegistration{background:#fff;border:1px solid #dbe3ed;border-radius:12px;padding:24px;margin:20px 0}
 #hospitalOwnerRegistration h3{margin-top:24px}
 @media(max-width:700px){.registration-grid{grid-template-columns:1fr}.registration-wide{grid-column:auto}#hospitalOwnerRegistration{padding:16px}}
+
+/* Hospital map page finishing and empty-state treatment */
+#hospitalMap { width:100%; }
+#hospitalMap > .panel-heading { margin-bottom:18px; padding:18px 20px; border-radius:14px; background:#f2f6fb; border-left:5px solid var(--medical-blue); }
+#hospitalMap > .panel-heading h2 { margin:3px 0 6px; color:var(--navy); }
+#hospitalMap > h3 { margin:20px 0 12px; }
+#hospitalMap .hospital-map-empty { padding:20px; border:1px dashed #aebdca; border-radius:12px; background:#f7f9fb; color:#40566b; }
+#hospitalMap .hospital-map-empty p { margin:8px 0 0; line-height:1.5; }
+#hospitalMap #hospitalMapStatus { min-height:24px; margin-top:10px; }
+#hospitalMap .hospital-search-form input { width:100%; box-sizing:border-box; }
+#hospitalMap .hospital-search-actions button { min-height:44px; }
+@media(max-width:640px) { #hospitalMap > .panel-heading { padding:14px; } #hospitalMap .hospital-search-actions { display:grid; grid-template-columns:1fr; } #hospitalMap .hospital-search-actions button { width:100%; } }
