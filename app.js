@@ -70,6 +70,11 @@ document.querySelectorAll("#adminStaffDashboard [data-workspace-target]").forEac
 }
 
 function showHealthOSView(viewId) {
+    if (viewId === "hospitalMap") {
+        showOnly("hospitalDiscovery");
+        if (window.HealthOSHospitalDiscovery) window.HealthOSHospitalDiscovery.refresh();
+        return;
+    }
     if (viewId === "dashboard" && !managementVerified) {
         showOnly(currentUser ? "verification" : "auth");
         return;
@@ -205,6 +210,8 @@ function showOnly(screen) {
     if (recoveryPanel) recoveryPanel.hidden = screen !== "passwordRecovery";
     clinicSetup.hidden = screen !== "clinic";
     appPanel.hidden = screen !== "dashboard";
+    const publicDiscoveryScreen = document.getElementById("publicHospitalDiscoveryScreen");
+    if (publicDiscoveryScreen) publicDiscoveryScreen.hidden = screen !== "hospitalDiscovery";
     const patientPortal = document.getElementById("patientPortal");
     if (patientPortal) patientPortal.hidden = screen !== "patientPortal";
     adminVerification.hidden = screen !== "verification";
@@ -1210,6 +1217,19 @@ if (openPatientAccessButton) openPatientAccessButton.addEventListener("click", (
     showOnly("patientPortal");
 });
 if (patientAuthModeToggle) patientAuthModeToggle.addEventListener("click", () => setPatientAuthMode(!patientAuthIsSignUp));
+
+/* Public and patient entry points for hospital discovery. */
+function openHealthOSHospitalDiscovery() {
+    showOnly("hospitalDiscovery");
+    if (window.HealthOSHospitalDiscovery) window.HealthOSHospitalDiscovery.refresh();
+}
+document.getElementById("openPublicHospitalDiscoveryButton")?.addEventListener("click", openHealthOSHospitalDiscovery);
+document.getElementById("patientOpenHospitalDiscoveryButton")?.addEventListener("click", openHealthOSHospitalDiscovery);
+document.getElementById("hospitalDiscoveryBackButton")?.addEventListener("click", () => {
+    const patientPortal = document.getElementById("patientPortal");
+    showOnly(currentUser && patientPortal && !patientPortal.hidden ? "patientPortal" : "auth");
+});
+
 const patientPortalBackButton = document.getElementById("patientPortalBackButton");
 if (patientPortalBackButton) patientPortalBackButton.addEventListener("click", () => showOnly("auth"));
 
