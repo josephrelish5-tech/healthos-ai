@@ -885,7 +885,8 @@
                                 <p class="muted">Find verified hospitals by location, explore their profiles and get directions.</p>
                             </div>
                         </div>
-                                        <h3>Find a hospital</h3>
+                                        <section class="hospital-search-card" aria-label="Search verified hospitals">
+                                            <div class="hospital-search-title"><div><p class="eyebrow">HOSPITAL FINDER</p><h3>Where do you need care?</h3><p>Search verified facilities near your preferred location.</p></div><span class="hospital-search-symbol" aria-hidden="true">✚</span></div>
                                         <div class="auth-form hospital-search-form">
                                             <label>Country code
                                                 <input id="hospitalSearchCountry" type="text" maxlength="2" value="NG" placeholder="NG">
@@ -913,17 +914,18 @@
                                             </div>
                                         </div>
                                         <p id="hospitalSearchMessage" class="message" role="status" aria-live="polite"></p>
+                                        </section>
                                         <section class="hospital-discovery-layout" aria-label="Hospital map and nearby hospital profiles">
                                             <div class="hospital-map-panel">
                                                 <div class="hospital-map-heading">
-                                                    <h3>Hospitals on the map</h3>
+                                                    <div><p class="eyebrow">EXPLORE NEARBY CARE</p><h3>Hospitals near you</h3></div>
                                                     <span>Verified facilities only</span>
                                                 </div>
                                                 <div class="healthos-map-stage"><div id="hospitalDiscoveryMap" role="region" aria-label="Interactive hospital discovery map" style="display:block;width:100%;height:420px;min-height:420px;background:#eaf0f5;border-radius:14px;overflow:hidden"></div><button id="hospitalMapLocateButton" class="healthos-map-locate" type="button" aria-label="Centre map on my live location" title="Centre on my location">◎ <span>My location</span></button></div>
                                                 <p id="hospitalMapStatus" class="muted" role="status" aria-live="polite">Search for hospitals to display map markers. Location access is optional.</p>
                                             </div>
                                             <div class="hospital-cards-panel">
-                                                <h3>Hospital profiles</h3>
+                                                <div class="hospital-results-title"><p class="eyebrow">VERIFIED DIRECTORY</p><h3>Available hospitals</h3><p>Compare facilities and choose where to get care.</p></div>
                                                 <div id="patientHospitalResults" class="hospital-discovery-cards">
                                                     <p class="muted">Search by location or use your location to discover hospitals.</p>
                                                 </div>
