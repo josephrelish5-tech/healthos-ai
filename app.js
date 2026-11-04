@@ -114,6 +114,7 @@ function showHealthOSView(viewId) {
     }
 
     if (viewId === "staffManagement") showAdminWorkspacePage("adminOverview");
+    if (viewId === "hospitalMap" && window.HealthOSHospitalDiscovery) window.HealthOSHospitalDiscovery.refresh();
 
     const assistantLauncher = document.getElementById("staffAssistantLauncher");
     if (assistantLauncher) assistantLauncher.hidden = false;
