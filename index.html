@@ -3090,15 +3090,34 @@
             <input id="pharmacySupplierEmail" type="email" maxlength="254">
             <label for="pharmacySupplierAddress">Business Address</label>
             <textarea id="pharmacySupplierAddress" rows="2" maxlength="500"></textarea>
-            <button type="submit" id="pharmacySupplierSaveButton">Save Supplier</button>
+            <label for="pharmacySupplierRegistration">Company / Registration Number</label>
+            <input id="pharmacySupplierRegistration" type="text" maxlength="100" autocomplete="off">
+            <label for="pharmacySupplierLicense">Regulatory Licence Reference (if applicable)</label>
+            <input id="pharmacySupplierLicense" type="text" maxlength="150" autocomplete="off">
+            <label for="pharmacySupplierEvidence">Due-Diligence Evidence Reference</label>
+            <input id="pharmacySupplierEvidence" type="text" maxlength="500" placeholder="Document ID or secure evidence-vault reference">
+            <p class="muted">New suppliers remain pending until an authorised, independent reviewer verifies the evidence.</p>
+            <button type="submit" id="pharmacySupplierSaveButton">Save Supplier for Verification</button>
         </form>
 
         <h4>Registered Suppliers</h4>
         <div class="table-wrap">
             <table>
-                <thead><tr><th>Supplier</th><th>Contact</th><th>Phone</th><th>Status</th></tr></thead>
-                <tbody id="pharmacySuppliersBody"><tr><td colspan="4">Supplier list will appear here.</td></tr></tbody>
+                <thead><tr><th>Supplier</th><th>Contact</th><th>Phone</th><th>Verification</th><th>Registration / Licence</th><th>Review action</th></tr></thead>
+                <tbody id="pharmacySuppliersBody"><tr><td colspan="6">Supplier list will appear here.</td></tr></tbody>
             </table>
+        </div>
+        <div class="panel" id="pharmacySupplierVerificationReview">
+            <h4>Independent Supplier Verification Review</h4>
+            <p class="muted">Only an authorised procurement reviewer can verify, reject or suspend a supplier. Verification requires an evidence reference; rejection and suspension require a reason. The supplier creator cannot review their own record.</p>
+            <label for="pharmacySupplierReviewEvidence">Evidence reference for verification</label>
+            <input id="pharmacySupplierReviewEvidence" type="text" maxlength="500" placeholder="Secure evidence-vault reference">
+            <label for="pharmacySupplierReviewNotes">Review notes / reason</label>
+            <textarea id="pharmacySupplierReviewNotes" rows="2" maxlength="1000"></textarea>
+            <p id="pharmacySupplierReviewMessage" role="status" aria-live="polite"></p>
+            <h4>Supplier Verification Audit Trail</h4>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Supplier</th><th>Decision / Event</th><th>Reviewer</th><th>Evidence / Notes</th></tr></thead>
+            <tbody id="pharmacySupplierVerificationEventsBody"><tr><td colspan="5">Verification history will appear here.</td></tr></tbody></table></div>
         </div>
 
         <section class="panel" id="pharmacyOfflineQueue" aria-labelledby="pharmacyOfflineQueueHeading">
