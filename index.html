@@ -3130,6 +3130,15 @@
             </table>
         </div>
 
+        <h4>Procurement Accountability Trail</h4>
+        <p class="muted">Append-only record of goods received and supplier payment decisions. Event rows cannot be edited or deleted through the application.</p>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Time</th><th>Action</th><th>PO</th><th>Responsible User ID</th><th>Evidence Summary</th><th>Event ID</th></tr></thead>
+                <tbody id="pharmacyProcurementControlTrailBody"><tr><td colspan="6">Procurement events will appear here.</td></tr></tbody>
+            </table>
+        </div>
+
         <h4>Receive Supplier Delivery</h4>
         <p class="muted">Only approved orders can be received. Each delivery creates a batch in pharmacy inventory. Expired batches and quantities above the outstanding order are rejected by the database.</p>
         <form id="pharmacyReceiveGoodsForm">
