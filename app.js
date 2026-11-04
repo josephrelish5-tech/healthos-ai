@@ -7335,7 +7335,7 @@ if (refreshAppointmentsButton) {
         try {
             const context = getPharmacyContext();
             const supplierResult = await supabaseClient.from("pharmacy_suppliers")
-                .select("id,supplier_name,contact_person,phone,email,is_active")
+                .select("id,supplier_name,contact_person,phone,email,is_active,verification_status,registration_number,regulatory_license_reference,verification_evidence_reference,verification_review_notes,created_by")
                 .eq("clinic_id", context.clinicId)
                 .order("supplier_name");
             if (supplierResult.error) throw supplierResult.error;
@@ -7345,7 +7345,7 @@ if (refreshAppointmentsButton) {
             supplierPlaceholder.value = "";
             supplierPlaceholder.textContent = "Select an active supplier";
             procurementSupplierSelect.appendChild(supplierPlaceholder);
-            suppliers.filter(s => s.is_active).forEach(s => {
+            suppliers.filter(s => s.is_active && s.verification_status === "verified").forEach(s => {
                 const option = document.createElement("option");
                 option.value = s.id;
                 option.textContent = s.supplier_name;
@@ -7358,15 +7358,33 @@ if (refreshAppointmentsButton) {
                 if (!suppliers.length) {
                     const row = document.createElement("tr");
                     const cell = document.createElement("td");
-                    cell.colSpan = 4;
+                    cell.colSpan = 6;
                     cell.textContent = "No suppliers registered yet.";
                     row.appendChild(cell);
                     supplierBody.appendChild(row);
                 } else {
                     suppliers.forEach(s => {
                         const row = document.createElement("tr");
-                        [s.supplier_name, s.contact_person || "—", s.phone || "—", s.is_active ? "Active" : "Inactive"]
+                        [s.supplier_name, s.contact_person || "—", s.phone || "—",
+                         (s.verification_status || "legacy_unverified").replace(/_/g," "),
+                         [s.registration_number || "No registration no.", s.regulatory_license_reference || "No licence ref."].join(" · ")]
                             .forEach(v => addPharmacyCell(row, v));
+                        const actionCell = document.createElement("td");
+                        const status = s.verification_status || "legacy_unverified";
+                        if (s.is_active && status !== "verified") {
+                            ["verified","rejected","suspended"].forEach(decision => {
+                                const button = document.createElement("button");
+                                button.type = "button";
+                                button.textContent = decision === "verified" ? "Verify" : decision === "rejected" ? "Reject" : "Suspend";
+                                button.dataset.supplierDecision = decision;
+                                button.dataset.supplierId = s.id;
+                                button.style.margin = "2px";
+                                actionCell.appendChild(button);
+                            });
+                        } else {
+                            actionCell.textContent = s.is_active ? "Verified" : "Inactive";
+                        }
+                        row.appendChild(actionCell);
                         supplierBody.appendChild(row);
                     });
                 }
@@ -7465,6 +7483,7 @@ if (refreshAppointmentsButton) {
             }
             await loadPharmacySupplierPayments(orders);
             await loadPharmacyProcurementControlTrail(orders);
+            await loadPharmacySupplierVerificationTrail(suppliers);
             await loadPharmacyReceiveOrderItems();
             showProcurementMessage("Procurement workspace loaded.", false);
         } catch (error) {
@@ -7473,6 +7492,66 @@ if (refreshAppointmentsButton) {
         }
     }
 
+
+    async function loadPharmacySupplierVerificationTrail(suppliers) {
+        const body = document.getElementById("pharmacySupplierVerificationEventsBody");
+        if (!body) return;
+        const context = getPharmacyContext();
+        const result = await supabaseClient.from("pharmacy_supplier_verification_events")
+            .select("id,supplier_id,event_type,actor_id,details,occurred_at")
+            .eq("clinic_id", context.clinicId)
+            .order("occurred_at", {ascending:false})
+            .limit(100);
+        if (result.error) throw result.error;
+        const supplierMap = new Map((suppliers || []).map(s => [s.id,s.supplier_name]));
+        body.replaceChildren();
+        if (!result.data || !result.data.length) {
+            const row=document.createElement("tr"), cell=document.createElement("td");
+            cell.colSpan=5; cell.textContent="No supplier verification events recorded.";
+            row.appendChild(cell); body.appendChild(row); return;
+        }
+        result.data.forEach(item => {
+            const row=document.createElement("tr"), d=item.details || {};
+            [new Date(item.occurred_at).toLocaleString(),
+             supplierMap.get(item.supplier_id) || d.supplier_name || "Supplier",
+             item.event_type.replace(/_/g," "), item.actor_id,
+             [d.evidence_reference || "",d.review_notes || ""].filter(Boolean).join(" · ") || "—"
+            ].forEach(value => addPharmacyCell(row,value));
+            body.appendChild(row);
+        });
+    }
+
+    const supplierBodyForReview = document.getElementById("pharmacySuppliersBody");
+    if (supplierBodyForReview) {
+        supplierBodyForReview.addEventListener("click", async event => {
+            const button=event.target.closest("button[data-supplier-decision]");
+            if (!button) return;
+            button.disabled=true;
+            const reviewMessage=document.getElementById("pharmacySupplierReviewMessage");
+            try {
+                const context=getPharmacyContext();
+                const decision=button.dataset.supplierDecision;
+                const evidence=document.getElementById("pharmacySupplierReviewEvidence").value.trim();
+                const notes=document.getElementById("pharmacySupplierReviewNotes").value.trim();
+                if (decision==="verified" && !evidence) throw new Error("Enter the evidence reference before verifying this supplier.");
+                if (decision!=="verified" && !notes) throw new Error("Enter a reason before rejecting or suspending this supplier.");
+                const result=await supabaseClient.rpc("review_pharmacy_supplier_verification",{
+                    p_clinic_id:context.clinicId,
+                    p_supplier_id:button.dataset.supplierId,
+                    p_decision:decision,
+                    p_evidence_reference:evidence || null,
+                    p_review_notes:notes || null
+                });
+                if (result.error) throw result.error;
+                if(reviewMessage) reviewMessage.textContent="Supplier "+decision+" decision recorded in the audit trail.";
+                document.getElementById("pharmacySupplierReviewNotes").value="";
+                await loadPharmacyProcurementWorkspace();
+            } catch(error) {
+                if(reviewMessage) reviewMessage.textContent=error.message || "Supplier review failed.";
+                else showProcurementMessage(error.message || "Supplier review failed.",true);
+            } finally { button.disabled=false; }
+        });
+    }
 
     async function loadPharmacyProcurementControlTrail(orders) {
         const body = document.getElementById("pharmacyProcurementControlTrailBody");
@@ -7557,13 +7636,17 @@ if (refreshAppointmentsButton) {
                     phone: document.getElementById("pharmacySupplierPhone").value.trim() || null,
                     email: document.getElementById("pharmacySupplierEmail").value.trim() || null,
                     address: document.getElementById("pharmacySupplierAddress").value.trim() || null,
+                    registration_number: document.getElementById("pharmacySupplierRegistration").value.trim() || null,
+                    regulatory_license_reference: document.getElementById("pharmacySupplierLicense").value.trim() || null,
+                    verification_evidence_reference: document.getElementById("pharmacySupplierEvidence").value.trim() || null,
+                    verification_submitted_at: new Date().toISOString(),
                     created_by: context.userId
                 };
                 if (payload.supplier_name.length < 2) throw new Error("Enter a valid supplier name.");
                 const result = await supabaseClient.from("pharmacy_suppliers").insert(payload);
                 if (result.error) throw result.error;
                 procurementSupplierForm.reset();
-                showProcurementMessage("Supplier registered successfully.", false);
+                showProcurementMessage("Supplier registered as pending verification. It cannot be selected for new purchase orders until independently verified.", false);
                 await loadPharmacyProcurementWorkspace();
             } catch (error) {
                 console.error("Supplier registration error:", error);
