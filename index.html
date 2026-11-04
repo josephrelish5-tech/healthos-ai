@@ -2682,6 +2682,30 @@
                 </table>
             </div>
         </section>
+        <section class="financial-closing-card" id="providerSettlementAuditor" style="margin:16px 0">
+            <h4>Payment Gateway Settlement &amp; Fee Auditor</h4>
+            <p class="muted">Record each transaction line from an official provider settlement report. HealthOS calculates net settlement, flags duplicate references and proposes only unambiguous bank-credit matches. No payment is marked settled until independent evidence review.</p>
+            <form id="providerSettlementForm" class="auth-form">
+                <div class="stats-grid">
+                    <label>Provider name / key<input id="settlementProvider" maxlength="80" required placeholder="e.g. Paystack, Flutterwave, bank POS"></label>
+                    <label>Settlement batch reference<input id="settlementBatch" maxlength="160" required></label>
+                    <label>Provider transaction reference<input id="settlementTransactionRef" maxlength="160" required></label>
+                    <label>Payment reference (if available)<input id="settlementPaymentRef" maxlength="160"></label>
+                    <label>Invoice reference (if available)<input id="settlementInvoiceRef" maxlength="160"></label>
+                    <label>Gross payment amount<input id="settlementGross" type="number" min="0.01" step="0.01" required></label>
+                    <label>Provider fee<input id="settlementFee" type="number" min="0" step="0.01" value="0" required></label>
+                    <label>Currency<select id="settlementCurrency"><option value="NGN">NGN</option><option value="USD">USD</option><option value="GBP">GBP</option><option value="EUR">EUR</option></select></label>
+                    <label>Provider settlement date/time<input id="settlementDateTime" type="datetime-local"></label>
+                    <label>Expected bank credit date<input id="settlementExpectedBankDate" type="date"></label>
+                    <label>Official report evidence reference<input id="settlementEvidenceRef" maxlength="500" required placeholder="Statement filename / secure evidence reference"></label>
+                </div>
+                <button type="submit" id="recordProviderSettlement" class="primary-button">Record provider settlement line</button>
+            </form>
+            <p id="providerSettlementMessage" class="message" role="status" aria-live="polite"></p>
+            <div class="button-group"><button type="button" id="refreshProviderSettlements" class="logout-button">Refresh settlement register</button><button type="button" id="proposeProviderBankMatches" class="primary-button">Find bank-credit matches</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Provider / batch</th><th>Provider transaction / payment ref</th><th>Gross</th><th>Fee</th><th>Net</th><th>Currency</th><th>Provider evidence review</th><th>Bank match status</th><th>Actions</th></tr></thead><tbody id="providerSettlementRows"><tr><td colspan="9">Open Finance reconciliation to load settlement records.</td></tr></tbody></table></div>
+            <p class="disclaimer">Provider report entry is not a live gateway connection. Upload/import automation and cryptographic webhook verification require a provider-specific integration and secret configuration. Never paste API secrets or private keys into this form.</p>
+        </section>
         <div class="table-wrap">
             <table>
                 <thead><tr><th>Department receipt</th><th>Receipt reference</th><th>Receipt amount</th><th>Bank date / reference</th><th>Bank amount</th><th>Match basis</th><th>Decision</th></tr></thead>
