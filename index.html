@@ -2666,6 +2666,22 @@
             <button type="button" class="primary-button" id="generateReconciliationMatches">Find potential matches</button>
         </div>
         <p id="reconciliationMessage" class="message" role="status" aria-live="polite"></p>
+        <section class="financial-closing-card" aria-labelledby="dailyFinancialClosingTitle">
+            <h4 id="dailyFinancialClosingTitle">Daily Hospital Financial Closing</h4>
+            <p class="muted">Generate a locked, currency-separated daily snapshot of billing, accepted POS receipts, bank credits/debits, departmental cash declarations and refund requests. These are separate source totals and must not be added together because the same payment can appear at different stages.</p>
+            <div class="form-row">
+                <label for="financialClosingDate">Business date (Nigeria)</label>
+                <input id="financialClosingDate" type="date">
+                <button type="button" class="primary-button" id="generateDailyFinancialClosing">Generate daily closing snapshot</button>
+            </div>
+            <p id="financialClosingMessage" class="message" role="status" aria-live="polite"></p>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Date / Currency</th><th>Invoiced</th><th>Paid recorded</th><th>Accepted POS</th><th>Bank credits</th><th>Bank debits</th><th>Cash declared</th><th>Verified deposits</th><th>Refunds pending / approved / processed</th></tr></thead>
+                    <tbody id="dailyFinancialClosingRows"><tr><td colspan="9">Generate a closing snapshot to view the financial position.</td></tr></tbody>
+                </table>
+            </div>
+        </section>
         <div class="table-wrap">
             <table>
                 <thead><tr><th>Department receipt</th><th>Receipt reference</th><th>Receipt amount</th><th>Bank date / reference</th><th>Bank amount</th><th>Match basis</th><th>Decision</th></tr></thead>
