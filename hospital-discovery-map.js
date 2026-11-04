@@ -14,7 +14,8 @@
   function directionsUrl(h) {
     const destination = h.latitude != null && h.longitude != null ? h.latitude + "," + h.longitude :
       [h.hospital_name,h.address,h.city,h.state,h.country_code].filter(Boolean).join(", ");
-    return "https://www.openstreetmap.org/directions?to=" + encodeURIComponent(destination);
+    // Google Maps Directions URLs work without a Maps API key or billing account.
+    return "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(destination) + "&travelmode=driving";
   }
   function selectHospital(hospitalId) {
     const h=lastHospitals.find(x=>String(x.hospital_id)===String(hospitalId));
@@ -45,7 +46,7 @@
         const services=document.createElement("p"); services.textContent="Services: "+((h.public_services||[]).join(", ")||"Contact hospital for details");
         const actions=document.createElement("div"); actions.className="hospital-card-actions";
         const show=document.createElement("button"); show.type="button"; show.className="secondary-button"; show.textContent="Show on map"; show.addEventListener("click",()=>selectHospital(h.hospital_id));
-        const directions=document.createElement("a"); directions.className="primary-button"; directions.href=directionsUrl(h); directions.target="_blank"; directions.rel="noopener noreferrer"; directions.textContent="Get directions";
+        const directions=document.createElement("a"); directions.className="primary-button"; directions.href=directionsUrl(h); directions.target="_blank"; directions.rel="noopener noreferrer"; directions.textContent="Open in Google Maps";
         actions.append(show,directions);
         if(h.connection_available){const connect=document.createElement("button");connect.type="button";connect.className="secondary-button";connect.textContent="Request connection";connect.addEventListener("click",()=>{if(typeof window.requestHospitalConnection==="function")window.requestHospitalConnection(h.hospital_id,connect);});actions.appendChild(connect);}
         card.append(title,badge,address,distance,specialty,services,actions); section.appendChild(card);
