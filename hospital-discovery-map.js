@@ -70,7 +70,17 @@
       directions.className = "primary-button"; directions.href = directionsUrl(h);
       directions.target = "_blank"; directions.rel = "noopener noreferrer";
       directions.textContent = "Get directions";
-      actions.append(mapButton, directions);
+      const connect = document.createElement("button");
+      connect.type = "button"; connect.className = "secondary-button";
+      connect.textContent = "Request connection";
+      connect.addEventListener("click", () => {
+        if (typeof window.requestHospitalConnection === "function") {
+          window.requestHospitalConnection(h.hospital_id, connect);
+        } else {
+          connect.disabled = false;
+        }
+      });
+      actions.append(mapButton, directions, connect);
       card.append(title, verified, address, distance, specialty, services, actions);
       target.appendChild(card);
     });
