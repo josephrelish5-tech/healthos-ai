@@ -1299,3 +1299,17 @@ th {
 #hospitalMap .hospital-search-form input { width:100%; box-sizing:border-box; }
 #hospitalMap .hospital-search-actions button { min-height:44px; }
 @media(max-width:640px) { #hospitalMap > .panel-heading { padding:14px; } #hospitalMap .hospital-search-actions { display:grid; grid-template-columns:1fr; } #hospitalMap .hospital-search-actions button { width:100%; } }
+
+
+/* Public hospital discovery entry points */
+.public-discovery-hero{margin:0 0 22px;padding:22px;background:#f2f6fb;border:1px solid #d8e4ef;border-left:5px solid var(--medical-blue);border-radius:14px}
+.public-discovery-hero h2{margin:4px 0 8px;font-size:clamp(22px,4vw,30px)}
+.public-discovery-hero p{max-width:720px;line-height:1.6;color:#40566b}
+.public-discovery-hero .primary-button{min-height:48px;padding:12px 20px}
+.public-discovery-screen{max-width:1240px;margin:22px auto;padding:0 16px 30px}
+.public-discovery-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.public-discovery-screen #hospitalMap{display:block}
+.public-discovery-note,.patient-discovery-shortcut{padding:14px 16px;background:#f7f9fb;border:1px solid #dbe4ec;border-radius:10px;color:#40566b;line-height:1.55}
+.patient-discovery-shortcut{margin:0 0 18px}
+.patient-discovery-shortcut p{margin:6px 0 10px}
+@media(max-width:600px){.public-discovery-screen{padding:0 10px 24px}.public-discovery-hero{padding:17px}}
