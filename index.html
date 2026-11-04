@@ -3140,7 +3140,7 @@
         </div>
 
         <h4>Receive Supplier Delivery</h4>
-        <p class="muted">Only approved orders can be received. Each delivery creates a batch in pharmacy inventory. Expired batches and quantities above the outstanding order are rejected by the database.</p>
+        <p class="muted">Only approved orders can be received. Each delivery creates a batch in pharmacy inventory. Expired batches and quantities above the outstanding order are rejected. Supplier invoice line values are reconciled against approved PO costs; mismatches are flagged and cannot support supplier payment approval.</p>
         <form id="pharmacyReceiveGoodsForm">
             <label for="pharmacyReceiveOrder">Approved Purchase Order</label>
             <select id="pharmacyReceiveOrder" required><option value="">Select approved purchase order</option></select>
@@ -3154,6 +3154,11 @@
             <input id="pharmacyGoodsExpiryDate" type="date" required>
             <label for="pharmacyReceiveQuantity">Quantity Received</label>
             <input id="pharmacyReceiveQuantity" type="number" min="1" step="1" required>
+            <label for="pharmacySupplierInvoiceReference">Supplier Invoice Number / Reference</label>
+            <input id="pharmacySupplierInvoiceReference" type="text" maxlength="120" required>
+            <label for="pharmacySupplierInvoiceLineAmount">Supplier Invoice Line Amount (NGN)</label>
+            <input id="pharmacySupplierInvoiceLineAmount" type="number" min="0" step="0.01" required>
+            <p class="muted">Enter the invoice amount for this medicine line only. HealthOS compares it with received quantity multiplied by the approved purchase-order unit cost. Differences above ₦0.01 are flagged for review and excluded from supplier payment approval.</p>
             <label for="pharmacyDeliveryNote">Supplier Delivery Note Reference</label>
             <input id="pharmacyDeliveryNote" type="text" maxlength="120">
             <label for="pharmacyGoodsReceiptNotes">Receiving Notes</label>
