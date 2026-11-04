@@ -2563,6 +2563,28 @@
                           <button class="secondary-button" type="button" id="healthosProcRefresh">Refresh procurement workspace</button>
                         </section>
 
+<section class="panel" id="departmentSourcingWorkspace" style="margin:18px 0">
+<h3>Department Supplier Quotations, Award & Purchase Orders</h3>
+<p class="muted">Approved departmental requests can enter competitive supplier quotation. Only active, verified suppliers are eligible. Price flags support human review; HealthOS AI never automatically selects a supplier.</p>
+<form id="healthosOpenQuoteForm" class="form-grid">
+<label>Approved department request<select id="healthosSourceRequest" required><option value="">Load approved requests…</option></select></label>
+<label>Quotation request reference<input id="healthosQuoteRequestNumber" maxlength="80" required placeholder="RFQ-2026-001"></label>
+<label>Required by<input id="healthosQuoteRequiredBy" type="date"></label>
+<div class="full-width"><button class="primary-button" id="healthosOpenQuoteButton" type="submit">Open supplier quotation request</button></div></form>
+<form id="healthosSupplierQuoteForm" class="form-grid" style="margin-top:16px">
+<label>Open quotation request<select id="healthosQuoteRequestSelect" required><option value="">Select RFQ</option></select></label>
+<label>Verified supplier<select id="healthosQuoteSupplier" required><option value="">Select supplier</option></select></label>
+<label>Supplier quote reference<input id="healthosSupplierQuoteReference" maxlength="100" required></label>
+<label>Supplier invoice reference<input id="healthosSupplierInvoiceReference" maxlength="100"></label>
+<label>Quote valid until<input id="healthosSupplierQuoteValidUntil" type="date"></label>
+<label class="full-width">Quoted item lines (JSON)<textarea id="healthosSupplierQuoteItems" rows="4" required placeholder='[{"description":"Printer paper","item_code":"PAPER-A4","quantity":10,"unit":"ream","unit_price":8200}]'></textarea></label>
+<div class="full-width"><button class="primary-button" id="healthosSubmitSupplierQuote" type="submit">Record supplier quotation</button></div></form>
+<p id="healthosSourcingMessage" class="message" role="status" aria-live="polite">Open Finance / Billing Review to load sourcing.</p>
+<h4>Quotation comparison & award queue</h4><div class="table-wrap"><table><thead><tr><th>RFQ</th><th>Supplier</th><th>Quote reference</th><th>Quote total</th><th>Price flags</th><th>Action</th></tr></thead><tbody id="healthosSupplierQuoteRows"><tr><td colspan="6">Supplier quotations will appear here.</td></tr></tbody></table></div>
+<h4>Department purchase orders</h4><div class="table-wrap"><table><thead><tr><th>PO number</th><th>Department</th><th>Supplier</th><th>Request</th><th>Total</th><th>Status</th><th>Awarded / approved by</th></tr></thead><tbody id="healthosDepartmentPoRows"><tr><td colspan="7">Purchase orders will appear here.</td></tr></tbody></table></div>
+<h4>Supplier sourcing audit trail</h4><div class="table-wrap"><table><thead><tr><th>Time</th><th>Event</th><th>Request</th><th>Actor</th><th>Details</th></tr></thead><tbody id="healthosSourcingEvents"><tr><td colspan="5">Sourcing events will appear here.</td></tr></tbody></table></div>
+<button class="secondary-button" type="button" id="healthosSourcingRefresh">Refresh supplier sourcing</button></section>
+
 <section class="panel" id="revenueLeakageAuditPanel" hidden>
                             <h3>Invoice-to-Bank Reconciliation &amp; Revenue Leakage Audit</h3>
                             <p class="muted">Cross-checks performed services, invoice references, department receipts and recorded payments. Each flag requires Finance review; HealthOS AI does not automatically change invoices, payments or accounting balances.</p>
