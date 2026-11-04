@@ -10,6 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js?v=20261103-56-conversational-knowledge" defer></script>
     <script src="healthos-directory-admin.js?v=20261104-1" defer></script>
+    <script src="healthos-hospital-registration-review.js?v=20261104-1" defer></script>
     <script src="google-maps-config.js?v=20261104-1" defer></script>
     <script src="hospital-discovery-map.js?v=20261104-1" defer></script>
     <script src="pharmacy-forecast.js?v=20261104-2" defer></script>
@@ -3955,6 +3956,8 @@
  <div class="panel"><h3>External hospital listing review</h3><p class="muted">Approve only accurate records with lawful public-display rights. Duplicate candidates require manual comparison; never merge automatically.</p>
  <div class="table-wrap"><table><thead><tr><th>Hospital</th><th>Location</th><th>Source record</th><th>Status</th><th>Duplicate flag</th><th>Decision</th></tr></thead><tbody id="directoryListingRows"><tr><td colspan="6">Loading…</td></tr></tbody></table></div></div>
  <div class="panel"><h3>Import permitted data (JSON)</h3><label for="directoryImportSource">Enabled source</label><select id="directoryImportSource"></select><label for="directoryImportJson">JSON array of records (maximum 500)</label><textarea id="directoryImportJson" rows="8" placeholder='[{"source_record_id":"…","public_name":"…","state":"…","city":"…"}]'></textarea><button id="directoryImportButton" type="button" class="primary-button">Import for review (not public)</button></div>
+ <div class="panel"><div class="panel-heading"><div><h3>Hospital Registration Applications</h3><p class="muted">Review submitted facility documents and complete the nine identity checks before making a final decision.</p></div><button type="button" id="openHospitalRegistrationReview" class="primary-button" hidden>Open registration review queue</button></div>
+ <section id="hospitalRegistrationReview" hidden><div class="panel-heading"><p id="hospitalReviewQueueCount" class="muted">Applications</p><div class="button-row"><button type="button" id="refreshHospitalReview" class="secondary-button">Refresh queue</button><button type="button" id="closeHospitalRegistrationReview" class="logout-button">Close review queue</button></div></div><p id="hospitalReviewMessage" class="message" role="status" aria-live="polite">Sign in as an authorised platform administrator to review applications.</p><div id="hospitalRegistrationReviewRows"></div></section></div>
  <p class="disclaimer">Never import patient information. Imported hospitals remain private review_required records until an authorised human approves them. External listings are not HealthOS AI network members.</p>
 </section>
 <!-- END HEALTHOS AI PLATFORM DIRECTORY ADMIN CONSOLE -->
