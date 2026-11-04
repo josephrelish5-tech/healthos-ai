@@ -43,6 +43,13 @@
     const target = el("patientHospitalResults");
     if (!target) return;
     target.replaceChildren();
+    if (!hospitals.length) {
+      const empty = document.createElement("div");
+      empty.className = "hospital-map-empty";
+      empty.innerHTML = "<strong>No verified hospitals found yet</strong><p>Try another city, state or LGA. Only hospitals that have completed verification are shown here.</p>";
+      target.appendChild(empty);
+      return;
+    }
     hospitals.forEach(h => {
       const card = document.createElement("article");
       card.className = "hospital-discovery-card";
@@ -160,7 +167,19 @@
     if (map) drawMarkers(lastHospitals);
     else loadGoogleMaps();
     const status = el("hospitalMapStatus");
-    if (status && lastHospitals.length) status.textContent = lastHospitals.length + " verified hospital(s) found. Select a card or map pin to explore.";
+    if (status) status.textContent = lastHospitals.length
+      ? lastHospitals.length + " verified hospital(s) found. Select a card or map pin to explore."
+      : "No verified hospitals match this search yet. The map is ready for approved hospital listings.";
+  }
+
+  function refresh() {
+    if (!el("hospitalDiscoveryMap")) return;
+    if (!map) loadGoogleMaps();
+    if (map && window.google && google.maps) {
+      google.maps.event.trigger(map, "resize");
+      map.setCenter({ lat: 6.5244, lng: 3.3792 });
+      drawMarkers(lastHospitals);
+    }
   }
 
   function setPatientLocation() {
@@ -182,7 +201,7 @@
     }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 300000 });
   }
 
-  window.HealthOSHospitalDiscovery = { render, selectHospital };
+  window.HealthOSHospitalDiscovery = { render, selectHospital, refresh };
   document.addEventListener("DOMContentLoaded", function () {
     const locate = el("useMyHospitalLocationButton");
     if (locate) locate.addEventListener("click", setPatientLocation);
