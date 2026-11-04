@@ -7464,12 +7464,58 @@ if (refreshAppointmentsButton) {
                 });
             }
             await loadPharmacySupplierPayments(orders);
+            await loadPharmacyProcurementControlTrail(orders);
             await loadPharmacyReceiveOrderItems();
             showProcurementMessage("Procurement workspace loaded.", false);
         } catch (error) {
             console.error("Pharmacy procurement load error:", error);
             showProcurementMessage(error.message || "Unable to load procurement workspace.", true);
         }
+    }
+
+
+    async function loadPharmacyProcurementControlTrail(orders) {
+        const body = document.getElementById("pharmacyProcurementControlTrailBody");
+        if (!body) return;
+        const context = getPharmacyContext();
+        const result = await supabaseClient.from("pharmacy_procurement_control_events")
+            .select("id,purchase_order_id,event_type,actor_id,details,occurred_at")
+            .eq("clinic_id", context.clinicId)
+            .order("occurred_at", {ascending:false})
+            .limit(100);
+        if (result.error) throw result.error;
+        const orderMap = new Map((orders || []).map(order => [order.id, order.po_number]));
+        body.replaceChildren();
+        if (!result.data || !result.data.length) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+            cell.colSpan = 6;
+            cell.textContent = "No procurement control events recorded yet.";
+            row.appendChild(cell);
+            body.appendChild(row);
+            return;
+        }
+        result.data.forEach(event => {
+            const row = document.createElement("tr");
+            const details = event.details || {};
+            const summary = [
+                details.medicine_name || "",
+                details.quantity_received ? "Qty: " + details.quantity_received : "",
+                details.batch_number ? "Batch: " + details.batch_number : "",
+                details.amount ? "Amount: " + formatNaira(details.amount) : "",
+                details.delivery_note_reference ? "Delivery note: " + details.delivery_note_reference : "",
+                details.review_notes || ""
+            ].filter(Boolean).join(" · ") || "See event evidence";
+            [
+                new Date(event.occurred_at).toLocaleString(),
+                event.event_type.replace(/_/g, " "),
+                orderMap.get(event.purchase_order_id) || "Purchase order",
+                event.actor_id,
+                summary,
+                event.id
+            ].forEach(value => addPharmacyCell(row, value));
+            body.appendChild(row);
+        });
     }
 
     async function loadPharmacyReceiveOrderItems() {
