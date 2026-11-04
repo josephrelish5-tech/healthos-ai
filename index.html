@@ -2994,6 +2994,13 @@
             <thead><tr><th>Reference</th><th>Medicine / Batch</th><th>From</th><th>To</th><th>Quantity</th><th>Status</th><th>Action</th></tr></thead>
             <tbody id="pharmacyStockTransfersBody"><tr><td colspan="7">Stock transfers will appear here.</td></tr></tbody>
         </table></div>
+
+        <h4>Immutable Stock Custody & Accountability Trail</h4>
+        <p class="muted">Every adjustment and transfer request, review, dispatch and receipt is recorded with the responsible account and timestamp. Events are append-only and cannot be edited or deleted through the application.</p>
+        <div class="table-wrap"><table>
+            <thead><tr><th>Date / Time</th><th>Action</th><th>Medicine / Batch</th><th>Quantity Before → After</th><th>Responsible User ID</th><th>Reference / Evidence Details</th></tr></thead>
+            <tbody id="pharmacyStockCustodyEventsBody"><tr><td colspan="6">Stock custody events will appear here.</td></tr></tbody>
+        </table></div>
     </section>
 
     <section class="panel" id="pharmacyDispensingWorkspace" aria-labelledby="pharmacyDispensingHeading">
