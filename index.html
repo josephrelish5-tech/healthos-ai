@@ -2543,6 +2543,25 @@
                             <div class="table-wrap"><table><thead><tr><th>Department</th><th>Category</th><th>Currency</th><th>Monthly limit</th><th>Effective from</th></tr></thead><tbody id="departmentSpendingLimitRows"><tr><td colspan="5">Spending limits will load here.</td></tr></tbody></table></div>
                             <button class="secondary-button" type="button" id="refreshDepartmentExpenses">Refresh expenditure controls</button>
                         </section>
+                        <section class="panel" id="departmentProcurementWorkspace" style="margin:18px 0">
+                          <h3>Hospital-Wide Department Procurement</h3>
+                          <p class="muted">Shared procurement requests for all active hospital departments, including custom departments. Requests are budget-checked, independently approved and retained in an audit history. This workspace does not create purchase orders or initiate payments.</p>
+                          <form id="healthosDepartmentProcurementForm" class="form-grid">
+                            <label>Department<select id="healthosProcDepartment" required><option value="">Loading departments…</option></select></label>
+                            <label>Request reference<input id="healthosProcRequestNumber" maxlength="80" required placeholder="e.g. PROC-2026-001"></label>
+                            <label>Category<input id="healthosProcCategory" maxlength="100" required placeholder="Equipment, maintenance, supplies"></label>
+                            <label>Currency<select id="healthosProcCurrency"><option value="NGN">NGN</option><option value="USD">USD</option><option value="GBP">GBP</option><option value="EUR">EUR</option></select></label>
+                            <label class="full-width">Purpose / justification<textarea id="healthosProcPurpose" maxlength="1500" required></textarea></label>
+                            <label class="full-width">Item lines (JSON)<textarea id="healthosProcItems" rows="5" required placeholder='[{"description":"Printer paper","item_code":"PAPER-A4","quantity":10,"unit":"ream","estimated_unit_cost":8500}]'></textarea></label>
+                            <div class="full-width"><button class="primary-button" id="healthosProcSubmit" type="submit">Submit department procurement request</button></div>
+                          </form>
+                          <p id="healthosProcMessage" class="message" role="status" aria-live="polite">Open Finance / Billing Review to load procurement.</p>
+                          <h4>Department procurement register &amp; approval queue</h4>
+                          <div class="table-wrap"><table><thead><tr><th>Reference</th><th>Department</th><th>Category / purpose</th><th>Requested</th><th>Budget check</th><th>Status</th><th>Requester / reviewer</th><th>Action</th></tr></thead><tbody id="healthosProcRows"><tr><td colspan="8">Procurement requests will appear here.</td></tr></tbody></table></div>
+                          <h4>Procurement audit trail</h4>
+                          <div class="table-wrap"><table><thead><tr><th>Time</th><th>Request</th><th>Event</th><th>Actor</th><th>Details</th></tr></thead><tbody id="healthosProcEvents"><tr><td colspan="5">Audit events will appear here.</td></tr></tbody></table></div>
+                          <button class="secondary-button" type="button" id="healthosProcRefresh">Refresh procurement workspace</button>
+                        </section>
 
 <section class="panel" id="revenueLeakageAuditPanel" hidden>
                             <h3>Invoice-to-Bank Reconciliation &amp; Revenue Leakage Audit</h3>
