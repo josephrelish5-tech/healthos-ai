@@ -9129,6 +9129,114 @@ if (refreshAppointmentsButton) {
         });
     }
 
+
+    // PAYMENT GATEWAY SETTLEMENT & FEE AUDITOR
+    const settlementForm = document.getElementById("providerSettlementForm");
+    const settlementRows = document.getElementById("providerSettlementRows");
+    const settlementMessage = document.getElementById("providerSettlementMessage");
+    const settlementRefresh = document.getElementById("refreshProviderSettlements");
+    const settlementPropose = document.getElementById("proposeProviderBankMatches");
+    function setSettlementMessage(text, type) {
+        if (!settlementMessage) return;
+        settlementMessage.textContent = text;
+        settlementMessage.className = "message" + (type ? " " + type : "");
+    }
+    function settlementMoney(value, currency) {
+        try { return new Intl.NumberFormat("en-NG", {style:"currency",currency:currency||"NGN"}).format(Number(value)||0); }
+        catch (_) { return (currency||"") + " " + Number(value||0).toLocaleString("en-NG"); }
+    }
+    async function loadProviderSettlementRecords() {
+        if (!settlementRows || !supabaseClient || !currentClinic || !currentUser) return;
+        const {data,error} = await supabaseClient.from("healthos_provider_settlement_records")
+            .select("id,provider_key,settlement_batch_reference,provider_transaction_reference,payment_reference,gross_amount,provider_fee,net_amount,currency,review_status,reconciliation_status,recorded_by,reviewed_by,bank_transaction_id,created_at")
+            .eq("clinic_id",currentClinic.id).order("created_at",{ascending:false}).limit(200);
+        if(error) throw error;
+        settlementRows.replaceChildren();
+        if(!data?.length) {
+            const tr=document.createElement("tr"),td=document.createElement("td");
+            td.colSpan=9;td.textContent="No provider settlement lines have been recorded.";
+            tr.appendChild(td);settlementRows.appendChild(tr);return;
+        }
+        data.forEach(item=>{
+            const tr=document.createElement("tr");
+            const vals=[
+                item.provider_key+" / "+item.settlement_batch_reference,
+                item.provider_transaction_reference+(item.payment_reference?" / "+item.payment_reference:""),
+                settlementMoney(item.gross_amount,item.currency),settlementMoney(item.provider_fee,item.currency),
+                settlementMoney(item.net_amount,item.currency),item.currency,
+                item.review_status,item.reconciliation_status
+            ];
+            vals.forEach(v=>{const td=document.createElement("td");td.textContent=String(v??"—");tr.appendChild(td);});
+            const actions=document.createElement("td");
+            if(item.review_status==="pending" && item.recorded_by!==currentUser.id) {
+                ["verify","reject"].forEach(decision=>{
+                    const btn=document.createElement("button");btn.type="button";btn.className=decision==="verify"?"primary-button":"logout-button";
+                    btn.textContent=decision==="verify"?"Verify evidence":"Reject evidence";
+                    btn.addEventListener("click",async()=>{
+                        btn.disabled=true;
+                        try {
+                            const {error}=await supabaseClient.rpc("healthos_review_provider_settlement",{p_settlement_id:item.id,p_decision:decision,p_notes:"Reviewed against official provider settlement evidence."});
+                            if(error)throw error;setSettlementMessage("Provider settlement evidence "+decision+"d. Bank matching remains a separate approval.","success");
+                            await loadProviderSettlementRecords();
+                        } catch(e){setSettlementMessage("Evidence review failed: "+(e.message||"Check reviewer permission and separation of duties."),"error");btn.disabled=false;}
+                    });actions.appendChild(btn);
+                });
+            } else if(item.reconciliation_status==="bank_match_proposed" && item.review_status==="verified" && item.recorded_by!==currentUser.id && item.reviewed_by!==currentUser.id) {
+                ["confirm","reject"].forEach(decision=>{
+                    const btn=document.createElement("button");btn.type="button";btn.className=decision==="confirm"?"primary-button":"logout-button";btn.textContent=decision==="confirm"?"Confirm bank credit":"Reject bank match";
+                    btn.addEventListener("click",async()=>{
+                        btn.disabled=true;
+                        try {
+                            const {error}=await supabaseClient.rpc("healthos_confirm_provider_bank_match",{p_settlement_id:item.id,p_decision:decision,p_notes:"Independent Finance review against imported bank statement."});
+                            if(error)throw error;setSettlementMessage(decision==="confirm"?"Provider net settlement independently matched to bank credit.":"Proposed bank match rejected; record retained as an exception.","success");
+                            await loadProviderSettlementRecords();
+                        } catch(e){setSettlementMessage("Bank match review failed: "+(e.message||"Check approval permission and separation of duties."),"error");btn.disabled=false;}
+                    });actions.appendChild(btn);
+                });
+            } else actions.textContent="No action";
+            tr.appendChild(actions);settlementRows.appendChild(tr);
+        });
+    }
+    if(settlementForm) settlementForm.addEventListener("submit",async event=>{
+        event.preventDefault();
+        const button=document.getElementById("recordProviderSettlement");button.disabled=true;
+        try {
+            if(!currentClinic||!currentUser||!supabaseClient)throw new Error("Sign in to the authorised Finance workspace first.");
+            const gross=Number(document.getElementById("settlementGross").value);
+            const fee=Number(document.getElementById("settlementFee").value);
+            if(!Number.isFinite(gross)||gross<=0||!Number.isFinite(fee)||fee<0||fee>gross)throw new Error("Provider fee must be between zero and the gross payment amount.");
+            const localDate=document.getElementById("settlementDateTime").value;
+            const {error}=await supabaseClient.rpc("healthos_record_provider_settlement",{
+                p_clinic_id:currentClinic.id,p_provider_key:document.getElementById("settlementProvider").value.trim(),
+                p_batch_reference:document.getElementById("settlementBatch").value.trim(),
+                p_provider_transaction_reference:document.getElementById("settlementTransactionRef").value.trim(),
+                p_gross_amount:gross,p_provider_fee:fee,p_currency:document.getElementById("settlementCurrency").value,
+                p_settled_at:localDate?new Date(localDate).toISOString():null,
+                p_expected_bank_date:document.getElementById("settlementExpectedBankDate").value||null,
+                p_payment_reference:document.getElementById("settlementPaymentRef").value.trim()||null,
+                p_invoice_reference:document.getElementById("settlementInvoiceRef").value.trim()||null,
+                p_source_evidence_reference:document.getElementById("settlementEvidenceRef").value.trim()
+            });
+            if(error)throw error;
+            settlementForm.reset();document.getElementById("settlementFee").value="0";
+            setSettlementMessage("Settlement line recorded. Net amount is gross less provider fee; independent evidence review is still required.","success");
+            await loadProviderSettlementRecords();
+        } catch(e){setSettlementMessage("Could not record settlement: "+(e.message||"Check Finance reconciliation permission and duplicate references."),"error");}
+        finally{button.disabled=false;}
+    });
+    settlementRefresh?.addEventListener("click",()=>loadProviderSettlementRecords().catch(e=>setSettlementMessage(e.message||"Could not refresh records.","error")));
+    settlementPropose?.addEventListener("click",async()=>{
+        settlementPropose.disabled=true;
+        try{
+            const {data,error}=await supabaseClient.rpc("healthos_propose_provider_bank_matches",{p_clinic_id:currentClinic.id});
+            if(error)throw error;
+            setSettlementMessage(Number(data||0)+" unambiguous provider-to-bank match(es) proposed. Independent approval is required before reconciliation.","success");
+            await loadProviderSettlementRecords();
+        }catch(e){setSettlementMessage("Could not propose bank matches: "+(e.message||"Check Finance permissions."),"error");}
+        finally{settlementPropose.disabled=false;}
+    });
+    // END PAYMENT GATEWAY SETTLEMENT & FEE AUDITOR
+
     async function openBankStatementPanel() {
         if (!supabaseClient || !currentClinic || !currentUser) return;
         panel.hidden = false;
@@ -9150,6 +9258,7 @@ if (refreshAppointmentsButton) {
         }
         try {
             await loadBankStatementData();
+            await loadProviderSettlementRecords();
         } catch (loadError) {
             console.error("Bank statement history load failed:", loadError);
             setImportMessage("Import history could not load. Confirm bank statement view permissions for this account.", "error");
