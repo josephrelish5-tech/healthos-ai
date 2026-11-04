@@ -326,50 +326,6 @@
                     <button class="primary-button" type="submit">Save patient profile</button>
                 </form>
                 <p id="patientProfileMessage" class="message" role="status" aria-live="polite"></p>
-                <h3>Find a hospital</h3>
-                <div class="auth-form hospital-search-form">
-                    <label>Country code
-                        <input id="hospitalSearchCountry" type="text" maxlength="2" value="NG" placeholder="NG">
-                    </label>
-                    <label>Region
-                        <input id="hospitalSearchRegion" type="text" maxlength="120" placeholder="South West">
-                    </label>
-                    <label>State
-                        <input id="hospitalSearchState" type="text" maxlength="120" placeholder="Lagos">
-                    </label>
-                    <label>City
-                        <input id="hospitalSearchCity" type="text" maxlength="120" placeholder="Ikeja">
-                    </label>
-                    <label>Local Government Area
-                        <input id="hospitalSearchLga" type="text" maxlength="120" placeholder="Ikeja LGA">
-                    </label>
-                    <label>Specialty or service
-                        <input id="hospitalSearchSpecialty" type="text" maxlength="120" placeholder="Cardiology, maternity, emergency…">
-                    </label>
-                    <input id="hospitalSearchLatitude" type="hidden">
-                    <input id="hospitalSearchLongitude" type="hidden">
-                    <div class="hospital-search-actions">
-                        <button id="useMyHospitalLocationButton" class="secondary-button" type="button">Use my location</button>
-                        <button id="searchHospitalsButton" class="primary-button" type="button">Search hospitals</button>
-                    </div>
-                </div>
-                <p id="hospitalSearchMessage" class="message" role="status" aria-live="polite"></p>
-                <section class="hospital-discovery-layout" aria-label="Hospital map and nearby hospital profiles">
-                    <div class="hospital-map-panel">
-                        <div class="hospital-map-heading">
-                            <h3>Hospitals on the map</h3>
-                            <span>Verified facilities only</span>
-                        </div>
-                        <div id="hospitalDiscoveryMap" role="region" aria-label="Map showing verified hospitals"></div>
-                        <p id="hospitalMapStatus" class="muted" role="status" aria-live="polite">Search for hospitals to display map markers. Location access is optional.</p>
-                    </div>
-                    <div class="hospital-cards-panel">
-                        <h3>Hospital profiles</h3>
-                        <div id="patientHospitalResults" class="hospital-discovery-cards">
-                            <p class="muted">Search by location or use your location to discover hospitals.</p>
-                        </div>
-                    </div>
-                </section>
                 <h3>My hospital connection requests</h3>
                 <div id="patientHospitalLinks" class="stats-grid"><p class="muted">No requests loaded.</p></div>
                 <h3>Book an appointment</h3>
@@ -909,6 +865,7 @@
                     <a href="#dashboard" class="nav-item active">▦ Dashboard</a>
 
                     <a href="#hospitalOwnerRegistration" class="nav-item" id="openHospitalRegistration">▣ Hospital Registration</a>
+                    <a href="#hospitalMap" class="nav-item">⌖ Hospital Discovery Map</a>
                     <a href="#staffManagement" class="nav-item">♙ Staff Management</a>
                     <a href="#patients" class="nav-item">♙ Patients</a>
                     <a href="#appointments" class="nav-item">▣ Appointments</a>
@@ -988,6 +945,60 @@
                             <button class="primary-button" type="submit">Submit hospital for verification</button>
                             <p id="hospitalOwnerRegistrationMessage" class="message" role="status" aria-live="polite"></p>
                         </form>
+                    </section>
+
+                    <section id="hospitalMap" class="workspace-section" hidden>
+                        <div class="panel-heading">
+                            <div>
+                                <p class="eyebrow">PATIENT & PUBLIC ACCESS</p>
+                                <h2>Hospital Discovery Map</h2>
+                                <p class="muted">Find verified hospitals by location, explore their profiles and get directions.</p>
+                            </div>
+                        </div>
+                                        <h3>Find a hospital</h3>
+                                        <div class="auth-form hospital-search-form">
+                                            <label>Country code
+                                                <input id="hospitalSearchCountry" type="text" maxlength="2" value="NG" placeholder="NG">
+                                            </label>
+                                            <label>Region
+                                                <input id="hospitalSearchRegion" type="text" maxlength="120" placeholder="South West">
+                                            </label>
+                                            <label>State
+                                                <input id="hospitalSearchState" type="text" maxlength="120" placeholder="Lagos">
+                                            </label>
+                                            <label>City
+                                                <input id="hospitalSearchCity" type="text" maxlength="120" placeholder="Ikeja">
+                                            </label>
+                                            <label>Local Government Area
+                                                <input id="hospitalSearchLga" type="text" maxlength="120" placeholder="Ikeja LGA">
+                                            </label>
+                                            <label>Specialty or service
+                                                <input id="hospitalSearchSpecialty" type="text" maxlength="120" placeholder="Cardiology, maternity, emergency…">
+                                            </label>
+                                            <input id="hospitalSearchLatitude" type="hidden">
+                                            <input id="hospitalSearchLongitude" type="hidden">
+                                            <div class="hospital-search-actions">
+                                                <button id="useMyHospitalLocationButton" class="secondary-button" type="button">Use my location</button>
+                                                <button id="searchHospitalsButton" class="primary-button" type="button">Search hospitals</button>
+                                            </div>
+                                        </div>
+                                        <p id="hospitalSearchMessage" class="message" role="status" aria-live="polite"></p>
+                                        <section class="hospital-discovery-layout" aria-label="Hospital map and nearby hospital profiles">
+                                            <div class="hospital-map-panel">
+                                                <div class="hospital-map-heading">
+                                                    <h3>Hospitals on the map</h3>
+                                                    <span>Verified facilities only</span>
+                                                </div>
+                                                <div id="hospitalDiscoveryMap" role="region" aria-label="Map showing verified hospitals"></div>
+                                                <p id="hospitalMapStatus" class="muted" role="status" aria-live="polite">Search for hospitals to display map markers. Location access is optional.</p>
+                                            </div>
+                                            <div class="hospital-cards-panel">
+                                                <h3>Hospital profiles</h3>
+                                                <div id="patientHospitalResults" class="hospital-discovery-cards">
+                                                    <p class="muted">Search by location or use your location to discover hospitals.</p>
+                                                </div>
+                                            </div>
+                                        </section>
                     </section>
 
                     <section class="welcome">
