@@ -78,7 +78,7 @@ function showHealthOSView(viewId) {
     const mainContent = document.getElementById("dashboard");
     if (!mainContent) return;
 
-    const allowedViews = ["dashboard", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "multiFacilityManagement", "patientConnectionRequests", "globalReferrals", "internationalPayments", "telemedicineDashboard", "aiAnalytics", "patientFlow", "clinicalRecords", "clinicalScribe", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
+    const allowedViews = ["dashboard", "hospitalOwnerRegistration", "staffManagement", "patients", "appointments", "whatsappIntake", "adminVoiceTranslator", "patientRecordSharing", "ussdDiagnostics", "multiFacilityManagement", "patientConnectionRequests", "globalReferrals", "internationalPayments", "telemedicineDashboard", "aiAnalytics", "patientFlow", "clinicalRecords", "clinicalScribe", "serviceCapture", "billing", "posReconciliation", "pharmacy", "reports"];
     if (!allowedViews.includes(viewId)) {
         alert("This page is not available yet.");
         return;
@@ -93,7 +93,7 @@ function showHealthOSView(viewId) {
 
     const pageElements = mainContent.querySelectorAll(
         ":scope > .welcome, :scope > #dashboardMessage, :scope > .stats-grid, " +
-        ":scope > #adminStaffDashboard, :scope > #patients, :scope > #appointments, " +
+        ":scope > #adminStaffDashboard, :scope > #hospitalOwnerRegistration, :scope > #patients, :scope > #appointments, " +
         ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #ussdDiagnostics, :scope > #multiFacilityManagement, :scope > #patientConnectionRequests, :scope > #globalReferrals, :scope > #telemedicineDashboard, :scope > #aiAnalytics, :scope > #patientFlow, :scope > #clinicalRecords, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
         ":scope > #pharmacy, :scope > #reports"
     );
