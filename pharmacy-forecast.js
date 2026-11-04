@@ -123,8 +123,8 @@
         const demand30 = Math.ceil(dailyRate * 30);
         const demandGap = Math.max(0, demand30 - group.available);
         let signal = "Monitor";
-        if (!group.hasHistory) signal = "Insufficient history";
-        else if (group.expired > 0) signal = "Expired stock — quarantine review";
+        if (group.expired > 0) signal = "Expired stock — quarantine review";
+        else if (!group.hasHistory) signal = "Insufficient history";
         else if (dailyRate > 0 && group.available <= 0) signal = "Stockout risk";
         else if (dailyRate > 0 && daysCover < 14) signal = "Urgent reorder review";
         else if (dailyRate > 0 && (daysCover < 30 || group.available <= group.reorderLevel)) signal = "Reorder review";
