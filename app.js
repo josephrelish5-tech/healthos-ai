@@ -7484,6 +7484,8 @@ if (refreshAppointmentsButton) {
             await loadPharmacySupplierPayments(orders);
             await loadPharmacyProcurementControlTrail(orders);
             await loadPharmacySupplierVerificationTrail(suppliers);
+            window.healthOSPharmacySuppliers = suppliers;
+            await loadPharmacyQuoteWorkspace(suppliers);
             await loadPharmacyReceiveOrderItems();
             showProcurementMessage("Procurement workspace loaded.", false);
         } catch (error) {
@@ -7722,6 +7724,73 @@ if (refreshAppointmentsButton) {
             remove.closest(".pharmacy-po-line").remove();
         });
     }
+
+    // SUPPLIER QUOTATION COMPARISON
+    const quoteRequestForm=document.getElementById("pharmacyQuoteRequestForm");
+    const supplierQuoteForm=document.getElementById("pharmacySupplierQuoteForm");
+    const quoteRequestSelect=document.getElementById("pharmacyQuoteRequestSelect");
+    const quoteCompareSelect=document.getElementById("pharmacyQuoteCompareSelect");
+    const quoteSupplierSelect=document.getElementById("pharmacyQuoteSupplierSelect");
+    const quoteCompareBody=document.getElementById("pharmacyQuoteComparisonBody");
+    const quoteCompareMessage=document.getElementById("pharmacyQuoteComparisonMessage");
+
+    async function loadPharmacyQuoteWorkspace(suppliers){
+        const context=getPharmacyContext();
+        const result=await supabaseClient.from("pharmacy_procurement_quote_requests")
+            .select("id,request_number,department_name,currency,status,created_at")
+            .eq("clinic_id",context.clinicId).order("created_at",{ascending:false}).limit(100);
+        if(result.error)throw result.error;
+        const requests=result.data||[];
+        [[quoteRequestSelect,requests.filter(x=>x.status==="open")],[quoteCompareSelect,requests]].forEach(([select,items])=>{
+            if(!select)return;const keep=select.value;select.replaceChildren();
+            const first=document.createElement("option");first.value="";first.textContent="Select quotation request";select.appendChild(first);
+            items.forEach(x=>{const o=document.createElement("option");o.value=x.id;o.textContent=x.request_number+" · "+x.department_name+" · "+x.currency;select.appendChild(o);});
+            if(Array.from(select.options).some(o=>o.value===keep))select.value=keep;
+        });
+        if(quoteSupplierSelect){quoteSupplierSelect.replaceChildren();const first=document.createElement("option");first.value="";first.textContent="Select verified supplier";quoteSupplierSelect.appendChild(first);
+            (suppliers||[]).filter(s=>s.is_active&&s.verification_status==="verified").forEach(s=>{const o=document.createElement("option");o.value=s.id;o.textContent=s.supplier_name;quoteSupplierSelect.appendChild(o);});}
+    }
+    if(quoteRequestForm)quoteRequestForm.addEventListener("submit",async ev=>{
+        ev.preventDefault();const button=document.getElementById("pharmacyQuoteRequestSave");button.disabled=true;
+        try{const c=getPharmacyContext();const {data,error}=await supabaseClient.rpc("healthos_create_pharmacy_quote_request",{
+            p_clinic_id:c.clinicId,p_request_number:document.getElementById("pharmacyQuoteRequestNumber").value.trim(),
+            p_department_name:document.getElementById("pharmacyQuoteDepartment").value.trim(),
+            p_currency:document.getElementById("pharmacyQuoteCurrency").value,
+            p_required_by:document.getElementById("pharmacyQuoteRequiredBy").value||null,
+            p_notes:document.getElementById("pharmacyQuoteRequestNotes").value.trim()||null});
+            if(error)throw error;quoteRequestForm.reset();document.getElementById("pharmacyQuoteDepartment").value="Pharmacy";
+            await loadPharmacyQuoteWorkspace(window.healthOSPharmacySuppliers||[]);
+            quoteRequestSelect.value=data;quoteCompareMessage.textContent="Quotation request created.";
+        }catch(e){quoteCompareMessage.textContent=e.message||"Could not create request.";}finally{button.disabled=false;}
+    });
+    if(supplierQuoteForm)supplierQuoteForm.addEventListener("submit",async ev=>{
+        ev.preventDefault();const button=document.getElementById("pharmacySupplierQuoteSave");button.disabled=true;
+        try{const c=getPharmacyContext();let items;try{items=JSON.parse(document.getElementById("pharmacyQuoteItemsJson").value);}catch(_){throw new Error("Quoted items must be valid JSON.");}
+            if(!Array.isArray(items)||!items.length)throw new Error("Enter at least one quoted item.");
+            const req=await supabaseClient.from("pharmacy_procurement_quote_requests").select("currency").eq("clinic_id",c.clinicId).eq("id",quoteRequestSelect.value).single();
+            if(req.error)throw req.error;
+            const {error}=await supabaseClient.rpc("healthos_record_pharmacy_supplier_quote",{
+                p_clinic_id:c.clinicId,p_quote_request_id:quoteRequestSelect.value,p_supplier_id:quoteSupplierSelect.value,
+                p_quote_reference:document.getElementById("pharmacyQuoteReference").value.trim(),
+                p_supplier_invoice_reference:document.getElementById("pharmacyQuoteInvoiceReference").value.trim(),
+                p_currency:req.data.currency,p_valid_until:document.getElementById("pharmacyQuoteValidUntil").value||null,p_items:items});
+            if(error)throw error;supplierQuoteForm.reset();quoteCompareMessage.textContent="Supplier quotation recorded.";
+            quoteCompareSelect.value=quoteRequestSelect.value;
+        }catch(e){quoteCompareMessage.textContent=e.message||"Could not record quotation.";}finally{button.disabled=false;}
+    });
+    document.getElementById("pharmacyQuoteCompareButton")?.addEventListener("click",async()=>{
+        const id=quoteCompareSelect?.value;if(!id){quoteCompareMessage.textContent="Select a request first.";return;}
+        const button=document.getElementById("pharmacyQuoteCompareButton");button.disabled=true;
+        try{const c=getPharmacyContext();const {data,error}=await supabaseClient.rpc("healthos_compare_pharmacy_supplier_quotes",{p_clinic_id:c.clinicId,p_quote_request_id:id});if(error)throw error;
+            quoteCompareBody.replaceChildren();const rows=data?.items||[];
+            if(!rows.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=6;td.textContent="No quotation lines found.";tr.appendChild(td);quoteCompareBody.appendChild(tr);}
+            rows.forEach(x=>{const tr=document.createElement("tr");[x.item_description+" ("+x.quantity+")",x.supplier_name,Number(x.unit_price).toLocaleString()+" "+x.currency,Number(x.median_unit_price).toLocaleString()+" "+x.currency,x.flag||"No variance flag",x.quote_reference].forEach(v=>addPharmacyCell(tr,v));quoteCompareBody.appendChild(tr);});
+            const list=document.getElementById("pharmacyQuoteDuplicateInvoiceAlerts");list.replaceChildren();const duplicates=data?.duplicate_invoice_references||[];
+            if(!duplicates.length){const li=document.createElement("li");li.textContent="No duplicate invoice references detected in this request.";list.appendChild(li);}
+            duplicates.forEach(x=>{const li=document.createElement("li");li.textContent="Repeated invoice reference: "+x.invoice_reference;list.appendChild(li);});
+            quoteCompareMessage.textContent="Compared "+(data.quote_count||0)+" quotations. Review all flags before procurement approval.";
+        }catch(e){quoteCompareMessage.textContent=e.message||"Comparison failed.";}finally{button.disabled=false;}
+    });
 
     async function loadPharmacySupplierPayments(orders) {
         if (!procurementPaymentsBody) return;
