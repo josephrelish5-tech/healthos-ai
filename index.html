@@ -3120,6 +3120,36 @@
             <tbody id="pharmacySupplierVerificationEventsBody"><tr><td colspan="5">Verification history will appear here.</td></tr></tbody></table></div>
         </div>
 
+        <section class="panel" id="pharmacyQuoteComparisonWorkspace">
+            <h3>Supplier Quotation Comparison &amp; Price Exception Detection</h3>
+            <p>Compare quotations from verified suppliers. Price flags are review signals, not proof of fraud or automatic purchase approval.</p>
+            <form id="pharmacyQuoteRequestForm">
+                <label>Request reference<input id="pharmacyQuoteRequestNumber" required maxlength="80"></label>
+                <label>Department<input id="pharmacyQuoteDepartment" value="Pharmacy" required maxlength="120"></label>
+                <label>Currency<select id="pharmacyQuoteCurrency"><option>NGN</option><option>USD</option><option>GBP</option><option>EUR</option></select></label>
+                <label>Required by<input id="pharmacyQuoteRequiredBy" type="date"></label>
+                <label>Specification / notes<textarea id="pharmacyQuoteRequestNotes" rows="2"></textarea></label>
+                <button type="submit" id="pharmacyQuoteRequestSave">Create quotation request</button>
+            </form>
+            <hr>
+            <form id="pharmacySupplierQuoteForm">
+                <label>Open request<select id="pharmacyQuoteRequestSelect" required><option value="">Select request</option></select></label>
+                <label>Verified supplier<select id="pharmacyQuoteSupplierSelect" required><option value="">Select supplier</option></select></label>
+                <label>Quote reference<input id="pharmacyQuoteReference" required></label>
+                <label>Invoice / pro-forma reference<input id="pharmacyQuoteInvoiceReference" required></label>
+                <label>Valid until<input id="pharmacyQuoteValidUntil" type="date"></label>
+                <label>Quoted items (JSON)<textarea id="pharmacyQuoteItemsJson" rows="5" required placeholder='[{"item_code":"MED001","item_description":"Medicine name","quantity":100,"unit":"pack","unit_price":1250}]'></textarea></label>
+                <p>Each line requires item_description, quantity and unit_price. Keep quotes in the request currency.</p>
+                <button type="submit" id="pharmacySupplierQuoteSave">Record supplier quote</button>
+            </form>
+            <label>Compare request<select id="pharmacyQuoteCompareSelect"><option value="">Select request</option></select></label>
+            <button type="button" id="pharmacyQuoteCompareButton">Compare quotations</button>
+            <p id="pharmacyQuoteComparisonMessage" role="status" aria-live="polite"></p>
+            <div class="table-wrap"><table><thead><tr><th>Item</th><th>Supplier</th><th>Unit price</th><th>Median</th><th>Flag</th><th>Quote</th></tr></thead><tbody id="pharmacyQuoteComparisonBody"><tr><td colspan="6">No comparison generated.</td></tr></tbody></table></div>
+            <h4>Duplicate invoice reference alerts</h4><ul id="pharmacyQuoteDuplicateInvoiceAlerts"><li>No comparison generated.</li></ul>
+            <p>Comparison does not award a supplier or create a purchase order. An authorised human review is required.</p>
+        </section>
+
         <section class="panel" id="pharmacyOfflineQueue" aria-labelledby="pharmacyOfflineQueueHeading">
             <h3 id="pharmacyOfflineQueueHeading">Offline Pharmacy Purchase Order Queue</h3>
             <p class="muted">Prepare a purchase order while disconnected. Drafts are encrypted on this device and expire after 8 hours. Sync submits the order for normal owner/admin approval. This does not change stock or permit offline dispensing.</p>
