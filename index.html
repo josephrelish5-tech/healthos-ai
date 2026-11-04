@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js?v=20261103-56-conversational-knowledge" defer></script>
+    <script src="hospital-discovery-map.js?v=20261104-1" defer></script>
     <script src="pharmacy-forecast.js?v=20261104-2" defer></script>
     <script src="pharmacy-procurement-intelligence.js?v=20261103-1" defer></script>
     <script src="healthos-advanced-ocr.js?v=20261103-1" defer></script>
@@ -325,17 +326,49 @@
                 </form>
                 <p id="patientProfileMessage" class="message" role="status" aria-live="polite"></p>
                 <h3>Find a hospital</h3>
-                <div class="auth-form">
+                <div class="auth-form hospital-search-form">
                     <label>Country code
-                        <input id="hospitalSearchCountry" type="text" maxlength="2" placeholder="NG">
+                        <input id="hospitalSearchCountry" type="text" maxlength="2" value="NG" placeholder="NG">
+                    </label>
+                    <label>Region
+                        <input id="hospitalSearchRegion" type="text" maxlength="120" placeholder="South West">
+                    </label>
+                    <label>State
+                        <input id="hospitalSearchState" type="text" maxlength="120" placeholder="Lagos">
                     </label>
                     <label>City
-                        <input id="hospitalSearchCity" type="text" maxlength="120" placeholder="Lagos">
+                        <input id="hospitalSearchCity" type="text" maxlength="120" placeholder="Ikeja">
                     </label>
-                    <button id="searchHospitalsButton" class="primary-button" type="button">Search verified hospitals</button>
+                    <label>Local Government Area
+                        <input id="hospitalSearchLga" type="text" maxlength="120" placeholder="Ikeja LGA">
+                    </label>
+                    <label>Specialty or service
+                        <input id="hospitalSearchSpecialty" type="text" maxlength="120" placeholder="Cardiology, maternity, emergency…">
+                    </label>
+                    <input id="hospitalSearchLatitude" type="hidden">
+                    <input id="hospitalSearchLongitude" type="hidden">
+                    <div class="hospital-search-actions">
+                        <button id="useMyHospitalLocationButton" class="secondary-button" type="button">Use my location</button>
+                        <button id="searchHospitalsButton" class="primary-button" type="button">Search hospitals</button>
+                    </div>
                 </div>
                 <p id="hospitalSearchMessage" class="message" role="status" aria-live="polite"></p>
-                <div id="patientHospitalResults" class="stats-grid"></div>
+                <section class="hospital-discovery-layout" aria-label="Hospital map and nearby hospital profiles">
+                    <div class="hospital-map-panel">
+                        <div class="hospital-map-heading">
+                            <h3>Hospitals on the map</h3>
+                            <span>Verified facilities only</span>
+                        </div>
+                        <div id="hospitalDiscoveryMap" role="region" aria-label="Map showing verified hospitals"></div>
+                        <p id="hospitalMapStatus" class="muted" role="status" aria-live="polite">Search for hospitals to display map markers. Location access is optional.</p>
+                    </div>
+                    <div class="hospital-cards-panel">
+                        <h3>Hospital profiles</h3>
+                        <div id="patientHospitalResults" class="hospital-discovery-cards">
+                            <p class="muted">Search by location or use your location to discover hospitals.</p>
+                        </div>
+                    </div>
+                </section>
                 <h3>My hospital connection requests</h3>
                 <div id="patientHospitalLinks" class="stats-grid"><p class="muted">No requests loaded.</p></div>
                 <h3>Book an appointment</h3>
