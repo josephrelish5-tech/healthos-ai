@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#111111">
     <title>HealthOS AI | Healthcare Intelligence</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20261104-2-hospital-map-height">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js?v=20261104-57-gps-fix" defer></script>
@@ -919,7 +919,7 @@
                                                     <h3>Hospitals on the map</h3>
                                                     <span>Verified facilities only</span>
                                                 </div>
-                                                <div id="hospitalDiscoveryMap" role="region" aria-label="Map showing verified hospitals"></div>
+                                                <div id="hospitalDiscoveryMap" role="region" aria-label="Map showing verified hospitals" style="display:block;width:100%;height:320px;min-height:320px;background:#eaf0f5;border-radius:10px;overflow:hidden"></div>
                                                 <p id="hospitalMapStatus" class="muted" role="status" aria-live="polite">Search for hospitals to display map markers. Location access is optional.</p>
                                             </div>
                                             <div class="hospital-cards-panel">
