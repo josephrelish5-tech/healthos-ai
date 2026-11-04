@@ -1220,8 +1220,24 @@ if (patientAuthModeToggle) patientAuthModeToggle.addEventListener("click", () =>
 
 /* Public and patient entry points for hospital discovery. */
 function openHealthOSHospitalDiscovery() {
-    showOnly("hospitalDiscovery");
-    if (window.HealthOSHospitalDiscovery) window.HealthOSHospitalDiscovery.refresh();
+    // Use an explicit public-screen transition, independent of authentication state.
+    const screens = ["authPanel", "patientPortal", "appPanel", "clinicSetup", "adminVerification", "staffWorkspace", "staffRegistrationPanel", "passwordRecoveryPanel"];
+    screens.forEach(id => {
+        const panel = document.getElementById(id);
+        if (panel) panel.hidden = true;
+    });
+    const publicScreen = document.getElementById("publicHospitalDiscoveryScreen");
+    if (publicScreen) publicScreen.hidden = false;
+    else {
+        console.error("Public hospital discovery screen is missing.");
+        return;
+    }
+    window.scrollTo({ top: 0, behavior: "auto" });
+    requestAnimationFrame(() => {
+        if (window.HealthOSHospitalDiscovery) window.HealthOSHospitalDiscovery.refresh();
+        const map = document.getElementById("hospitalDiscoveryMap");
+        if (map && window.google?.maps) window.google.maps.event.trigger(window.HealthOSHospitalDiscoveryMap, "resize");
+    });
 }
 document.getElementById("openPublicHospitalDiscoveryButton")?.addEventListener("click", openHealthOSHospitalDiscovery);
 document.getElementById("patientOpenHospitalDiscoveryButton")?.addEventListener("click", openHealthOSHospitalDiscovery);
