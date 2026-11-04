@@ -43,6 +43,7 @@
    const decision=btn.dataset.final;if(!confirm("Confirm hospital application decision: "+decision.replaceAll("_"," ")+"?"))return;
    try{const result=await request("POST",{action:"decide_hospital_application",application_id:card.dataset.app,decision,reason});$("hospitalReviewMessage").textContent="Decision recorded. Network activation: "+(result.result?.network_activated?"active":"not activated") ;await load();}catch(x){$("hospitalReviewMessage").textContent=x.message;}
   });
-  client.auth.onAuthStateChange((event,session)=>{if(!session){$("hospitalRegistrationReview").hidden=true;$("openHospitalRegistrationReview").hidden=true;}});
+  client.auth.onAuthStateChange((event,session)=>{if(!session){$("hospitalRegistrationReview").hidden=true;$("openHospitalRegistrationReview").hidden=true;}else{request().then(()=>{$("openHospitalRegistrationReview").hidden=false;}).catch(()=>{$("openHospitalRegistrationReview").hidden=true;});}});
+  client.auth.getSession().then(({data})=>{if(data.session)request().then(()=>{$("openHospitalRegistrationReview").hidden=false;}).catch(()=>{$("openHospitalRegistrationReview").hidden=true;});});
  });
 })();
