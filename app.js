@@ -1399,7 +1399,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
             if (expanded.error) throw expanded.error;
             hospitals = expanded.data || [];
         }
-        if (window.HealthOSHospitalDiscovery) window.HealthOSHospitalDiscovery.render(hospitals);
+        if (window.HealthOSHospitalDiscovery) {\n            await window.HealthOSHospitalDiscovery.focusSearchLocation(latitudeValue, longitudeValue, [lga, cityValue, state].filter(Boolean).join(", "));\n            window.HealthOSHospitalDiscovery.render(hospitals);\n        }
         if (!hospitals.length) {
             message.textContent = "No hospitals found in this area. Try another location or search again later.";
             message.className = "message";
