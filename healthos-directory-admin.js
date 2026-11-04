@@ -1,0 +1,39 @@
+// Restricted HealthOS platform hospital-directory administration.
+(() => {
+ const URL="https://berfmuhqfuwcgpnqxrtm.supabase.co";
+ const KEY="sb_publishable_UIhbdxfxl8jsU9KnIE93pg_HTEsU39C";
+ const ENDPOINT=URL+"/functions/v1/healthos-hospital-directory-admin";
+ let client, sources=[];
+ const $=id=>document.getElementById(id);
+ const say=(s,bad=false)=>{const e=$("directoryAdminMessage");e.textContent=s;e.className="message "+(bad?"error":"success");};
+ const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ async function call(method="GET",body){
+  const {data:{session}}=await client.auth.getSession();
+  if(!session?.access_token)throw Error("Sign in with the authorised platform administrator account.");
+  const r=await fetch(ENDPOINT,{method,headers:{Authorization:"Bearer "+session.access_token,apikey:KEY,"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
+  const d=await r.json().catch(()=>({error:"Invalid response"}));if(!r.ok)throw Error(d.error||"Request failed");return d;
+ }
+ async function load(){
+  try{
+   const d=await call();sources=(d.sources||[]);$("openDirectoryAdminButton").hidden=false;
+   $("directorySourceRows").innerHTML=sources.map(s=>'<tr><td>'+esc(s.source_name)+'</td><td>'+esc(s.source_type)+'</td><td>'+esc(s.data_license)+'<br><small>'+esc(s.permission_basis)+'</small></td><td>'+(s.is_enabled?"Enabled":"Disabled")+'</td><td>'+(s.is_enabled?"—":'<button class="logout-button" data-enable="'+esc(s.id)+'">Enable</button>')+'</td></tr>').join("")||'<tr><td colspan="5">No sources registered.</td></tr>';
+   $("directoryListingRows").innerHTML=(d.listings||[]).map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc([x.city,x.state,x.address].filter(Boolean).join(", "))+'</td><td>'+esc(x.source_record_id)+'</td><td>'+esc(x.listing_status)+'</td><td>'+(x.duplicate_candidate?"Candidate — manual comparison":"No flag")+'</td><td>'+(x.listing_status==="review_required"?'<button class="logout-button" data-review="'+esc(x.id)+'" data-decision="approved_for_public">Approve</button> <button class="logout-button" data-review="'+esc(x.id)+'" data-decision="suppressed">Suppress</button>':"—")+'</td></tr>').join("")||'<tr><td colspan="6">No listings awaiting review.</td></tr>';
+   $("directoryImportSource").innerHTML=sources.filter(s=>s.is_enabled).map(s=>'<option value="'+esc(s.id)+'">'+esc(s.source_name)+'</option>').join("");
+   say("Authorised. "+sources.length+" sources and "+(d.listings||[]).length+" listings loaded.");
+  }catch(e){$("openDirectoryAdminButton").hidden=true;say(e.message,true);}
+ }
+ document.addEventListener("DOMContentLoaded",()=>{
+  client=window.supabase.createClient(URL,KEY);
+  $("openDirectoryAdminButton").addEventListener("click",()=>{$("platformDirectoryAdmin").hidden=false;$("platformDirectoryAdmin").scrollIntoView({behavior:"smooth"});load();});
+  $("directoryAdminClose").addEventListener("click",()=>{$("platformDirectoryAdmin").hidden=true;});
+  client.auth.onAuthStateChange((event,session)=>{if(session)load();else{$("openDirectoryAdminButton").hidden=true;$("platformDirectoryAdmin").hidden=true;}});
+  $("directorySourceForm").addEventListener("submit",async e=>{e.preventDefault();try{await call("POST",{action:"register_source",source_name:$("directorySourceName").value,source_type:$("directorySourceType").value,source_website:$("directorySourceWebsite").value,data_license:$("directorySourceLicense").value,permission_basis:$("directorySourcePermission").value,country_code:"NG"});e.target.reset();say("Source registered disabled. Verify its permission before enabling.");await load();}catch(x){say(x.message,true);}});
+  $("platformDirectoryAdmin").addEventListener("click",async e=>{try{
+   const en=e.target.closest("[data-enable]"),rv=e.target.closest("[data-review]");
+   if(en){if(!confirm("Have you verified the licence and legal permission for public use?"))return;await call("POST",{action:"enable_source",source_id:en.dataset.enable});say("Source enabled.");await load();}
+   if(rv){const reason=prompt("Enter the reason for this review decision:");if(!reason?.trim())return;await call("POST",{action:"review_listing",listing_id:rv.dataset.review,decision:rv.dataset.decision,reason});say("Decision recorded.");await load();}
+  }catch(x){say(x.message,true);}});
+  $("directoryImportButton").addEventListener("click",async()=>{try{const records=JSON.parse($("directoryImportJson").value);if(!Array.isArray(records)||!records.length||records.length>500)throw Error("Provide a JSON array containing 1–500 records.");const source_id=$("directoryImportSource").value;if(!source_id)throw Error("No enabled source selected.");const r=await call("POST",{action:"import_batch",source_id,records});say("Imported for review only: "+JSON.stringify(r.result));$("directoryImportJson").value="";await load();}catch(x){say(x.message,true);}});
+  client.auth.getSession().then(({data})=>{if(data.session)load();});
+ });
+})();
