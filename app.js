@@ -12136,3 +12136,146 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
  console.log("HealthOS department sourcing workspace initialized.");
 })();
 // END DEPARTMENT SUPPLIER SOURCING & PURCHASE ORDER WORKSPACE
+
+
+
+/* HEALTHOS AI: HOSPITAL OWNER REGISTRATION */
+(function initialiseHospitalOwnerRegistration() {
+    const form = document.getElementById("hospitalOwnerRegistrationForm");
+    const message = document.getElementById("hospitalOwnerRegistrationMessage");
+    const locationButton = document.getElementById("hospitalUseLocation");
+    const navLink = document.getElementById("openHospitalRegistration");
+    const panel = document.getElementById("hospitalOwnerRegistration");
+    if (!form || !message || !panel) return;
+
+    function showRegistrationMessage(text, isError) {
+        message.textContent = text;
+        message.className = "message " + (isError ? "error" : "success");
+    }
+
+    if (navLink) navLink.addEventListener("click", function(event) {
+        event.preventDefault();
+        if (!currentUser || !currentClinic || !currentClinic.id) {
+            showDashboardMessage("Sign in to your hospital owner workspace before opening registration.", "error");
+            return;
+        }
+        document.querySelectorAll(".main-content > section").forEach(section => {
+            if (section.id !== "hospitalOwnerRegistration") section.hidden = true;
+        });
+        panel.hidden = false;
+        panel.scrollIntoView({behavior:"smooth", block:"start"});
+    });
+
+    if (locationButton) locationButton.addEventListener("click", function() {
+        if (!navigator.geolocation) {
+            showRegistrationMessage("Location is unavailable in this browser. Enter coordinates manually.", true);
+            return;
+        }
+        locationButton.disabled = true;
+        navigator.geolocation.getCurrentPosition(position => {
+            form.elements.latitude.value = position.coords.latitude.toFixed(6);
+            form.elements.longitude.value = position.coords.longitude.toFixed(6);
+            locationButton.disabled = false;
+            showRegistrationMessage("Location captured. Please confirm the hospital address is correct.", false);
+        }, () => {
+            locationButton.disabled = false;
+            showRegistrationMessage("Location permission was not granted. You can enter coordinates manually.", true);
+        }, {enableHighAccuracy:true, timeout:15000, maximumAge:60000});
+    });
+
+    form.addEventListener("submit", async function(event) {
+        event.preventDefault();
+        if (!supabaseClient || !currentUser || !currentClinic || !currentClinic.id) {
+            showRegistrationMessage("Sign in to the correct hospital owner workspace first.", true);
+            return;
+        }
+        const button = form.querySelector('button[type="submit"]');
+        const data = new FormData(form);
+        const requiredTypes = ["facility_licence","registration_certificate","owner_identity","proof_of_address"];
+        const files = {};
+        for (const type of requiredTypes) {
+            const file = form.elements[type].files[0];
+            if (!file) { showRegistrationMessage("All four verification documents are required.", true); return; }
+            if (file.size > 10 * 1024 * 1024) { showRegistrationMessage("Each document must be 10 MB or smaller.", true); return; }
+            if (!["application/pdf","image/jpeg","image/png","image/webp"].includes(file.type)) {
+                showRegistrationMessage("Use PDF, JPG, PNG or WEBP documents only.", true); return;
+            }
+            files[type] = file;
+        }
+        const value = name => String(data.get(name) || "").trim();
+        const lat = value("latitude"), lng = value("longitude");
+        const payload = {
+            clinic_id: currentClinic.id,
+            submitted_by: currentUser.id,
+            official_legal_name: value("official_legal_name"),
+            registered_entity_name: value("registered_entity_name") || null,
+            hospital_category: value("hospital_category"),
+            ownership_type: value("ownership_type"),
+            registration_number: value("registration_number"),
+            licensing_authority: value("licensing_authority"),
+            licence_number: value("licence_number"),
+            licence_expiry_date: value("licence_expiry_date") || null,
+            country_code: value("country_code").toUpperCase(),
+            state: value("state"),
+            local_government_area: value("local_government_area"),
+            city: value("city"),
+            full_address: value("full_address"),
+            postal_code: value("postal_code") || null,
+            latitude: lat ? Number(lat) : null,
+            longitude: lng ? Number(lng) : null,
+            official_phone: value("official_phone"),
+            official_email: value("official_email"),
+            emergency_phone: value("emergency_phone") || null,
+            website_url: value("website_url") || null,
+            status: "draft"
+        };
+        if ((payload.latitude === null) !== (payload.longitude === null)) {
+            showRegistrationMessage("Enter both latitude and longitude, or leave both blank.", true); return;
+        }
+        button.disabled = true;
+        button.textContent = "Uploading documents...";
+        try {
+            const {data: application, error: applicationError} = await supabaseClient
+                .from("healthos_hospital_registration_applications")
+                .insert(payload).select("id").single();
+            if (applicationError) throw applicationError;
+
+            for (const type of requiredTypes) {
+                const file = files[type];
+                const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100);
+                const objectPath = currentClinic.id + "/" + application.id + "/" + type + "_" + Date.now() + "_" + safeName;
+                const {error: uploadError} = await supabaseClient.storage
+                    .from("hospital-verification-private")
+                    .upload(objectPath, file, {upsert:false, contentType:file.type});
+                if (uploadError) throw uploadError;
+                const {error: metadataError} = await supabaseClient
+                    .from("healthos_hospital_verification_documents")
+                    .insert({
+                        application_id: application.id,
+                        clinic_id: currentClinic.id,
+                        document_type: type,
+                        storage_path: objectPath,
+                        original_file_name: file.name,
+                        mime_type: file.type,
+                        file_size_bytes: file.size,
+                        uploaded_by: currentUser.id
+                    });
+                if (metadataError) throw metadataError;
+            }
+            const {data: submitted, error: submitError} = await supabaseClient.rpc(
+                "healthos_submit_hospital_registration",
+                {p_application_id: application.id}
+            );
+            if (submitError) throw submitError;
+            showRegistrationMessage("Application submitted successfully. Status: SUBMITTED. Your hospital will not appear in public discovery until verification is approved.", false);
+            form.reset();
+            form.elements.country_code.value = "NG";
+        } catch (error) {
+            showRegistrationMessage("Registration could not be completed: " + (error.message || "Please contact support."), true);
+        } finally {
+            button.disabled = false;
+            button.textContent = "Submit hospital for verification";
+        }
+    });
+})();
+
