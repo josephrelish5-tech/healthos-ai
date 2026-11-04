@@ -12050,3 +12050,70 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
  console.log("HealthOS hospital-wide department procurement workspace initialized.");
 })();
 // END HOSPITAL-WIDE DEPARTMENT PROCUREMENT WORKSPACE
+
+(function initHealthOSDepartmentSourcing(){
+ "use strict";
+ const $=id=>document.getElementById(id), panel=$("departmentSourcingWorkspace");if(!panel)return;
+ const say=(v,bad=false)=>{const n=$("healthosSourcingMessage");n.textContent=v;n.className=bad?"message error":"message";};
+ const cell=(tr,v)=>{const td=document.createElement("td");td.textContent=String(v??"—");tr.appendChild(td);return td;};
+ const money=(v,c)=>{try{return new Intl.NumberFormat("en-NG",{style:"currency",currency:c||"NGN"}).format(Number(v)||0);}catch(_){return (c||"")+" "+v;}};
+ let busy=false,requests=[],rfqs=[],suppliers=[];
+ async function load(){
+  if(busy)return;busy=true;
+  try{
+   if(!currentClinic||!currentUser||!supabaseClient){say("Sign in to an authorised clinic workspace first.",true);return;}
+   const cid=currentClinic.id;
+   const [rq,rf,sp,qt,po,ev,depts]=await Promise.all([
+    supabaseClient.from("healthos_department_procurement_requests").select("id,request_number,department_id,requested_total,currency,status,requested_by").eq("clinic_id",cid).eq("status","approved").order("created_at",{ascending:false}).limit(100),
+    supabaseClient.from("healthos_department_quote_requests").select("id,procurement_request_id,quote_request_number,status").eq("clinic_id",cid).order("created_at",{ascending:false}).limit(100),
+    supabaseClient.from("pharmacy_suppliers").select("id,supplier_name").eq("clinic_id",cid).eq("is_active",true).eq("verification_status","verified").order("supplier_name"),
+    supabaseClient.from("healthos_department_supplier_quotes").select("id,quote_request_id,supplier_id,quote_reference,currency,status,submitted_by,valid_until").eq("clinic_id",cid).order("submitted_at",{ascending:false}).limit(150),
+    supabaseClient.from("healthos_department_purchase_orders").select("id,po_number,department_id,supplier_id,procurement_request_id,subtotal,currency,status,approved_by").eq("clinic_id",cid).order("created_at",{ascending:false}).limit(100),
+    supabaseClient.from("healthos_department_sourcing_events").select("id,procurement_request_id,event_type,actor_id,details,created_at").eq("clinic_id",cid).order("created_at",{ascending:false}).limit(150),
+    supabaseClient.from("clinic_departments").select("id,department_name").eq("clinic_id",cid)
+   ]);
+   for(const x of [rq,rf,sp,qt,po,depts])if(x.error)throw x.error;
+   requests=rq.data||[];rfqs=rf.data||[];suppliers=sp.data||[];
+   const reqSel=$("healthosSourceRequest"),oldReq=reqSel.value;reqSel.replaceChildren(new Option("Select approved request",""));
+   requests.filter(r=>!rfqs.some(f=>f.procurement_request_id===r.id)).forEach(x=>reqSel.add(new Option(x.request_number+" — "+money(x.requested_total,x.currency),x.id)));if(oldReq)reqSel.value=oldReq;
+   const rfSel=$("healthosQuoteRequestSelect"),oldRf=rfSel.value;rfSel.replaceChildren(new Option("Select open RFQ",""));rfqs.filter(x=>x.status==="open").forEach(x=>rfSel.add(new Option(x.quote_request_number,x.id)));if(oldRf)rfSel.value=oldRf;
+   const spSel=$("healthosQuoteSupplier"),oldSp=spSel.value;spSel.replaceChildren(new Option("Select verified supplier",""));suppliers.forEach(x=>spSel.add(new Option(x.supplier_name,x.id)));if(oldSp)spSel.value=oldSp;
+   const quoteItems=await supabaseClient.from("healthos_department_supplier_quote_items").select("quote_id,line_total").eq("clinic_id",cid);if(quoteItems.error)throw quoteItems.error;
+   const totals=new Map();(quoteItems.data||[]).forEach(x=>totals.set(x.quote_id,(totals.get(x.quote_id)||0)+Number(x.line_total||0)));
+   const supplierMap=new Map(suppliers.map(x=>[x.id,x.supplier_name])),rfqMap=new Map(rfqs.map(x=>[x.id,x.quote_request_number]));
+   const quoteRows=$("healthosSupplierQuoteRows");quoteRows.replaceChildren();const quoteList=qt.data||[];
+   if(!quoteList.length){const tr=document.createElement("tr");cell(tr,"No supplier quotes submitted yet.").colSpan=6;quoteRows.appendChild(tr);}
+   quoteList.forEach(q=>{const tr=document.createElement("tr");cell(tr,rfqMap.get(q.quote_request_id)||q.quote_request_id);cell(tr,supplierMap.get(q.supplier_id)||q.supplier_id);cell(tr,q.quote_reference);cell(tr,money(totals.get(q.id)||0,q.currency));cell(tr,"Run comparison");const action=cell(tr,"");
+    const cmp=document.createElement("button");cmp.type="button";cmp.className="secondary-button";cmp.textContent="Compare RFQ";cmp.addEventListener("click",()=>compare(q.quote_request_id));action.appendChild(cmp);
+    if(q.status==="submitted"){const award=document.createElement("button");award.type="button";award.className="primary-button";award.textContent="Award & create PO";award.addEventListener("click",()=>awardQuote(q));action.appendChild(award);}else action.append(q.status);quoteRows.appendChild(tr);});
+   const deptMap=new Map((depts.data||[]).map(x=>[x.id,x.department_name])),poRows=$("healthosDepartmentPoRows");poRows.replaceChildren();
+   if(!(po.data||[]).length){const tr=document.createElement("tr");cell(tr,"No department purchase orders created.").colSpan=7;poRows.appendChild(tr);}
+   (po.data||[]).forEach(p=>{const tr=document.createElement("tr");cell(tr,p.po_number);cell(tr,deptMap.get(p.department_id)||p.department_id);cell(tr,supplierMap.get(p.supplier_id)||p.supplier_id);cell(tr,requests.find(r=>r.id===p.procurement_request_id)?.request_number||p.procurement_request_id);cell(tr,money(p.subtotal,p.currency));cell(tr,p.status);cell(tr,p.approved_by);poRows.appendChild(tr);});
+   const evRows=$("healthosSourcingEvents");evRows.replaceChildren();if(!(ev.data||[]).length){const tr=document.createElement("tr");cell(tr,"No sourcing events recorded.").colSpan=5;evRows.appendChild(tr);}
+   (ev.data||[]).forEach(e=>{const tr=document.createElement("tr");cell(tr,new Date(e.created_at).toLocaleString("en-NG"));cell(tr,e.event_type);cell(tr,requests.find(r=>r.id===e.procurement_request_id)?.request_number||e.procurement_request_id);cell(tr,e.actor_id);cell(tr,JSON.stringify(e.details||{}));evRows.appendChild(tr);});
+   say(requests.length+" approved request(s), "+rfqs.length+" RFQ(s), "+quoteList.length+" quote(s), "+(po.data||[]).length+" purchase order(s) loaded.");
+  }catch(e){console.error("Department sourcing load failed",e);say("Could not load sourcing: "+(e.message||"Check permissions."),true);}finally{busy=false;}
+ }
+ async function compare(id){
+  try{const {data,error}=await supabaseClient.rpc("healthos_compare_department_supplier_quotes",{p_clinic_id:currentClinic.id,p_quote_request_id:id});if(error)throw error;
+   const flags=(data?.quotes||[]).flatMap(q=>(q.price_flags||[]).map(f=>q.quote_reference+": "+f.item+" — "+f.flag));
+   const dup=(data?.duplicate_invoice_references||[]).map(x=>x.invoice_reference);
+   say("Comparison: "+(data?.quote_count||0)+" quotes. Price flags: "+(flags.join("; ")||"none")+". Duplicate invoice refs: "+(dup.join(", ")||"none")+". Flags are indicators, not proof of fraud.",dup.length>0);
+  }catch(e){say("Comparison failed: "+e.message,true);}
+ }
+ async function awardQuote(q){
+  if(!currentUser||currentUser.id===q.submitted_by){say("The quote submitter cannot approve the award.",true);return;}
+  const po=prompt("Enter a unique purchase order number:");if(!po||!po.trim())return;
+  const note=prompt("Enter human award justification / evaluation note:");if(!note||!note.trim())return;
+  if(!confirm("Confirm award to this supplier and create an approved department purchase order? This action is audited."))return;
+  try{const {data,error}=await supabaseClient.rpc("healthos_award_department_supplier_quote",{p_clinic_id:currentClinic.id,p_quote_id:q.id,p_po_number:po.trim(),p_award_notes:note.trim()});if(error)throw error;say("Award recorded and purchase order created: "+data);await load();}
+  catch(e){say("Award failed: "+e.message,true);}
+ }
+ $("healthosOpenQuoteForm")?.addEventListener("submit",async e=>{e.preventDefault();const b=$("healthosOpenQuoteButton");b.disabled=true;try{const {data,error}=await supabaseClient.rpc("healthos_open_department_quote_request",{p_clinic_id:currentClinic.id,p_procurement_request_id:$("healthosSourceRequest").value,p_quote_request_number:$("healthosQuoteRequestNumber").value.trim(),p_required_by:$("healthosQuoteRequiredBy").value||null});if(error)throw error;say("Quotation request opened: "+data);e.target.reset();await load();}catch(x){say("Could not open quotation request: "+x.message,true);}finally{b.disabled=false;}});
+ $("healthosSupplierQuoteForm")?.addEventListener("submit",async e=>{e.preventDefault();const b=$("healthosSubmitSupplierQuote");b.disabled=true;try{let items;try{items=JSON.parse($("healthosSupplierQuoteItems").value);}catch(_){throw new Error("Quote lines must be valid JSON.");}const rfq=rfqs.find(x=>x.id===$("healthosQuoteRequestSelect").value);const req=requests.find(x=>x.id===rfq?.procurement_request_id);if(!req)throw new Error("Approved request context is unavailable; refresh and retry.");const {data,error}=await supabaseClient.rpc("healthos_submit_department_supplier_quote",{p_clinic_id:currentClinic.id,p_quote_request_id:rfq.id,p_supplier_id:$("healthosQuoteSupplier").value,p_quote_reference:$("healthosSupplierQuoteReference").value.trim(),p_supplier_invoice_reference:$("healthosSupplierInvoiceReference").value.trim()||null,p_currency:req.currency,p_valid_until:$("healthosSupplierQuoteValidUntil").value||null,p_items:items});if(error)throw error;say("Supplier quotation recorded: "+data);e.target.reset();await load();}catch(x){say("Quote submission failed: "+x.message,true);}finally{b.disabled=false;}});
+ $("healthosSourcingRefresh")?.addEventListener("click",load);
+ document.querySelectorAll('.sidebar .nav-item[href="#billingReview"]').forEach(a=>a.addEventListener("click",()=>setTimeout(load,500)));
+ document.addEventListener("healthos:clinic-ready",load);document.addEventListener("healthos:management-verified",load);setTimeout(()=>{if(currentUser&&currentClinic)load();},2600);
+ console.log("HealthOS department sourcing workspace initialized.");
+})();
+// END DEPARTMENT SUPPLIER SOURCING & PURCHASE ORDER WORKSPACE
