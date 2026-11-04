@@ -196,29 +196,8 @@
     }
   }
 
-  function setPatientLocation() {
-    const status = el("hospitalSearchMessage");
-    if (!navigator.geolocation) {
-      if (status) status.textContent = "Location is not available on this device. Search by city or state instead.";
-      return;
-    }
-    if (status) status.textContent = "Requesting your location permission…";
-    navigator.geolocation.getCurrentPosition(position => {
-      el("hospitalSearchLatitude").value = position.coords.latitude;
-      el("hospitalSearchLongitude").value = position.coords.longitude;
-      if (status) status.textContent = "Location captured for this search only.";
-      const city = el("hospitalSearchCity");
-      if (city && !city.value.trim()) city.value = "Nearby";
-      el("searchHospitalsButton").click();
-    }, () => {
-      if (status) status.textContent = "Location permission was not granted. You can still search by city, state or LGA.";
-    }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 300000 });
-  }
-
   window.HealthOSHospitalDiscovery = { render, selectHospital, refresh };
   document.addEventListener("DOMContentLoaded", function () {
-    const locate = el("useMyHospitalLocationButton");
-    if (locate) locate.addEventListener("click", setPatientLocation);
     loadGoogleMaps();
   });
 })();
