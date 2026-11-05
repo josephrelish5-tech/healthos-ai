@@ -1514,6 +1514,24 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
                 }
             }
         }
+        // Load only published, server-moderated patient review summaries.
+        await Promise.all(hospitals.map(async hospital => {
+            hospital.review_count = 0;
+            hospital.average_rating = null;
+            if (hospital.listing_group !== "network") return;
+            const summary = await supabaseClient.rpc("healthos_public_hospital_review_summary", {
+                p_hospital_id: hospital.hospital_id
+            });
+            if (summary.error) {
+                console.warn("Hospital review summary unavailable:", summary.error);
+                return;
+            }
+            const row = Array.isArray(summary.data) ? summary.data[0] : summary.data;
+            if (row) {
+                hospital.review_count = Number(row.review_count || 0);
+                hospital.average_rating = row.average_rating == null ? null : Number(row.average_rating);
+            }
+        }));
         if (window.HealthOSHospitalDiscovery) {
             await window.HealthOSHospitalDiscovery.focusSearchLocation(
                 hasGps ? latitudeValue : null,
