@@ -1474,6 +1474,45 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
             const result = await supabaseClient.rpc("healthos_search_hospitals_v2", baseParams);
             if (result.error) throw result.error;
             hospitals = result.data || [];
+            // Manual-location fallback follows the same state-capital rule when
+            // the user supplied a state but no hospitals matched their entered area.
+            if (!hospitals.length && state) {
+                const manualStateKey = String(state).toLowerCase()
+                    .replace(/\bstate of\b/g, "")
+                    .replace(/\bstate\b/g, "")
+                    .replace(/\s+/g, " ").trim();
+                const manualStateCapitals = {
+                    "abia":["Abia","Umuahia"],"adamawa":["Adamawa","Yola"],
+                    "akwa ibom":["Akwa Ibom","Uyo"],"anambra":["Anambra","Awka"],
+                    "bauchi":["Bauchi","Bauchi"],"bayelsa":["Bayelsa","Yenagoa"],
+                    "benue":["Benue","Makurdi"],"borno":["Borno","Maiduguri"],
+                    "cross river":["Cross River","Calabar"],"delta":["Delta","Asaba"],
+                    "ebonyi":["Ebonyi","Abakaliki"],"edo":["Edo","Benin City"],
+                    "ekiti":["Ekiti","Ado-Ekiti"],"enugu":["Enugu","Enugu"],
+                    "gombe":["Gombe","Gombe"],"imo":["Imo","Owerri"],
+                    "jigawa":["Jigawa","Dutse"],"kaduna":["Kaduna","Kaduna"],
+                    "kano":["Kano","Kano"],"katsina":["Katsina","Katsina"],
+                    "kebbi":["Kebbi","Birnin Kebbi"],"kogi":["Kogi","Lokoja"],
+                    "kwara":["Kwara","Ilorin"],"lagos":["Lagos","Ikeja"],
+                    "nasarawa":["Nasarawa","Lafia"],"niger":["Niger","Minna"],
+                    "ogun":["Ogun","Abeokuta"],"ondo":["Ondo","Akure"],
+                    "osun":["Osun","Osogbo"],"oyo":["Oyo","Ibadan"],
+                    "plateau":["Plateau","Jos"],"rivers":["Rivers","Port Harcourt"],
+                    "sokoto":["Sokoto","Sokoto"],"taraba":["Taraba","Jalingo"],
+                    "yobe":["Yobe","Damaturu"],"zamfara":["Zamfara","Gusau"],
+                    "fct":["Federal Capital Territory","Abuja"],
+                    "federal capital territory":["Federal Capital Territory","Abuja"]
+                };
+                const entry = manualStateCapitals[manualStateKey];
+                if (entry) {
+                    message.textContent = "No hospitals matched that area. Searching " + entry[1] + ", the capital of " + entry[0] + "…";
+                    const capitalResult = await supabaseClient.rpc("healthos_search_hospitals_v2", {
+                        ...baseParams, p_region: null, p_state: entry[0], p_city: entry[1], p_lga: null
+                    });
+                    if (capitalResult.error) throw capitalResult.error;
+                    hospitals = capitalResult.data || [];
+                }
+            }
         }
         if (window.HealthOSHospitalDiscovery) {
             await window.HealthOSHospitalDiscovery.focusSearchLocation(
