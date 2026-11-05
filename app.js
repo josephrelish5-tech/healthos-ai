@@ -1433,7 +1433,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
                     "federal capital territory":"Abuja","fct":"Abuja"
                 };
                 const canonicalState = value => String(value || "").toLowerCase()
-                    .replace(/\\b(state of|state)\\b/g, "").replace(/\\s+/g, " ").trim();
+                    .replace(/\b(state of|state)\\b/g, "").replace(/\s+/g, " ").trim();
                 let detectedState = state;
                 if (hasGps) {
                     message.textContent = "Nearby search exhausted. Identifying your state to search its capital…";
