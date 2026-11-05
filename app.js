@@ -1421,7 +1421,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
         };
         let hospitals = [];
         if (hasGps) {
-            for (const radius of [10, 25, 50, 100]) {
+            for (const radius of [10, 15, 25, 50, 100]) {
                 message.textContent = radius === 10
                     ? "Searching hospitals closest to your live location (within 10 km)…"
                     : "No nearby matches yet. Expanding the search to " + radius + " km…";
