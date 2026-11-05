@@ -185,7 +185,7 @@
         <div class="user-info">
             <span class="status-dot"></span>
             <span id="currentUserLabel">Secure healthcare workspace</span>
-            <button id="openDirectoryAdminButton" class="logout-button" type="button" hidden>Platform directory admin</button>
+            <button id="openDirectoryAdminButton" class="logout-button" type="button" hidden onclick="var p=document.getElementById('platformDirectoryAdmin');if(p){p.hidden=false;p.scrollIntoView({behavior:'smooth',block:'start'});}">Platform directory admin</button>
             <button id="logoutButton" class="logout-button" type="button" hidden>
                 Sign out
             </button>
