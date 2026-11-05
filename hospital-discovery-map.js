@@ -44,12 +44,15 @@
         const distance=document.createElement("p"); distance.className="hospital-distance"; distance.textContent=h.distance_km==null?"Distance unavailable":Number(h.distance_km).toFixed(1)+" km away";
         const specialty=document.createElement("p"); specialty.textContent="Specialties: "+((h.specialties||[]).join(", ")||"Not listed");
         const services=document.createElement("p"); services.textContent="Services: "+((h.public_services||[]).join(", ")||"Contact hospital for details");
+        const rating=document.createElement("p"); rating.className="hospital-review-summary";
+        const reviewCount=Number(h.review_count||0), average=Number(h.average_rating||0);
+        rating.textContent=reviewCount>0 ? "Patient rating: "+average.toFixed(1)+" / 5 ("+reviewCount+" published review"+(reviewCount===1?"":"s")+")" : "No published patient reviews yet";
         const actions=document.createElement("div"); actions.className="hospital-card-actions";
         const show=document.createElement("button"); show.type="button"; show.className="secondary-button"; show.textContent="Show on map"; show.addEventListener("click",()=>selectHospital(h.hospital_id));
         const directions=document.createElement("a"); directions.className="primary-button"; directions.href=directionsUrl(h); directions.target="_blank"; directions.rel="noopener noreferrer"; directions.textContent="Open in Google Maps";
         actions.append(show,directions);
         if(h.connection_available){const connect=document.createElement("button");connect.type="button";connect.className="secondary-button";connect.textContent="Request connection";connect.addEventListener("click",()=>{if(typeof window.requestHospitalConnection==="function")window.requestHospitalConnection(h.hospital_id,connect);});actions.appendChild(connect);}
-        card.append(title,badge,address,distance,specialty,services,actions); section.appendChild(card);
+        card.append(title,badge,address,distance,specialty,services,rating,actions); section.appendChild(card);
       });
       target.appendChild(section);
     });
