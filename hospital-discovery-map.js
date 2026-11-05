@@ -29,7 +29,7 @@
     target.replaceChildren();
     if(!hospitals.length) {
       const empty=document.createElement("div"); empty.className="hospital-map-empty";
-      empty.innerHTML="<strong>No hospitals found in this search area</strong><p>Try a wider search area or another location.</p>";
+      empty.innerHTML="<strong>No approved hospital listings are available for this search yet</strong><p>This does not mean there are no hospitals nearby. HealthOS AI has not yet loaded approved public directory records for this area. Try another location later.</p>";
       target.appendChild(empty); return;
     }
     [{key:"network",title:"HealthOS AI Network Hospitals"},{key:"other",title:"Other Hospitals Near You"}].forEach(group=>{
@@ -106,8 +106,9 @@
     const node=el("hospitalDiscoveryMap");
     if(!node || !window.L || map) return;
     map=L.map(node,{zoomControl:false,scrollWheelZoom:true,preferCanvas:true}).setView(defaultCenter,12);
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{
-      maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    // CARTO Voyager provides clearer road hierarchy, labels and place detail on mobile.
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{
+      subdomains:"abcd",maxZoom:20,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
     L.control.zoom({position:"topright"}).addTo(map);
     drawMarkers(lastHospitals);
@@ -136,7 +137,7 @@
   async function focusSearchLocation(lat,lng,label) {
     if(!map) initMap(); if(!map) return;
     if(Number.isFinite(Number(lat))&&Number.isFinite(Number(lng))) {
-      const point=[Number(lat),Number(lng)]; map.flyTo(point,15,{duration:0.8});
+      const point=[Number(lat),Number(lng)]; map.flyTo(point,17,{duration:0.8});
       setStatus("Map centred on your current location. Searching verified hospitals.");
       return;
     }
@@ -165,7 +166,7 @@
       const { latitude, longitude, accuracy } = position.coords;
       showUserLocation(latitude, longitude, accuracy);
       if (!map) initMap();
-      if (map) map.flyTo([latitude, longitude], 15, { duration: 0.7 });
+      if (map) map.flyTo([latitude, longitude], 17, { duration: 0.7 });
       const latInput = el("hospitalSearchLatitude");
       const lngInput = el("hospitalSearchLongitude");
       if (latInput) latInput.value = latitude.toFixed(6);
