@@ -7,7 +7,7 @@
   let accuracyCircle = null;
   let watchId = null;
   let lastHospitals = [];
-  const defaultCenter = [6.6018, 3.3515]; // Ikeja, Lagos
+  const defaultCenter = [6.82, 3.48]; // Obafemi Owode, Ogun State (regional fallback only)
   function el(id) { return document.getElementById(id); }
   function escapeText(value) { return String(value || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
   function setStatus(message) { const node=el("hospitalMapStatus"); if(node) node.textContent=message; }
@@ -106,9 +106,9 @@
     const node=el("hospitalDiscoveryMap");
     if(!node || !window.L || map) return;
     map=L.map(node,{zoomControl:false,scrollWheelZoom:true,preferCanvas:true}).setView(defaultCenter,12);
-    // CARTO Voyager provides clearer road hierarchy, labels and place detail on mobile.
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{
-      subdomains:"abcd",maxZoom:20,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    // Use standard OpenStreetMap tiles: no CARTO API key is required.
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+      subdomains:["a","b","c"],maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
     L.control.zoom({position:"topright"}).addTo(map);
     drawMarkers(lastHospitals);
@@ -147,8 +147,8 @@
       if(!response.ok) throw new Error("Location lookup unavailable");
       const results=await response.json();
       if(results.length) { map.flyTo([Number(results[0].lat),Number(results[0].lon)],13,{duration:0.8}); setStatus("Map centred on "+(label||query)+"."); }
-      else { map.flyTo(defaultCenter,11,{duration:0.8}); setStatus("Showing Lagos map. No exact map location was returned for this search."); }
-    } catch(e) { map.flyTo(defaultCenter,11,{duration:0.8}); setStatus("Showing Lagos map. Location lookup could not complete; you can still move and zoom the map."); }
+      else { map.flyTo(defaultCenter,11,{duration:0.8}); setStatus("Could not pinpoint that search area. Showing the Obafemi Owode regional map; search results remain based on your entered location."); }
+    } catch(e) { map.flyTo(defaultCenter,11,{duration:0.8}); setStatus("Location lookup could not complete. Showing the Obafemi Owode regional map; you can still move and zoom the map."); }
   }
   function locateUser() {
     if (!navigator.geolocation) {
