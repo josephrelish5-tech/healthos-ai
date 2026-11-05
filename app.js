@@ -1561,6 +1561,19 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
     }
 });
 
+window.submitHospitalReview = async function (hospitalId, encounterId, rating, reviewText) {
+    if (!currentUser) throw new Error("Sign in to your patient account before submitting a review.");
+    if (!encounterId) throw new Error("Enter the encounter ID from your completed visit record.");
+    const { data, error } = await supabaseClient.rpc("healthos_submit_hospital_review", {
+        p_hospital_id: hospitalId,
+        p_encounter_id: encounterId,
+        p_rating: rating,
+        p_review_text: reviewText
+    });
+    if (error) throw new Error(error.message || "Review submission failed.");
+    return data;
+};
+
 window.requestHospitalConnection = async function (hospitalId, button) {
     if (!currentUser) {
         setPatientAuthMessage("Sign in to your patient account before requesting a hospital connection.", "error");
