@@ -1417,16 +1417,55 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
                 hospitals = result.data || [];
                 if (hospitals.length) break;
             }
-            // Only after the live-location radius search is exhausted do we widen
-            // to the Lagos directory. This is a fallback, never the starting point.
+            // Final fallback: search the capital city of the state containing
+            // the user's GPS position (not Lagos by default).
             if (!hospitals.length) {
-                message.textContent = "No hospitals found near your live location. Checking the wider Lagos hospital directory…";
-                const lagosResult = await supabaseClient.rpc("healthos_search_hospitals_v2", {
-                    ...baseParams, p_latitude: null, p_longitude: null, p_radius_km: null,
-                    p_state: "Lagos", p_region: null, p_city: null, p_lga: null
-                });
-                if (lagosResult.error) throw lagosResult.error;
-                hospitals = lagosResult.data || [];
+                const stateCapitals = {
+                    "abia":"Umuahia","adamawa":"Yola","akwa ibom":"Uyo","anambra":"Awka",
+                    "bauchi":"Bauchi","bayelsa":"Yenagoa","benue":"Makurdi","borno":"Maiduguri",
+                    "cross river":"Calabar","delta":"Asaba","ebonyi":"Abakaliki","edo":"Benin City",
+                    "ekiti":"Ado-Ekiti","enugu":"Enugu","gombe":"Gombe","imo":"Owerri",
+                    "jigawa":"Dutse","kaduna":"Kaduna","kano":"Kano","katsina":"Katsina",
+                    "kebbi":"Birnin Kebbi","kogi":"Lokoja","kwara":"Ilorin","lagos":"Ikeja",
+                    "nasarawa":"Lafia","niger":"Minna","ogun":"Abeokuta","ondo":"Akure",
+                    "osun":"Osogbo","oyo":"Ibadan","plateau":"Jos","rivers":"Port Harcourt",
+                    "sokoto":"Sokoto","taraba":"Jalingo","yobe":"Damaturu","zamfara":"Gusau",
+                    "federal capital territory":"Abuja","fct":"Abuja"
+                };
+                const canonicalState = value => String(value || "").toLowerCase()
+                    .replace(/\\b(state of|state)\\b/g, "").replace(/\\s+/g, " ").trim();
+                let detectedState = state;
+                if (hasGps) {
+                    message.textContent = "Nearby search exhausted. Identifying your state to search its capital…";
+                    try {
+                        const reverseUrl = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat="
+                            + encodeURIComponent(latitudeValue) + "&lon=" + encodeURIComponent(longitudeValue)
+                            + "&zoom=5&addressdetails=1";
+                        const geoResponse = await fetch(reverseUrl, { headers: { "Accept": "application/json" } });
+                        if (geoResponse.ok) {
+                            const geoData = await geoResponse.json();
+                            const address = geoData.address || {};
+                            detectedState = address.state || address.region || address.state_district || detectedState;
+                            if (/abuja|federal capital/i.test([address.state, address.city, address.town, address.county].filter(Boolean).join(" "))) {
+                                detectedState = "Federal Capital Territory";
+                            }
+                        }
+                    } catch (geocodeError) {
+                        console.warn("Could not resolve GPS coordinates to a Nigerian state; using the entered state if available.", geocodeError);
+                    }
+                }
+                const capital = stateCapitals[canonicalState(detectedState)];
+                if (capital) {
+                    message.textContent = "No hospitals found within 100 km. Searching " + capital + ", the capital of " + detectedState + "…";
+                    const capitalResult = await supabaseClient.rpc("healthos_search_hospitals_v2", {
+                        ...baseParams, p_latitude: null, p_longitude: null, p_radius_km: null,
+                        p_state: detectedState, p_region: null, p_city: capital, p_lga: null
+                    });
+                    if (capitalResult.error) throw capitalResult.error;
+                    hospitals = capitalResult.data || [];
+                } else {
+                    message.textContent = "No hospitals found within 100 km. We could not identify your state for the capital-city fallback. Enter your state and search again.";
+                }
             }
         } else {
             message.textContent = "Searching the location you entered…";
@@ -1444,7 +1483,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
         }
         if (!hospitals.length) {
             message.textContent = hasGps
-                ? "No approved hospital listings were found near your location or in the wider Lagos directory yet."
+                ? "No approved hospital listings were found within 100 km or in your state capital yet."
                 : "No hospitals found in this search area. Try another location.";
             message.className = "message";
             return;
