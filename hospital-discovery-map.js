@@ -102,20 +102,37 @@
     } catch(e) { map.flyTo(defaultCenter,11,{duration:0.8}); setStatus("Showing Lagos map. Location lookup could not complete; you can still move and zoom the map."); }
   }
   function locateUser() {
-    if(!navigator.geolocation) { setStatus("This browser does not provide GPS location."); return; }
-    if(watchId!==null) { navigator.geolocation.clearWatch(watchId); watchId=null; }
-    setStatus("Getting your live GPS location…");
-    watchId=navigator.geolocation.watchPosition(position=>{
-      const {latitude,longitude,accuracy}=position.coords;
-      showUserLocation(latitude,longitude,accuracy);
-      map.flyTo([latitude,longitude],16,{duration:0.7});
-      const latInput=el("hospitalSearchLatitude"),lngInput=el("hospitalSearchLongitude");
-      if(latInput) latInput.value=latitude.toFixed(6); if(lngInput) lngInput.value=longitude.toFixed(6);
-      setStatus("Your live location is shown by the blue dot. GPS accuracy: about "+Math.round(accuracy)+" metres.");
-    },error=>{
-      setStatus(error.code===1?"Location permission was denied. Allow location access in your browser settings.":"GPS could not get a position. Check location services and try again.");
-      if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}
-    },{enableHighAccuracy:true,maximumAge:5000,timeout:20000});
+    if (!navigator.geolocation) {
+      setStatus("GPS is not available in this browser. Enter a city, state or LGA to search.");
+      return;
+    }
+    if (watchId !== null) {
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+    }
+    setStatus("Requesting your location. Please allow location access when prompted…");
+    const locateButton = el("hospitalMapLocateButton");
+    if (locateButton) locateButton.disabled = true;
+    navigator.geolocation.getCurrentPosition(position => {
+      const { latitude, longitude, accuracy } = position.coords;
+      showUserLocation(latitude, longitude, accuracy);
+      if (!map) initMap();
+      if (map) map.flyTo([latitude, longitude], 15, { duration: 0.7 });
+      const latInput = el("hospitalSearchLatitude");
+      const lngInput = el("hospitalSearchLongitude");
+      if (latInput) latInput.value = latitude.toFixed(6);
+      if (lngInput) lngInput.value = longitude.toFixed(6);
+      setStatus("Your location is shown by the blue dot. GPS accuracy: about " + Math.round(accuracy) + " metres. Now tap Search hospitals.");
+      if (locateButton) locateButton.disabled = false;
+    }, error => {
+      const reason = error && error.code === 1
+        ? "Location permission was denied. Allow location access in your browser settings."
+        : error && error.code === 3
+          ? "GPS timed out. Check that Location is turned on, or search by city, state or LGA."
+          : "GPS could not get your position. You can still search by city, state or LGA.";
+      setStatus(reason);
+      if (locateButton) locateButton.disabled = false;
+    }, { enableHighAccuracy: false, maximumAge: 60000, timeout: 12000 });
   }
   function render(hospitals) {
     lastHospitals=Array.isArray(hospitals)?hospitals:[];
