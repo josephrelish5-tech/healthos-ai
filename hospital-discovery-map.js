@@ -52,6 +52,23 @@
         const directions=document.createElement("a"); directions.className="primary-button"; directions.href=directionsUrl(h); directions.target="_blank"; directions.rel="noopener noreferrer"; directions.textContent="Open in Google Maps";
         actions.append(show,directions);
         if(h.connection_available){const connect=document.createElement("button");connect.type="button";connect.className="secondary-button";connect.textContent="Request connection";connect.addEventListener("click",()=>{if(typeof window.requestHospitalConnection==="function")window.requestHospitalConnection(h.hospital_id,connect);});actions.appendChild(connect);}
+        if(group.key==="network"){
+          const reviewToggle=document.createElement("button"); reviewToggle.type="button"; reviewToggle.className="secondary-button"; reviewToggle.textContent="Write a patient review";
+          const reviewForm=document.createElement("form"); reviewForm.className="hospital-patient-review-form"; reviewForm.hidden=true;
+          const encounterLabel=document.createElement("label"); encounterLabel.textContent="Completed visit reference";
+          const encounter=document.createElement("input"); encounter.type="text"; encounter.required=true; encounter.placeholder="Enter your encounter ID"; encounter.autocomplete="off"; encounterLabel.appendChild(encounter);
+          const ratingLabel=document.createElement("label"); ratingLabel.textContent="Your rating";
+          const ratingInput=document.createElement("select"); ratingInput.required=true;
+          ["5","4","3","2","1"].forEach(value=>{const option=document.createElement("option");option.value=value;option.textContent=value+" — "+({5:"Excellent",4:"Good",3:"Average",2:"Poor",1:"Very poor"}[value]);ratingInput.appendChild(option);}); ratingLabel.appendChild(ratingInput);
+          const reviewLabel=document.createElement("label"); reviewLabel.textContent="Your experience";
+          const reviewText=document.createElement("textarea"); reviewText.required=true; reviewText.minLength=10; reviewText.maxLength=2000; reviewText.rows=3; reviewText.placeholder="Describe your experience (10–2,000 characters)"; reviewLabel.appendChild(reviewText);
+          const submit=document.createElement("button"); submit.type="submit"; submit.className="primary-button"; submit.textContent="Submit for moderation";
+          const feedback=document.createElement("p"); feedback.setAttribute("role","status"); feedback.className="muted";
+          reviewForm.append(encounterLabel,ratingLabel,reviewLabel,submit,feedback);
+          reviewToggle.addEventListener("click",()=>{reviewForm.hidden=!reviewForm.hidden;});
+          reviewForm.addEventListener("submit",async event=>{event.preventDefault();submit.disabled=true;feedback.textContent="Submitting securely…";try{if(typeof window.submitHospitalReview!=="function")throw new Error("Review submission is not available. Please reload.");await window.submitHospitalReview(h.hospital_id,encounter.value.trim(),Number(ratingInput.value),reviewText.value.trim());feedback.textContent="Review submitted. It will appear publicly after moderation.";reviewForm.reset();}catch(error){feedback.textContent=error.message||"Review could not be submitted."; }finally{submit.disabled=false;}});
+          actions.appendChild(reviewToggle); card.appendChild(reviewForm);
+        }
         card.append(title,badge,address,distance,specialty,services,rating,actions); section.appendChild(card);
       });
       target.appendChild(section);
