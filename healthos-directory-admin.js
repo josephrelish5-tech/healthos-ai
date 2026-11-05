@@ -4,7 +4,7 @@
  const KEY="sb_publishable_UIhbdxfxl8jsU9KnIE93pg_HTEsU39C";
  const ENDPOINT=URL+"/functions/v1/healthos-hospital-directory-admin";
  let client, sources=[];
-  let osmRunState={area:null,nextTile:0,totalTiles:null,candidates:new Map(),failedTiles:[],rawCount:0,insideCount:0};
+  let osmRunState={area:null,nextTile:0,totalTiles:null,candidates:new Map(),failedTiles:new Map(),rawCount:0,insideCount:0,retryRound:0,retryQueue:[],retryCursor:0,successTiles:new Set()};
  const $=id=>document.getElementById(id);
  const say=(s,bad=false)=>{const e=$("directoryAdminMessage");e.textContent=s;e.className="message "+(bad?"error":"success");};
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -43,36 +43,56 @@
   $("grid3PreviewButton").addEventListener("click",async()=>{const button=$("grid3PreviewButton");button.disabled=true;$("grid3PreviewMessage").textContent="Querying GRID3 Ogun facilities…";$("grid3PreviewRows").innerHTML='<tr><td colspan="5">Loading preview…</td></tr>';try{const {data,error}=await client.functions.invoke("healthos-grid3-hospital-collector",{body:{lgas:["OBAFEMI OWODE"]}});if(error)throw error;if(data?.error)throw Error(data.error);const rows=data.records||[];$("grid3PreviewMessage").textContent="Preview complete: "+(data.matching_record_count??rows.length)+" matching records; showing "+rows.length+". No records imported."; $("grid3PreviewRows").innerHTML=rows.map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc([x.local_government_area,x.ward].filter(Boolean).join(" / "))+'</td><td>'+esc([x.ownership,x.facility_level].filter(Boolean).join(" / "))+'</td><td>'+esc((x.latitude??"—")+", "+(x.longitude??"—"))+'</td><td>'+esc(x.nhfr_uid||x.nhfr_facility_code||x.source_record_id)+'</td></tr>').join("")||'<tr><td colspan="5">No facilities returned for this filter.</td></tr>';}catch(e){$("grid3PreviewMessage").textContent=e.message||"GRID3 preview failed. Check administrator access and try again.";$("grid3PreviewRows").innerHTML='<tr><td colspan="5">No preview results.</td></tr>';}finally{button.disabled=false;}});
   $("osmDryRunButton").addEventListener("click",async()=>{
     const button=$("osmDryRunButton"),area=$("osmCollectionArea").value,isOgun=area==="ogun_state";
-    if(!isOgun||osmRunState.area!==area)osmRunState={area,nextTile:0,totalTiles:null,candidates:new Map(),failedTiles:[],rawCount:0,insideCount:0};
+    if(!isOgun||osmRunState.area!==area)osmRunState={area,nextTile:0,totalTiles:null,candidates:new Map(),failedTiles:new Map(),rawCount:0,insideCount:0,retryRound:0,retryQueue:[],retryCursor:0,successTiles:new Set()};
     button.disabled=true;
     const renderRows=()=>{const rows=Array.from(osmRunState.candidates.values());$("osmDryRunRows").innerHTML=rows.map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc(x.raw_tags?.amenity||x.raw_tags?.healthcare||"Unclassified")+'</td><td>'+esc(Number(x.latitude).toFixed(5)+", "+Number(x.longitude).toFixed(5))+'</td><td>'+esc(x.osm_type+"/"+x.osm_id)+'</td></tr>').join("")||'<tr><td colspan="4">No named candidates returned yet.</td></tr>';};
-    const explainError=async error=>{let message=error?.message||"Request failed.";if(error?.context instanceof Response){try{const p=await error.context.clone().json();message=p.error||message;if(p.detail)message+=" — "+p.detail;if(p.tile_error)message+=" — "+p.tile_error;if(p.upstream_detail)message+=" — "+p.upstream_detail;}catch(_){}}return message;};
+    const errorText=async error=>{let message=error?.message||"Request failed.";if(error?.context instanceof Response){try{const p=await error.context.clone().json();message=p.error||message;if(p.detail)message+=" — "+p.detail;if(p.tile_error)message+=" — "+p.tile_error;}catch(_){}}return message;};
     try{
      if(!isOgun){
       $("osmDryRunMessage").textContent="Searching OpenStreetMap…";$("osmDryRunRows").innerHTML='<tr><td colspan="4">Searching…</td></tr>';
       const {data,error}=await client.functions.invoke("healthos-osm-hospital-collector",{body:{area,dry_run:true}});
-      if(error)throw Error(await explainError(error));if(data?.error)throw Error(data.error);
+      if(error)throw Error(await errorText(error));if(data?.error)throw Error(data.error);
       const rows=data.candidates||[];osmRunState.candidates=new Map(rows.map(x=>[x.osm_type+"/"+x.osm_id,x]));osmRunState.rawCount=data.raw_map_candidates??data.found??0;osmRunState.insideCount=data.inside_boundary_candidates??osmRunState.rawCount;renderRows();
       $("osmDryRunMessage").textContent="Dry run complete: "+osmRunState.rawCount+" map elements; "+(data.valid_named_candidates??rows.length)+" named candidates. Nothing was imported.";
      }else{
-      $("osmDryRunMessage").textContent="Starting resumable Ogun-wide search…";$("osmDryRunRows").innerHTML='<tr><td colspan="4">Starting first geographical tile…</td></tr>';
-      let done=false;
-      while(!done){
-       const tileIndex=osmRunState.nextTile;
-       $("osmDryRunMessage").textContent="Searching Ogun State: tile "+(tileIndex+1)+(osmRunState.totalTiles?" of "+osmRunState.totalTiles:"")+" · "+osmRunState.candidates.size+" unique candidates. Keep this page open.";
-       const {data,error}=await client.functions.invoke("healthos-osm-hospital-collector",{body:{area,dry_run:true,tile_index:tileIndex}});
-       if(error)throw Error("Stopped at tile "+(tileIndex+1)+": "+await explainError(error));if(data?.error)throw Error(data.error);
+      $("osmDryRunRows").innerHTML='<tr><td colspan="4">Preparing state-wide search…</td></tr>';
+      while(true){
+       let tileIndex,endpointAttempt=0;
+       if(osmRunState.nextTile < (osmRunState.totalTiles??Infinity)){
+        tileIndex=osmRunState.nextTile++;
+       }else if(osmRunState.failedTiles.size && osmRunState.retryRound<2){
+        if(osmRunState.retryCursor>=osmRunState.retryQueue.length){
+         osmRunState.retryRound++;osmRunState.retryQueue=Array.from(osmRunState.failedTiles.keys());osmRunState.failedTiles.clear();osmRunState.retryCursor=0;
+        }
+        if(osmRunState.retryRound>2||osmRunState.retryCursor>=osmRunState.retryQueue.length)break;
+        tileIndex=osmRunState.retryQueue[osmRunState.retryCursor++];endpointAttempt=osmRunState.retryRound;
+       }else break;
+       $("osmDryRunMessage").textContent="Ogun discovery: tile "+(tileIndex+1)+" / "+(osmRunState.totalTiles??"…")+(endpointAttempt?" · retry "+endpointAttempt+"/2":"")+" · "+osmRunState.candidates.size+" unique candidates. Please keep this page open.";
+       let data;
+       try{
+        const result=await client.functions.invoke("healthos-osm-hospital-collector",{body:{area,dry_run:true,tile_index:tileIndex,endpoint_attempt:endpointAttempt}});
+        if(result.error)throw Error(await errorText(result.error));
+        data=result.data;if(data?.error)throw Error(data.error);
+       }catch(callError){
+        osmRunState.failedTiles.set(tileIndex,{detail:callError.message||"Request failed",endpoint:"Client/Edge request",status:"request_error"});
+        renderRows();continue;
+       }
        if(osmRunState.totalTiles===null)osmRunState.totalTiles=data.tile_summary?.tile_count??null;
-       osmRunState.rawCount+=data.raw_map_candidates||0;osmRunState.insideCount+=data.inside_boundary_candidates||0;
-       if(data.tile_failed)osmRunState.failedTiles.push({tile:tileIndex+1,detail:data.tile_error||"All map servers failed"});
-       else (data.candidates||[]).forEach(x=>osmRunState.candidates.set(x.osm_type+"/"+x.osm_id,x));
-       osmRunState.nextTile=data.tile_summary?.next_tile_index??(tileIndex+1);done=Boolean(data.done);renderRows();
-       $("osmDryRunMessage").textContent="Ogun progress: "+osmRunState.nextTile+" / "+(osmRunState.totalTiles??"?")+" tiles · "+osmRunState.candidates.size+" unique named candidates · "+osmRunState.failedTiles.length+" failed tiles. No records imported.";
-       if(!done)await new Promise(resolve=>setTimeout(resolve,250));
+       if(data.tile_failed){
+        osmRunState.failedTiles.set(tileIndex,{detail:data.tile_error||"Upstream request failed",endpoint:data.upstream_endpoint||"Unknown endpoint",status:data.upstream_status??0});
+       }else{
+        osmRunState.failedTiles.delete(tileIndex);osmRunState.successTiles.add(tileIndex);
+        osmRunState.rawCount+=data.raw_map_candidates||0;osmRunState.insideCount+=data.inside_boundary_candidates||0;
+        (data.candidates||[]).forEach(x=>osmRunState.candidates.set(x.osm_type+"/"+x.osm_id,x));
+       }
+       renderRows();
+       $("osmDryRunMessage").textContent="Ogun discovery: "+osmRunState.nextTile+" / "+(osmRunState.totalTiles??"?")+" tiles · "+osmRunState.successTiles.size+" successful · "+osmRunState.failedTiles.size+" pending/failed · "+osmRunState.candidates.size+" unique candidates"+(endpointAttempt?" · retry pass "+endpointAttempt+"/2":"")+". No records imported.";
+       await new Promise(resolve=>setTimeout(resolve,180));
       }
-      $("osmDryRunMessage").textContent="Ogun preview complete: "+osmRunState.totalTiles+" tiles processed; "+osmRunState.candidates.size+" unique named candidates from "+osmRunState.insideCount+" in-boundary map elements; "+osmRunState.failedTiles.length+" failed tiles. No records imported.";
+      const failures=Array.from(osmRunState.failedTiles.entries()).slice(0,4).map(([index,item])=>"tile "+(index+1)+": "+item.status+" — "+item.endpoint+" — "+item.detail).join(" | ");
+      $("osmDryRunMessage").textContent="Ogun preview "+(osmRunState.failedTiles.size?"partially complete":"complete")+": "+osmRunState.successTiles.size+"/"+osmRunState.totalTiles+" tiles succeeded; "+osmRunState.candidates.size+" unique named candidates from "+osmRunState.insideCount+" in-boundary map elements; "+osmRunState.failedTiles.size+" tiles still failed after 2 retries. "+(failures?"First errors: "+failures+". ":"")+"No records imported.";
      }
-    }catch(error){renderRows();$("osmDryRunMessage").textContent=(error.message||"Dry run failed.")+(isOgun?" Progress retained in this page at tile "+(osmRunState.nextTile+1)+". Tap Run dry search to resume.":"");}
+    }catch(error){renderRows();$("osmDryRunMessage").textContent=(error.message||"Dry run failed.")+(isOgun?" Progress retained. Tap Run dry search to resume.":"");}
     finally{button.disabled=false;}
    });$("directoryImportButton").addEventListener("click",async()=>{try{const records=JSON.parse($("directoryImportJson").value);if(!Array.isArray(records)||!records.length||records.length>500)throw Error("Provide a JSON array containing 1–500 records.");const source_id=$("directoryImportSource").value;if(!source_id)throw Error("No enabled source selected.");const r=await call("POST",{action:"import_batch",source_id,records});say("Imported for review only: "+JSON.stringify(r.result));$("directoryImportJson").value="";await load();}catch(x){say(x.message,true);}});
   client.auth.getSession().then(({data})=>{if(data.session){$("openDirectoryAdminButton").hidden=false;const nav=$("platformDirectoryAdminNav");if(nav)nav.hidden=false;load();}});
