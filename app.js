@@ -1354,9 +1354,9 @@ const searchHospitalsButton = document.getElementById("searchHospitalsButton");
 if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async () => {
     const message = document.getElementById("hospitalSearchMessage");
     const country = document.getElementById("hospitalSearchCountry").value.trim().toUpperCase();
+    const latitudeInput = document.getElementById("hospitalSearchLatitude");
+    const longitudeInput = document.getElementById("hospitalSearchLongitude");
     const cityValue = document.getElementById("hospitalSearchCity").value.trim();
-    const latitudeValue = document.getElementById("hospitalSearchLatitude").value.trim();
-    const longitudeValue = document.getElementById("hospitalSearchLongitude").value.trim();
     const state = document.getElementById("hospitalSearchState").value.trim();
     const region = document.getElementById("hospitalSearchRegion").value.trim();
     const lga = document.getElementById("hospitalSearchLga").value.trim();
@@ -1366,51 +1366,93 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
         message.className = "message error";
         return;
     }
-    if (!cityValue && !state && !region && !lga && !(latitudeValue && longitudeValue)) {
-        message.textContent = "Enter a city, state or LGA, or choose Use my location.";
-        message.className = "message error";
-        return;
-    }
     searchHospitalsButton.disabled = true;
-    message.textContent = "Searching nearby hospitals…";
+    message.textContent = "Finding your live location so we can search nearby hospitals first…";
     message.className = "message";
     try {
+        // GPS-first: request the user's position from this Search button gesture
+        // when no coordinates have already been supplied by the location button.
+        if ((!latitudeInput.value.trim() || !longitudeInput.value.trim()) && navigator.geolocation) {
+            try {
+                const position = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, {
+                    enableHighAccuracy: true, timeout: 15000, maximumAge: 60000
+                }));
+                latitudeInput.value = position.coords.latitude.toFixed(6);
+                longitudeInput.value = position.coords.longitude.toFixed(6);
+            } catch (locationError) {
+                console.info("GPS unavailable; falling back to the manually entered search area.", locationError);
+            }
+        }
+        const latitudeValue = latitudeInput.value.trim();
+        const longitudeValue = longitudeInput.value.trim();
+        const hasGps = Boolean(latitudeValue && longitudeValue);
+        if (!hasGps && !cityValue && !state && !region && !lga) {
+            throw new Error("Allow location access to find hospitals near you, or enter a city, state or LGA.");
+        }
         const baseParams = {
-            p_latitude: latitudeValue ? Number(latitudeValue) : null,
-            p_longitude: longitudeValue ? Number(longitudeValue) : null,
-            p_radius_km: latitudeValue && longitudeValue ? 50 : null,
+            p_latitude: hasGps ? Number(latitudeValue) : null,
+            p_longitude: hasGps ? Number(longitudeValue) : null,
+            p_radius_km: hasGps ? 10 : null,
             p_country_code: country,
-            p_region: region || null,
-            p_state: state || null,
-            p_city: cityValue && cityValue.toLowerCase() !== "nearby" ? cityValue : null,
-            p_lga: lga || null,
+            // When GPS is available, coordinates take priority over manually entered
+            // state/city/LGA filters so the first results are truly near the person.
+            p_region: hasGps ? null : (region || null),
+            p_state: hasGps ? null : (state || null),
+            p_city: hasGps ? null : (cityValue && cityValue.toLowerCase() !== "nearby" ? cityValue : null),
+            p_lga: hasGps ? null : (lga || null),
             p_specialty: specialty || null,
             p_limit: 50,
             p_offset: 0
         };
-        let { data, error } = await supabaseClient.rpc("healthos_search_hospitals_v2", baseParams);
-        if (error) throw error;
-        let hospitals = data || [];
-        if (latitudeValue && longitudeValue && hospitals.length < 5) {
-            message.textContent = "Expanding your search area…";
-            const expanded = await supabaseClient.rpc("healthos_search_hospitals_v2", {
-                ...baseParams, p_radius_km: 100
-            });
-            if (expanded.error) throw expanded.error;
-            hospitals = expanded.data || [];
+        let hospitals = [];
+        if (hasGps) {
+            for (const radius of [10, 25, 50, 100]) {
+                message.textContent = radius === 10
+                    ? "Searching hospitals closest to your live location (within 10 km)…"
+                    : "No nearby matches yet. Expanding the search to " + radius + " km…";
+                const result = await supabaseClient.rpc("healthos_search_hospitals_v2", {
+                    ...baseParams, p_radius_km: radius
+                });
+                if (result.error) throw result.error;
+                hospitals = result.data || [];
+                if (hospitals.length) break;
+            }
+            // Only after the live-location radius search is exhausted do we widen
+            // to the Lagos directory. This is a fallback, never the starting point.
+            if (!hospitals.length) {
+                message.textContent = "No hospitals found near your live location. Checking the wider Lagos hospital directory…";
+                const lagosResult = await supabaseClient.rpc("healthos_search_hospitals_v2", {
+                    ...baseParams, p_latitude: null, p_longitude: null, p_radius_km: null,
+                    p_state: "Lagos", p_region: null, p_city: null, p_lga: null
+                });
+                if (lagosResult.error) throw lagosResult.error;
+                hospitals = lagosResult.data || [];
+            }
+        } else {
+            message.textContent = "Searching the location you entered…";
+            const result = await supabaseClient.rpc("healthos_search_hospitals_v2", baseParams);
+            if (result.error) throw result.error;
+            hospitals = result.data || [];
         }
         if (window.HealthOSHospitalDiscovery) {
-            await window.HealthOSHospitalDiscovery.focusSearchLocation(latitudeValue, longitudeValue, [lga, cityValue, state].filter(Boolean).join(", "));
+            await window.HealthOSHospitalDiscovery.focusSearchLocation(
+                hasGps ? latitudeValue : null,
+                hasGps ? longitudeValue : null,
+                hasGps ? "your live location" : [lga, cityValue, state, region].filter(Boolean).join(", ")
+            );
             window.HealthOSHospitalDiscovery.render(hospitals);
         }
         if (!hospitals.length) {
-            message.textContent = "No hospitals found in this area. Try another location or search again later.";
+            message.textContent = hasGps
+                ? "No approved hospital listings were found near your location or in the wider Lagos directory yet."
+                : "No hospitals found in this search area. Try another location.";
             message.className = "message";
             return;
         }
         const networkCount = hospitals.filter(h => h.listing_group === "network").length;
         const otherCount = hospitals.length - networkCount;
-        message.textContent = networkCount + " HealthOS AI network hospital(s) and " + otherCount + " other nearby hospital(s) found.";
+        message.textContent = networkCount + " HealthOS AI network hospital(s) and " + otherCount + " other hospital(s) found"
+            + (hasGps ? " from your live-location search." : ".");
         message.className = "message success";
     } catch (error) {
         console.error("Hospital discovery search failed:", error);
