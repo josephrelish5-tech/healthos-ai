@@ -1369,6 +1369,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
     searchHospitalsButton.disabled = true;
     message.textContent = "Finding your live location so we can search nearby hospitals first…";
     message.className = "message";
+    let gpsNotice = "";
     try {
         // GPS-first: request the user's position from this Search button gesture
         // when no coordinates have already been supplied by the location button.
@@ -1380,14 +1381,28 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
                 latitudeInput.value = position.coords.latitude.toFixed(6);
                 longitudeInput.value = position.coords.longitude.toFixed(6);
             } catch (locationError) {
-                console.info("GPS unavailable; falling back to the manually entered search area.", locationError);
+                const gpsCode = locationError && locationError.code;
+                gpsNotice = gpsCode === 1
+                    ? "Location permission was denied. Searching with your manually entered location instead."
+                    : gpsCode === 2
+                        ? "Your device could not determine its location. Searching with your manually entered location instead."
+                        : gpsCode === 3
+                            ? "GPS timed out. Searching with your manually entered location instead."
+                            : "GPS is unavailable. Searching with your manually entered location instead.";
+                console.info(gpsNotice, locationError);
             }
+        } else if (!navigator.geolocation && (!latitudeInput.value.trim() || !longitudeInput.value.trim())) {
+            gpsNotice = "GPS is not supported in this browser. Searching with your manually entered location instead.";
         }
         const latitudeValue = latitudeInput.value.trim();
         const longitudeValue = longitudeInput.value.trim();
         const hasGps = Boolean(latitudeValue && longitudeValue);
         if (!hasGps && !cityValue && !state && !region && !lga) {
-            throw new Error("Allow location access to find hospitals near you, or enter a city, state or LGA.");
+            throw new Error(gpsNotice ? gpsNotice + " Enter a city, state or LGA to continue." : "Allow location access to find hospitals near you, or enter a city, state or LGA.");
+        }
+        if (!hasGps && gpsNotice) {
+            message.textContent = gpsNotice;
+            message.className = "message";
         }
         const baseParams = {
             p_latitude: hasGps ? Number(latitudeValue) : null,
