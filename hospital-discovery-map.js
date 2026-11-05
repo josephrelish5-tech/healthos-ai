@@ -51,6 +51,31 @@
         const show=document.createElement("button"); show.type="button"; show.className="secondary-button"; show.textContent="Show on map"; show.addEventListener("click",()=>selectHospital(h.hospital_id));
         const directions=document.createElement("a"); directions.className="primary-button"; directions.href=directionsUrl(h); directions.target="_blank"; directions.rel="noopener noreferrer"; directions.textContent="Open in Google Maps";
         actions.append(show,directions);
+        // Public contact links are shown only when the hospital has supplied them.
+        const contactLinks=[];
+        const phone=String(h.public_phone||"").trim();
+        const emergencyPhone=String(h.emergency_phone||"").trim();
+        const email=String(h.public_email||"").trim();
+        const website=String(h.website_url||"").trim();
+        const safePhone=value=>value.replace(/[^+0-9*#,;]/g,"");
+        if(phone && safePhone(phone)){
+          const call=document.createElement("a"); call.className="secondary-button"; call.href="tel:"+safePhone(phone); call.textContent="Call hospital"; contactLinks.push(call);
+        }
+        if(emergencyPhone && safePhone(emergencyPhone)){
+          const emergency=document.createElement("a"); emergency.className="secondary-button"; emergency.href="tel:"+safePhone(emergencyPhone); emergency.textContent="Call emergency line"; contactLinks.push(emergency);
+        }
+        if(email && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)){
+          const mail=document.createElement("a"); mail.className="secondary-button"; mail.href="mailto:"+email; mail.textContent="Email hospital"; contactLinks.push(mail);
+        }
+        if(website){
+          try{
+            const siteUrl=new URL(website);
+            if(siteUrl.protocol==="https:"||siteUrl.protocol==="http:"){
+              const site=document.createElement("a"); site.className="secondary-button"; site.href=siteUrl.href; site.target="_blank"; site.rel="noopener noreferrer"; site.textContent="Hospital website"; contactLinks.push(site);
+            }
+          }catch(_){}
+        }
+        contactLinks.forEach(link=>actions.appendChild(link));
         if(h.connection_available){const connect=document.createElement("button");connect.type="button";connect.className="secondary-button";connect.textContent="Request connection";connect.addEventListener("click",()=>{if(typeof window.requestHospitalConnection==="function")window.requestHospitalConnection(h.hospital_id,connect);});actions.appendChild(connect);}
         if(group.key==="network"){
           const reviewToggle=document.createElement("button"); reviewToggle.type="button"; reviewToggle.className="secondary-button"; reviewToggle.textContent="Write a patient review";
