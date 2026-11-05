@@ -1561,6 +1561,15 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
     }
 });
 
+window.loadReviewableHospitalVisits = async function (hospitalId) {
+    if (!currentUser) throw new Error("Sign in to your patient account to view completed visits.");
+    const { data, error } = await supabaseClient.rpc("healthos_my_reviewable_hospital_visits", {
+        p_hospital_id: hospitalId
+    });
+    if (error) throw new Error(error.message || "Could not load your completed visits.");
+    return data || [];
+};
+
 window.submitHospitalReview = async function (hospitalId, encounterId, rating, reviewText) {
     if (!currentUser) throw new Error("Sign in to your patient account before submitting a review.");
     if (!encounterId) throw new Error("Enter the encounter ID from your completed visit record.");
