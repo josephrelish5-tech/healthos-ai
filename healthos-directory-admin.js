@@ -24,6 +24,11 @@
  }
  document.addEventListener("DOMContentLoaded",()=>{
   client=window.supabase.createClient(URL,KEY);
+  // Keep the platform admin console outside the hospital dashboard wrapper.
+  // The wrapper is hidden until management verification, so nesting the console
+  // inside it makes the global Platform Directory Admin button appear unresponsive.
+  const adminPanel=$("platformDirectoryAdmin");
+  if(adminPanel && adminPanel.parentElement!==document.body){document.body.appendChild(adminPanel);}
   $("openDirectoryAdminButton").addEventListener("click",()=>{$("platformDirectoryAdmin").hidden=false;$("platformDirectoryAdmin").scrollIntoView({behavior:"smooth"});load();});
   const directoryNav=$("platformDirectoryAdminNav");if(directoryNav)directoryNav.addEventListener("click",e=>{e.preventDefault();$("openDirectoryAdminButton").click();});
   $("directoryAdminClose").addEventListener("click",()=>{$("platformDirectoryAdmin").hidden=true;});
