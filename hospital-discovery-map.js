@@ -55,8 +55,11 @@
         if(group.key==="network"){
           const reviewToggle=document.createElement("button"); reviewToggle.type="button"; reviewToggle.className="secondary-button"; reviewToggle.textContent="Write a patient review";
           const reviewForm=document.createElement("form"); reviewForm.className="hospital-patient-review-form"; reviewForm.hidden=true;
-          const encounterLabel=document.createElement("label"); encounterLabel.textContent="Completed visit reference";
-          const encounter=document.createElement("input"); encounter.type="text"; encounter.required=true; encounter.placeholder="Enter your encounter ID"; encounter.autocomplete="off"; encounterLabel.appendChild(encounter);
+          const encounterLabel=document.createElement("label"); encounterLabel.textContent="Select your completed visit";
+          const encounter=document.createElement("select"); encounter.required=true;
+          const initialVisit=document.createElement("option"); initialVisit.value=""; initialVisit.textContent="Loading your completed visits…"; encounter.appendChild(initialVisit); encounterLabel.appendChild(encounter);
+          let visitsLoaded=false;
+          const loadVisits=async()=>{if(visitsLoaded)return;encounter.replaceChildren();const loading=document.createElement("option");loading.value="";loading.textContent="Loading your completed visits…";encounter.appendChild(loading);try{if(typeof window.loadReviewableHospitalVisits!=="function")throw new Error("Visit lookup is not available. Reload the page.");const visits=await window.loadReviewableHospitalVisits(h.hospital_id);encounter.replaceChildren();const placeholder=document.createElement("option");placeholder.value="";placeholder.textContent=visits.length?"Choose a completed visit":"No eligible completed visits found";encounter.appendChild(placeholder);visits.forEach(visit=>{const option=document.createElement("option");option.value=visit.encounter_id;const date=visit.completed_at?new Date(visit.completed_at).toLocaleDateString():"Date unavailable";option.textContent=(visit.encounter_number||visit.encounter_type||"Completed visit")+" — "+date;encounter.appendChild(option);});visitsLoaded=true;}catch(error){encounter.replaceChildren();const failed=document.createElement("option");failed.value="";failed.textContent=error.message||"Could not load visits";encounter.appendChild(failed);feedback.textContent=failed.textContent;}};
           const ratingLabel=document.createElement("label"); ratingLabel.textContent="Your rating";
           const ratingInput=document.createElement("select"); ratingInput.required=true;
           ["5","4","3","2","1"].forEach(value=>{const option=document.createElement("option");option.value=value;option.textContent=value+" — "+({5:"Excellent",4:"Good",3:"Average",2:"Poor",1:"Very poor"}[value]);ratingInput.appendChild(option);}); ratingLabel.appendChild(ratingInput);
@@ -65,7 +68,7 @@
           const submit=document.createElement("button"); submit.type="submit"; submit.className="primary-button"; submit.textContent="Submit for moderation";
           const feedback=document.createElement("p"); feedback.setAttribute("role","status"); feedback.className="muted";
           reviewForm.append(encounterLabel,ratingLabel,reviewLabel,submit,feedback);
-          reviewToggle.addEventListener("click",()=>{reviewForm.hidden=!reviewForm.hidden;});
+          reviewToggle.addEventListener("click",()=>{reviewForm.hidden=!reviewForm.hidden;if(!reviewForm.hidden)loadVisits();});
           reviewForm.addEventListener("submit",async event=>{event.preventDefault();submit.disabled=true;feedback.textContent="Submitting securely…";try{if(typeof window.submitHospitalReview!=="function")throw new Error("Review submission is not available. Please reload.");await window.submitHospitalReview(h.hospital_id,encounter.value.trim(),Number(ratingInput.value),reviewText.value.trim());feedback.textContent="Review submitted. It will appear publicly after moderation.";reviewForm.reset();}catch(error){feedback.textContent=error.message||"Review could not be submitted."; }finally{submit.disabled=false;}});
           actions.appendChild(reviewToggle); card.appendChild(reviewForm);
         }
