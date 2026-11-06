@@ -416,7 +416,8 @@
       setStatus("Map centred on your current location. Searching HealthOS AI hospitals and external public listings.");
       return;
     }
-    const query=[label,el("hospitalSearchLga")?.value,el("hospitalSearchCity")?.value,el("hospitalSearchState")?.value,"Nigeria"].filter(Boolean).join(", ");
+    const queryParts=[label,el("hospitalSearchCity")?.value,el("hospitalSearchState")?.value,"Nigeria"].filter(Boolean);
+    const query=[...new Map(queryParts.map(part=>[String(part).trim().toLowerCase(),String(part).trim()])).values()].join(", ");
     try {
       const response=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ng&q="+encodeURIComponent(query),{headers:{Accept:"application/json"}});
       if(!response.ok) throw new Error("Location lookup unavailable");
