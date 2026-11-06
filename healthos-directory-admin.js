@@ -54,7 +54,7 @@
       const {data:{session},error:sessionError}=await client.auth.getSession();
       if(sessionError)throw Error("Could not retrieve the signed-in session: "+sessionError.message);
       if(!session?.access_token)throw Error("Your administrator session has expired. Sign in again.");
-      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),28000);
+      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),45000);
       try{
         const response=await fetch(URL+"/functions/v1/healthos-osm-hospital-collector",{
           method:"POST",
@@ -66,7 +66,7 @@
         if(data?.error)throw Error(data.error+(data.detail?" — "+data.detail:""));
         return data;
       }catch(error){
-        if(error?.name==="AbortError")throw Error("Request timed out after 28 seconds. This tile remains pending and can be retried.");
+        if(error?.name==="AbortError")throw Error("Request timed out after 45 seconds. This tile remains pending and can be retried.");
         throw error;
       }finally{clearTimeout(timer);}
     };
