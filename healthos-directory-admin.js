@@ -156,51 +156,74 @@
       $("osmDryRunMessage").textContent="Dry run complete: "+osmRunState.rawCount+" map elements; "+(data.valid_named_candidates??rows.length)+" named candidates. Nothing was imported.";
      }else{
       $("osmDryRunRows").innerHTML='<tr><td colspan="5">Preparing state-wide search…</td></tr>';
-      while(true){
-       let tileIndex,endpointAttempt=0,discoveringTileCount=osmRunState.totalTiles===null;
-       if(discoveringTileCount){
-        // Until the first valid collector response gives us the tile count, only request tile 0.
-        tileIndex=0;osmRunState.nextTile=1;
-       }else if(osmRunState.nextTile<osmRunState.totalTiles){
-        tileIndex=osmRunState.nextTile++;
-       }else if(osmRunState.failedTiles.size&&osmRunState.retryRound<2){
-        if(osmRunState.retryCursor>=osmRunState.retryQueue.length){
-         osmRunState.retryRound++;osmRunState.retryQueue=Array.from(osmRunState.failedTiles.keys());osmRunState.retryCursor=0;
-        }
-        if(osmRunState.retryRound>2||osmRunState.retryCursor>=osmRunState.retryQueue.length)break;
-        tileIndex=osmRunState.retryQueue[osmRunState.retryCursor++];endpointAttempt=osmRunState.retryRound;
-       }else break;
-       $("osmDryRunMessage").textContent="Ogun discovery: tile "+(tileIndex+1)+" / "+(osmRunState.totalTiles??"establishing tile plan")+(endpointAttempt?" · retry "+endpointAttempt+"/2":"")+" · "+osmRunState.candidates.size+" unique candidates. Please keep this page open.";
-       let data;
+      // Faster resumable collection: establish the tile plan once, then process
+      // three independent tiles concurrently. Progress is persisted after each batch.
+      const processTile=async(tileIndex,endpointAttempt=0)=>{
        try{
-        data=await invokeOsmTile({area,dry_run:true,tile_index:tileIndex,endpoint_attempt:endpointAttempt});
+        const data=await invokeOsmTile({area,dry_run:true,tile_index:tileIndex,endpoint_attempt:endpointAttempt});
+        if(!Number.isInteger(data.tile_summary?.tile_count)||data.tile_summary.tile_count<1){
+         return {tileIndex,ok:false,detail:"Collector response did not include a valid tile count.",endpoint:"Supabase Edge Function",status:"invalid_response",discovering:false};
+        }
+        if(data.tile_summary.tile_index!==tileIndex){
+         return {tileIndex,ok:false,detail:"Collector returned a response for a different tile index.",endpoint:data.upstream_endpoint||"Supabase Edge Function",status:"tile_mismatch",discovering:false};
+        }
+        if(data.tile_failed){
+         return {tileIndex,ok:false,detail:data.tile_error||"Upstream request failed",endpoint:data.upstream_endpoint||"Unknown endpoint",status:data.upstream_status??0,discovering:false};
+        }
+        return {tileIndex,ok:true,data};
        }catch(callError){
-        osmRunState.failedTiles.set(tileIndex,{detail:callError.message||"Request failed",endpoint:"Browser → Supabase Edge Function",status:"request_error"});
-        if(discoveringTileCount)osmRunState.nextTile=0;
-        renderRows();persistOsmRun();
-        if(discoveringTileCount)break;
-        continue;
+        return {tileIndex,ok:false,detail:callError.message||"Request failed",endpoint:"Browser → Supabase Edge Function",status:"request_error",discovering:false};
        }
-       if(!Number.isInteger(data.tile_summary?.tile_count)||data.tile_summary.tile_count<1){
-        osmRunState.failedTiles.set(tileIndex,{detail:"Collector response did not include a valid tile count.",endpoint:"Supabase Edge Function",status:"invalid_response"});
-        if(discoveringTileCount)osmRunState.nextTile=0;
-        renderRows();
-        if(discoveringTileCount)break;
-        continue;
+      };
+      const applyTileResult=result=>{
+       if(!result.ok){
+        osmRunState.failedTiles.set(result.tileIndex,{detail:result.detail,endpoint:result.endpoint,status:result.status});
+        return;
        }
-       if(osmRunState.totalTiles===null)osmRunState.totalTiles=data.tile_summary.tile_count;
-       if(data.tile_summary.tile_index!==tileIndex){
-        osmRunState.failedTiles.set(tileIndex,{detail:"Collector returned a response for a different tile index.",endpoint:data.upstream_endpoint||"Supabase Edge Function",status:"tile_mismatch"});
-       }else if(data.tile_failed){
-        osmRunState.failedTiles.set(tileIndex,{detail:data.tile_error||"Upstream request failed",endpoint:data.upstream_endpoint||"Unknown endpoint",status:data.upstream_status??0});
+       const data=result.data;
+       osmRunState.failedTiles.delete(result.tileIndex);
+       osmRunState.successTiles.add(result.tileIndex);
+       osmRunState.rawCount+=data.raw_map_candidates||0;
+       osmRunState.insideCount+=data.inside_boundary_candidates||0;
+       (data.candidates||[]).forEach(x=>osmRunState.candidates.set(x.osm_type+"/"+x.osm_id,x));
+      };
+      // Tile 0 establishes the validated state boundary and total tile count.
+      if(osmRunState.totalTiles===null){
+       $("osmDryRunMessage").textContent="Ogun discovery: preparing validated tile plan…";
+       const first=await processTile(0,0);
+       if(!first.ok){
+        osmRunState.failedTiles.set(0,{detail:first.detail,endpoint:first.endpoint,status:first.status});
+        osmRunState.nextTile=0;
        }else{
-        osmRunState.failedTiles.delete(tileIndex);osmRunState.successTiles.add(tileIndex);
-        osmRunState.rawCount+=data.raw_map_candidates||0;osmRunState.insideCount+=data.inside_boundary_candidates||0;
-        (data.candidates||[]).forEach(x=>osmRunState.candidates.set(x.osm_type+"/"+x.osm_id,x));
+        osmRunState.totalTiles=first.data.tile_summary.tile_count;
+        applyTileResult(first);
+        osmRunState.nextTile=1;
        }
        renderRows();persistOsmRun();
-       $("osmDryRunMessage").textContent="Ogun discovery: "+osmRunState.successTiles.size+" / "+osmRunState.totalTiles+" tiles successful · "+osmRunState.failedTiles.size+" pending/failed · "+osmRunState.candidates.size+" unique candidates"+(endpointAttempt?" · retry pass "+endpointAttempt+"/2":"")+". No records imported.";
-       await new Promise(resolve=>setTimeout(resolve,180));
+      }
+      // Three concurrent requests reduce repeated browser/Edge round trips while
+      // keeping public Overpass traffic bounded.
+      const BATCH_SIZE=3;
+      while(osmRunState.totalTiles!==null){
+       let batch=[];
+       while(batch.length<BATCH_SIZE&&osmRunState.nextTile<osmRunState.totalTiles){
+        batch.push({tileIndex:osmRunState.nextTile++,endpointAttempt:0});
+       }
+       if(batch.length===0&&osmRunState.failedTiles.size&&osmRunState.retryRound<2){
+        osmRunState.retryRound++;
+        osmRunState.retryQueue=Array.from(osmRunState.failedTiles.keys());
+        osmRunState.retryCursor=0;
+        while(batch.length<BATCH_SIZE&&osmRunState.retryCursor<osmRunState.retryQueue.length){
+         batch.push({tileIndex:osmRunState.retryQueue[osmRunState.retryCursor++],endpointAttempt:osmRunState.retryRound});
+        }
+       }
+       if(batch.length===0)break;
+       $("osmDryRunMessage").textContent="Ogun discovery: processing "+batch.length+" tiles together · "+osmRunState.successTiles.size+" / "+osmRunState.totalTiles+" successful · "+osmRunState.candidates.size+" unique candidates. Please keep this page open.";
+       const results=await Promise.all(batch.map(item=>processTile(item.tileIndex,item.endpointAttempt)));
+       results.forEach(applyTileResult);
+       renderRows();persistOsmRun();
+       $("osmDryRunMessage").textContent="Ogun discovery: "+osmRunState.successTiles.size+" / "+osmRunState.totalTiles+" tiles successful · "+osmRunState.failedTiles.size+" pending/failed · "+osmRunState.candidates.size+" unique candidates. No records imported.";
+       await new Promise(resolve=>setTimeout(resolve,100));
       }
       const failures=Array.from(osmRunState.failedTiles.entries()).slice(0,4).map(([index,item])=>"tile "+(index+1)+": "+item.status+" — "+item.endpoint+" — "+item.detail).join(" | ");
       $("osmDryRunMessage").textContent=osmRunState.totalTiles===null
