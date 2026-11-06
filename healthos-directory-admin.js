@@ -98,8 +98,22 @@
      }else{
       const rows=data.records||[];
       const lgas=[...new Set(rows.map(x=>String(x.local_government_area||"").trim()).filter(Boolean))].sort();
-      message.textContent=selectedState+" preview complete: "+(data.matching_record_count??rows.length)+" matching records; showing "+rows.length+". "+lgas.length+" distinct LGAs represented. "+data.state_label_match_count+" passed state-label screening; "+data.coordinate_valid_count+" have coordinates. LGA boundary validation remains pending. No records imported.";
-      $("grid3PreviewRows").innerHTML=rows.map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc([x.local_government_area,x.ward].filter(Boolean).join(" / "))+'</td><td>'+esc([x.ownership,x.facility_level].filter(Boolean).join(" / "))+'</td><td>'+esc((x.latitude??"—")+", "+(x.longitude??"—"))+'</td><td>'+esc(x.nhfr_uid||x.nhfr_facility_code||x.source_record_id)+'</td></tr>').join("")||'<tr><td colspan="5">No facilities returned.</td></tr>';
+      const normName=v=>String(v||"").toLowerCase().normalize("NFKD").replace(/[\\u0300-\\u036f]/g,"").replace(/\\b(hospital|clinic|health|centre|center|maternity|home|medical|general)\\b/g," ").replace(/[^a-z0-9]+/g," ").trim().replace(/\\s+/g," ");
+      const distanceM=(a,b)=>{if(!Number.isFinite(Number(a.latitude))||!Number.isFinite(Number(a.longitude))||!Number.isFinite(Number(b.latitude))||!Number.isFinite(Number(b.longitude)))return Infinity;const rad=v=>v*Math.PI/180,lat1=rad(Number(a.latitude)),lat2=rad(Number(b.latitude)),dlat=lat2-lat1,dlon=rad(Number(b.longitude)-Number(a.longitude)),h=Math.sin(dlat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dlon/2)**2;return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));};
+      const duplicateReasons=new Map();
+      for(let i=0;i<rows.length;i++)for(let j=i+1;j<rows.length;j++){
+       const a=rows[i],b=rows[j],na=normName(a.public_name),nb=normName(b.public_name);
+       const sameArea=String(a.state||selectedState).toLowerCase()===String(b.state||selectedState).toLowerCase()&&String(a.local_government_area||"").toLowerCase()===String(b.local_government_area||"").toLowerCase();
+       const metres=distanceM(a,b),sameName=na.length>=5&&na===nb;
+       const sameIdentifier=String(a.nhfr_uid||"").trim()&&String(a.nhfr_uid||"").trim()===String(b.nhfr_uid||"").trim();
+       if((sameName&&sameArea&&(metres<=500||!Number.isFinite(metres)))||sameIdentifier){
+        const reason=sameIdentifier?"Same NHFR UID — verify; identifier alone is not proof":metres<=500?"Similar facility name and coordinates within "+Math.round(metres)+" m":"Same normalized name and administrative area";
+        duplicateReasons.set(i,reason);duplicateReasons.set(j,reason);
+       }
+      }
+      const duplicateCount=duplicateReasons.size;
+      message.textContent=selectedState+" preview complete: "+(data.matching_record_count??rows.length)+" matching records; showing "+rows.length+". "+lgas.length+" distinct LGAs represented. "+data.state_label_match_count+" passed state-label screening; "+data.coordinate_valid_count+" have coordinates. "+duplicateCount+" records flagged for possible duplicate review. Flags are suggestions only; no records merged or changed. No records imported.";
+      $("grid3PreviewRows").innerHTML=rows.map((x,i)=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc([x.local_government_area,x.ward].filter(Boolean).join(" / "))+'</td><td>'+esc([x.ownership,x.facility_level].filter(Boolean).join(" / "))+'</td><td>'+esc((x.latitude??"—")+", "+(x.longitude??"—"))+'</td><td>'+esc(x.nhfr_uid||x.nhfr_facility_code||x.source_record_id)+'</td><td>'+ (duplicateReasons.has(i)?'<strong>Review candidate</strong><br><small>'+esc(duplicateReasons.get(i))+'</small>':'No match found in this preview')+'</td></tr>').join("")||'<tr><td colspan="6">No facilities returned.</td></tr>';
      }
     }catch(e){
      message.textContent=e.message||"GRID3 operation failed. Check administrator access and try again.";
