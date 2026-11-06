@@ -71,7 +71,35 @@
   // The wrapper is hidden until management verification, so nesting the console
   // inside it makes the global Platform Directory Admin button appear unresponsive.
   const adminPanel=$("platformDirectoryAdmin");
+
   if(adminPanel && adminPanel.parentElement!==document.body){document.body.appendChild(adminPanel);}
+  if(adminPanel && !document.getElementById("ngBoundaryImportCard")){
+   const card=document.createElement("section");
+   card.id="ngBoundaryImportCard";
+   card.style.cssText="margin:18px 0;padding:18px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;color:#102b46";
+   card.innerHTML='<h3 style="margin-top:0">Nigeria State & LGA Boundary Import</h3><p>Import official World Bank administrative polygons into the restricted geographic reference table. This does not publish or verify hospital records.</p><button id="ngBoundaryImportButton" class="primary-button" type="button">Import Nigeria state and LGA boundaries</button><p id="ngBoundaryImportMessage" class="message" role="status" aria-live="polite"></p>';
+   adminPanel.insertBefore(card,adminPanel.firstChild);
+   card.querySelector("#ngBoundaryImportButton").addEventListener("click",async ev=>{
+    const button=ev.currentTarget,msg=card.querySelector("#ngBoundaryImportMessage");
+    if(!confirm("Import Nigeria state and LGA boundary polygons from the World Bank official boundary service? This writes only geographic reference polygons; it does not alter, verify, or publish any hospital record."))return;
+    button.disabled=true;msg.textContent="Contacting the boundary importer. Please keep this page open…";
+    try{
+     const {data:{session}}=await client.auth.getSession();
+     if(!session?.access_token)throw new Error("Your administrator session has expired. Sign in again.");
+     const response=await fetch(URL+"/functions/v1/healthos-ng-boundary-import",{
+      method:"POST",
+      headers:{Authorization:"Bearer "+session.access_token,apikey:KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({action:"import_nigeria_boundaries"})
+     });
+     const result=await response.json().catch(()=>({error:"Invalid boundary-import response"}));
+     if(!response.ok)throw new Error(result.error||"Boundary import failed (HTTP "+response.status+")");
+     const counts=result.stored_counts||{};
+     msg.textContent="Import response: "+JSON.stringify(result.import_summary||[])+" Stored polygons — states: "+(counts.states??"not reported")+", LGAs: "+(counts.lgas??"not reported")+". "+(result.note||"");
+     msg.className="message success";
+    }catch(error){msg.textContent=error.message||"Boundary import failed.";msg.className="message error";}
+    finally{button.disabled=false;}
+   });
+  }
   $("openDirectoryAdminButton").addEventListener("click",()=>{$("platformDirectoryAdmin").hidden=false;$("platformDirectoryAdmin").scrollIntoView({behavior:"smooth"});load();});
   const directoryNav=$("platformDirectoryAdminNav");if(directoryNav)directoryNav.addEventListener("click",e=>{e.preventDefault();$("openDirectoryAdminButton").click();});
   $("directoryAdminClose").addEventListener("click",()=>{$("platformDirectoryAdmin").hidden=true;});
