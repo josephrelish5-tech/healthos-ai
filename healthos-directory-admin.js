@@ -125,7 +125,7 @@
       osmRunState.retryRound=0;osmRunState.retryQueue=[];osmRunState.retryCursor=0;
     }
     button.disabled=true;
-    const renderRows=()=>{const rows=Array.from(osmRunState.candidates.values());$("osmDryRunRows").innerHTML=rows.map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc(x.raw_tags?.amenity||x.raw_tags?.healthcare||"Unclassified")+'</td><td>'+esc(Number(x.latitude).toFixed(5)+", "+Number(x.longitude).toFixed(5))+'</td><td>'+esc(x.osm_type+"/"+x.osm_id)+'</td></tr>').join("")||'<tr><td colspan="4">No named candidates returned yet.</td></tr>';renderOgunLgaCoverage();};
+    const renderRows=()=>{const rows=Array.from(osmRunState.candidates.values());$("osmDryRunRows").innerHTML=rows.map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc(x.raw_tags?.amenity||x.raw_tags?.healthcare||"Unclassified")+'</td><td>'+esc(x.local_government_area||"Unassigned")+'</td><td>'+esc(Number(x.latitude).toFixed(5)+", "+Number(x.longitude).toFixed(5))+'</td><td>'+esc(x.osm_type+"/"+x.osm_id)+'</td></tr>').join("")||'<tr><td colspan="5">No named candidates returned yet.</td></tr>';renderOgunLgaCoverage();};
     const invokeOsmTile=async body=>{
       const {data:{session},error:sessionError}=await client.auth.getSession();
       if(sessionError)throw Error("Could not retrieve the signed-in session: "+sessionError.message);
@@ -149,13 +149,13 @@
     const errorText=async error=>{let message=error?.message||"Request failed.";if(error?.context instanceof Response){try{const p=await error.context.clone().json();message=p.error||message;if(p.detail)message+=" — "+p.detail;if(p.tile_error)message+=" — "+p.tile_error;}catch(_){}}return message;};
     try{
      if(!isOgun){
-      $("osmDryRunMessage").textContent="Searching OpenStreetMap…";$("osmDryRunRows").innerHTML='<tr><td colspan="4">Searching…</td></tr>';
+      $("osmDryRunMessage").textContent="Searching OpenStreetMap…";$("osmDryRunRows").innerHTML='<tr><td colspan="5">Searching…</td></tr>';
       const {data,error}=await client.functions.invoke("healthos-osm-hospital-collector",{body:{area,dry_run:true}});
       if(error)throw Error(await errorText(error));if(data?.error)throw Error(data.error);
       const rows=data.candidates||[];osmRunState.candidates=new Map(rows.map(x=>[x.osm_type+"/"+x.osm_id,x]));osmRunState.rawCount=data.raw_map_candidates??data.found??0;osmRunState.insideCount=data.inside_boundary_candidates??osmRunState.rawCount;renderRows();
       $("osmDryRunMessage").textContent="Dry run complete: "+osmRunState.rawCount+" map elements; "+(data.valid_named_candidates??rows.length)+" named candidates. Nothing was imported.";
      }else{
-      $("osmDryRunRows").innerHTML='<tr><td colspan="4">Preparing state-wide search…</td></tr>';
+      $("osmDryRunRows").innerHTML='<tr><td colspan="5">Preparing state-wide search…</td></tr>';
       while(true){
        let tileIndex,endpointAttempt=0,discoveringTileCount=osmRunState.totalTiles===null;
        if(discoveringTileCount){
