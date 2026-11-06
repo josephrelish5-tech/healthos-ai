@@ -14,6 +14,10 @@
   let placeLookupTimer = null;
   let lastPlaceLookupAt = 0;
   let lastPlaceLookupKey = "";
+  let baseTileLayer = null;
+  let fallbackTileLayer = null;
+  let tileErrorCount = 0;
+  let usingFallbackTiles = false;
   const defaultCenter = [6.82, 3.48]; // Obafemi Owode, Ogun State (regional fallback only)
   function el(id) { return document.getElementById(id); }
   function escapeText(value) { return String(value || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -118,10 +122,26 @@
     const node=el("hospitalDiscoveryMap");
     if(!node || !window.L || map) return;
     map=L.map(node,{zoomControl:false,scrollWheelZoom:true,preferCanvas:true}).setView(defaultCenter,12);
-    // Public OpenStreetMap tiles do not require a CARTO API key.
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-      subdomains:["a","b","c"],maxZoom:19,maxNativeZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    // Primary OSM basemap with an automatic CARTO fallback if tile requests fail.
+    const tileAttribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    fallbackTileLayer=L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{
+      subdomains:["a","b","c","d"],maxZoom:20,attribution:tileAttribution
+    });
+    baseTileLayer=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+      subdomains:["a","b","c"],maxZoom:19,maxNativeZoom:19,attribution:tileAttribution
     }).addTo(map);
+    baseTileLayer.on("tileerror",()=>{
+      tileErrorCount++;
+      if(tileErrorCount>=3&&!usingFallbackTiles){
+        usingFallbackTiles=true;
+        if(map.hasLayer(baseTileLayer))map.removeLayer(baseTileLayer);
+        fallbackTileLayer.addTo(map);
+        setStatus("Switching map provider after OpenStreetMap tile errors…");
+      }
+    });
+    baseTileLayer.on("load",()=>{if(!usingFallbackTiles)setStatus("Map tiles loaded. Search an area or zoom in to explore.");});
+    fallbackTileLayer.on("load",()=>{if(usingFallbackTiles)setStatus("Map loaded using the backup map provider.");});
+    fallbackTileLayer.on("tileerror",()=>setStatus("Map providers are not responding. Check your internet connection and reload."));
     // Make hospital-name labels readable when users zoom in.
     if(!document.getElementById("healthos-hospital-map-label-style")){
       const style=document.createElement("style"); style.id="healthos-hospital-map-label-style";
