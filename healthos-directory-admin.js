@@ -87,17 +87,17 @@
     const previewButton=$("grid3PreviewButton"),stageButton=$("grid3StageButton");
     if(previewButton)previewButton.disabled=true;if(stageButton)stageButton.disabled=true;
     const message=$("grid3PreviewMessage");
-    message.textContent=action==="stage_for_review"?"Retrieving Ogun records and staging them in the restricted manual-review queue…":"Querying GRID3 facilities across Ogun State…";
+    const selectedState=$("grid3StateSelect")?.value||"Lagos";\n    message.textContent=action==="stage_for_review"?"Retrieving "+selectedState+" records and staging them in the restricted manual-review queue…":"Retrieving GRID3 facilities for "+selectedState+"…";
     if(action!=="stage_for_review")$("grid3PreviewRows").innerHTML='<tr><td colspan="5">Loading preview…</td></tr>';
     try{
-     const {data,error}=await client.functions.invoke("healthos-grid3-hospital-collector",{body:{action}});
+     const {data,error}=await client.functions.invoke("healthos-grid3-hospital-collector",{body:{action,state:selectedState}});
      if(error)throw error;if(data?.error)throw Error(data.error+(data.details?": "+data.details:""));
      if(action==="stage_for_review"){
-      message.textContent="Staging complete: "+data.newly_staged_count+" new records added to restricted manual review. "+data.unique_record_count+" unique records retrieved; "+data.coordinate_valid_count+" have coordinates. Nothing was published.";
+      message.textContent=selectedState+" staging complete: "+data.newly_staged_count+" new records added to restricted manual review. "+data.unique_record_count+" unique records retrieved; "+data.coordinate_valid_count+" have coordinates. LGA validation remains pending. Nothing was published.";
      }else{
       const rows=data.records||[];
       const lgas=[...new Set(rows.map(x=>String(x.local_government_area||"").trim()).filter(Boolean))].sort();
-      message.textContent="Preview complete: "+(data.matching_record_count??rows.length)+" matching records; showing "+rows.length+". "+lgas.length+" distinct LGAs represented. "+data.coordinate_valid_count+" records have valid coordinates. No records imported.";
+      message.textContent=selectedState+" preview complete: "+(data.matching_record_count??rows.length)+" matching records; showing "+rows.length+". "+lgas.length+" distinct LGAs represented. "+data.state_label_match_count+" passed state-label screening; "+data.coordinate_valid_count+" have coordinates. LGA boundary validation remains pending. No records imported.";
       $("grid3PreviewRows").innerHTML=rows.map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc([x.local_government_area,x.ward].filter(Boolean).join(" / "))+'</td><td>'+esc([x.ownership,x.facility_level].filter(Boolean).join(" / "))+'</td><td>'+esc((x.latitude??"—")+", "+(x.longitude??"—"))+'</td><td>'+esc(x.nhfr_uid||x.nhfr_facility_code||x.source_record_id)+'</td></tr>').join("")||'<tr><td colspan="5">No facilities returned.</td></tr>';
      }
     }catch(e){
