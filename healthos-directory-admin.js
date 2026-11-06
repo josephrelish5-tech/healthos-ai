@@ -192,10 +192,10 @@
    const stageButton=$("grid3StageButton");
    const syncGrid3StageAvailability=()=>{
     const selected=$("grid3StateSelect")?.value||"";
-    const allowed=selected.toUpperCase()==="OGUN";
+    const allowed=Boolean(selected);
     stageButton.disabled=!allowed;
-    stageButton.title=allowed?"Stage Ogun records into restricted manual review only.":"Staging is currently restricted to the existing Ogun workflow.";
-    stageButton.textContent=allowed?"Stage Ogun records for review":"Staging unavailable — Ogun only";
+    stageButton.title=allowed?"Stage only the selected state into restricted manual review. Existing source identifiers are deduplicated.":"Select a state before staging.";
+    stageButton.textContent=allowed?"Stage "+selected+" records for review":"Select a state to stage";
    };
    $("grid3StateSelect").addEventListener("change",syncGrid3StageAvailability);
    syncGrid3StageAvailability();
