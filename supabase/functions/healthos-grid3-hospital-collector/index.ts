@@ -49,16 +49,23 @@ Deno.serve(async (req) => {
     if (sourceError || !source) return json({ error: "GRID3 source registry record not found" }, 500);
     if (source.is_enabled) return json({ error: "Preview blocked while source is enabled for another workflow." }, 409);
     if (body?.action === "reconciliation_summary") {
-      const { data: staged, error: stagedError } = await adminClient
-        .from("healthos_grid3_hospital_staging")
-        .select("state,review_status,nhfr_uid,latitude,longitude,public_name")
-        .eq("source_id", SOURCE_ID);
-      if (stagedError) return json({ error: "Could not read restricted staging records", details: stagedError.message }, 500);
+      const staged: any[] = [];
+      for (let offset = 0; ; offset += 1000) {
+        const { data: page, error: stagedError } = await adminClient
+          .from("healthos_grid3_hospital_staging")
+          .select("state,review_status,nhfr_uid,latitude,longitude,public_name")
+          .eq("source_id", SOURCE_ID)
+          .range(offset, offset + 999);
+        if (stagedError) return json({ error: "Could not read restricted staging records", details: stagedError.message }, 500);
+        staged.push(...(page || []));
+        if (!page || page.length < 1000) break;
+        if (staged.length > 100000) return json({ error: "Unexpected staging volume; reconciliation stopped safely." }, 500);
+      }
       const { count: directoryCount, error: directoryError } = await adminClient
         .from("healthos_hospital_directory")
         .select("id", { count: "exact", head: true });
       if (directoryError) return json({ error: "Could not count directory records", details: directoryError.message }, 500);
-      const rows = staged || [];
+      const rows = staged;
       const byState = new Map<string, any>();
       const uidCounts = new Map<string, number>();
       for (const row of rows) {
