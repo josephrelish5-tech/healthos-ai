@@ -4,6 +4,7 @@
   let map = null;
   let markers = [];
   let userMarker = null;
+  let currentUserLocation = null;
   let accuracyCircle = null;
   let watchId = null;
   let lastHospitals = [];
@@ -17,11 +18,13 @@
   function el(id) { return document.getElementById(id); }
   function escapeText(value) { return String(value || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
   function setStatus(message) { const node=el("hospitalMapStatus"); if(node) node.textContent=message; }
-  function directionsUrl(h) {
+  function directionsUrl(h, mode) {
     const destination = h.latitude != null && h.longitude != null ? h.latitude + "," + h.longitude :
       [h.hospital_name,h.address,h.city,h.state,h.country_code].filter(Boolean).join(", ");
+    const params = new URLSearchParams({ api: "1", destination, travelmode: mode || "driving" });
+    if (currentUserLocation) params.set("origin", currentUserLocation.latitude + "," + currentUserLocation.longitude);
     // Google Maps Directions URLs work without a Maps API key or billing account.
-    return "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(destination) + "&travelmode=driving";
+    return "https://www.google.com/maps/dir/?" + params.toString();
   }
   function selectHospital(hospitalId) {
     const h=lastHospitals.find(x=>String(x.hospital_id)===String(hospitalId));
@@ -56,8 +59,10 @@
         rating.textContent=reviewCount>0 ? "Patient rating: "+average.toFixed(1)+" / 5 ("+reviewCount+" published review"+(reviewCount===1?"":"s")+")" : "No published patient reviews yet";
         const actions=document.createElement("div"); actions.className="hospital-card-actions";
         const show=document.createElement("button"); show.type="button"; show.className="secondary-button"; show.textContent="Show on map"; show.addEventListener("click",()=>selectHospital(h.hospital_id));
-        const directions=document.createElement("a"); directions.className="primary-button"; directions.href=directionsUrl(h); directions.target="_blank"; directions.rel="noopener noreferrer"; directions.textContent="Open in Google Maps";
-        actions.append(show,directions);
+        const directions=document.createElement("a"); directions.className="primary-button"; directions.href=directionsUrl(h,"driving"); directions.target="_blank"; directions.rel="noopener noreferrer"; directions.textContent="Driving directions";
+        const walking=document.createElement("a"); walking.className="secondary-button"; walking.href=directionsUrl(h,"walking"); walking.target="_blank"; walking.rel="noopener noreferrer"; walking.textContent="Walking route";
+        const transit=document.createElement("a"); transit.className="secondary-button"; transit.href=directionsUrl(h,"transit"); transit.target="_blank"; transit.rel="noopener noreferrer"; transit.textContent="Public transport";
+        actions.append(show,directions,walking,transit);
         // Public contact links are shown only when the hospital has supplied them.
         const contactLinks=[];
         const phone=String(h.public_phone||"").trim();
@@ -327,8 +332,11 @@
       "Some locations may not have address details in OpenStreetMap yet.");
   }
   function showUserLocation(lat,lng,accuracy) {
-    if(!map||!window.L) return;
+    currentUserLocation = { latitude: Number(lat), longitude: Number(lng) };
     const point=[lat,lng];
+    // Refresh route links so newly available GPS becomes the route origin.
+    if (lastHospitals.length) renderCards(lastHospitals);
+    if(!map||!window.L) return;
     const icon=L.divIcon({className:"healthos-user-location-icon",html:'<span class="healthos-user-location-dot"></span>',iconSize:[24,24],iconAnchor:[12,12]});
     if(!userMarker) userMarker=L.marker(point,{icon,zIndexOffset:1000,interactive:false}).addTo(map); else userMarker.setLatLng(point);
     if(accuracyCircle) accuracyCircle.remove();
