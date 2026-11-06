@@ -1436,6 +1436,15 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
             p_limit: 50,
             p_offset: 0
         };
+        // Recenter the map independently of the hospital database request.
+        // A slow/failed directory RPC must not leave the map at its old default location.
+        if (window.HealthOSHospitalDiscovery) {
+            await window.HealthOSHospitalDiscovery.focusSearchLocation(
+                hasGps ? latitudeValue : null,
+                hasGps ? longitudeValue : null,
+                hasGps ? "your live location" : [cityValue, state].filter(Boolean).join(", ")
+            );
+        }
         let hospitals = [];
         if (hasGps) {
             message.textContent = "Searching approved hospitals within " + requestedRadiusKm + " km of your live location…";
@@ -1560,11 +1569,6 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
             }
         }));
         if (window.HealthOSHospitalDiscovery) {
-            await window.HealthOSHospitalDiscovery.focusSearchLocation(
-                hasGps ? latitudeValue : null,
-                hasGps ? longitudeValue : null,
-                hasGps ? "your live location" : [cityValue, state].filter(Boolean).join(", ")
-            );
             window.HealthOSHospitalDiscovery.render(hospitals);
         }
         if (!hospitals.length) {
