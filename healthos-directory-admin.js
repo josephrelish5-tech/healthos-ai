@@ -130,6 +130,54 @@
   }catch(error){$("boundaryReconciliationMessage").textContent=error.message||"Could not save decision.";}
   finally{button.disabled=false;}
  }
+
+ let codeReconciliationOffset=0;
+ async function loadCodeReconciliation(){
+  const panel=$("codeReconciliationPanel"); if(!panel)return;
+  const message=$("codeReconciliationMessage"),rows=$("codeReconciliationRows");
+  const status=$("codeReconciliationStatus")?.value||"";
+  const classification=$("codeReconciliationClass")?.value||"";
+  message.textContent="Loading restricted code-reconciliation cases…";
+  try{
+   const {data:{session}}=await client.auth.getSession();
+   if(!session?.access_token)throw Error("Administrator session expired. Sign in again.");
+   const params=new URLSearchParams({view:"code_cases",limit:"200",offset:String(codeReconciliationOffset)});
+   if(status)params.set("status",status); if(classification)params.set("classification",classification);
+   const response=await fetch(URL+"/functions/v1/healthos-geo-reconciliation-admin?"+params.toString(),{headers:{Authorization:"Bearer "+session.access_token,apikey:KEY}});
+   const result=await response.json().catch(()=>({error:"Invalid code review response"}));
+   if(!response.ok)throw Error(result.error||"Could not load code-reconciliation cases.");
+   const cases=result.cases||[];
+   rows.innerHTML=cases.map(c=>{
+    const final=["approved","rejected"].includes(c.review_status);
+    const options=["approved","rejected","needs_evidence","returned_for_review"].map(v=>'<option value="'+v+'">'+v.replaceAll("_"," ")+'</option>').join("");
+    const ev=c.evidence||{};
+    return '<tr><td>'+esc(c.code_key)+'</td><td>'+esc([c.ocha_state_name,c.ocha_lga_name].filter(Boolean).join(" / ")||"—")+'<br><small>'+esc([c.ocha_state_code,c.ocha_lga_code].filter(Boolean).join(" / "))+'</small></td><td>'+esc([c.world_bank_state_name,c.world_bank_lga_name].filter(Boolean).join(" / ")||"—")+'<br><small>'+esc([c.world_bank_state_code,c.world_bank_lga_code].filter(Boolean).join(" / "))+'</small></td><td>'+esc(c.match_classification.replaceAll("_"," "))+'</td><td>'+esc(c.review_status)+'</td><td><small>'+esc(c.reviewer_notes||"No review notes")+'</small></td><td><input data-code-notes="'+esc(c.id)+'" maxlength="4000" placeholder="Evidence-based notes (required)" style="min-width:190px"><input data-code-state="'+esc(c.id)+'" placeholder="Canonical state (approval)" style="min-width:160px;margin-top:4px"><input data-code-lga="'+esc(c.id)+'" placeholder="Canonical LGA (approval)" style="min-width:160px;margin-top:4px"><select data-code-decision="'+esc(c.id)+'">'+options+'</select><button type="button" class="logout-button" data-code-save="'+esc(c.id)+'" '+(final?"disabled":"")+'>Save review</button></td></tr>';
+   }).join("")||'<tr><td colspan="7">No cases match these filters.</td></tr>';
+   message.textContent="Loaded "+cases.length+" of "+(result.total??cases.length)+" code cases · page "+(Math.floor(codeReconciliationOffset/200)+1)+". Code correspondence only; geometry remains unapproved and no public boundary or hospital record is changed.";
+   $("codeReconciliationPrev").disabled=codeReconciliationOffset===0;
+   $("codeReconciliationNext").disabled=codeReconciliationOffset+cases.length>=(result.total??cases.length);
+  }catch(error){message.textContent=error.message||"Code-reconciliation queue unavailable.";rows.innerHTML='<tr><td colspan="7">Restricted queue unavailable.</td></tr>';}
+ }
+ async function saveCodeReconciliation(id,button){
+  const notes=document.querySelector('[data-code-notes="'+id+'"]')?.value?.trim()||"";
+  const decision=document.querySelector('[data-code-decision="'+id+'"]')?.value||"";
+  const state=document.querySelector('[data-code-state="'+id+'"]')?.value?.trim()||"";
+  const lga=document.querySelector('[data-code-lga="'+id+'"]')?.value?.trim()||"";
+  if(notes.length<5){alert("Enter at least five characters of evidence-based notes.");return;}
+  if(decision==="approved"&&(!state||!lga)){alert("Approval requires canonical state and LGA names. This does not approve geometry.");return;}
+  if(!confirm("Save this code/name correspondence decision? It will not approve geometry, alter polygons or publish hospitals."))return;
+  button.disabled=true;
+  try{
+   const {data:{session}}=await client.auth.getSession();
+   if(!session?.access_token)throw Error("Administrator session expired. Sign in again.");
+   const response=await fetch(URL+"/functions/v1/healthos-geo-reconciliation-admin",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify({action:"review_code_case",case_id:id,decision,review_notes:notes,canonical_state_name:state||null,canonical_lga_name:lga||null})});
+   const result=await response.json().catch(()=>({error:"Invalid review response"}));
+   if(!response.ok)throw Error(result.error||"Code review save failed.");
+   $("codeReconciliationMessage").textContent=result.message||"Code review saved and audited.";
+   await loadCodeReconciliation();
+  }catch(error){$("codeReconciliationMessage").textContent=error.message||"Could not save code review.";}
+  finally{button.disabled=false;}
+ }
  async function load(){
   try{
    const d=await call();sources=(d.sources||[]);$("platformDirectoryAdmin").hidden=false;$("openDirectoryAdminButton").hidden=false;const nav=$("platformDirectoryAdminNav");if(nav)nav.hidden=false;
@@ -162,6 +210,21 @@
    reconciliationPanel.querySelector("#boundaryReconciliationNext").addEventListener("click",()=>{reconciliationOffset+=200;loadBoundaryReconciliation();});
    reconciliationPanel.querySelector("#boundaryReconciliationStatus").addEventListener("change",()=>{reconciliationOffset=0;loadBoundaryReconciliation();});
    reconciliationPanel.addEventListener("click",event=>{const button=event.target.closest("[data-recon-save]");if(button)saveBoundaryReconciliation(button.dataset.reconSave,button);});
+  }
+
+  if(adminPanel && !document.getElementById("codeReconciliationPanel")){
+   const codePanel=document.createElement("section");
+   codePanel.id="codeReconciliationPanel";
+   codePanel.style.cssText="margin:22px 0;padding:18px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;color:#102b46;overflow-x:auto";
+   codePanel.innerHTML='<h3 style="margin-top:0">OCHA ↔ World Bank Code Reconciliation — Restricted Review</h3><p>Review 775 code-based correspondence cases independently of geometry. Matching administrative codes or names does not prove that polygon boundaries are identical. Approval here records code/name correspondence only; it does not approve geometry, change official boundaries or publish hospitals.</p><div class="button-row"><label for="codeReconciliationStatus">Status</label><select id="codeReconciliationStatus"><option value="">All statuses</option><option value="proposed">Proposed</option><option value="in_review">In review</option><option value="needs_evidence">Needs evidence</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><label for="codeReconciliationClass">Classification</label><select id="codeReconciliationClass"><option value="">All classifications</option><option value="code_matched_name_exact">Code matched · exact name</option><option value="code_matched_name_variant">Code matched · name variant</option><option value="state_name_variant">State name variant</option><option value="ocha_only">OCHA only</option><option value="world_bank_only">World Bank only</option></select><button type="button" id="codeReconciliationRefresh" class="secondary-button">Refresh</button><button type="button" id="codeReconciliationPrev" class="secondary-button" disabled>Previous 200</button><button type="button" id="codeReconciliationNext" class="secondary-button">Next 200</button></div><p id="codeReconciliationMessage" class="message" role="status" aria-live="polite">Restricted code review queue not loaded yet.</p><div class="table-wrap"><table style="min-width:1250px"><thead><tr><th>Normalized code key</th><th>OCHA state / LGA and codes</th><th>World Bank state / LGA and codes</th><th>Classification</th><th>Status</th><th>Previous review notes</th><th>Decision and evidence</th></tr></thead><tbody id="codeReconciliationRows"><tr><td colspan="7">Open administrator console to load cases.</td></tr></tbody></table></div><p class="disclaimer">Restricted to authorised platform directory administrators. Every saved decision is audited. Code approval is not geometry approval.</p>';
+   const boundaryPanel=adminPanel.querySelector("#boundaryReconciliationPanel");
+   if(boundaryPanel)boundaryPanel.insertAdjacentElement("afterend",codePanel);else adminPanel.appendChild(codePanel);
+   codePanel.querySelector("#codeReconciliationRefresh").addEventListener("click",()=>{codeReconciliationOffset=0;loadCodeReconciliation();});
+   codePanel.querySelector("#codeReconciliationPrev").addEventListener("click",()=>{codeReconciliationOffset=Math.max(0,codeReconciliationOffset-200);loadCodeReconciliation();});
+   codePanel.querySelector("#codeReconciliationNext").addEventListener("click",()=>{codeReconciliationOffset+=200;loadCodeReconciliation();});
+   codePanel.querySelector("#codeReconciliationStatus").addEventListener("change",()=>{codeReconciliationOffset=0;loadCodeReconciliation();});
+   codePanel.querySelector("#codeReconciliationClass").addEventListener("change",()=>{codeReconciliationOffset=0;loadCodeReconciliation();});
+   codePanel.addEventListener("click",event=>{const button=event.target.closest("[data-code-save]");if(button)saveCodeReconciliation(button.dataset.codeSave,button);});
   }
   if(adminPanel && !document.getElementById("geographicReviewPanel")){
    const reviewPanel=document.createElement("section");
