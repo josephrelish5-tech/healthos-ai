@@ -1472,3 +1472,14 @@ th {
 #hospitalMap .healthos-map-stage{height:auto!important;max-height:none!important}
 #hospitalMap #hospitalDiscoveryMap{height:720px!important;min-height:720px!important;max-height:720px!important}
 @media(max-width:850px){#hospitalMap #hospitalDiscoveryMap{height:720px!important;min-height:720px!important;max-height:720px!important}}
+
+
+/* GRID3 nationwide preview: keep all six fields accessible on narrow screens. */
+.grid3-scroll-hint { margin: 8px 0; color: #526579; font-size: 12px; }
+.grid3-table-wrap { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #e2e8f0; border-radius: 8px; }
+.grid3-table-wrap table { min-width: 940px; }
+.grid3-table-wrap th, .grid3-table-wrap td { white-space: normal; }
+@media (max-width: 600px) {
+  .grid3-table-wrap table { min-width: 940px; }
+  .grid3-table-wrap th, .grid3-table-wrap td { padding: 12px 10px; }
+}
