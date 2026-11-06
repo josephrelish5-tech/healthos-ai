@@ -132,7 +132,7 @@
     });
    }
    $("osmDryRunButton").addEventListener("click",async()=>{
-    const button=$("osmDryRunButton"),area=$("osmCollectionArea").value,isOgun=area==="ogun_state";
+    const button=$("osmDryRunButton"),area=$("osmCollectionArea").value,selectedState=$("osmStateSelect")?.value||"",isOgun=area==="ogun_state"&&!selectedState;
     if(!isOgun||osmRunState.area!==area)osmRunState={...freshOsmRun(),area};
     if(isOgun&&osmRunState.area==="ogun_state")persistOsmRun();
     // If a previous run exhausted its two retry passes, a new manual run starts fresh retries.
@@ -164,11 +164,12 @@
     const errorText=async error=>{let message=error?.message||"Request failed.";if(error?.context instanceof Response){try{const p=await error.context.clone().json();message=p.error||message;if(p.detail)message+=" — "+p.detail;if(p.tile_error)message+=" — "+p.tile_error;}catch(_){}}return message;};
     try{
      if(!isOgun){
-      $("osmDryRunMessage").textContent="Searching OpenStreetMap…";$("osmDryRunRows").innerHTML='<tr><td colspan="5">Searching…</td></tr>';
-      const {data,error}=await client.functions.invoke("healthos-osm-hospital-collector",{body:{area,dry_run:true}});
+      $("osmDryRunMessage").textContent="Searching OpenStreetMap for "+(selectedState||area)+"…";$("osmDryRunRows").innerHTML='<tr><td colspan="5">Searching…</td></tr>';
+      const requestBody=selectedState?{state:selectedState,dry_run:true}:{area,dry_run:true};
+      const {data,error}=await client.functions.invoke("healthos-osm-hospital-collector",{body:requestBody});
       if(error)throw Error(await errorText(error));if(data?.error)throw Error(data.error);
       const rows=data.candidates||[];osmRunState.candidates=new Map(rows.map(x=>[x.osm_type+"/"+x.osm_id,x]));osmRunState.rawCount=data.raw_map_candidates??data.found??0;osmRunState.insideCount=data.inside_boundary_candidates??osmRunState.rawCount;renderRows();
-      $("osmDryRunMessage").textContent="Dry run complete: "+osmRunState.rawCount+" map elements; "+(data.valid_named_candidates??rows.length)+" named candidates. Nothing was imported.";
+      $("osmDryRunMessage").textContent="Dry run complete for "+(selectedState||area)+": "+osmRunState.rawCount+" map elements; "+(data.valid_named_candidates??rows.length)+" named candidates. Nothing was imported.";
      }else{
       $("osmDryRunRows").innerHTML='<tr><td colspan="5">Preparing state-wide search…</td></tr>';
       // Faster resumable collection: establish the tile plan once, then process
