@@ -49,6 +49,41 @@ Deno.serve(async (req) => {
     if (sourceError || !source) return json({ error: "GRID3 source registry record not found" }, 500);
     if (source.is_enabled) return json({ error: "Preview blocked while source is enabled for another workflow." }, 409);
 
+    if (body?.action === "coverage_summary") {
+      const summaryUrl = new URL(LAYER_URL);
+      summaryUrl.search = new URLSearchParams({
+        where: "1=1",
+        outFields: "state",
+        groupByFieldsForStatistics: "state",
+        outStatistics: JSON.stringify([{ statisticType: "count", onStatisticField: "OBJECTID", outStatisticFieldName: "facility_count" }]),
+        orderByFields: "state",
+        returnGeometry: "false",
+        f: "json"
+      }).toString();
+      const summaryResponse = await fetch(summaryUrl, { signal: AbortSignal.timeout(20000) });
+      if (!summaryResponse.ok) return json({ error: "GRID3 coverage summary request failed", upstream_status: summaryResponse.status }, 502);
+      const summaryData = await summaryResponse.json();
+      if (summaryData.error) return json({ error: "GRID3 coverage summary rejected", details: summaryData.error.message }, 502);
+      const stateCounts = (Array.isArray(summaryData.features) ? summaryData.features : [])
+        .map((feature: any) => ({
+          state: String(feature.attributes?.state || "").trim(),
+          facility_count: Number(feature.attributes?.facility_count || 0)
+        }))
+        .filter((row: any) => row.state)
+        .sort((a: any, b: any) => a.state.localeCompare(b.state));
+      return json({
+        mode: "coverage_summary",
+        dataset: "GRID3_NGA_health_facilities_v2_0",
+        source_id: SOURCE_ID,
+        state_count: stateCounts.length,
+        total_facility_records: stateCounts.reduce((sum: number, row: any) => sum + row.facility_count, 0),
+        state_counts: stateCounts,
+        staged: false,
+        published: false,
+        notice: "Read-only aggregate coverage report. No facility records were downloaded, staged, approved, or published."
+      });
+    }
+
     const stateFilter = requestedState === "FCT" ? "FEDERAL CAPITAL TERRITORY" : requestedState;
     const where = scope === "ogun"
       ? "UPPER(state) = 'OGUN'"
