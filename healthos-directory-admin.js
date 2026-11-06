@@ -166,7 +166,7 @@
   $("platformDirectoryAdmin").addEventListener("click",async e=>{
    const geoSave=e.target.closest("[data-geo-save]");
    if(geoSave){
-    const id=geoSave.dataset.geoSave,status=$("[data-geo-status='"+id+"']")?.value,notes=$("[data-geo-notes='"+id+"']")?.value?.trim(),evidence=$("[data-geo-evidence='"+id+"']")?.value?.trim()||"";
+    const id=geoSave.dataset.geoSave,status=document.querySelector('[data-geo-status="'+id+'"]')?.value,notes=document.querySelector('[data-geo-notes="'+id+'"]')?.value?.trim(),evidence=document.querySelector('[data-geo-evidence="'+id+'"]')?.value?.trim()||"";
     if(!notes||notes.length<5){alert("Enter at least five characters of reviewer notes, based on evidence.");return;}
     if(!confirm("Save this review decision? The original hospital source record will remain unchanged."))return;
     geoSave.disabled=true;
