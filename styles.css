@@ -1397,3 +1397,53 @@ th {
 .hospital-patient-review-form label{display:grid;gap:.35rem;font-weight:600;font-size:.9rem}
 .hospital-patient-review-form input,.hospital-patient-review-form select,.hospital-patient-review-form textarea{width:100%;padding:.7rem;border:1px solid #bcccdc;border-radius:8px;background:#fff;color:#102a43;font:inherit}
 .hospital-patient-review-form textarea{resize:vertical;min-height:90px}
+
+
+
+/* HealthOS AI public hospital finder — black and gold mobile map experience */
+#hospitalMap{background:#080907;color:#f4edcf;border:1px solid #292719;border-radius:22px;padding:clamp(14px,3vw,24px)}
+#hospitalMap>.panel-heading h2,#hospitalMap h3{color:#f2df9c}
+#hospitalMap .muted,#hospitalMap p{color:#c8c3ae}
+#hospitalMap .hospital-search-card,#hospitalMap .hospital-map-panel,#hospitalMap .hospital-cards-panel{
+ background:#11120d;border:1px solid #393523;border-radius:20px;color:#f4edcf;box-shadow:0 8px 24px rgba(0,0,0,.22)
+}
+#hospitalMap .hospital-search-title h3{color:#f2df9c}
+#hospitalMap .hospital-search-form label{color:#e8dfbd}
+#hospitalMap .hospital-search-form input{background:#1b1c16;color:#fff4d2;border:1px solid #51472a;border-radius:10px}
+#hospitalMap .hospital-search-form input::placeholder{color:#9e9987}
+#hospitalMap .hospital-search-actions .primary-button,#hospitalMap .hospital-card-actions .primary-button{background:#d9bd78;color:#19170f;border:1px solid #ead49a}
+#hospitalMap .hospital-search-actions .secondary-button,#hospitalMap .hospital-card-actions .secondary-button,#hospitalMap .healthos-map-locate{background:#202118;color:#f2df9c;border:1px solid #8f7944}
+#hospitalMap .hospital-nearby-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 2px 12px;color:#f2df9c}
+#hospitalMap .hospital-nearby-toolbar .eyebrow{margin:0 0 4px;color:#bba66d}
+#hospitalMap .hospital-radius-label{font-size:13px;color:#d7c58f}
+#hospitalMap .hospital-view-switch{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:5px;background:#171811;border:1px solid #49402a;border-radius:16px;margin:12px 0 16px}
+#hospitalMap .hospital-view-switch button{min-height:48px;border:0;border-radius:12px;background:transparent;color:#d5d0bd;font:inherit;font-weight:700}
+#hospitalMap .hospital-view-switch button.is-active{background:linear-gradient(135deg,#e6ce91,#c8a85d);color:#17150e;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+#hospitalMap .hospital-discovery-layout{display:block;margin:0}
+#hospitalMap .hospital-map-panel,#hospitalMap .hospital-cards-panel{padding:14px}
+#hospitalMap .hospital-map-heading span,#hospitalMap .hospital-verified-badge{background:#292617;color:#e6ce91;border:1px solid #75643b}
+#hospitalMap .healthos-map-stage{border:1px solid #54472a;border-radius:16px;overflow:hidden}
+#hospitalMap #hospitalDiscoveryMap{height:clamp(390px,68vh,680px)!important;min-height:390px!important;border-radius:15px}
+#hospitalMap .hospital-map-empty{background:#1b1c16;border-color:#655533;color:#ded4b4}
+#hospitalMap .hospital-discovery-card{background:#191a14;border:1px solid #49402a;box-shadow:none;color:#eee5c9}
+#hospitalMap .hospital-discovery-card h3{color:#f2df9c}
+#hospitalMap .hospital-discovery-card p{color:#c8c3ae}
+#hospitalMap .hospital-card-selected{border:2px solid #d9bd78;background:#242116}
+#hospitalMap .hospital-distance{color:#e2c77f!important}
+#hospitalMap .public-discovery-note{background:#171811;border:1px solid #49402a;color:#c8c3ae}
+#hospitalMap .leaflet-popup-content-wrapper,#hospitalMap .leaflet-popup-tip{background:#171811;color:#f2df9c}
+#hospitalMap .leaflet-control-zoom a{background:#1c1d16;color:#e6ce91;border-color:#655533}
+#hospitalMap .leaflet-control-attribution{background:rgba(12,13,10,.8);color:#c8c3ae}
+#hospitalMap .leaflet-control-attribution a{color:#e6ce91}
+@media(max-width:850px){
+ #hospitalMap .hospital-discovery-layout{grid-template-columns:1fr}
+ #hospitalMap .hospital-search-form{grid-template-columns:1fr 1fr}
+ #hospitalMap #hospitalDiscoveryMap{height:clamp(390px,62vh,620px)!important;min-height:390px!important}
+}
+@media(max-width:560px){
+ #hospitalMap{padding:12px;border-radius:18px}
+ #hospitalMap .hospital-search-form{grid-template-columns:1fr 1fr}
+ #hospitalMap .hospital-search-form label:nth-of-type(4),#hospitalMap .hospital-search-form label:nth-of-type(5),#hospitalMap .hospital-search-form label:nth-of-type(6){grid-column:1/-1}
+ #hospitalMap .hospital-nearby-toolbar{align-items:flex-end}
+ #hospitalMap #hospitalDiscoveryMap{height:62vh!important;min-height:390px!important}
+}
