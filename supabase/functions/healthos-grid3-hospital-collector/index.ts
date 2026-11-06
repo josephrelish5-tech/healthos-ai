@@ -32,8 +32,10 @@ Deno.serve(async (req) => {
       .select("user_id").eq("user_id", userData.user.id).eq("is_active", true).maybeSingle();
     if (!admin) return json({ error: "Active platform directory administrator access required" }, 403);
 
+    const body = await req.json().catch(() => ({}));
+    const action = body?.action === "stage_for_review" ? "stage_for_review" : "preview";
     const { data: source, error: sourceError } = await adminClient.from("healthos_hospital_directory_sources")
-      .select("id,is_enabled").eq("id", SOURCE_ID).maybeSingle();
+      .select("id,is_enabled,permission_review_status,data_license,permission_basis").eq("id", SOURCE_ID).maybeSingle();
     if (sourceError || !source) return json({ error: "GRID3 source registry record not found" }, 500);
     if (source.is_enabled) return json({ error: "Preview blocked while source is enabled for another workflow." }, 409);
 
@@ -85,19 +87,65 @@ Deno.serve(async (req) => {
         longitude: Number.isFinite(lon) && lon >= 2.5 && lon <= 4.8 ? lon : null,
         geocoordinates_source: a.geocoordinates_source ?? null,
         source_last_updated: a.last_updated ?? null,
-        source_status: "external_unverified"
+        source_status: "external_unverified",
+        raw_attributes: a
       };
     }).filter(Boolean);
     const coordinateValid = records.filter((r: any) => r.latitude !== null && r.longitude !== null).length;
 
+    if (action === "stage_for_review") {
+      // Stage into the restricted review queue only. Never publish to the public directory.
+      const stagedRows = records.map((r: any) => ({
+        source_id: SOURCE_ID,
+        source_record_id: r.source_record_id,
+        nhfr_uid: r.nhfr_uid == null ? null : String(r.nhfr_uid),
+        nhfr_facility_code: r.nhfr_facility_code == null ? null : String(r.nhfr_facility_code),
+        public_name: r.public_name,
+        country_code: "NG",
+        state: r.state,
+        local_government_area: r.local_government_area,
+        ward: r.ward,
+        ownership: r.ownership,
+        facility_level: r.facility_level,
+        latitude: r.latitude,
+        longitude: r.longitude,
+        geocoordinates_source: r.geocoordinates_source,
+        source_last_updated: r.source_last_updated || null,
+        source_url: "https://services3.arcgis.com/BU6Aadhn6tbBEdyk/arcgis/rest/services/GRID3_NGA_health_facilities_v2_0/FeatureServer/0",
+        data_license: "CC BY 4.0",
+        attribution_text: "Source: GRID3 NGA Health Facilities v2.0; Center for Integrated Earth System Information (CIESIN), Columbia University, 2024. DOI: 10.7916/kv1n-0743. Licensed under CC BY 4.0.",
+        raw_attributes: r.raw_attributes || {},
+        review_status: "review_required"
+      }));
+      let inserted = 0;
+      for (let offset = 0; offset < stagedRows.length; offset += 250) {
+        const batch = stagedRows.slice(offset, offset + 250);
+        const { data: saved, error: saveError } = await adminClient
+          .from("healthos_grid3_hospital_staging")
+          .upsert(batch, { onConflict: "source_id,source_record_id", ignoreDuplicates: true })
+          .select("id");
+        if (saveError) return json({ error: "Staging batch failed", details: saveError.message, inserted_before_error: inserted }, 500);
+        inserted += saved?.length || 0;
+      }
+      return json({
+        mode: "staged_for_human_review", staged: true, published: false,
+        source_id: SOURCE_ID, dataset: "GRID3_NGA_health_facilities_v2_0",
+        matching_record_count: total, retrieved_record_count: all.length,
+        unique_record_count: records.length, newly_staged_count: inserted,
+        coordinate_valid_count: coordinateValid,
+        coordinate_missing_or_out_of_bounds_count: records.length - coordinateValid,
+        review_status: "review_required",
+        notice: "Records were copied only into the restricted GRID3 staging review table. They are not public, not verified, and not HealthOS AI network members."
+      });
+    }
     return json({
-      mode: "preview_only", staged: false, source_id: SOURCE_ID,
+      mode: "preview_only", staged: false, published: false, source_id: SOURCE_ID,
       dataset: "GRID3_NGA_health_facilities_v2_0", state: "Ogun", lgas: "ALL_OGUN_LGAS",
       matching_record_count: total, retrieved_record_count: all.length,
       unique_record_count: records.length, preview_count: records.length, records,
       coordinate_valid_count: coordinateValid,
       coordinate_missing_or_out_of_bounds_count: records.length - coordinateValid,
-      notice: "Read-only preview. No database writes. All records remain externally sourced and unverified. Confirm reuse terms before import or republication."
+      notice: "Read-only preview. No database writes. All records remain externally sourced and unverified."
     });
   } catch (error) {
     return json({ error: "Collector failed", details: String(error) }, 500);
