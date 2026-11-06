@@ -1439,7 +1439,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
         let hospitals = [];
         if (hasGps) {
             message.textContent = "Searching approved hospitals within " + requestedRadiusKm + " km of your live location…";
-            const result = await supabaseClient.rpc("healthos_search_hospitals_v2", {
+            const result = await supabaseClient.rpc("healthos_search_hospitals_v3", {
                 ...baseParams, p_radius_km: requestedRadiusKm
             });
             if (result.error) throw result.error;
@@ -1486,7 +1486,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
                 const capital = stateCapitals[canonicalState(detectedState)];
                 if (capital) {
                     message.textContent = "No hospitals found within 100 km. Searching " + capital + ", the capital of " + detectedState + "…";
-                    const capitalResult = await supabaseClient.rpc("healthos_search_hospitals_v2", {
+                    const capitalResult = await supabaseClient.rpc("healthos_search_hospitals_v3", {
                         ...baseParams, p_latitude: null, p_longitude: null, p_radius_km: null,
                         p_state: detectedState, p_region: null, p_city: capital, p_lga: null
                     });
@@ -1498,7 +1498,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
             }
         } else {
             message.textContent = "Searching the location you entered…";
-            const result = await supabaseClient.rpc("healthos_search_hospitals_v2", baseParams);
+            const result = await supabaseClient.rpc("healthos_search_hospitals_v3", baseParams);
             if (result.error) throw result.error;
             hospitals = result.data || [];
             // Manual-location fallback follows the same state-capital rule when
@@ -1533,7 +1533,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
                 const entry = manualStateCapitals[manualStateKey];
                 if (entry) {
                     message.textContent = "No hospitals matched that area. Searching " + entry[1] + ", the capital of " + entry[0] + "…";
-                    const capitalResult = await supabaseClient.rpc("healthos_search_hospitals_v2", {
+                    const capitalResult = await supabaseClient.rpc("healthos_search_hospitals_v3", {
                         ...baseParams, p_region: null, p_state: entry[0], p_city: entry[1], p_lga: null
                     });
                     if (capitalResult.error) throw capitalResult.error;
