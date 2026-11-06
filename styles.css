@@ -1470,5 +1470,5 @@ th {
 
 /* Public hospital map: tall navigation canvas on phones and desktop. */
 #hospitalMap .healthos-map-stage{height:auto!important;max-height:none!important}
-#hospitalMap #hospitalDiscoveryMap{height:1200px!important;min-height:1200px!important;max-height:none!important}
-@media(max-width:850px){#hospitalMap #hospitalDiscoveryMap{height:1200px!important;min-height:1200px!important;max-height:none!important}}
+#hospitalMap #hospitalDiscoveryMap{height:720px!important;min-height:720px!important;max-height:720px!important}
+@media(max-width:850px){#hospitalMap #hospitalDiscoveryMap{height:720px!important;min-height:720px!important;max-height:720px!important}}
