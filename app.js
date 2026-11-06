@@ -1361,6 +1361,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
     const region = document.getElementById("hospitalSearchRegion").value.trim();
     const lga = document.getElementById("hospitalSearchLga").value.trim().replace(/\s+(?:LGA|Local Government Area)$/i, "").trim();
     const specialty = document.getElementById("hospitalSearchSpecialty").value.trim();
+    const hospitalNameQuery = document.getElementById("hospitalSearchName")?.value.trim() || "";
     // Derive Nigeria's geopolitical region from the selected state so a stale
     // or incorrectly typed region cannot exclude valid hospitals.
     const nigeriaRegions = {
@@ -1433,6 +1434,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
             p_city: hasGps ? null : (cityValue && cityValue.toLowerCase() !== "nearby" ? cityValue : null),
             p_lga: hasGps ? null : (lga || null),
             p_specialty: specialty || null,
+            p_search: hospitalNameQuery || null,
             p_limit: 50,
             p_offset: 0
         };
@@ -1442,7 +1444,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
             await window.HealthOSHospitalDiscovery.focusSearchLocation(
                 hasGps ? latitudeValue : null,
                 hasGps ? longitudeValue : null,
-                hasGps ? "your live location" : [cityValue, state].filter(Boolean).join(", ")
+                hasGps ? "your live location" : [lga, cityValue, state].filter(Boolean).join(", ")
             );
         }
         let hospitals = [];
@@ -1547,6 +1549,26 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
                     });
                     if (capitalResult.error) throw capitalResult.error;
                     hospitals = capitalResult.data || [];
+                }
+            }
+        }
+        // Supplement approved HealthOS directory results with live OpenStreetMap
+        // hospital/clinic discoveries for the entered area. These remain clearly
+        // labelled external and unverified; nothing is imported or published.
+        if (!hasGps && window.HealthOSHospitalDiscovery?.searchExternalHospitals) {
+            const externalLocation = [lga, cityValue, state].filter(Boolean).join(", ");
+            if (externalLocation) {
+                message.textContent = "Checking external OpenStreetMap hospital listings for " + externalLocation + "…";
+                try {
+                    const externalResults = await window.HealthOSHospitalDiscovery.searchExternalHospitals(externalLocation, hospitalNameQuery);
+                    const existingKeys = new Set(hospitals.map(h => String(h.hospital_name||"").trim().toLowerCase()+"|"+Number(h.latitude||0).toFixed(4)+"|"+Number(h.longitude||0).toFixed(4)));
+                    externalResults.forEach(item => {
+                        const key = String(item.hospital_name||"").trim().toLowerCase()+"|"+Number(item.latitude||0).toFixed(4)+"|"+Number(item.longitude||0).toFixed(4);
+                        if (!existingKeys.has(key)) { hospitals.push(item); existingKeys.add(key); }
+                    });
+                } catch (externalSearchError) {
+                    console.warn("External OpenStreetMap hospital search unavailable:", externalSearchError);
+                    message.textContent = "Directory search completed. External map search is temporarily unavailable: " + (externalSearchError.message||"upstream error");
                 }
             }
         }
