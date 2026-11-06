@@ -40,8 +40,37 @@
    if(en){if(!confirm("Have you verified the licence and legal permission for public use?"))return;await call("POST",{action:"enable_source",source_id:en.dataset.enable});say("Source enabled.");await load();}
    if(rv){const reason=prompt("Enter the reason for this review decision:");if(!reason?.trim())return;await call("POST",{action:"review_listing",listing_id:rv.dataset.review,decision:rv.dataset.decision,reason});say("Decision recorded.");await load();}
   }catch(x){say(x.message,true);}});
-  $("grid3PreviewButton").addEventListener("click",async()=>{const button=$("grid3PreviewButton");button.disabled=true;$("grid3PreviewMessage").textContent="Querying GRID3 Ogun facilities…";$("grid3PreviewRows").innerHTML='<tr><td colspan="5">Loading preview…</td></tr>';try{const {data,error}=await client.functions.invoke("healthos-grid3-hospital-collector",{body:{lgas:["OBAFEMI OWODE"]}});if(error)throw error;if(data?.error)throw Error(data.error);const rows=data.records||[];$("grid3PreviewMessage").textContent="Preview complete: "+(data.matching_record_count??rows.length)+" matching records; showing "+rows.length+". No records imported."; $("grid3PreviewRows").innerHTML=rows.map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc([x.local_government_area,x.ward].filter(Boolean).join(" / "))+'</td><td>'+esc([x.ownership,x.facility_level].filter(Boolean).join(" / "))+'</td><td>'+esc((x.latitude??"—")+", "+(x.longitude??"—"))+'</td><td>'+esc(x.nhfr_uid||x.nhfr_facility_code||x.source_record_id)+'</td></tr>').join("")||'<tr><td colspan="5">No facilities returned for this filter.</td></tr>';}catch(e){$("grid3PreviewMessage").textContent=e.message||"GRID3 preview failed. Check administrator access and try again.";$("grid3PreviewRows").innerHTML='<tr><td colspan="5">No preview results.</td></tr>';}finally{button.disabled=false;}});
-  $("osmDryRunButton").addEventListener("click",async()=>{
+  const runGrid3=async(action,button)=>{
+    button.disabled=true;
+    const previewButton=$("grid3PreviewButton"),stageButton=$("grid3StageButton");
+    if(previewButton)previewButton.disabled=true;if(stageButton)stageButton.disabled=true;
+    const message=$("grid3PreviewMessage");
+    message.textContent=action==="stage_for_review"?"Retrieving Ogun records and staging them in the restricted manual-review queue…":"Querying GRID3 facilities across Ogun State…";
+    if(action!=="stage_for_review")$("grid3PreviewRows").innerHTML='<tr><td colspan="5">Loading preview…</td></tr>';
+    try{
+     const {data,error}=await client.functions.invoke("healthos-grid3-hospital-collector",{body:{action}});
+     if(error)throw error;if(data?.error)throw Error(data.error+(data.details?": "+data.details:""));
+     if(action==="stage_for_review"){
+      message.textContent="Staging complete: "+data.newly_staged_count+" new records added to restricted manual review. "+data.unique_record_count+" unique records retrieved; "+data.coordinate_valid_count+" have coordinates. Nothing was published.";
+     }else{
+      const rows=data.records||[];
+      const lgas=[...new Set(rows.map(x=>String(x.local_government_area||"").trim()).filter(Boolean))].sort();
+      message.textContent="Preview complete: "+(data.matching_record_count??rows.length)+" matching records; showing "+rows.length+". "+lgas.length+" distinct LGAs represented. "+data.coordinate_valid_count+" records have valid coordinates. No records imported.";
+      $("grid3PreviewRows").innerHTML=rows.map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc([x.local_government_area,x.ward].filter(Boolean).join(" / "))+'</td><td>'+esc([x.ownership,x.facility_level].filter(Boolean).join(" / "))+'</td><td>'+esc((x.latitude??"—")+", "+(x.longitude??"—"))+'</td><td>'+esc(x.nhfr_uid||x.nhfr_facility_code||x.source_record_id)+'</td></tr>').join("")||'<tr><td colspan="5">No facilities returned.</td></tr>';
+     }
+    }catch(e){
+     message.textContent=e.message||"GRID3 operation failed. Check administrator access and try again.";
+     if(action!=="stage_for_review")$("grid3PreviewRows").innerHTML='<tr><td colspan="5">No preview results.</td></tr>';
+    }finally{
+     if(previewButton)previewButton.disabled=false;if(stageButton)stageButton.disabled=false;
+    }
+   };
+   $("grid3PreviewButton").addEventListener("click",e=>runGrid3("preview",e.currentTarget));
+   $("grid3StageButton")?.addEventListener("click",e=>{
+    if(!confirm("Stage all Ogun GRID3 records in the restricted review queue? This does NOT publish them or mark them verified."))return;
+    runGrid3("stage_for_review",e.currentTarget);
+   });
+   $("osmDryRunButton").addEventListener("click",async()=>{
     const button=$("osmDryRunButton"),area=$("osmCollectionArea").value,isOgun=area==="ogun_state";
     if(!isOgun||osmRunState.area!==area)osmRunState={area,nextTile:0,totalTiles:null,candidates:new Map(),failedTiles:new Map(),rawCount:0,insideCount:0,retryRound:0,retryQueue:[],retryCursor:0,successTiles:new Set()};
     // If a previous run exhausted its two retry passes, a new manual run starts fresh retries.
