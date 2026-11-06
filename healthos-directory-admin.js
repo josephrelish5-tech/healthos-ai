@@ -3,7 +3,8 @@
  const URL="https://berfmuhqfuwcgpnqxrtm.supabase.co";
  const KEY="sb_publishable_UIhbdxfxl8jsU9KnIE93pg_HTEsU39C";
  const ENDPOINT=URL+"/functions/v1/healthos-hospital-directory-admin";
- let client, sources=[];\n let reconciliationOffset=0;
+ let client, sources=[];
+ let reconciliationOffset=0;
   const OSM_RUN_STORAGE_KEY="healthos_ogun_osm_preview_v1";
   const freshOsmRun=()=>({area:null,nextTile:0,totalTiles:null,candidates:new Map(),failedTiles:new Map(),rawCount:0,insideCount:0,retryRound:0,retryQueue:[],retryCursor:0,successTiles:new Set()});
   function restoreOsmRun(){
@@ -102,7 +103,8 @@
     return '<tr><td>'+esc(item.state_name_ocha)+" / "+esc(item.lga_name_ocha)+'</td><td>'+esc(item.state_name_world_bank)+" / "+esc(item.lga_name_world_bank)+'</td><td>'+esc(item.ocha_boundary_code)+" / "+esc(item.world_bank_boundary_code)+'</td><td>'+esc(item.match_type)+" · "+esc(item.match_confidence??"—")+'</td><td>'+esc(item.review_status)+'</td><td><input data-recon-notes="'+esc(item.id)+'" maxlength="4000" placeholder="Evidence-based notes (required)" style="min-width:190px"><input data-recon-state="'+esc(item.id)+'" placeholder="Canonical state (approval only)" style="min-width:160px;margin-top:4px"><input data-recon-lga="'+esc(item.id)+'" placeholder="Canonical LGA (approval only)" style="min-width:160px;margin-top:4px"><select data-recon-decision="'+esc(item.id)+'">'+actions+'</select><button type="button" class="logout-button" data-recon-save="'+esc(item.id)+'" '+(!approval?"disabled":"")+'>Save decision</button></td></tr>';
    }).join("")||'<tr><td colspan="6">No cases in this status filter.</td></tr>';
    message.textContent="Loaded "+cases.length+" of "+(result.total??cases.length)+" restricted cases · page "+(Math.floor(reconciliationOffset/200)+1)+". These are boundary-match proposals, not approved canonical boundaries. Source polygons and hospital listings remain unchanged.";
-   $("boundaryReconciliationPrev").disabled=reconciliationOffset===0;\n   $("boundaryReconciliationNext").disabled=reconciliationOffset+cases.length>=(result.total??cases.length);
+   $("boundaryReconciliationPrev").disabled=reconciliationOffset===0;
+   $("boundaryReconciliationNext").disabled=reconciliationOffset+cases.length>=(result.total??cases.length);
   }catch(error){message.textContent=error.message||"Reconciliation queue unavailable.";rows.innerHTML='<tr><td colspan="6">Restricted reconciliation queue unavailable.</td></tr>';}
  }
  async function saveBoundaryReconciliation(id,button){
@@ -150,7 +152,9 @@
    reconciliationPanel.style.cssText="margin:22px 0;padding:18px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;color:#102b46;overflow-x:auto";
    reconciliationPanel.innerHTML='<h3 style="margin-top:0">OCHA ↔ World Bank Boundary Reconciliation — Restricted Review</h3><p>Review the 746 unique name-match proposals. A name match is not proof that boundaries are identical. Approval records a canonical naming decision only; it does not publish hospitals or alter source polygons.</p><div class="button-row"><label for="boundaryReconciliationStatus">Case status</label><select id="boundaryReconciliationStatus"><option value="">All statuses</option><option value="proposed">Proposed</option><option value="in_review">In review</option><option value="needs_evidence">Needs evidence</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><button type="button" id="boundaryReconciliationRefresh" class="secondary-button">Refresh cases</button><button type="button" id="boundaryReconciliationPrev" class="secondary-button" disabled>Previous 200</button><button type="button" id="boundaryReconciliationNext" class="secondary-button">Next 200</button></div><p id="boundaryReconciliationMessage" class="message" role="status" aria-live="polite">Restricted review queue not loaded yet.</p><div class="table-wrap"><table style="min-width:1150px"><thead><tr><th>OCHA state / LGA</th><th>World Bank state / LGA</th><th>Source codes</th><th>Match confidence</th><th>Status</th><th>Decision and evidence</th></tr></thead><tbody id="boundaryReconciliationRows"><tr><td colspan="6">Open administrator console to load cases.</td></tr></tbody></table></div><p class="disclaimer">Only an authorised platform directory administrator can access this queue. Every saved decision is audited.</p>';
    adminPanel.appendChild(reconciliationPanel);
-   reconciliationPanel.querySelector("#boundaryReconciliationRefresh").addEventListener("click",()=>{reconciliationOffset=0;loadBoundaryReconciliation();});\n   reconciliationPanel.querySelector("#boundaryReconciliationPrev").addEventListener("click",()=>{reconciliationOffset=Math.max(0,reconciliationOffset-200);loadBoundaryReconciliation();});\n   reconciliationPanel.querySelector("#boundaryReconciliationNext").addEventListener("click",()=>{reconciliationOffset+=200;loadBoundaryReconciliation();});
+   reconciliationPanel.querySelector("#boundaryReconciliationRefresh").addEventListener("click",()=>{reconciliationOffset=0;loadBoundaryReconciliation();});
+   reconciliationPanel.querySelector("#boundaryReconciliationPrev").addEventListener("click",()=>{reconciliationOffset=Math.max(0,reconciliationOffset-200);loadBoundaryReconciliation();});
+   reconciliationPanel.querySelector("#boundaryReconciliationNext").addEventListener("click",()=>{reconciliationOffset+=200;loadBoundaryReconciliation();});
    reconciliationPanel.querySelector("#boundaryReconciliationStatus").addEventListener("change",()=>{reconciliationOffset=0;loadBoundaryReconciliation();});
    reconciliationPanel.addEventListener("click",event=>{const button=event.target.closest("[data-recon-save]");if(button)saveBoundaryReconciliation(button.dataset.reconSave,button);});
   }
