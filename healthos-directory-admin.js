@@ -123,6 +123,20 @@
     }
    };
    $("grid3PreviewButton").addEventListener("click",e=>runGrid3("preview",e.currentTarget));
+   $("grid3ReconcileButton").addEventListener("click",async e=>{
+    const button=e.currentTarget,message=$("grid3ReconcileMessage"),rows=$("grid3ReconcileRows");
+    button.disabled=true;message.textContent="Reading all restricted GRID3 staging records and comparing directory totals…";
+    rows.innerHTML='<tr><td colspan="5">Reconciling…</td></tr>';
+    try{
+     const {data,error}=await client.functions.invoke("healthos-grid3-hospital-collector",{body:{action:"reconciliation_summary"}});
+     if(error)throw error;if(data?.error)throw Error(data.error+(data.details?": "+data.details:""));
+     rows.innerHTML=(data.by_state||[]).map(x=>'<tr><td>'+esc(x.state)+'</td><td>'+Number(x.staged_records||0)+'</td><td>'+Number(x.review_required||0)+'</td><td>'+Number(x.needs_correction||0)+'</td><td>'+Number(x.with_coordinates||0)+'</td></tr>').join("")||'<tr><td colspan="5">No staged records.</td></tr>';
+     message.textContent="Reconciliation complete: "+Number(data.staged_record_count||0).toLocaleString()+" restricted staged records; "+Number(data.current_directory_record_count||0).toLocaleString()+" current directory records; "+Number(data.exact_uid_duplicate_groups_within_staging||0)+" repeated NHFR UID groups ("+Number(data.records_in_repeated_uid_groups||0)+" records flagged); "+Number(data.missing_coordinate_count||0)+" missing coordinates; "+Number(data.missing_name_count||0)+" missing names. "+data.notice;
+    }catch(error){
+     rows.innerHTML='<tr><td colspan="5">Reconciliation failed.</td></tr>';
+     message.textContent=error.message||"Could not complete reconciliation.";
+    }finally{button.disabled=false;}
+   });
    $("grid3CoverageButton").addEventListener("click",async e=>{
     const button=e.currentTarget,message=$("grid3CoverageMessage"),rows=$("grid3CoverageRows");
     button.disabled=true;message.textContent="Requesting read-only nationwide GRID3 coverage summary…";
