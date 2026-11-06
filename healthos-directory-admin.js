@@ -130,6 +130,17 @@
     }
    };
    $("grid3PreviewButton").addEventListener("click",e=>runGrid3("preview",e.currentTarget));
+   $("grid3EnableSourceButton").addEventListener("click",async e=>{
+    const button=e.currentTarget;
+    if(!confirm("Enable the approved GRID3 Nigeria Health Facilities v2.0 source for controlled ingestion into restricted manual review? This does not verify hospitals or publish public listings. You can stop future ingestion by disabling the source in Platform Directory Admin."))return;
+    button.disabled=true;
+    try{
+     const result=await call("POST",{action:"enable_source",source_id:"8476094d-07bd-47d0-8987-2aa41661f1a1"});
+     say(result.message||"GRID3 v2.0 source enabled for restricted staging.");
+     alert("GRID3 v2.0 source enabled. Facilities remain unverified and restricted to manual review.");
+    }catch(error){say(error.message||"Could not enable GRID3 source.",true);alert(error.message||"Could not enable GRID3 source.");}
+    finally{button.disabled=false;}
+   });
    $("grid3PermissionReviewButton").addEventListener("click",async e=>{
     const button=e.currentTarget;
     const approved=confirm("Review the exact GRID3 Nigeria Health Facilities v2.0 ArcGIS metadata: CC BY 4.0 permits reuse with attribution. Dataset records are non-exhaustive and not fully validated. Do you approve this exact v2.0 dataset for controlled ingestion into restricted manual review only? This does not verify hospitals or publish listings.");
