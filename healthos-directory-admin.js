@@ -56,6 +56,31 @@
   const r=await fetch(ENDPOINT,{method,headers:{Authorization:"Bearer "+session.access_token,apikey:KEY,"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
   const d=await r.json().catch(()=>({error:"Invalid response"}));if(!r.ok){const err=new Error(d.error||"Request failed");err.code=d.code||("HTTP_"+r.status);throw err;}return d;
  }
+ async function loadGeographicReview(){
+  const panel=$("geographicReviewPanel");
+  if(!panel)return;
+  const message=$("geographicReviewMessage"),body=$("geographicReviewRows");
+  message.textContent="Loading restricted geographic review cases…";
+  try{
+   const {data:{session}}=await client.auth.getSession();
+   if(!session?.access_token)throw Error("Administrator session expired. Sign in again.");
+   const response=await fetch(ENDPOINT+"?view=geographic_review_cases",{
+    headers:{Authorization:"Bearer "+session.access_token,apikey:KEY}
+   });
+   const result=await response.json().catch(()=>({error:"Invalid review response"}));
+   if(!response.ok)throw Error(result.error||"Could not load geographic review cases.");
+   const cases=result.cases||[],audit=result.audit||[];
+   const auditByCase=new Map();
+   audit.forEach(event=>{if(!auditByCase.has(event.review_case_id))auditByCase.set(event.review_case_id,[]);auditByCase.get(event.review_case_id).push(event);});
+   body.innerHTML=cases.map(c=>{
+    const events=auditByCase.get(c.id)||[];
+    const statusOptions=["pending_manual_review","under_review","evidence_requested","no_change_required","rejected"];
+    const options=statusOptions.map(s=>'<option value="'+s+'" '+(c.review_status===s?"selected":"")+'>'+s.replaceAll("_"," ")+'</option>').join("");
+    return '<tr><td>'+esc(c.facility_name)+'</td><td>'+esc([c.recorded_state,c.recorded_lga,c.recorded_ward].filter(Boolean).join(" / "))+'</td><td>'+esc(c.comparison_class.replaceAll("_"," "))+'</td><td>'+esc((c.world_bank_state||"No match")+" / "+(c.world_bank_lga||"No match"))+'</td><td>'+esc((c.ocha_state_matches||[]).join(", ")||"No match")+" / "+esc((c.ocha_lga_matches||[]).join(", ")||"No match")+'</td><td>'+esc((c.nearest_ocha_lga_name||"—")+" ("+(c.nearest_ocha_lga_distance_m??"—")+" m)")+'</td><td><select data-geo-status="'+c.id+'">'+options+'</select><input aria-label="Reviewer notes" data-geo-notes="'+c.id+'" placeholder="Evidence-based review notes (required)" value="'+esc(c.reviewer_notes||"")+'" style="min-width:210px;margin:5px 0"><input aria-label="Evidence reference" data-geo-evidence="'+c.id+'" placeholder="Evidence URL/reference (optional)" style="min-width:210px"><button type="button" class="logout-button" data-geo-save="'+c.id+'">Save review</button><small> '+events.length+' audit events</small></td></tr>';
+   }).join("")||'<tr><td colspan="7">No geographic review cases found.</td></tr>';
+   message.textContent="Loaded "+cases.length+" review cases. "+cases.filter(c=>c.review_status==="pending_manual_review").length+" still pending. Saving a decision records an audit event; it does not modify the source hospital record.";
+  }catch(error){message.textContent=error.message||"Could not load geographic review queue.";body.innerHTML='<tr><td colspan="7">Review queue unavailable.</td></tr>';}
+ }
  async function load(){
   try{
    const d=await call();sources=(d.sources||[]);$("platformDirectoryAdmin").hidden=false;$("openDirectoryAdminButton").hidden=false;const nav=$("platformDirectoryAdminNav");if(nav)nav.hidden=false;
@@ -63,6 +88,7 @@
    $("directoryListingRows").innerHTML=(d.listings||[]).map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc([x.city,x.state,x.address].filter(Boolean).join(", "))+'</td><td>'+esc(x.source_record_id)+'</td><td>'+esc(x.listing_status)+'</td><td>'+(x.duplicate_candidate?"Candidate — manual comparison":"No flag")+'</td><td>'+(x.listing_status==="review_required"?'<button class="logout-button" data-review="'+esc(x.id)+'" data-decision="approved_for_public">Approve</button> <button class="logout-button" data-review="'+esc(x.id)+'" data-decision="suppressed">Suppress</button>':"—")+'</td></tr>').join("")||'<tr><td colspan="6">No listings awaiting review.</td></tr>';
    $("directoryImportSource").innerHTML=sources.filter(s=>s.is_enabled).map(s=>'<option value="'+esc(s.id)+'">'+esc(s.source_name)+'</option>').join("");
    say("Authorised. "+sources.length+" sources and "+(d.listings||[]).length+" listings loaded.");
+   await loadGeographicReview();
   }catch(e){$("openDirectoryAdminButton").hidden=false;const nav=$("platformDirectoryAdminNav");if(nav)nav.hidden=false;$("platformDirectoryAdmin").hidden=false;say("Directory check failed"+(e.code?" ("+e.code+")":"")+": "+(e.message||"Unknown error"),true);}
  }
  document.addEventListener("DOMContentLoaded",()=>{
@@ -73,6 +99,13 @@
   const adminPanel=$("platformDirectoryAdmin");
 
   if(adminPanel && adminPanel.parentElement!==document.body){document.body.appendChild(adminPanel);}
+  if(adminPanel && !document.getElementById("geographicReviewPanel")){
+   const reviewPanel=document.createElement("section");
+   reviewPanel.id="geographicReviewPanel";
+   reviewPanel.style.cssText="margin:22px 0;padding:18px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;color:#102b46;overflow-x:auto";
+   reviewPanel.innerHTML='<h3 style="margin-top:0">Geographic Review Case Management — 123 Facilities</h3><p>Compare recorded location, World Bank polygons and OCHA polygons. Record an evidence-based review outcome. This interface does not alter the original hospital record or approve public publication.</p><p id="geographicReviewMessage" class="message" role="status" aria-live="polite">Loading review queue…</p><div style="overflow-x:auto"><table style="width:100%;min-width:1100px;border-collapse:collapse"><thead><tr><th>Facility</th><th>Recorded location</th><th>Finding</th><th>World Bank</th><th>OCHA</th><th>Nearest OCHA LGA</th><th>Review decision</th></tr></thead><tbody id="geographicReviewRows"><tr><td colspan="7">Loading…</td></tr></tbody></table></div>';
+   adminPanel.appendChild(reviewPanel);
+  }
   if(adminPanel && !document.getElementById("ngBoundaryImportCard")){
    const card=document.createElement("section");
    card.id="ngBoundaryImportCard";
@@ -130,7 +163,22 @@
   $("directoryAdminClose").addEventListener("click",()=>{$("platformDirectoryAdmin").hidden=true;});
   client.auth.onAuthStateChange((event,session)=>{if(session){$("openDirectoryAdminButton").hidden=false;const nav=$("platformDirectoryAdminNav");if(nav)nav.hidden=false;load();}else{$("openDirectoryAdminButton").hidden=true;const nav=$("platformDirectoryAdminNav");if(nav)nav.hidden=true;$("platformDirectoryAdmin").hidden=true;}});
   $("directorySourceForm").addEventListener("submit",async e=>{e.preventDefault();try{await call("POST",{action:"register_source",source_name:$("directorySourceName").value,source_type:$("directorySourceType").value,source_website:$("directorySourceWebsite").value,data_license:$("directorySourceLicense").value,permission_basis:$("directorySourcePermission").value,country_code:"NG"});e.target.reset();say("Source registered disabled. Verify its permission before enabling.");await load();}catch(x){say(x.message,true);}});
-  $("platformDirectoryAdmin").addEventListener("click",async e=>{try{
+  $("platformDirectoryAdmin").addEventListener("click",async e=>{
+   const geoSave=e.target.closest("[data-geo-save]");
+   if(geoSave){
+    const id=geoSave.dataset.geoSave,status=$("[data-geo-status='"+id+"']")?.value,notes=$("[data-geo-notes='"+id+"']")?.value?.trim(),evidence=$("[data-geo-evidence='"+id+"']")?.value?.trim()||"";
+    if(!notes||notes.length<5){alert("Enter at least five characters of reviewer notes, based on evidence.");return;}
+    if(!confirm("Save this review decision? The original hospital source record will remain unchanged."))return;
+    geoSave.disabled=true;
+    try{
+     const result=await call("POST",{action:"review_geographic_case",case_id:id,review_status:status,reviewer_notes:notes,evidence_reference:evidence});
+     $("geographicReviewMessage").textContent=result.message||"Review saved and audit event recorded.";
+     await loadGeographicReview();
+    }catch(error){$("geographicReviewMessage").textContent=error.message||"Could not save review.";alert(error.message||"Could not save review.");}
+    finally{geoSave.disabled=false;}
+    return;
+   }
+   try{
    const en=e.target.closest("[data-enable]"),rv=e.target.closest("[data-review]"),pr=e.target.closest("[data-permission-review]");
    if(pr){
     const approved=confirm("GRID3 v2.0 metadata identifies CC BY 4.0 and permits reuse with attribution. The dataset is non-exhaustive and not fully validated. Approve this exact v2.0 source for restricted manual review only? This does NOT verify hospitals or publish listings.");
