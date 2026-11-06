@@ -32,14 +32,14 @@
       empty.innerHTML="<strong>No approved hospital listings are available for this search yet</strong><p>This does not mean there are no hospitals nearby. HealthOS AI has not yet loaded approved public directory records for this area. Try another location later.</p>";
       target.appendChild(empty); return;
     }
-    [{key:"network",title:"HealthOS AI Network Hospitals"},{key:"other",title:"Other Hospitals Near You"}].forEach(group=>{
+    [{key:"network",title:"HealthOS AI Verified Network Hospitals"},{key:"other",title:"External Public Hospital Listings"}].forEach(group=>{
       const items=hospitals.filter(h=>(h.listing_group||"network")===group.key); if(!items.length) return;
       const section=document.createElement("section"); section.className="hospital-discovery-group";
       const heading=document.createElement("h2"); heading.textContent=group.title; section.appendChild(heading);
       items.forEach(h=>{
         const card=document.createElement("article"); card.className="hospital-discovery-card"; card.dataset.hospitalCard=h.hospital_id;
         const title=document.createElement("h3"); title.textContent=h.hospital_name||"Hospital";
-        const badge=document.createElement("span"); badge.className="hospital-verified-badge"; badge.textContent=group.key==="network"?"HealthOS AI member":"Nearby hospital";
+        const badge=document.createElement("span"); badge.className="hospital-verified-badge"; badge.textContent=group.key==="network"?"✓ HealthOS AI verified member":"External listing — not independently verified";
         const address=document.createElement("p"); address.textContent=[h.address,h.local_government_area,h.city,h.state,h.country_code].filter(Boolean).join(", ")||"Address not provided";
         const distance=document.createElement("p"); distance.className="hospital-distance"; distance.textContent=h.distance_km==null?"Distance unavailable":Number(h.distance_km).toFixed(1)+" km away";
         const specialty=document.createElement("p"); specialty.textContent="Specialties: "+((h.specialties||[]).join(", ")||"Not listed");
@@ -136,7 +136,7 @@
       const lng=group.reduce((sum,x)=>sum+x.lng,0)/group.length;
       if(group.length===1){
         const h=group[0].h,marker=L.marker([lat,lng]).addTo(map);
-        marker.bindPopup("<strong>"+escapeText(h.hospital_name)+"</strong><br>"+escapeText([h.local_government_area,h.city,h.state].filter(Boolean).join(", "))+(h.distance_km==null?"":"<br>"+Number(h.distance_km).toFixed(1)+" km away"));
+        marker.bindPopup("<strong>"+escapeText(h.hospital_name)+"</strong><br>"+escapeText([h.local_government_area,h.city,h.state].filter(Boolean).join(", "))+"<br>"+(h.listing_group==="network"?"HealthOS AI verified member":"External listing — not independently verified")+(h.distance_km==null?"":"<br>"+Number(h.distance_km).toFixed(1)+" km away"));
         marker.on("click",()=>selectHospital(h.hospital_id));
         markers.push({marker,hospitalId:h.hospital_id});
       }else{
@@ -166,7 +166,7 @@
     if(!map) initMap(); if(!map) return;
     if(Number.isFinite(Number(lat))&&Number.isFinite(Number(lng))) {
       const point=[Number(lat),Number(lng)]; map.flyTo(point,17,{duration:0.8});
-      setStatus("Map centred on your current location. Searching verified hospitals.");
+      setStatus("Map centred on your current location. Searching HealthOS AI hospitals and external public listings.");
       return;
     }
     const query=[label,el("hospitalSearchLga")?.value,el("hospitalSearchCity")?.value,el("hospitalSearchState")?.value,"Nigeria"].filter(Boolean).join(", ");
@@ -226,7 +226,7 @@
     renderCards(lastHospitals); if(!map) initMap(); if(map) drawMarkers(lastHospitals);
     const count=el("hospitalNearbyCount");
     if(count)count.textContent=lastHospitals.length+" hospital"+(lastHospitals.length===1?"":"s")+" found";
-    if(lastHospitals.length) setStatus(lastHospitals.length+" hospital(s) found. Select a card or map pin to explore.");
+    if(lastHospitals.length) setStatus(lastHospitals.length+" hospital listing(s) found. HealthOS AI members and external listings are labelled separately. Select a card or map pin to explore.");
     else setStatus("No approved hospital listings match this search yet. Try another location.");
   }
   function refresh() { if(!el("hospitalDiscoveryMap")) return; if(!map) initMap(); if(map){map.invalidateSize();drawMarkers(lastHospitals);} }
