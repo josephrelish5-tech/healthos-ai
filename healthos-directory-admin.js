@@ -92,7 +92,7 @@
    const {data:{session},error:sessionError}=await client.auth.getSession();
    if(sessionError)throw Error(sessionError.message);
    if(!session?.access_token)throw Error("Administrator session expired. Sign in again.");
-   const response=await fetch(URL+"/functions/v1/healthos-geo-reconciliation-admin?limit=200&offset=0"+(status?"&status="+encodeURIComponent(status):""),{headers:{Authorization:"Bearer "+session.access_token,apikey:KEY}});
+   const response=await fetch(URL+"/functions/v1/healthos-geo-reconciliation-admin?limit=200&offset="+reconciliationOffset+(status?"&status="+encodeURIComponent(status):""),{headers:{Authorization:"Bearer "+session.access_token,apikey:KEY}});
    const result=await response.json().catch(()=>({error:"Invalid reconciliation response"}));
    if(!response.ok)throw Error(result.error||"Could not load reconciliation cases.");
    const cases=result.cases||[];
@@ -101,7 +101,8 @@
     const actions=["approved","rejected","needs_evidence","returned_for_review"].map(v=>'<option value="'+v+'">'+v.replaceAll("_"," ")+'</option>').join("");
     return '<tr><td>'+esc(item.state_name_ocha)+" / "+esc(item.lga_name_ocha)+'</td><td>'+esc(item.state_name_world_bank)+" / "+esc(item.lga_name_world_bank)+'</td><td>'+esc(item.ocha_boundary_code)+" / "+esc(item.world_bank_boundary_code)+'</td><td>'+esc(item.match_type)+" · "+esc(item.match_confidence??"—")+'</td><td>'+esc(item.review_status)+'</td><td><input data-recon-notes="'+esc(item.id)+'" maxlength="4000" placeholder="Evidence-based notes (required)" style="min-width:190px"><input data-recon-state="'+esc(item.id)+'" placeholder="Canonical state (approval only)" style="min-width:160px;margin-top:4px"><input data-recon-lga="'+esc(item.id)+'" placeholder="Canonical LGA (approval only)" style="min-width:160px;margin-top:4px"><select data-recon-decision="'+esc(item.id)+'">'+actions+'</select><button type="button" class="logout-button" data-recon-save="'+esc(item.id)+'" '+(!approval?"disabled":"")+'>Save decision</button></td></tr>';
    }).join("")||'<tr><td colspan="6">No cases in this status filter.</td></tr>';
-   message.textContent="Loaded "+cases.length+" of "+(result.total??cases.length)+" restricted cases · page "+(Math.floor(reconciliationOffset/200)+1)+". These are boundary-match proposals, not approved canonical boundaries. Source polygons and hospital listings remain unchanged.";\n   $("boundaryReconciliationPrev").disabled=reconciliationOffset===0;\n   $("boundaryReconciliationNext").disabled=reconciliationOffset+cases.length>=(result.total??cases.length);
+   message.textContent="Loaded "+cases.length+" of "+(result.total??cases.length)+" restricted cases · page "+(Math.floor(reconciliationOffset/200)+1)+". These are boundary-match proposals, not approved canonical boundaries. Source polygons and hospital listings remain unchanged.";
+   $("boundaryReconciliationPrev").disabled=reconciliationOffset===0;\n   $("boundaryReconciliationNext").disabled=reconciliationOffset+cases.length>=(result.total??cases.length);
   }catch(error){message.textContent=error.message||"Reconciliation queue unavailable.";rows.innerHTML='<tr><td colspan="6">Restricted reconciliation queue unavailable.</td></tr>';}
  }
  async function saveBoundaryReconciliation(id,button){
@@ -131,7 +132,8 @@
    $("directoryListingRows").innerHTML=(d.listings||[]).map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc([x.city,x.state,x.address].filter(Boolean).join(", "))+'</td><td>'+esc(x.source_record_id)+'</td><td>'+esc(x.listing_status)+'</td><td>'+(x.duplicate_candidate?"Candidate — manual comparison":"No flag")+'</td><td>'+(x.listing_status==="review_required"?'<button class="logout-button" data-review="'+esc(x.id)+'" data-decision="approved_for_public">Approve</button> <button class="logout-button" data-review="'+esc(x.id)+'" data-decision="suppressed">Suppress</button>':"—")+'</td></tr>').join("")||'<tr><td colspan="6">No listings awaiting review.</td></tr>';
    $("directoryImportSource").innerHTML=sources.filter(s=>s.is_enabled).map(s=>'<option value="'+esc(s.id)+'">'+esc(s.source_name)+'</option>').join("");
    say("Authorised. "+sources.length+" sources and "+(d.listings||[]).length+" listings loaded.");
-   await loadGeographicReview();\n   await loadBoundaryReconciliation();
+   await loadGeographicReview();
+   await loadBoundaryReconciliation();
   }catch(e){$("openDirectoryAdminButton").hidden=false;const nav=$("platformDirectoryAdminNav");if(nav)nav.hidden=false;$("platformDirectoryAdmin").hidden=false;say("Directory check failed"+(e.code?" ("+e.code+")":"")+": "+(e.message||"Unknown error"),true);}
  }
  document.addEventListener("DOMContentLoaded",()=>{
