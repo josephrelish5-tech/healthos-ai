@@ -189,11 +189,12 @@
 
     // Request named places AND address-tagged objects. Many OSM buildings have
     // no name but do have a house number/street and are still useful discoveries.
-    const query = '[out:json][timeout:18];(' +
+    const query = '[out:json][timeout:20];(' +
       'nwr["name"](' + south + ',' + west + ',' + north + ',' + east + ');' +
       'nwr["addr:housenumber"](' + south + ',' + west + ',' + north + ',' + east + ');' +
       'nwr["addr:street"](' + south + ',' + west + ',' + north + ',' + east + ');' +
-      ');out center tags 180;';
+      'nwr["addr:full"](' + south + ',' + west + ',' + north + ',' + east + ');' +
+      ');out center tags 300;';
     const endpoints = [
       "https://overpass-api.de/api/interpreter",
       "https://overpass.kumi.systems/api/interpreter",
@@ -253,7 +254,11 @@
     const seen = new Set();
     (data.elements || []).forEach(place => {
       const tags = place.tags || {};
-      const name = String(tags.name || tags["addr:housenumber"] || "").trim();
+      const houseNumber = String(tags["addr:housenumber"] || "").trim();
+      const streetName = String(tags["addr:street"] || "").trim();
+      const fullAddress = String(tags["addr:full"] || "").trim();
+      const name = String(tags.name || (houseNumber && streetName ? houseNumber + " " + streetName :
+        houseNumber || fullAddress || streetName) || "").trim();
       const lat = Number(place.lat ?? place.center?.lat);
       const lng = Number(place.lon ?? place.center?.lon);
       if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
@@ -265,12 +270,13 @@
       const category = tags.amenity || tags.shop || tags.healthcare ||
         tags.tourism || tags.leisure || tags.office || tags.highway ||
         tags.building || tags.place || "Place";
-      const street = [tags["addr:housenumber"], tags["addr:street"]].filter(Boolean).join(" ");
+      const street = [houseNumber, streetName].filter(Boolean).join(" ");
       const locality = [
         tags["addr:suburb"], tags["addr:neighbourhood"], tags["addr:village"],
-        tags["addr:town"], tags["addr:city"], tags["addr:state"]
+        tags["addr:town"], tags["addr:city"], tags["addr:district"],
+        tags["addr:state"], tags["addr:postcode"]
       ].filter(Boolean).join(", ");
-      const address = [street, locality].filter(Boolean).join(", ");
+      const address = fullAddress || [street, locality].filter(Boolean).join(", ");
       const marker = L.circleMarker([lat, lng], {
         radius: 5, color: "#8b5e16", weight: 2,
         fillColor: "#f4d27a", fillOpacity: 0.95
