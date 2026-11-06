@@ -9,6 +9,7 @@ const PROJECT_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const SOURCE_ID = "8476094d-07bd-47d0-8987-2aa41661f1a1";
+const OGUN_LGAS = new Set(["abeokuta north","abeokuta south","ado odo/ota","ewekoro","ifo","ijebu east","ijebu north","ijebu north east","ijebu ode","ikenne","imeko afon","ipokia","obafemi owode","odeda","odogbolu","ogun waterside","remo north","sagamu","yewa north","yewa south"]);
 const LAYER_URL = "https://services3.arcgis.com/BU6Aadhn6tbBEdyk/arcgis/rest/services/GRID3_NGA_health_facilities_v2_0/FeatureServer/0/query";
 
 Deno.serve(async (req) => {
@@ -76,8 +77,10 @@ Deno.serve(async (req) => {
       const key = String(a.globalid || a.nhfr_uid || (name + "|" + lga + "|" + lat + "|" + lon));
       if (seen.has(key)) return null;
       seen.add(key);
+      const lgaValid = OGUN_LGAS.has(lga.toLowerCase());
       return {
         source_record_id: String(a.globalid || a.OBJECTID),
+        lga_validation_status: lgaValid ? "ogun_lga_match" : "lga_not_in_ogun",
         nhfr_uid: a.nhfr_uid ?? null,
         nhfr_facility_code: a.nhfr_facility_code ?? null,
         public_name: name || "Unnamed facility",
@@ -115,7 +118,8 @@ Deno.serve(async (req) => {
         data_license: "CC BY 4.0",
         attribution_text: "Source: GRID3 NGA Health Facilities v2.0; Center for Integrated Earth System Information (CIESIN), Columbia University, 2024. DOI: 10.7916/kv1n-0743. Licensed under CC BY 4.0.",
         raw_attributes: r.raw_attributes || {},
-        review_status: "review_required"
+        review_status: r.lga_validation_status === "ogun_lga_match" ? "review_required" : "needs_correction",
+        review_notes: r.lga_validation_status === "ogun_lga_match" ? null : "AUTOMATED DATA-QUALITY FLAG: GRID3 record is labelled state Ogun but its LGA is not one of Ogun State 20 LGAs. Do not publish until source geography is corrected or independently verified."
       }));
       let inserted = 0;
       for (let offset = 0; offset < stagedRows.length; offset += 250) {
