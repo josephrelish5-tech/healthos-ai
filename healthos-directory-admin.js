@@ -94,7 +94,7 @@
      const {data,error}=await client.functions.invoke("healthos-grid3-hospital-collector",{body:{action,state:selectedState}});
      if(error)throw error;if(data?.error)throw Error(data.error+(data.details?": "+data.details:""));
      if(action==="stage_for_review"){
-      message.textContent=selectedState+" staging complete: "+data.newly_staged_count+" new records added to restricted manual review. "+data.unique_record_count+" unique records retrieved; "+data.coordinate_valid_count+" have coordinates. LGA validation remains pending. Nothing was published.";
+      message.textContent=selectedState+" staging complete: "+data.newly_staged_count+" new records added to restricted manual review. "+data.unique_record_count+" unique records retrieved; "+data.coordinate_valid_count+" have valid coordinates. LGA boundary classification was applied; records without a unique LGA or valid coordinates are marked for correction. Nothing was published.";
      }else{
       const rows=data.records||[];
       const lgas=[...new Set(rows.map(x=>String(x.local_government_area||"").trim()).filter(Boolean))].sort();
