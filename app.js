@@ -1361,6 +1361,18 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
     const region = document.getElementById("hospitalSearchRegion").value.trim();
     const lga = document.getElementById("hospitalSearchLga").value.trim();
     const specialty = document.getElementById("hospitalSearchSpecialty").value.trim();
+    // Derive Nigeria's geopolitical region from the selected state so a stale
+    // or incorrectly typed region cannot exclude valid hospitals.
+    const nigeriaRegions = {
+        "abia":"South East","anambra":"South East","ebonyi":"South East","enugu":"South East","imo":"South East",
+        "akwa ibom":"South South","bayelsa":"South South","cross river":"South South","delta":"South South","edo":"South South","rivers":"South South",
+        "ekiti":"South West","lagos":"South West","ogun":"South West","ondo":"South West","osun":"South West","oyo":"South West",
+        "benue":"North Central","fct":"North Central","federal capital territory":"North Central","kogi":"North Central","kwara":"North Central","nasarawa":"North Central","niger":"North Central","plateau":"North Central",
+        "adamawa":"North East","bauchi":"North East","borno":"North East","gombe":"North East","taraba":"North East","yobe":"North East",
+        "jigawa":"North West","kaduna":"North West","kano":"North West","katsina":"North West","kebbi":"North West","sokoto":"North West","zamfara":"North West"
+    };
+    const canonicalStateForRegion = state.toLowerCase().replace(/\\bstate of\\b/g,"").replace(/\\bstate\\b/g,"").replace(/\\s+/g," ").trim();
+    const effectiveRegion = country === "NG" ? (nigeriaRegions[canonicalStateForRegion] || null) : (region || null);
     // Explicitly entered location fields take priority over any GPS coordinates
     // left over from an earlier "Use my location" action.
     const hasManualLocation = Boolean(cityValue || state || region || lga);
@@ -1416,7 +1428,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
             p_country_code: country,
             // When GPS is available, coordinates take priority over manually entered
             // state/city/LGA filters so the first results are truly near the person.
-            p_region: hasGps ? null : (region || null),
+            p_region: hasGps ? null : effectiveRegion,
             p_state: hasGps ? null : (state || null),
             p_city: hasGps ? null : (cityValue && cityValue.toLowerCase() !== "nearby" ? cityValue : null),
             p_lga: hasGps ? null : (lga || null),
