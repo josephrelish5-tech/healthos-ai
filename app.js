@@ -1359,7 +1359,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
     const cityValue = document.getElementById("hospitalSearchCity").value.trim();
     const state = document.getElementById("hospitalSearchState").value.trim();
     const region = document.getElementById("hospitalSearchRegion").value.trim();
-    const lga = document.getElementById("hospitalSearchLga").value.trim();
+    const lga = document.getElementById("hospitalSearchLga").value.trim().replace(/\s+(?:LGA|Local Government Area)$/i, "").trim();
     const specialty = document.getElementById("hospitalSearchSpecialty").value.trim();
     // Derive Nigeria's geopolitical region from the selected state so a stale
     // or incorrectly typed region cannot exclude valid hospitals.
@@ -1563,7 +1563,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
             await window.HealthOSHospitalDiscovery.focusSearchLocation(
                 hasGps ? latitudeValue : null,
                 hasGps ? longitudeValue : null,
-                hasGps ? "your live location" : [lga, cityValue, state, region].filter(Boolean).join(", ")
+                hasGps ? "your live location" : [cityValue, state].filter(Boolean).join(", ")
             );
             window.HealthOSHospitalDiscovery.render(hospitals);
         }
