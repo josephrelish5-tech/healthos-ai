@@ -128,6 +128,8 @@
    $("boundaryReconciliationMessage").textContent=result.message||"Decision saved and audited.";
    await loadBoundaryReconciliation();
    await loadCodeReconciliation();
+   await loadLgaRegistry();
+   await loadCodeReconciliation();
   }catch(error){$("boundaryReconciliationMessage").textContent=error.message||"Could not save decision.";}
   finally{button.disabled=false;}
  }
@@ -191,6 +193,33 @@
   }catch(error){$("codeReconciliationMessage").textContent=error.message||"Could not save code review.";}
   finally{button.disabled=false;}
  }
+ let lgaRegistryOffset=0;
+ async function loadLgaRegistry(){
+  const panel=$("lgaRegistryPanel"); if(!panel)return;
+  const message=$("lgaRegistryMessage"),rows=$("lgaRegistryRows");
+  const search=$("lgaRegistrySearch")?.value?.trim()||"";
+  message.textContent="Loading private national LGA registry…";
+  try{
+   const {data:{session}}=await client.auth.getSession();
+   if(!session?.access_token)throw Error("Administrator session expired. Sign in again.");
+   const params=new URLSearchParams({view:"lga_registry",limit:"100",offset:String(lgaRegistryOffset)});
+   if(search)params.set("search",search);
+   const response=await fetch(URL+"/functions/v1/healthos-geo-reconciliation-admin?"+params.toString(),{headers:{Authorization:"Bearer "+session.access_token,apikey:KEY}});
+   const result=await response.json().catch(()=>({error:"Invalid registry response"}));
+   if(!response.ok)throw Error(result.error||"Could not load national LGA registry.");
+   const units=result.units||[];
+   rows.innerHTML=units.map(unit=>{
+    const ids=unit.identifiers||[];
+    const idRows=ids.map(i=>'<div><strong>'+esc(i.source_namespace)+'</strong> · '+esc(i.source_code)+'<br>'+esc(i.source_state_name)+' / '+esc(i.source_lga_name)+' <small>('+esc(i.identifier_status)+')</small></div>').join("");
+    const sources=new Set(ids.map(i=>i.source_key));
+    const warning=sources.size>1?"Cross-source name-normalized candidate; correspondence is not approved.":"Single-source candidate.";
+    return '<tr><td>'+esc(unit.state_name)+'</td><td>'+esc(unit.lga_name)+'</td><td>'+esc(unit.normalized_state)+' / '+esc(unit.normalized_lga)+'</td><td>'+ids.length+'</td><td><small>'+idRows+'</small></td><td><small>'+esc(warning)+'<br>Status: '+esc(unit.registry_status)+'</small></td></tr>';
+   }).join("")||'<tr><td colspan="6">No registry records match this search.</td></tr>';
+   message.textContent="Loaded "+units.length+" of "+(result.total??units.length)+" candidate LGA units · page "+(Math.floor(lgaRegistryOffset/100)+1)+". Source identifiers remain in separate namespaces. This is a restricted read-only review view; no correspondence is approved here.";
+   $("lgaRegistryPrev").disabled=lgaRegistryOffset===0;
+   $("lgaRegistryNext").disabled=lgaRegistryOffset+units.length>=(result.total??units.length);
+  }catch(error){message.textContent=error.message||"National LGA registry unavailable.";rows.innerHTML='<tr><td colspan="6">Restricted registry unavailable.</td></tr>';}
+ }
  async function load(){
   try{
    const d=await call();sources=(d.sources||[]);$("platformDirectoryAdmin").hidden=false;$("openDirectoryAdminButton").hidden=false;const nav=$("platformDirectoryAdminNav");if(nav)nav.hidden=false;
@@ -238,6 +267,16 @@
    codePanel.querySelector("#codeReconciliationStatus").addEventListener("change",()=>{codeReconciliationOffset=0;loadCodeReconciliation();});
    codePanel.querySelector("#codeReconciliationClass").addEventListener("change",()=>{codeReconciliationOffset=0;loadCodeReconciliation();});
    codePanel.addEventListener("click",event=>{const button=event.target.closest("[data-code-save]");if(button)saveCodeReconciliation(button.dataset.codeSave,button);});
+   const registryPanel=document.createElement("section");
+   registryPanel.id="lgaRegistryPanel";
+   registryPanel.style.cssText="margin:22px 0;padding:18px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;color:#102b46;overflow-x:auto";
+   registryPanel.innerHTML='<h3 style="margin-top:0">National LGA Registry — Source Identifier Review</h3><p>Browse the 774 OCHA and 774 World Bank source identifiers in separate namespaces. Records are candidate administrative units, not yet a government-certified canonical register. Similar names are not automatically approved as equivalent.</p><div class="button-row"><input id="lgaRegistrySearch" type="search" placeholder="Search state or LGA name" style="min-width:230px"><button type="button" id="lgaRegistrySearchButton" class="secondary-button">Search</button><button type="button" id="lgaRegistryRefresh" class="secondary-button">Refresh</button><button type="button" id="lgaRegistryPrev" class="secondary-button" disabled>Previous 100</button><button type="button" id="lgaRegistryNext" class="secondary-button">Next 100</button></div><p id="lgaRegistryMessage" class="message" role="status" aria-live="polite">Restricted registry not loaded yet.</p><div class="table-wrap"><table style="min-width:1050px"><thead><tr><th>State</th><th>LGA candidate</th><th>Normalized keys</th><th>Source IDs</th><th>Source identifiers and original names</th><th>Review interpretation</th></tr></thead><tbody id="lgaRegistryRows"><tr><td colspan="6">Open administrator console to load registry.</td></tr></tbody></table></div><p class="disclaimer">Read-only at this stage. No source codes, geometries or public hospital listings are modified.</p>';
+   codePanel.insertAdjacentElement("afterend",registryPanel);
+   registryPanel.querySelector("#lgaRegistrySearchButton").addEventListener("click",()=>{lgaRegistryOffset=0;loadLgaRegistry();});
+   registryPanel.querySelector("#lgaRegistryRefresh").addEventListener("click",()=>{lgaRegistryOffset=0;loadLgaRegistry();});
+   registryPanel.querySelector("#lgaRegistryPrev").addEventListener("click",()=>{lgaRegistryOffset=Math.max(0,lgaRegistryOffset-100);loadLgaRegistry();});
+   registryPanel.querySelector("#lgaRegistryNext").addEventListener("click",()=>{lgaRegistryOffset+=100;loadLgaRegistry();});
+   registryPanel.querySelector("#lgaRegistrySearch").addEventListener("keydown",event=>{if(event.key==="Enter"){lgaRegistryOffset=0;loadLgaRegistry();}});
   }
   if(adminPanel && !document.getElementById("geographicReviewPanel")){
    const reviewPanel=document.createElement("section");
