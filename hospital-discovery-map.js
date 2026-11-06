@@ -111,20 +111,48 @@
       subdomains:["a","b","c"],maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
     L.control.zoom({position:"topright"}).addTo(map);
+    map.on("zoomend",()=>drawMarkers(lastHospitals,false));
     drawMarkers(lastHospitals);
   }
-  function drawMarkers(hospitals) {
+  function drawMarkers(hospitals,fit=true) {
     if(!map||!window.L) return;
     markers.forEach(x=>x.marker.remove()); markers=[];
-    const bounds=[];
+    const points=[];
     hospitals.forEach(h=>{
       if(h.latitude==null||h.longitude==null) return;
-      const lat=Number(h.latitude),lng=Number(h.longitude); if(!Number.isFinite(lat)||!Number.isFinite(lng)) return;
-      const marker=L.marker([lat,lng]).addTo(map);
-      marker.bindPopup("<strong>"+escapeText(h.hospital_name)+"</strong><br>"+escapeText([h.city,h.state].filter(Boolean).join(", "))+(h.distance_km==null?"":"<br>"+Number(h.distance_km).toFixed(1)+" km away"));
-      marker.on("click",()=>selectHospital(h.hospital_id)); markers.push({marker,hospitalId:h.hospital_id}); bounds.push([lat,lng]);
+      const lat=Number(h.latitude),lng=Number(h.longitude);
+      if(Number.isFinite(lat)&&Number.isFinite(lng))points.push({h,lat,lng,point:map.project([lat,lng],map.getZoom())});
     });
-    if(bounds.length) map.fitBounds(bounds,{padding:[35,35],maxZoom:14});
+    const bounds=points.map(x=>[x.lat,x.lng]);
+    // Lightweight viewport-aware clustering; no paid map API or extra plugin required.
+    const cellSize=map.getZoom()>=15?48:76,groups=new Map();
+    points.forEach(item=>{
+      const key=Math.floor(item.point.x/cellSize)+":"+Math.floor(item.point.y/cellSize);
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push(item);
+    });
+    groups.forEach(group=>{
+      const lat=group.reduce((sum,x)=>sum+x.lat,0)/group.length;
+      const lng=group.reduce((sum,x)=>sum+x.lng,0)/group.length;
+      if(group.length===1){
+        const h=group[0].h,marker=L.marker([lat,lng]).addTo(map);
+        marker.bindPopup("<strong>"+escapeText(h.hospital_name)+"</strong><br>"+escapeText([h.local_government_area,h.city,h.state].filter(Boolean).join(", "))+(h.distance_km==null?"":"<br>"+Number(h.distance_km).toFixed(1)+" km away"));
+        marker.on("click",()=>selectHospital(h.hospital_id));
+        markers.push({marker,hospitalId:h.hospital_id});
+      }else{
+        const icon=L.divIcon({className:"healthos-hospital-cluster-wrap",html:'<div class="healthos-hospital-cluster">'+group.length+'</div>',iconSize:[48,48],iconAnchor:[24,24]});
+        const cluster=L.marker([lat,lng],{icon,zIndexOffset:500}).addTo(map);
+        const names=group.slice(0,12).map(x=>"<li>"+escapeText(x.h.hospital_name||"Hospital")+"</li>").join("");
+        const more=group.length>12?"<li>+"+(group.length-12)+" more hospitals</li>":"";
+        cluster.bindPopup("<strong>"+group.length+" hospitals in this area</strong><ul class='healthos-cluster-list'>"+names+more+"</ul>");
+        cluster.on("click",()=>{
+          if(map.getZoom()<16){map.flyToBounds(group.map(x=>[x.lat,x.lng]),{padding:[45,45],maxZoom:16,duration:.5});}
+          else cluster.openPopup();
+        });
+        markers.push({marker:cluster,hospitalId:null});
+      }
+    });
+    if(fit&&bounds.length)map.fitBounds(bounds,{padding:[35,35],maxZoom:14});
   }
   function showUserLocation(lat,lng,accuracy) {
     if(!map||!window.L) return;
