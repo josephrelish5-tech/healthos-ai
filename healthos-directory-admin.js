@@ -144,6 +144,15 @@
    });
 
    const stageButton=$("grid3StageButton");
+   const syncGrid3StageAvailability=()=>{
+    const selected=$("grid3StateSelect")?.value||"";
+    const allowed=selected.toUpperCase()==="OGUN";
+    stageButton.disabled=!allowed;
+    stageButton.title=allowed?"Stage Ogun records into restricted manual review only.":"Staging is currently restricted to the existing Ogun workflow.";
+    stageButton.textContent=allowed?"Stage Ogun records for review":"Staging unavailable — Ogun only";
+   };
+   $("grid3StateSelect").addEventListener("change",syncGrid3StageAvailability);
+   syncGrid3StageAvailability();
    if(stageButton){
     stageButton.addEventListener("click",e=>{
      e.preventDefault();
