@@ -162,13 +162,25 @@
       }else{
         const icon=L.divIcon({className:"healthos-hospital-cluster-wrap",html:'<div class="healthos-hospital-cluster">'+group.length+'</div>',iconSize:[48,48],iconAnchor:[24,24]});
         const cluster=L.marker([lat,lng],{icon,zIndexOffset:500}).addTo(map);
-        const names=group.slice(0,12).map(x=>"<li>"+escapeText(x.h.hospital_name||"Hospital")+"</li>").join("");
-        const more=group.length>12?"<li>+"+(group.length-12)+" more hospitals</li>":"";
-        cluster.bindPopup("<strong>"+group.length+" hospitals in this area</strong><ul class='healthos-cluster-list'>"+names+more+"</ul>");
-        cluster.on("click",()=>{
-          if(map.getZoom()<16){map.flyToBounds(group.map(x=>[x.lat,x.lng]),{padding:[45,45],maxZoom:16,duration:.5});}
-          else cluster.openPopup();
-        });
+        // A cluster tap opens the facilities represented by this number in place.
+        // It must not zoom, fly, or pan the map away from the selected cluster.
+        const hospitalDetails=group.map(({h})=>{
+          const address=[h.address,h.local_government_area,h.city,h.state].filter(Boolean).join(", ");
+          const listing=h.listing_group==="network"?"✓ HealthOS AI verified member":"External listing — not independently verified";
+          const distance=h.distance_km==null?"":"<div>"+Number(h.distance_km).toFixed(1)+" km away</div>";
+          const specialties=Array.isArray(h.specialties)&&h.specialties.length
+            ?"<div>Specialties: "+escapeText(h.specialties.join(", "))+"</div>":"";
+          return "<li class='healthos-cluster-hospital-detail'><strong>"+escapeText(h.hospital_name||"Hospital")+
+            "</strong><div>"+escapeText(address||"Address not provided")+"</div><div>"+escapeText(listing)+
+            "</div>"+distance+specialties+"</li>";
+        }).join("");
+        cluster.bindPopup(
+          "<div class='healthos-cluster-details'><strong>"+group.length+
+          " hospitals in this location</strong><ul class='healthos-cluster-list'>"+hospitalDetails+
+          "</ul></div>",
+          {maxWidth:340,maxHeight:320,autoPan:false,closeButton:true,keepInView:false}
+        );
+        cluster.on("click",()=>cluster.openPopup());
         markers.push({marker:cluster,hospitalId:null});
       }
     });
