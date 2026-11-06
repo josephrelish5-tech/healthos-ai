@@ -180,38 +180,123 @@
     placeLookupTimer=setTimeout(loadNearbyPlaces,900);
   }
   async function loadNearbyPlaces() {
-    if(!map || map.getZoom()<14) return;
-    const bounds=map.getBounds(), z=map.getZoom();
-    const south=bounds.getSouth().toFixed(3), west=bounds.getWest().toFixed(3);
-    const north=bounds.getNorth().toFixed(3), east=bounds.getEast().toFixed(3);
-    const key=[z,south,west,north,east].join(":");
-    if(key===lastPlaceLookupKey || Date.now()-lastPlaceLookupAt<12000) return;
-    lastPlaceLookupKey=key; lastPlaceLookupAt=Date.now();
-    const query='[out:json][timeout:12];(node["name"]('+south+','+west+','+north+','+east+');way["name"]('+south+','+west+','+north+','+east+');relation["name"]('+south+','+west+','+north+','+east+'););out center tags 100;';
-    try {
-      const response=await fetch("https://overpass-api.de/api/interpreter",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8","Accept":"application/json"},body:"data="+encodeURIComponent(query)});
-      if(!response.ok) throw new Error("Nearby map places unavailable");
-      const data=await response.json();
-      placeMarkers.forEach(marker=>marker.remove()); placeMarkers=[];
-      const seen=new Set();
-      (data.elements||[]).forEach(place=>{
-        const tags=place.tags||{}, name=String(tags.name||"").trim();
-        const lat=Number(place.lat??place.center?.lat),lng=Number(place.lon??place.center?.lon);
-        if(!name || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
-        const id=name.toLowerCase()+":"+lat.toFixed(5)+":"+lng.toFixed(5);
-        if(seen.has(id)) return; seen.add(id);
-        const category=tags.amenity||tags.shop||tags.tourism||tags.leisure||tags.office||tags.highway||tags.place||"Place";
-        const address=[tags["addr:housenumber"],tags["addr:street"],tags["addr:suburb"],tags["addr:city"]].filter(Boolean).join(", ");
-        const marker=L.circleMarker([lat,lng],{radius:5,color:"#8b5e16",weight:2,fillColor:"#f4d27a",fillOpacity:.95}).addTo(map);
-        marker.bindTooltip(escapeText(name),{permanent:true,direction:"top",offset:[0,-5],className:"healthos-hospital-name-label"});
-        marker.bindPopup("<strong>"+escapeText(name)+"</strong><br>"+escapeText(String(category).replace(/_/g," "))+(address?"<br>"+escapeText(address):""));
-        placeMarkers.push(marker);
-      });
-      setStatus("Showing hospital listings and "+placeMarkers.length+" named nearby places from OpenStreetMap. Place address details appear when available in the source map data.");
-    } catch(error) {
-      lastPlaceLookupKey="";
-      setStatus("Hospital listings are available. Nearby street and place names could not be loaded right now; the map will retry when you move or zoom.");
+    if (!map || map.getZoom() < 14) return;
+    const bounds = map.getBounds(), zoom = map.getZoom();
+    const south = bounds.getSouth().toFixed(4), west = bounds.getWest().toFixed(4);
+    const north = bounds.getNorth().toFixed(4), east = bounds.getEast().toFixed(4);
+    const key = [zoom, south, west, north, east].join(":");
+    if (key === lastPlaceLookupKey || Date.now() - lastPlaceLookupAt < 15000) return;
+
+    // Request named places AND address-tagged objects. Many OSM buildings have
+    // no name but do have a house number/street and are still useful discoveries.
+    const query = '[out:json][timeout:18];(' +
+      'nwr["name"](' + south + ',' + west + ',' + north + ',' + east + ');' +
+      'nwr["addr:housenumber"](' + south + ',' + west + ',' + north + ',' + east + ');' +
+      'nwr["addr:street"](' + south + ',' + west + ',' + north + ',' + east + ');' +
+      ');out center tags 180;';
+    const endpoints = [
+      "https://overpass-api.de/api/interpreter",
+      "https://overpass.kumi.systems/api/interpreter",
+      "https://overpass.private.coffee/api/interpreter"
+    ];
+    lastPlaceLookupAt = Date.now();
+    let data = null, lastError = null;
+
+    for (const endpoint of endpoints) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 22000);
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+            "Accept": "application/json"
+          },
+          body: "data=" + encodeURIComponent(query),
+          signal: controller.signal
+        });
+        if (!response.ok) throw new Error("Map data server returned HTTP " + response.status);
+        const result = await response.json();
+        if (!result || !Array.isArray(result.elements)) throw new Error("Map data response was incomplete");
+        data = result;
+        break;
+      } catch (error) {
+        lastError = error;
+      } finally {
+        clearTimeout(timeout);
+      }
     }
+
+    if (!data) {
+      // Do not cache a failed viewport. A later pan/zoom can retry it.
+      lastPlaceLookupKey = "";
+      setStatus("Nearby address data is temporarily unavailable" +
+        (lastError && lastError.name === "AbortError" ? " (map server timed out)." : ".") +
+        " Hospital listings remain available; try moving or zooming the map again shortly.");
+      return;
+    }
+
+    // Ignore a response if the user has moved to another area while it loaded.
+    const currentBounds = map.getBounds();
+    const stillSameArea =
+      Math.abs(currentBounds.getSouth() - Number(south)) < 0.002 &&
+      Math.abs(currentBounds.getWest() - Number(west)) < 0.002 &&
+      Math.abs(currentBounds.getNorth() - Number(north)) < 0.002 &&
+      Math.abs(currentBounds.getEast() - Number(east)) < 0.002;
+    if (!stillSameArea) {
+      lastPlaceLookupKey = "";
+      scheduleNearbyPlaces();
+      return;
+    }
+
+    const nextMarkers = [];
+    const seen = new Set();
+    (data.elements || []).forEach(place => {
+      const tags = place.tags || {};
+      const name = String(tags.name || tags["addr:housenumber"] || "").trim();
+      const lat = Number(place.lat ?? place.center?.lat);
+      const lng = Number(place.lon ?? place.center?.lon);
+      if (!name || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const id = String(place.type || "") + ":" + String(place.id || "") ||
+        name.toLowerCase() + ":" + lat.toFixed(5) + ":" + lng.toFixed(5);
+      if (seen.has(id)) return;
+      seen.add(id);
+
+      const category = tags.amenity || tags.shop || tags.healthcare ||
+        tags.tourism || tags.leisure || tags.office || tags.highway ||
+        tags.building || tags.place || "Place";
+      const street = [tags["addr:housenumber"], tags["addr:street"]].filter(Boolean).join(" ");
+      const locality = [
+        tags["addr:suburb"], tags["addr:neighbourhood"], tags["addr:village"],
+        tags["addr:town"], tags["addr:city"], tags["addr:state"]
+      ].filter(Boolean).join(", ");
+      const address = [street, locality].filter(Boolean).join(", ");
+      const marker = L.circleMarker([lat, lng], {
+        radius: 5, color: "#8b5e16", weight: 2,
+        fillColor: "#f4d27a", fillOpacity: 0.95
+      });
+      marker.bindTooltip(escapeText(name), {
+        permanent: map.getZoom() >= 16,
+        direction: "top", offset: [0, -5],
+        className: "healthos-hospital-name-label"
+      });
+      marker.bindPopup(
+        "<strong>" + escapeText(name) + "</strong><br>" +
+        escapeText(String(category).replace(/_/g, " ")) +
+        (address ? "<br>" + escapeText(address) : "<br>Address not provided in OpenStreetMap data")
+      );
+      nextMarkers.push(marker);
+    });
+
+    // Replace the old place layer only after a successful response, so a
+    // temporary server failure never makes already-loaded locations disappear.
+    placeMarkers.forEach(marker => marker.remove());
+    placeMarkers = nextMarkers;
+    placeMarkers.forEach(marker => marker.addTo(map));
+    lastPlaceLookupKey = key;
+    setStatus("Showing hospital listings and " + placeMarkers.length +
+      " named or address-tagged nearby places. Tap a marker to see its available address. " +
+      "Some locations may not have address details in OpenStreetMap yet.");
   }
   function showUserLocation(lat,lng,accuracy) {
     if(!map||!window.L) return;
