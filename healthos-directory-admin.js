@@ -28,7 +28,7 @@
   if(!rows||!summary)return;
   if(osmRunState.area!=="ogun_state"||!osmRunState.candidates.size){rows.innerHTML='<tr><td colspan="3">Run the Ogun State dry search to populate this report.</td></tr>';summary.textContent="No state-wide candidate data available yet.";return;}
   const counts=new Map(OGUN_LGAS.map(name=>[name,0]));
-  const normalize=value=>String(value||"").toLowerCase().replace(/\\b(lga|local government area)\\b/g,"").replace(/[^a-z0-9]/g,"");
+  const normalize=value=>String(value||"").toLowerCase().replace(/\b(lga|local government area)\b/g,"").replace(/[^a-z0-9]/g,"");
   let boundaryAssigned=0,tagAssigned=0,unassigned=0;
   for(const candidate of osmRunState.candidates.values()){
    const boundaryName=String(candidate.local_government_area||"").trim();
@@ -41,7 +41,7 @@
    const haystack=normalize(hints);
    let matched=false;
    for(const lga of OGUN_LGAS){
-    const aliases=[lga,lga.replace(" (Yewa North)",""),lga.replace(" (Yewa South)",""),lga==="Shagamu"?"Sagamu":lga].map(normalize);
+    const aliases=([lga,lga.replace(" (Yewa North)",""),lga.replace(" (Yewa South)",""),lga==="Egbado North (Yewa North)"?"Yewa North":lga==="Egbado South (Yewa South)"?"Yewa South":lga==="Shagamu"?"Sagamu":lga]).map(normalize);
     if(aliases.some(alias=>alias&&haystack.includes(alias))){counts.set(lga,counts.get(lga)+1);tagAssigned++;matched=true;break;}
    }
    if(!matched)unassigned++;
