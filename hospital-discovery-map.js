@@ -490,7 +490,7 @@
     const south=box[0],north=box[1],west=box[2],east=box[3];
     const area=(north-south)*(east-west);
     if(area>4) return [];
-    const name=String(nameQuery||"").trim().replace(/[.*+?^${}()|[\]\\]/g,"\\  function refresh() { if(!el("hospitalDiscoveryMap")) return; if(!map) initMap(); if(map){map.invalidateSize();drawMarkers(lastHospitals);} }");
+    const name=String(nameQuery||"").trim().replace(/[^a-z0-9\\s'-]/gi,"").slice(0,80);
     const nameFilter=name?'[name~"'+name.replace(/"/g,'\\"')+'",i]':'';
     const bbox='('+south+','+west+','+north+','+east+')';
     const query='[out:json][timeout:25];(nwr["amenity"~"^(hospital|clinic|doctors)$"]'+nameFilter+bbox+';nwr["healthcare"~"^(hospital|clinic|doctor)$"]'+nameFilter+bbox+';);out center tags 150;';
