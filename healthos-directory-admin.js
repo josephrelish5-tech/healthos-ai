@@ -123,6 +123,26 @@
     }
    };
    $("grid3PreviewButton").addEventListener("click",e=>runGrid3("preview",e.currentTarget));
+   $("grid3CoverageButton").addEventListener("click",async e=>{
+    const button=e.currentTarget,message=$("grid3CoverageMessage"),rows=$("grid3CoverageRows");
+    button.disabled=true;message.textContent="Requesting read-only nationwide GRID3 coverage summary…";
+    rows.innerHTML='<tr><td colspan="2">Loading coverage report…</td></tr>';
+    try{
+     const {data,error}=await client.functions.invoke("healthos-grid3-hospital-collector",{body:{action:"coverage_summary"}});
+     if(error)throw error;if(data?.error)throw Error(data.error+(data.details?": "+data.details:""));
+     const states=["Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"];
+     const normalize=v=>String(v||"").toUpperCase().replace(/FEDERAL CAPITAL TERRITORY|ABUJA/g,"FCT").trim();
+     const counts=new Map((data.state_counts||[]).map(x=>[normalize(x.state),Number(x.facility_count||0)]));
+     rows.innerHTML=states.map(state=>{const count=counts.get(normalize(state))||0;return '<tr><td>'+esc(state)+'</td><td>'+count+'</td></tr>';}).join("");
+     const observed=states.filter(state=>(counts.get(normalize(state))||0)>0).length;
+     const missing=states.filter(state=>(counts.get(normalize(state))||0)===0);
+     message.textContent="Coverage report complete: "+observed+" of 37 state/FCT areas have records; "+(37-observed)+" have zero records in this dataset. "+Number(data.total_facility_records||0).toLocaleString()+" total records reported. Missing: "+(missing.join(", ")||"None")+". Aggregate report only; no records downloaded, staged or published.";
+    }catch(error){
+     rows.innerHTML='<tr><td colspan="2">Coverage report failed.</td></tr>';
+     message.textContent=error.message||"Could not retrieve the coverage report.";
+    }finally{button.disabled=false;}
+   });
+
    const stageButton=$("grid3StageButton");
    if(stageButton){
     stageButton.addEventListener("click",e=>{
