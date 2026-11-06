@@ -79,6 +79,31 @@
    card.style.cssText="margin:18px 0;padding:18px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;color:#102b46";
    card.innerHTML='<h3 style="margin-top:0">Nigeria State & LGA Boundary Import</h3><p>Import official World Bank administrative polygons into the restricted geographic reference table. This does not publish or verify hospital records.</p><button id="ngBoundaryImportButton" class="primary-button" type="button">Import Nigeria state and LGA boundaries</button><p id="ngBoundaryImportMessage" class="message" role="status" aria-live="polite"></p>';
    adminPanel.insertBefore(card,adminPanel.firstChild);
+   const ochaCard=document.createElement("section");
+   ochaCard.id="ochaBoundaryImportCard";
+   ochaCard.style.cssText="margin:18px 0;padding:18px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;color:#102b46";
+   ochaCard.innerHTML='<h3 style="margin-top:0">OCHA / OSGOF Historical Boundary Comparison</h3><p>Import the separate OCHA COD-AB v01 state and LGA polygons as a historical comparison source. It will not replace the World Bank 2026 boundaries or change hospital records.</p><button id="ochaBoundaryImportButton" class="primary-button" type="button">Import OCHA comparison boundaries</button><p id="ochaBoundaryImportMessage" class="message" role="status" aria-live="polite"></p>';
+   adminPanel.insertBefore(ochaCard,adminPanel.firstChild);
+   ochaCard.querySelector("#ochaBoundaryImportButton").addEventListener("click",async ev=>{
+    const button=ev.currentTarget,msg=ochaCard.querySelector("#ochaBoundaryImportMessage");
+    if(!confirm("Import the OCHA/OSGOF historical Nigeria state and LGA polygons into a separate reference source? This will not replace World Bank boundaries, modify hospitals, verify facilities, or publish records."))return;
+    button.disabled=true;msg.textContent="Contacting the OCHA comparison importer. Please keep this page open…";
+    try{
+     const {data:{session}}=await client.auth.getSession();
+     if(!session?.access_token)throw new Error("Your administrator session has expired. Sign in again.");
+     const response=await fetch(URL+"/functions/v1/healthos-ocha-boundary-import",{
+      method:"POST",
+      headers:{Authorization:"Bearer "+session.access_token,apikey:KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({action:"import_ocha_cod_ab_nigeria"})
+     });
+     const result=await response.json().catch(()=>({error:"Invalid OCHA import response"}));
+     if(!response.ok)throw new Error(result.error||"OCHA import failed (HTTP "+response.status+")");
+     const counts=result.stored_counts||{};
+     msg.textContent="OCHA import response: "+JSON.stringify(result.import_summary||[])+" Stored polygons — states: "+(counts.states??"not reported")+", LGAs: "+(counts.lgas??"not reported")+". "+(result.note||"");
+     msg.className="message success";
+    }catch(error){msg.textContent=error.message||"OCHA import failed.";msg.className="message error";}
+    finally{button.disabled=false;}
+   });
    card.querySelector("#ngBoundaryImportButton").addEventListener("click",async ev=>{
     const button=ev.currentTarget,msg=card.querySelector("#ngBoundaryImportMessage");
     if(!confirm("Import Nigeria state and LGA boundary polygons from the World Bank official boundary service? This writes only geographic reference polygons; it does not alter, verify, or publish any hospital record."))return;
