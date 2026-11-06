@@ -44,8 +44,32 @@
   $("osmDryRunButton").addEventListener("click",async()=>{
     const button=$("osmDryRunButton"),area=$("osmCollectionArea").value,isOgun=area==="ogun_state";
     if(!isOgun||osmRunState.area!==area)osmRunState={area,nextTile:0,totalTiles:null,candidates:new Map(),failedTiles:new Map(),rawCount:0,insideCount:0,retryRound:0,retryQueue:[],retryCursor:0,successTiles:new Set()};
+    // If a previous run exhausted its two retry passes, a new manual run starts fresh retries.
+    if(isOgun&&osmRunState.totalTiles!==null&&osmRunState.nextTile>=osmRunState.totalTiles&&osmRunState.failedTiles.size&&osmRunState.retryRound>=2){
+      osmRunState.retryRound=0;osmRunState.retryQueue=[];osmRunState.retryCursor=0;
+    }
     button.disabled=true;
     const renderRows=()=>{const rows=Array.from(osmRunState.candidates.values());$("osmDryRunRows").innerHTML=rows.map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc(x.raw_tags?.amenity||x.raw_tags?.healthcare||"Unclassified")+'</td><td>'+esc(Number(x.latitude).toFixed(5)+", "+Number(x.longitude).toFixed(5))+'</td><td>'+esc(x.osm_type+"/"+x.osm_id)+'</td></tr>').join("")||'<tr><td colspan="4">No named candidates returned yet.</td></tr>';};
+    const invokeOsmTile=async body=>{
+      const {data:{session},error:sessionError}=await client.auth.getSession();
+      if(sessionError)throw Error("Could not retrieve the signed-in session: "+sessionError.message);
+      if(!session?.access_token)throw Error("Your administrator session has expired. Sign in again.");
+      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),28000);
+      try{
+        const response=await fetch(URL+"/functions/v1/healthos-osm-hospital-collector",{
+          method:"POST",
+          headers:{Authorization:"Bearer "+session.access_token,apikey:KEY,"Content-Type":"application/json"},
+          body:JSON.stringify(body),signal:controller.signal
+        });
+        const data=await response.json().catch(()=>({error:"The Edge Function returned a non-JSON response."}));
+        if(!response.ok)throw Error((data.error||"Hospital collector request failed")+" (HTTP "+response.status+")"+(data.detail?" — "+data.detail:""));
+        if(data?.error)throw Error(data.error+(data.detail?" — "+data.detail:""));
+        return data;
+      }catch(error){
+        if(error?.name==="AbortError")throw Error("Request timed out after 28 seconds. This tile remains pending and can be retried.");
+        throw error;
+      }finally{clearTimeout(timer);}
+    };
     const errorText=async error=>{let message=error?.message||"Request failed.";if(error?.context instanceof Response){try{const p=await error.context.clone().json();message=p.error||message;if(p.detail)message+=" — "+p.detail;if(p.tile_error)message+=" — "+p.tile_error;}catch(_){}}return message;};
     try{
      if(!isOgun){
@@ -57,28 +81,41 @@
      }else{
       $("osmDryRunRows").innerHTML='<tr><td colspan="4">Preparing state-wide search…</td></tr>';
       while(true){
-       let tileIndex,endpointAttempt=0;
-       if(osmRunState.nextTile < (osmRunState.totalTiles??Infinity)){
+       let tileIndex,endpointAttempt=0,discoveringTileCount=osmRunState.totalTiles===null;
+       if(discoveringTileCount){
+        // Until the first valid collector response gives us the tile count, only request tile 0.
+        tileIndex=0;osmRunState.nextTile=1;
+       }else if(osmRunState.nextTile<osmRunState.totalTiles){
         tileIndex=osmRunState.nextTile++;
-       }else if(osmRunState.failedTiles.size && osmRunState.retryRound<2){
+       }else if(osmRunState.failedTiles.size&&osmRunState.retryRound<2){
         if(osmRunState.retryCursor>=osmRunState.retryQueue.length){
-         osmRunState.retryRound++;osmRunState.retryQueue=Array.from(osmRunState.failedTiles.keys());osmRunState.failedTiles.clear();osmRunState.retryCursor=0;
+         osmRunState.retryRound++;osmRunState.retryQueue=Array.from(osmRunState.failedTiles.keys());osmRunState.retryCursor=0;
         }
         if(osmRunState.retryRound>2||osmRunState.retryCursor>=osmRunState.retryQueue.length)break;
         tileIndex=osmRunState.retryQueue[osmRunState.retryCursor++];endpointAttempt=osmRunState.retryRound;
        }else break;
-       $("osmDryRunMessage").textContent="Ogun discovery: tile "+(tileIndex+1)+" / "+(osmRunState.totalTiles??"…")+(endpointAttempt?" · retry "+endpointAttempt+"/2":"")+" · "+osmRunState.candidates.size+" unique candidates. Please keep this page open.";
+       $("osmDryRunMessage").textContent="Ogun discovery: tile "+(tileIndex+1)+" / "+(osmRunState.totalTiles??"establishing tile plan")+(endpointAttempt?" · retry "+endpointAttempt+"/2":"")+" · "+osmRunState.candidates.size+" unique candidates. Please keep this page open.";
        let data;
        try{
-        const result=await client.functions.invoke("healthos-osm-hospital-collector",{body:{area,dry_run:true,tile_index:tileIndex,endpoint_attempt:endpointAttempt}});
-        if(result.error)throw Error(await errorText(result.error));
-        data=result.data;if(data?.error)throw Error(data.error);
+        data=await invokeOsmTile({area,dry_run:true,tile_index:tileIndex,endpoint_attempt:endpointAttempt});
        }catch(callError){
-        osmRunState.failedTiles.set(tileIndex,{detail:callError.message||"Request failed",endpoint:"Client/Edge request",status:"request_error"});
-        renderRows();continue;
+        osmRunState.failedTiles.set(tileIndex,{detail:callError.message||"Request failed",endpoint:"Browser → Supabase Edge Function",status:"request_error"});
+        if(discoveringTileCount)osmRunState.nextTile=0;
+        renderRows();
+        if(discoveringTileCount)break;
+        continue;
        }
-       if(osmRunState.totalTiles===null)osmRunState.totalTiles=data.tile_summary?.tile_count??null;
-       if(data.tile_failed){
+       if(!Number.isInteger(data.tile_summary?.tile_count)||data.tile_summary.tile_count<1){
+        osmRunState.failedTiles.set(tileIndex,{detail:"Collector response did not include a valid tile count.",endpoint:"Supabase Edge Function",status:"invalid_response"});
+        if(discoveringTileCount)osmRunState.nextTile=0;
+        renderRows();
+        if(discoveringTileCount)break;
+        continue;
+       }
+       if(osmRunState.totalTiles===null)osmRunState.totalTiles=data.tile_summary.tile_count;
+       if(data.tile_summary.tile_index!==tileIndex){
+        osmRunState.failedTiles.set(tileIndex,{detail:"Collector returned a response for a different tile index.",endpoint:data.upstream_endpoint||"Supabase Edge Function",status:"tile_mismatch"});
+       }else if(data.tile_failed){
         osmRunState.failedTiles.set(tileIndex,{detail:data.tile_error||"Upstream request failed",endpoint:data.upstream_endpoint||"Unknown endpoint",status:data.upstream_status??0});
        }else{
         osmRunState.failedTiles.delete(tileIndex);osmRunState.successTiles.add(tileIndex);
@@ -86,11 +123,13 @@
         (data.candidates||[]).forEach(x=>osmRunState.candidates.set(x.osm_type+"/"+x.osm_id,x));
        }
        renderRows();
-       $("osmDryRunMessage").textContent="Ogun discovery: "+osmRunState.nextTile+" / "+(osmRunState.totalTiles??"?")+" tiles · "+osmRunState.successTiles.size+" successful · "+osmRunState.failedTiles.size+" pending/failed · "+osmRunState.candidates.size+" unique candidates"+(endpointAttempt?" · retry pass "+endpointAttempt+"/2":"")+". No records imported.";
+       $("osmDryRunMessage").textContent="Ogun discovery: "+osmRunState.successTiles.size+" / "+osmRunState.totalTiles+" tiles successful · "+osmRunState.failedTiles.size+" pending/failed · "+osmRunState.candidates.size+" unique candidates"+(endpointAttempt?" · retry pass "+endpointAttempt+"/2":"")+". No records imported.";
        await new Promise(resolve=>setTimeout(resolve,180));
       }
       const failures=Array.from(osmRunState.failedTiles.entries()).slice(0,4).map(([index,item])=>"tile "+(index+1)+": "+item.status+" — "+item.endpoint+" — "+item.detail).join(" | ");
-      $("osmDryRunMessage").textContent="Ogun preview "+(osmRunState.failedTiles.size?"partially complete":"complete")+": "+osmRunState.successTiles.size+"/"+osmRunState.totalTiles+" tiles succeeded; "+osmRunState.candidates.size+" unique named candidates from "+osmRunState.insideCount+" in-boundary map elements; "+osmRunState.failedTiles.size+" tiles still failed after 2 retries. "+(failures?"First errors: "+failures+". ":"")+"No records imported.";
+      $("osmDryRunMessage").textContent=osmRunState.totalTiles===null
+       ?"Ogun preview paused: the collector did not return its tile plan. No tile was skipped. Tap Run dry search to retry tile 1. Details: "+(failures||"No response received.")+" No records imported."
+       :"Ogun preview "+(osmRunState.failedTiles.size?"partially complete":"complete")+": "+osmRunState.successTiles.size+"/"+osmRunState.totalTiles+" tiles succeeded; "+osmRunState.candidates.size+" unique named candidates from "+osmRunState.insideCount+" in-boundary map elements; "+osmRunState.failedTiles.size+" tiles pending/failed. "+(failures?"First errors: "+failures+". ":"")+(osmRunState.failedTiles.size?"Tap Run dry search to retry remaining tiles. ":"")+"No records imported.";
      }
     }catch(error){renderRows();$("osmDryRunMessage").textContent=(error.message||"Dry run failed.")+(isOgun?" Progress retained. Tap Run dry search to resume.":"");}
     finally{button.disabled=false;}
