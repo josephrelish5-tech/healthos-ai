@@ -1466,3 +1466,9 @@ th {
 #hospitalMap .hospital-radius-control{display:flex;align-items:center;gap:8px;color:#e6ce91;font-size:13px;font-weight:700}
 #hospitalMap .hospital-radius-control select{min-height:40px;padding:7px 30px 7px 10px;border-radius:10px;border:1px solid #8f7944;background:#202118;color:#f2df9c;font:inherit}
 @media(max-width:480px){#hospitalMap .hospital-nearby-toolbar{align-items:center}#hospitalMap .hospital-radius-control{display:grid;gap:4px}}
+
+
+/* Public hospital map: tall navigation canvas on phones and desktop. */
+#hospitalMap .healthos-map-stage{height:auto!important;max-height:none!important}
+#hospitalMap #hospitalDiscoveryMap{height:1200px!important;min-height:1200px!important;max-height:none!important}
+@media(max-width:850px){#hospitalMap #hospitalDiscoveryMap{height:1200px!important;min-height:1200px!important;max-height:none!important}}
