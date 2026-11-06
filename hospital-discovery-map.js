@@ -488,26 +488,46 @@
     const place=places[0],box=String(place.boundingbox||"").split(",").map(Number);
     if(box.length!==4||!box.every(Number.isFinite)) throw new Error("Location search did not return a valid map area.");
     const south=box[0],north=box[1],west=box[2],east=box[3];
-    const area=(north-south)*(east-west);
-    if(area>4) return [];
     const name=String(nameQuery||"").trim().replace(/[^a-z0-9\\s'-]/gi,"").slice(0,80);
     const nameFilter=name?'[name~"'+name.replace(/"/g,'\\"')+'",i]':'';
-    const bbox='('+south+','+west+','+north+','+east+')';
-    const query='[out:json][timeout:25];(nwr["amenity"~"^(hospital|clinic|doctors)$"]'+nameFilter+bbox+';nwr["healthcare"~"^(hospital|clinic|doctor)$"]'+nameFilter+bbox+';);out center tags 150;';
-    const endpoints=["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter","https://overpass.private.coffee/api/interpreter"];
-    let payload=null,lastError=null;
-    for(const endpoint of endpoints){
-      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),18000);
-      try{
-        const response=await fetch(endpoint+"?data="+encodeURIComponent(query),{headers:{Accept:"application/json"},signal:controller.signal});
-        if(!response.ok)throw new Error("Overpass HTTP "+response.status);
-        const data=await response.json();if(!Array.isArray(data.elements))throw new Error("Incomplete OpenStreetMap response");
-        payload=data;break;
-      }catch(error){lastError=error;}finally{clearTimeout(timer);}
+    // Search the complete returned state/LGA/city area in bounded tiles. Large
+    // state bounding boxes are split rather than silently returning zero results.
+    const rows=Math.max(1,Math.ceil((north-south)/0.8));
+    const cols=Math.max(1,Math.ceil((east-west)/0.8));
+    const tiles=[];
+    for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+      const tileSouth=south+(north-south)*r/rows;
+      const tileNorth=south+(north-south)*(r+1)/rows;
+      const tileWest=west+(east-west)*c/cols;
+      const tileEast=west+(east-west)*(c+1)/cols;
+      tiles.push('('+tileSouth+','+tileWest+','+tileNorth+','+tileEast+')');
     }
-    if(!payload)throw new Error(lastError?.message||"OpenStreetMap hospital search is temporarily unavailable.");
+    const endpoints=["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter","https://overpass.private.coffee/api/interpreter"];
+    const elementsById=new Map();
+    let lastError=null;
+    for(let offset=0;offset<tiles.length;offset+=4){
+      const batch=tiles.slice(offset,offset+4);
+      const batchResults=await Promise.all(batch.map(async bbox=>{
+        const query='[out:json][timeout:25];(nwr["amenity"~"^(hospital|clinic|doctors)$"]'+nameFilter+bbox+';nwr["healthcare"~"^(hospital|clinic|doctor)$"]'+nameFilter+bbox+';);out center tags 150;';
+        let error=null;
+        for(const endpoint of endpoints){
+          const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),30000);
+          try{
+            const response=await fetch(endpoint+"?data="+encodeURIComponent(query),{headers:{Accept:"application/json"},signal:controller.signal});
+            if(!response.ok)throw new Error("Overpass HTTP "+response.status);
+            const data=await response.json();
+            if(!Array.isArray(data.elements))throw new Error("Incomplete OpenStreetMap response");
+            return data.elements;
+          }catch(e){error=e;}finally{clearTimeout(timer);}
+        }
+        lastError=error;
+        return null;
+      }));
+      if(batchResults.every(result=>result===null))throw new Error(lastError?.message||"OpenStreetMap hospital search is temporarily unavailable.");
+      batchResults.filter(Boolean).flat().forEach(item=>elementsById.set(item.type+"/"+item.id,item));
+    }
     const results=[];
-    for(const item of payload.elements){
+    for(const item of elementsById.values()){
       const tags=item.tags||{},lat=Number(item.lat??item.center?.lat),lon=Number(item.lon??item.center?.lon);
       const hospitalName=String(tags.name||tags["name:en"]||tags.official_name||"").trim();
       if(!hospitalName||!Number.isFinite(lat)||!Number.isFinite(lon))continue;
