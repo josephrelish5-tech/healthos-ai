@@ -41,13 +41,19 @@ Deno.serve(async (req) => {
     if (scope === "state" && !stateNames.includes(requestedState)) {
       return json({ error: "Unsupported Nigerian state filter", requested_state: requestedState }, 400);
     }
-    if (action === "stage_for_review" && scope !== "ogun") {
-      return json({ error: "Only the existing Ogun review workflow may stage records. Nationwide and state-specific requests are preview-only; no records were written." }, 409);
+    if (action === "stage_for_review" && scope === "ogun" && requestedState) {
+      return json({ error: "Invalid mixed state/scope request." }, 400);
     }
     const { data: source, error: sourceError } = await adminClient.from("healthos_hospital_directory_sources")
       .select("id,is_enabled,permission_review_status,data_license,permission_basis").eq("id", SOURCE_ID).maybeSingle();
     if (sourceError || !source) return json({ error: "GRID3 source registry record not found" }, 500);
-    if (source.is_enabled) return json({ error: "Preview blocked while source is enabled for another workflow." }, 409);
+    if (action === "stage_for_review") {
+      if (source.permission_review_status !== "approved" || source.is_enabled !== true) {
+        return json({ error: "Nationwide staging is locked. An authorised administrator must approve this exact dataset licence and enable the source first. No records were written.", permission_review_status: source.permission_review_status, source_enabled: source.is_enabled }, 409);
+      }
+    } else if (source.is_enabled && body?.action !== "reconciliation_summary" && body?.action !== "coverage_summary") {
+      return json({ error: "Preview is paused while this source is enabled for staging." }, 409);
+    }
     if (body?.action === "reconciliation_summary") {
       const { data: summary, error: summaryError } = await adminClient
         .rpc("healthos_grid3_reconciliation_summary", { p_source_id: SOURCE_ID });
@@ -184,8 +190,8 @@ Deno.serve(async (req) => {
         data_license: "CC BY 4.0",
         attribution_text: "Source: GRID3 NGA Health Facilities v2.0; Center for Integrated Earth System Information (CIESIN), Columbia University, 2024. DOI: 10.7916/kv1n-0743. Licensed under CC BY 4.0.",
         raw_attributes: r.raw_attributes || {},
-        review_status: r.lga_validation_status === "ogun_lga_match" ? "review_required" : "needs_correction",
-        review_notes: r.lga_validation_status === "ogun_lga_match" ? null : "AUTOMATED DATA-QUALITY FLAG: GRID3 record is labelled state Ogun but its LGA is not one of Ogun State 20 LGAs. Do not publish until source geography is corrected or independently verified."
+        review_status: r.latitude !== null && r.longitude !== null && String(r.public_name || "").trim() ? "review_required" : "needs_correction",
+        review_notes: r.latitude !== null && r.longitude !== null && String(r.public_name || "").trim() ? null : "AUTOMATED DATA-QUALITY FLAG: facility name or coordinates are missing/outside Nigeria validation bounds. Human correction required before publication."
       }));
       let inserted = 0;
       for (let offset = 0; offset < stagedRows.length; offset += 250) {
