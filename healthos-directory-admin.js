@@ -29,18 +29,26 @@
   if(osmRunState.area!=="ogun_state"||!osmRunState.candidates.size){rows.innerHTML='<tr><td colspan="3">Run the Ogun State dry search to populate this report.</td></tr>';summary.textContent="No state-wide candidate data available yet.";return;}
   const counts=new Map(OGUN_LGAS.map(name=>[name,0]));
   const normalize=value=>String(value||"").toLowerCase().replace(/\\b(lga|local government area)\\b/g,"").replace(/[^a-z0-9]/g,"");
+  let boundaryAssigned=0,tagAssigned=0,unassigned=0;
   for(const candidate of osmRunState.candidates.values()){
+   const boundaryName=String(candidate.local_government_area||"").trim();
+   if(boundaryName){
+    const match=OGUN_LGAS.find(name=>normalize(name)===normalize(boundaryName)||normalize(name.replace(" (Yewa North)",""))===normalize(boundaryName)||normalize(name.replace(" (Yewa South)",""))===normalize(boundaryName));
+    if(match){counts.set(match,counts.get(match)+1);boundaryAssigned++;continue;}
+   }
    const tags=candidate.raw_tags||{};
    const hints=[tags["addr:district"],tags["addr:county"],tags["addr:municipality"],tags["addr:locality"],tags["addr:town"],tags["addr:city"],tags["is_in"],tags["is_in:district"],tags["is_in:county"]].filter(Boolean).join(" ");
    const haystack=normalize(hints);
+   let matched=false;
    for(const lga of OGUN_LGAS){
     const aliases=[lga,lga.replace(" (Yewa North)",""),lga.replace(" (Yewa South)",""),lga==="Shagamu"?"Sagamu":lga].map(normalize);
-    if(aliases.some(alias=>alias&&haystack.includes(alias))){counts.set(lga,counts.get(lga)+1);break;}
+    if(aliases.some(alias=>alias&&haystack.includes(alias))){counts.set(lga,counts.get(lga)+1);tagAssigned++;matched=true;break;}
    }
+   if(!matched)unassigned++;
   }
   const observed=Array.from(counts.values()).filter(n=>n>0).length;
-  rows.innerHTML=OGUN_LGAS.map(name=>{const n=counts.get(name);return '<tr><td>'+esc(name)+'</td><td>'+n+'</td><td>'+(n?'Candidates observed — location tag match':'Not observed in tagged candidates')+'</td></tr>';}).join("");
-  summary.textContent=observed+" of 20 LGAs have at least one candidate with an identifiable LGA/location tag. "+osmRunState.candidates.size+" unique candidates retained. This is a tag-based preview, not proof of complete geographic coverage.";
+  rows.innerHTML=OGUN_LGAS.map(name=>{const n=counts.get(name);return '<tr><td>'+esc(name)+'</td><td>'+n+'</td><td>'+(n?'Candidates assigned':'No candidates assigned yet')+'</td></tr>';}).join("");
+  summary.textContent=observed+" of 20 LGAs represented. "+boundaryAssigned+" candidates assigned by OCHA administrative polygons; "+tagAssigned+" by OSM location tags; "+unassigned+" remain unassigned. Coverage describes discovered OSM candidates only, not the total number of hospitals.";
  }
  async function call(method="GET",body){
   const {data:{session}}=await client.auth.getSession();
