@@ -7,6 +7,8 @@
   let accuracyCircle = null;
   let watchId = null;
   let lastHospitals = [];
+  let selectedHospitalId = null;
+  let popupCloseTimer = null;
   const defaultCenter = [6.82, 3.48]; // Obafemi Owode, Ogun State (regional fallback only)
   function el(id) { return document.getElementById(id); }
   function escapeText(value) { return String(value || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -21,6 +23,7 @@
     const h=lastHospitals.find(x=>String(x.hospital_id)===String(hospitalId));
     if(!h) return;
     if(map && h.latitude!=null && h.longitude!=null) map.flyTo([Number(h.latitude),Number(h.longitude)],16,{duration:0.8});
+    selectedHospitalId=String(hospitalId);
     markers.forEach(item=>{ if(String(item.hospitalId)===String(hospitalId)) item.marker.openPopup(); else item.marker.closePopup(); });
     document.querySelectorAll("[data-hospital-card]").forEach(card=>card.classList.toggle("hospital-card-selected",card.dataset.hospitalCard===String(hospitalId)));
   }
@@ -107,9 +110,15 @@
     if(!node || !window.L || map) return;
     map=L.map(node,{zoomControl:false,scrollWheelZoom:true,preferCanvas:true}).setView(defaultCenter,12);
     // Use standard OpenStreetMap tiles: no CARTO API key is required.
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-      subdomains:["a","b","c"],maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{
+      subdomains:["a","b","c","d"],maxZoom:20,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
+    // Make hospital-name labels readable when users zoom in.
+    if(!document.getElementById("healthos-hospital-map-label-style")){
+      const style=document.createElement("style"); style.id="healthos-hospital-map-label-style";
+      style.textContent=".healthos-hospital-name-label{background:#fff;border:1px solid #1d4ed8;border-radius:5px;color:#102a43;font-weight:700;padding:3px 6px;box-shadow:0 1px 5px rgba(0,0,0,.25);white-space:nowrap}.healthos-hospital-name-label:before{display:none}";
+      document.head.appendChild(style);
+    }
     L.control.zoom({position:"topright"}).addTo(map);
     map.on("zoomend",()=>drawMarkers(lastHospitals,false));
     drawMarkers(lastHospitals);
@@ -136,8 +145,11 @@
       const lng=group.reduce((sum,x)=>sum+x.lng,0)/group.length;
       if(group.length===1){
         const h=group[0].h,marker=L.marker([lat,lng]).addTo(map);
-        marker.bindPopup("<strong>"+escapeText(h.hospital_name)+"</strong><br>"+escapeText([h.local_government_area,h.city,h.state].filter(Boolean).join(", "))+"<br>"+(h.listing_group==="network"?"HealthOS AI verified member":"External listing — not independently verified")+(h.distance_km==null?"":"<br>"+Number(h.distance_km).toFixed(1)+" km away"));
+        marker.bindPopup("<strong>"+escapeText(h.hospital_name)+"</strong><br>"+escapeText([h.address,h.local_government_area,h.city,h.state].filter(Boolean).join(", "))+"<br>"+(h.listing_group==="network"?"HealthOS AI verified member":"External listing — not independently verified")+(h.distance_km==null?"":"<br>"+Number(h.distance_km).toFixed(1)+" km away"),{autoClose:false,closeOnClick:false,keepInView:true});
+        marker.bindTooltip(escapeText(h.hospital_name||"Hospital"),{permanent:map.getZoom()>=15,direction:"top",offset:[0,-16],className:"healthos-hospital-name-label"});
+        marker.on("popupopen",()=>{clearTimeout(popupCloseTimer);popupCloseTimer=setTimeout(()=>marker.closePopup(),60000);});
         marker.on("click",()=>selectHospital(h.hospital_id));
+        if(selectedHospitalId!==null && String(h.hospital_id)===selectedHospitalId) marker.openPopup();
         markers.push({marker,hospitalId:h.hospital_id});
       }else{
         const icon=L.divIcon({className:"healthos-hospital-cluster-wrap",html:'<div class="healthos-hospital-cluster">'+group.length+'</div>',iconSize:[48,48],iconAnchor:[24,24]});
