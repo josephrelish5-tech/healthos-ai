@@ -66,10 +66,14 @@
     }
    };
    $("grid3PreviewButton").addEventListener("click",e=>runGrid3("preview",e.currentTarget));
-   $("grid3StageButton")?.addEventListener("click",e=>{
-    if(!confirm("Stage all Ogun GRID3 records in the restricted review queue? This does NOT publish them or mark them verified."))return;
-    runGrid3("stage_for_review",e.currentTarget);
-   });
+   const stageButton=$("grid3StageButton");
+   if(stageButton){
+    stageButton.addEventListener("click",e=>{
+     e.preventDefault();
+     e.stopPropagation();
+     runGrid3("stage_for_review",stageButton);
+    });
+   }
    $("osmDryRunButton").addEventListener("click",async()=>{
     const button=$("osmDryRunButton"),area=$("osmCollectionArea").value,isOgun=area==="ogun_state";
     if(!isOgun||osmRunState.area!==area)osmRunState={area,nextTile:0,totalTiles:null,candidates:new Map(),failedTiles:new Map(),rawCount:0,insideCount:0,retryRound:0,retryQueue:[],retryCursor:0,successTiles:new Set()};
