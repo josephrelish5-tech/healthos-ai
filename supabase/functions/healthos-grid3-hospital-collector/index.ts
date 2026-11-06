@@ -35,12 +35,26 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const action = body?.action === "stage_for_review" ? "stage_for_review" : "preview";
+    const requestedState = String(body?.state || "").trim().toUpperCase();
+    const scope = requestedState ? "state" : (body?.scope === "all_nigeria" ? "all_nigeria" : "ogun");
+    const stateNames = ["ABIA","ADAMAWA","AKWA IBOM","ANAMBRA","BAUCHI","BAYELSA","BENUE","BORNO","CROSS RIVER","DELTA","EBONYI","EDO","EKITI","ENUGU","FEDERAL CAPITAL TERRITORY","GOMBE","IMO","JIGAWA","KADUNA","KANO","KATSINA","KEBBI","KOGI","KWARA","LAGOS","NASARAWA","NIGER","OGUN","ONDO","OSUN","OYO","PLATEAU","RIVERS","SOKOTO","TARABA","YOBE","ZAMFARA","FCT"];
+    if (scope === "state" && !stateNames.includes(requestedState)) {
+      return json({ error: "Unsupported Nigerian state filter", requested_state: requestedState }, 400);
+    }
+    if (action === "stage_for_review" && scope !== "ogun") {
+      return json({ error: "Only the existing Ogun review workflow may stage records. Nationwide and state-specific requests are preview-only; no records were written." }, 409);
+    }
     const { data: source, error: sourceError } = await adminClient.from("healthos_hospital_directory_sources")
       .select("id,is_enabled,permission_review_status,data_license,permission_basis").eq("id", SOURCE_ID).maybeSingle();
     if (sourceError || !source) return json({ error: "GRID3 source registry record not found" }, 500);
     if (source.is_enabled) return json({ error: "Preview blocked while source is enabled for another workflow." }, 409);
 
-    const where = "UPPER(state) = 'OGUN'";
+    const stateFilter = requestedState === "FCT" ? "FEDERAL CAPITAL TERRITORY" : requestedState;
+    const where = scope === "ogun"
+      ? "UPPER(state) = 'OGUN'"
+      : scope === "state"
+        ? "UPPER(state) = '" + stateFilter.replace(/'/g, "''") + "'"
+        : "1=1";
     const countUrl = new URL(LAYER_URL);
     countUrl.search = new URLSearchParams({ where, returnCountOnly: "true", f: "json" }).toString();
     const countResponse = await fetch(countUrl, { signal: AbortSignal.timeout(15000) });
@@ -48,7 +62,7 @@ Deno.serve(async (req) => {
     const countData = await countResponse.json();
     if (countData.error) return json({ error: "GRID3 count query rejected", details: countData.error.message }, 502);
     const total = Number(countData.count || 0);
-    if (!Number.isFinite(total) || total < 0 || total > 20000) return json({ error: "Unexpected result count", matching_record_count: total }, 502);
+    if (!Number.isFinite(total) || total < 0 || total > 100000) return json({ error: "Unexpected result count", matching_record_count: total }, 502);
 
     const all: any[] = [];
     for (let offset = 0; offset < total; offset += 1000) {
@@ -77,17 +91,17 @@ Deno.serve(async (req) => {
       const key = String(a.globalid || a.nhfr_uid || (name + "|" + lga + "|" + lat + "|" + lon));
       if (seen.has(key)) return null;
       seen.add(key);
-      const lgaValid = OGUN_LGAS.has(lga.toLowerCase());
+      const lgaValid = scope !== "ogun" || OGUN_LGAS.has(lga.toLowerCase());
       return {
         source_record_id: String(a.globalid || a.OBJECTID),
-        lga_validation_status: lgaValid ? "ogun_lga_match" : "lga_not_in_ogun",
+        lga_validation_status: scope !== "ogun" ? "not_applicable_to_nationwide_preview" : (lgaValid ? "ogun_lga_match" : "lga_not_in_ogun"),
         nhfr_uid: a.nhfr_uid ?? null,
         nhfr_facility_code: a.nhfr_facility_code ?? null,
         public_name: name || "Unnamed facility",
         state: a.state ?? null, local_government_area: lga || null, ward: a.ward ?? null,
         ownership: a.ownership ?? a.ownership_type ?? null, facility_level: a.facility_level ?? null,
-        latitude: Number.isFinite(lat) && lat >= 6.0 && lat <= 8.1 ? lat : null,
-        longitude: Number.isFinite(lon) && lon >= 2.5 && lon <= 4.8 ? lon : null,
+        latitude: Number.isFinite(lat) && lat >= 4.0 && lat <= 14.5 ? lat : null,
+        longitude: Number.isFinite(lon) && lon >= 2.0 && lon <= 15.5 ? lon : null,
         geocoordinates_source: a.geocoordinates_source ?? null,
         source_last_updated: a.last_updated ?? null,
         source_status: "external_unverified",
@@ -144,12 +158,12 @@ Deno.serve(async (req) => {
     }
     return json({
       mode: "preview_only", staged: false, published: false, source_id: SOURCE_ID,
-      dataset: "GRID3_NGA_health_facilities_v2_0", state: "Ogun", lgas: "ALL_OGUN_LGAS",
+      dataset: "GRID3_NGA_health_facilities_v2_0", scope, state: scope === "state" ? stateFilter : (scope === "ogun" ? "Ogun" : "ALL_NIGERIA"),
       matching_record_count: total, retrieved_record_count: all.length,
       unique_record_count: records.length, preview_count: records.length, records,
       coordinate_valid_count: coordinateValid,
       coordinate_missing_or_out_of_bounds_count: records.length - coordinateValid,
-      notice: "Read-only preview. No database writes. All records remain externally sourced and unverified."
+      notice: "Read-only preview. No database writes. All records remain externally sourced and unverified. Nationwide and state previews do not approve the source or publish facilities."
     });
   } catch (error) {
     return json({ error: "Collector failed", details: String(error) }, 500);
