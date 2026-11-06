@@ -134,9 +134,11 @@
     });
     const bounds=points.map(x=>[x.lat,x.lng]);
     // Lightweight viewport-aware clustering; no paid map API or extra plugin required.
-    const cellSize=map.getZoom()>=15?48:76,groups=new Map();
-    points.forEach(item=>{
-      const key=Math.floor(item.point.x/cellSize)+":"+Math.floor(item.point.y/cellSize);
+    const zoomLevel=map.getZoom();
+    const cellSize=zoomLevel>=15?1:76,groups=new Map();
+    points.forEach((item,index)=>{
+      // At street-level zoom, never cluster hospitals: every facility gets its own tappable pin and permanent name label.
+      const key=zoomLevel>=15?"hospital-"+index:Math.floor(item.point.x/cellSize)+":"+Math.floor(item.point.y/cellSize);
       if(!groups.has(key))groups.set(key,[]);
       groups.get(key).push(item);
     });
