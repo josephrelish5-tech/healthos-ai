@@ -81,6 +81,49 @@
    message.textContent="Loaded "+cases.length+" review cases. "+cases.filter(c=>c.review_status==="pending_manual_review").length+" still pending. Saving a decision records an audit event; it does not modify the source hospital record.";
   }catch(error){message.textContent=error.message||"Could not load geographic review queue.";body.innerHTML='<tr><td colspan="7">Review queue unavailable.</td></tr>';}
  }
+
+ async function loadBoundaryReconciliation(){
+  const panel=$("boundaryReconciliationPanel");
+  if(!panel)return;
+  const message=$("boundaryReconciliationMessage"),rows=$("boundaryReconciliationRows");
+  const status=$("boundaryReconciliationStatus")?.value||"";
+  message.textContent="Loading restricted OCHA ↔ World Bank reconciliation cases…";
+  try{
+   const {data:{session},error:sessionError}=await client.auth.getSession();
+   if(sessionError)throw Error(sessionError.message);
+   if(!session?.access_token)throw Error("Administrator session expired. Sign in again.");
+   const response=await fetch(URL+"/functions/v1/healthos-geo-reconciliation-admin?limit=200&offset=0"+(status?"&status="+encodeURIComponent(status):""),{headers:{Authorization:"Bearer "+session.access_token,apikey:KEY}});
+   const result=await response.json().catch(()=>({error:"Invalid reconciliation response"}));
+   if(!response.ok)throw Error(result.error||"Could not load reconciliation cases.");
+   const cases=result.cases||[];
+   rows.innerHTML=cases.map(item=>{
+    const approval=item.review_status==="proposed"||item.review_status==="in_review";
+    const actions=["approved","rejected","needs_evidence","returned_for_review"].map(v=>'<option value="'+v+'">'+v.replaceAll("_"," ")+'</option>').join("");
+    return '<tr><td>'+esc(item.state_name_ocha)+" / "+esc(item.lga_name_ocha)+'</td><td>'+esc(item.state_name_world_bank)+" / "+esc(item.lga_name_world_bank)+'</td><td>'+esc(item.ocha_boundary_code)+" / "+esc(item.world_bank_boundary_code)+'</td><td>'+esc(item.match_type)+" · "+esc(item.match_confidence??"—")+'</td><td>'+esc(item.review_status)+'</td><td><input data-recon-notes="'+esc(item.id)+'" maxlength="4000" placeholder="Evidence-based notes (required)" style="min-width:190px"><input data-recon-state="'+esc(item.id)+'" placeholder="Canonical state (approval only)" style="min-width:160px;margin-top:4px"><input data-recon-lga="'+esc(item.id)+'" placeholder="Canonical LGA (approval only)" style="min-width:160px;margin-top:4px"><select data-recon-decision="'+esc(item.id)+'">'+actions+'</select><button type="button" class="logout-button" data-recon-save="'+esc(item.id)+'" '+(!approval?"disabled":"")+'>Save decision</button></td></tr>';
+   }).join("")||'<tr><td colspan="6">No cases in this status filter.</td></tr>';
+   message.textContent="Loaded "+cases.length+" of "+(result.total??cases.length)+" restricted cases. These are boundary-match proposals, not approved canonical boundaries. Source polygons and hospital listings remain unchanged.";
+  }catch(error){message.textContent=error.message||"Reconciliation queue unavailable.";rows.innerHTML='<tr><td colspan="6">Restricted reconciliation queue unavailable.</td></tr>';}
+ }
+ async function saveBoundaryReconciliation(id,button){
+  const notes=document.querySelector('[data-recon-notes="'+id+'"]')?.value?.trim()||"";
+  const decision=document.querySelector('[data-recon-decision="'+id+'"]')?.value||"";
+  const state=document.querySelector('[data-recon-state="'+id+'"]')?.value?.trim()||"";
+  const lga=document.querySelector('[data-recon-lga="'+id+'"]')?.value?.trim()||"";
+  if(notes.length<5){alert("Enter at least five characters of evidence-based review notes.");return;}
+  if(decision==="approved"&&(!state||!lga)){alert("Approval requires both canonical state and LGA names.");return;}
+  if(!confirm("Save this boundary reconciliation decision? It does not change source polygons or publish hospital records."))return;
+  button.disabled=true;
+  try{
+   const {data:{session}}=await client.auth.getSession();
+   if(!session?.access_token)throw Error("Administrator session expired. Sign in again.");
+   const response=await fetch(URL+"/functions/v1/healthos-geo-reconciliation-admin",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify({action:"review_case",case_id:id,decision,review_notes:notes,canonical_state_name:state||null,canonical_lga_name:lga||null,evidence:{review_interface:"platform_directory_admin"}})});
+   const result=await response.json().catch(()=>({error:"Invalid review response"}));
+   if(!response.ok)throw Error(result.error||"Review save failed.");
+   $("boundaryReconciliationMessage").textContent=result.message||"Decision saved and audited.";
+   await loadBoundaryReconciliation();
+  }catch(error){$("boundaryReconciliationMessage").textContent=error.message||"Could not save decision.";}
+  finally{button.disabled=false;}
+ }
  async function load(){
   try{
    const d=await call();sources=(d.sources||[]);$("platformDirectoryAdmin").hidden=false;$("openDirectoryAdminButton").hidden=false;const nav=$("platformDirectoryAdminNav");if(nav)nav.hidden=false;
@@ -88,7 +131,7 @@
    $("directoryListingRows").innerHTML=(d.listings||[]).map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc([x.city,x.state,x.address].filter(Boolean).join(", "))+'</td><td>'+esc(x.source_record_id)+'</td><td>'+esc(x.listing_status)+'</td><td>'+(x.duplicate_candidate?"Candidate — manual comparison":"No flag")+'</td><td>'+(x.listing_status==="review_required"?'<button class="logout-button" data-review="'+esc(x.id)+'" data-decision="approved_for_public">Approve</button> <button class="logout-button" data-review="'+esc(x.id)+'" data-decision="suppressed">Suppress</button>':"—")+'</td></tr>').join("")||'<tr><td colspan="6">No listings awaiting review.</td></tr>';
    $("directoryImportSource").innerHTML=sources.filter(s=>s.is_enabled).map(s=>'<option value="'+esc(s.id)+'">'+esc(s.source_name)+'</option>').join("");
    say("Authorised. "+sources.length+" sources and "+(d.listings||[]).length+" listings loaded.");
-   await loadGeographicReview();
+   await loadGeographicReview();\n   await loadBoundaryReconciliation();
   }catch(e){$("openDirectoryAdminButton").hidden=false;const nav=$("platformDirectoryAdminNav");if(nav)nav.hidden=false;$("platformDirectoryAdmin").hidden=false;say("Directory check failed"+(e.code?" ("+e.code+")":"")+": "+(e.message||"Unknown error"),true);}
  }
  document.addEventListener("DOMContentLoaded",()=>{
@@ -99,6 +142,16 @@
   const adminPanel=$("platformDirectoryAdmin");
 
   if(adminPanel && adminPanel.parentElement!==document.body){document.body.appendChild(adminPanel);}
+  if(adminPanel && !document.getElementById("boundaryReconciliationPanel")){
+   const reconciliationPanel=document.createElement("section");
+   reconciliationPanel.id="boundaryReconciliationPanel";
+   reconciliationPanel.style.cssText="margin:22px 0;padding:18px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;color:#102b46;overflow-x:auto";
+   reconciliationPanel.innerHTML='<h3 style="margin-top:0">OCHA ↔ World Bank Boundary Reconciliation — Restricted Review</h3><p>Review the 746 unique name-match proposals. A name match is not proof that boundaries are identical. Approval records a canonical naming decision only; it does not publish hospitals or alter source polygons.</p><div class="button-row"><label for="boundaryReconciliationStatus">Case status</label><select id="boundaryReconciliationStatus"><option value="">All statuses</option><option value="proposed">Proposed</option><option value="in_review">In review</option><option value="needs_evidence">Needs evidence</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><button type="button" id="boundaryReconciliationRefresh" class="secondary-button">Refresh cases</button></div><p id="boundaryReconciliationMessage" class="message" role="status" aria-live="polite">Restricted review queue not loaded yet.</p><div class="table-wrap"><table style="min-width:1150px"><thead><tr><th>OCHA state / LGA</th><th>World Bank state / LGA</th><th>Source codes</th><th>Match confidence</th><th>Status</th><th>Decision and evidence</th></tr></thead><tbody id="boundaryReconciliationRows"><tr><td colspan="6">Open administrator console to load cases.</td></tr></tbody></table></div><p class="disclaimer">Only an authorised platform directory administrator can access this queue. Every saved decision is audited.</p>';
+   adminPanel.appendChild(reconciliationPanel);
+   reconciliationPanel.querySelector("#boundaryReconciliationRefresh").addEventListener("click",loadBoundaryReconciliation);
+   reconciliationPanel.querySelector("#boundaryReconciliationStatus").addEventListener("change",loadBoundaryReconciliation);
+   reconciliationPanel.addEventListener("click",event=>{const button=event.target.closest("[data-recon-save]");if(button)saveBoundaryReconciliation(button.dataset.reconSave,button);});
+  }
   if(adminPanel && !document.getElementById("geographicReviewPanel")){
    const reviewPanel=document.createElement("section");
    reviewPanel.id="geographicReviewPanel";
