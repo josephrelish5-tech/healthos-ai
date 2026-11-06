@@ -46,7 +46,7 @@
     target.replaceChildren();
     if(!hospitals.length) {
       const empty=document.createElement("div"); empty.className="hospital-map-empty";
-      empty.innerHTML="<strong>No approved hospital listings are available for this search yet</strong><p>This does not mean there are no hospitals nearby. HealthOS AI has not yet loaded approved public directory records for this area. Try another location later.</p>";
+      empty.innerHTML="<strong>No hospital results were found for this search</strong><p>Try a nearby town or a broader location. External map results depend on OpenStreetMap coverage and are not independently verified.</p>";
       target.appendChild(empty); return;
     }
     [{key:"network",title:"HealthOS AI Verified Network Hospitals"},{key:"other",title:"External Public Hospital Listings"},{key:"provisional_external",title:"Unverified External Hospital Listings"}].forEach(group=>{
@@ -56,7 +56,7 @@
       items.forEach(h=>{
         const card=document.createElement("article"); card.className="hospital-discovery-card"; card.dataset.hospitalCard=h.hospital_id;
         const title=document.createElement("h3"); title.textContent=h.hospital_name||"Hospital";
-        const badge=document.createElement("span"); badge.className="hospital-verified-badge"; badge.textContent=group.key==="network"?"✓ HealthOS AI verified member":group.key==="provisional_external"?"Unverified — GRID3 external dataset":"External listing — not independently verified";
+        const badge=document.createElement("span"); badge.className="hospital-verified-badge"; badge.textContent=group.key==="network"?"✓ HealthOS AI verified member":group.key==="provisional_external"?"Unverified — restricted external dataset":h.source_provider==="OpenStreetMap"?"OpenStreetMap result — not independently verified":"External listing — not independently verified";
         const address=document.createElement("p"); address.textContent=[h.address,h.local_government_area,h.city,h.state,h.country_code].filter(Boolean).join(", ")||"Address not provided";
         const distance=document.createElement("p"); distance.className="hospital-distance"; distance.textContent=h.distance_km==null?"Distance unavailable":Number(h.distance_km).toFixed(1)+" km away";
         const specialty=document.createElement("p"); specialty.textContent="Specialties: "+((h.specialties||[]).join(", ")||"Not listed");
@@ -477,8 +477,56 @@
     if(lastHospitals.length) setStatus(lastHospitals.length+" hospital listing(s) found. HealthOS AI members and external listings are labelled separately. Select a card or map pin to explore.");
     else setStatus("No approved hospital listings match this search yet. Try another location.");
   }
+  async function searchExternalHospitals(locationLabel, nameQuery) {
+    const location=String(locationLabel||"").trim();
+    if(!location) return [];
+    const geocodeQuery=location+", Nigeria";
+    const geoResponse=await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=ng&addressdetails=1&q="+encodeURIComponent(geocodeQuery),{headers:{Accept:"application/json"}});
+    if(!geoResponse.ok) throw new Error("Location lookup returned HTTP "+geoResponse.status);
+    const places=await geoResponse.json();
+    if(!Array.isArray(places)||!places.length) return [];
+    const place=places[0],box=String(place.boundingbox||"").split(",").map(Number);
+    if(box.length!==4||!box.every(Number.isFinite)) throw new Error("Location search did not return a valid map area.");
+    const south=box[0],north=box[1],west=box[2],east=box[3];
+    const area=(north-south)*(east-west);
+    if(area>4) return [];
+    const name=String(nameQuery||"").trim().replace(/[.*+?^${}()|[\]\\]/g,"\\  function refresh() { if(!el("hospitalDiscoveryMap")) return; if(!map) initMap(); if(map){map.invalidateSize();drawMarkers(lastHospitals);} }");
+    const nameFilter=name?'[name~"'+name.replace(/"/g,'\\"')+'",i]':'';
+    const bbox='('+south+','+west+','+north+','+east+')';
+    const query='[out:json][timeout:25];(nwr["amenity"~"^(hospital|clinic|doctors)$"]'+nameFilter+bbox+';nwr["healthcare"~"^(hospital|clinic|doctor)$"]'+nameFilter+bbox+';);out center tags 150;';
+    const endpoints=["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter","https://overpass.private.coffee/api/interpreter"];
+    let payload=null,lastError=null;
+    for(const endpoint of endpoints){
+      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),18000);
+      try{
+        const response=await fetch(endpoint+"?data="+encodeURIComponent(query),{headers:{Accept:"application/json"},signal:controller.signal});
+        if(!response.ok)throw new Error("Overpass HTTP "+response.status);
+        const data=await response.json();if(!Array.isArray(data.elements))throw new Error("Incomplete OpenStreetMap response");
+        payload=data;break;
+      }catch(error){lastError=error;}finally{clearTimeout(timer);}
+    }
+    if(!payload)throw new Error(lastError?.message||"OpenStreetMap hospital search is temporarily unavailable.");
+    const results=[];
+    for(const item of payload.elements){
+      const tags=item.tags||{},lat=Number(item.lat??item.center?.lat),lon=Number(item.lon??item.center?.lon);
+      const hospitalName=String(tags.name||tags["name:en"]||tags.official_name||"").trim();
+      if(!hospitalName||!Number.isFinite(lat)||!Number.isFinite(lon))continue;
+      if(nameQuery&&!hospitalName.toLowerCase().includes(String(nameQuery).trim().toLowerCase()))continue;
+      const address=[tags["addr:housenumber"],tags["addr:street"],tags["addr:suburb"],tags["addr:city"]||tags["addr:town"]].filter(Boolean).join(", ");
+      results.push({
+        hospital_id:"osm:"+item.type+":"+item.id,hospital_name:hospitalName,country_code:"NG",
+        state:tags["addr:state"]||place.address?.state||"",city:tags["addr:city"]||tags["addr:town"]||tags["addr:village"]||"",
+        local_government_area:tags["addr:district"]||tags["addr:county"]||"",address,
+        hospital_category:tags.healthcare||tags.amenity||"Healthcare facility",specialties:[],
+        public_services:[],latitude:lat,longitude:lon,distance_km:null,listing_group:"other",
+        connection_available:false,source_provider:"OpenStreetMap",source_attribution:"© OpenStreetMap contributors",
+        osm_reference:item.type+"/"+item.id
+      });
+    }
+    return results;
+  }
   function refresh() { if(!el("hospitalDiscoveryMap")) return; if(!map) initMap(); if(map){map.invalidateSize();drawMarkers(lastHospitals);} }
-  window.HealthOSHospitalDiscovery={render,selectHospital,refresh,focusSearchLocation,locateUser};
+  window.HealthOSHospitalDiscovery={render,selectHospital,refresh,focusSearchLocation,locateUser,searchExternalHospitals};
   document.addEventListener("DOMContentLoaded",()=>{
     const status=el("hospitalMapStatus");
     if(window.L){initMap();if(status)status.textContent="Map ready. Search an area or use GPS to show your location.";}
