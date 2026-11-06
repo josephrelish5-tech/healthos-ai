@@ -298,10 +298,20 @@
         direction: "top", offset: [0, -5],
         className: "healthos-hospital-name-label"
       });
+      const coordinateText = lat.toFixed(6) + ", " + lng.toFixed(6);
+      const directions = "https://www.google.com/maps/dir/?api=1&destination=" +
+        encodeURIComponent(coordinateText) + "&travelmode=driving";
+      const osmReference = escapeText(String(place.type || "map") + " " + String(place.id || ""));
       marker.bindPopup(
-        "<strong>" + escapeText(name) + "</strong><br>" +
-        escapeText(String(category).replace(/_/g, " ")) +
-        (address ? "<br>" + escapeText(address) : "<br>Address not provided in OpenStreetMap data")
+        "<div class='healthos-place-details'>" +
+        "<strong>" + escapeText(name) + "</strong>" +
+        "<div><strong>Category:</strong> " + escapeText(String(category).replace(/_/g, " ")) + "</div>" +
+        "<div><strong>Address:</strong> " + escapeText(address || "Address not provided in OpenStreetMap data") + "</div>" +
+        "<div><strong>Coordinates:</strong> " + escapeText(coordinateText) + "</div>" +
+        "<div><strong>Map reference:</strong> " + osmReference + "</div>" +
+        "<p><a href='" + directions + "' target='_blank' rel='noopener noreferrer'>Get directions</a></p>" +
+        "</div>",
+        {maxWidth:300,autoPan:false,closeButton:true}
       );
       nextMarkers.push(marker);
     });
