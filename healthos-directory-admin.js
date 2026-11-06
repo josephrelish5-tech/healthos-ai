@@ -4,7 +4,21 @@
  const KEY="sb_publishable_UIhbdxfxl8jsU9KnIE93pg_HTEsU39C";
  const ENDPOINT=URL+"/functions/v1/healthos-hospital-directory-admin";
  let client, sources=[];
-  let osmRunState={area:null,nextTile:0,totalTiles:null,candidates:new Map(),failedTiles:new Map(),rawCount:0,insideCount:0,retryRound:0,retryQueue:[],retryCursor:0,successTiles:new Set()};
+  const OSM_RUN_STORAGE_KEY="healthos_ogun_osm_preview_v1";
+  const freshOsmRun=()=>({area:null,nextTile:0,totalTiles:null,candidates:new Map(),failedTiles:new Map(),rawCount:0,insideCount:0,retryRound:0,retryQueue:[],retryCursor:0,successTiles:new Set()});
+  function restoreOsmRun(){
+   try{
+    const saved=JSON.parse(localStorage.getItem(OSM_RUN_STORAGE_KEY)||"null");
+    if(!saved||saved.area!=="ogun_state")return freshOsmRun();
+    return {...freshOsmRun(),...saved,candidates:new Map(saved.candidates||[]),failedTiles:new Map(saved.failedTiles||[]),successTiles:new Set(saved.successTiles||[])};
+   }catch(_){return freshOsmRun();}
+  }
+  let osmRunState=restoreOsmRun();
+  function persistOsmRun(){
+   try{
+    localStorage.setItem(OSM_RUN_STORAGE_KEY,JSON.stringify({...osmRunState,candidates:Array.from(osmRunState.candidates.entries()),failedTiles:Array.from(osmRunState.failedTiles.entries()),successTiles:Array.from(osmRunState.successTiles)}));
+   }catch(_){/* Storage may be unavailable; the active run can still continue in memory. */}
+  }
  const $=id=>document.getElementById(id);
  const say=(s,bad=false)=>{const e=$("directoryAdminMessage");e.textContent=s;e.className="message "+(bad?"error":"success");};
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -76,7 +90,8 @@
    }
    $("osmDryRunButton").addEventListener("click",async()=>{
     const button=$("osmDryRunButton"),area=$("osmCollectionArea").value,isOgun=area==="ogun_state";
-    if(!isOgun||osmRunState.area!==area)osmRunState={area,nextTile:0,totalTiles:null,candidates:new Map(),failedTiles:new Map(),rawCount:0,insideCount:0,retryRound:0,retryQueue:[],retryCursor:0,successTiles:new Set()};
+    if(!isOgun||osmRunState.area!==area)osmRunState={...freshOsmRun(),area};
+    if(isOgun&&osmRunState.area==="ogun_state")persistOsmRun();
     // If a previous run exhausted its two retry passes, a new manual run starts fresh retries.
     if(isOgun&&osmRunState.totalTiles!==null&&osmRunState.nextTile>=osmRunState.totalTiles&&osmRunState.failedTiles.size&&osmRunState.retryRound>=2){
       osmRunState.retryRound=0;osmRunState.retryQueue=[];osmRunState.retryCursor=0;
@@ -134,7 +149,7 @@
        }catch(callError){
         osmRunState.failedTiles.set(tileIndex,{detail:callError.message||"Request failed",endpoint:"Browser → Supabase Edge Function",status:"request_error"});
         if(discoveringTileCount)osmRunState.nextTile=0;
-        renderRows();
+        renderRows();persistOsmRun();
         if(discoveringTileCount)break;
         continue;
        }
@@ -155,7 +170,7 @@
         osmRunState.rawCount+=data.raw_map_candidates||0;osmRunState.insideCount+=data.inside_boundary_candidates||0;
         (data.candidates||[]).forEach(x=>osmRunState.candidates.set(x.osm_type+"/"+x.osm_id,x));
        }
-       renderRows();
+       renderRows();persistOsmRun();
        $("osmDryRunMessage").textContent="Ogun discovery: "+osmRunState.successTiles.size+" / "+osmRunState.totalTiles+" tiles successful · "+osmRunState.failedTiles.size+" pending/failed · "+osmRunState.candidates.size+" unique candidates"+(endpointAttempt?" · retry pass "+endpointAttempt+"/2":"")+". No records imported.";
        await new Promise(resolve=>setTimeout(resolve,180));
       }
@@ -164,7 +179,7 @@
        ?"Ogun preview paused: the collector did not return its tile plan. No tile was skipped. Tap Run dry search to retry tile 1. Details: "+(failures||"No response received.")+" No records imported."
        :"Ogun preview "+(osmRunState.failedTiles.size?"partially complete":"complete")+": "+osmRunState.successTiles.size+"/"+osmRunState.totalTiles+" tiles succeeded; "+osmRunState.candidates.size+" unique named candidates from "+osmRunState.insideCount+" in-boundary map elements; "+osmRunState.failedTiles.size+" tiles pending/failed. "+(failures?"First errors: "+failures+". ":"")+(osmRunState.failedTiles.size?"Tap Run dry search to retry remaining tiles. ":"")+"No records imported.";
      }
-    }catch(error){renderRows();$("osmDryRunMessage").textContent=(error.message||"Dry run failed.")+(isOgun?" Progress retained. Tap Run dry search to resume.":"");}
+    }catch(error){renderRows();if(isOgun)persistOsmRun();$("osmDryRunMessage").textContent=(error.message||"Dry run failed.")+(isOgun?" Progress retained on this device. Tap Run dry search to resume.":"");}
     finally{button.disabled=false;}
    });$("directoryImportButton").addEventListener("click",async()=>{try{const records=JSON.parse($("directoryImportJson").value);if(!Array.isArray(records)||!records.length||records.length>500)throw Error("Provide a JSON array containing 1–500 records.");const source_id=$("directoryImportSource").value;if(!source_id)throw Error("No enabled source selected.");const r=await call("POST",{action:"import_batch",source_id,records});say("Imported for review only: "+JSON.stringify(r.result));$("directoryImportJson").value="";await load();}catch(x){say(x.message,true);}});
   client.auth.getSession().then(({data})=>{if(data.session){$("openDirectoryAdminButton").hidden=false;const nav=$("platformDirectoryAdminNav");if(nav)nav.hidden=false;load();}});
