@@ -22,6 +22,26 @@
  const $=id=>document.getElementById(id);
  const say=(s,bad=false)=>{const e=$("directoryAdminMessage");e.textContent=s;e.className="message "+(bad?"error":"success");};
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ const OGUN_LGAS=["Abeokuta North","Abeokuta South","Ado-Odo/Ota","Egbado North (Yewa North)","Egbado South (Yewa South)","Ewekoro","Ifo","Ijebu East","Ijebu North","Ijebu North East","Ijebu Ode","Ikenne","Imeko Afon","Ipokia","Obafemi Owode","Odeda","Odogbolu","Ogun Waterside","Remo North","Shagamu"];
+ function renderOgunLgaCoverage(){
+  const rows=$("osmLgaCoverageRows"),summary=$("osmLgaCoverageSummary");
+  if(!rows||!summary)return;
+  if(osmRunState.area!=="ogun_state"||!osmRunState.candidates.size){rows.innerHTML='<tr><td colspan="3">Run the Ogun State dry search to populate this report.</td></tr>';summary.textContent="No state-wide candidate data available yet.";return;}
+  const counts=new Map(OGUN_LGAS.map(name=>[name,0]));
+  const normalize=value=>String(value||"").toLowerCase().replace(/\\b(lga|local government area)\\b/g,"").replace(/[^a-z0-9]/g,"");
+  for(const candidate of osmRunState.candidates.values()){
+   const tags=candidate.raw_tags||{};
+   const hints=[tags["addr:district"],tags["addr:county"],tags["addr:municipality"],tags["addr:locality"],tags["addr:town"],tags["addr:city"],tags["is_in"],tags["is_in:district"],tags["is_in:county"]].filter(Boolean).join(" ");
+   const haystack=normalize(hints);
+   for(const lga of OGUN_LGAS){
+    const aliases=[lga,lga.replace(" (Yewa North)",""),lga.replace(" (Yewa South)",""),lga==="Shagamu"?"Sagamu":lga].map(normalize);
+    if(aliases.some(alias=>alias&&haystack.includes(alias))){counts.set(lga,counts.get(lga)+1);break;}
+   }
+  }
+  const observed=Array.from(counts.values()).filter(n=>n>0).length;
+  rows.innerHTML=OGUN_LGAS.map(name=>{const n=counts.get(name);return '<tr><td>'+esc(name)+'</td><td>'+n+'</td><td>'+(n?'Candidates observed — location tag match':'Not observed in tagged candidates')+'</td></tr>';}).join("");
+  summary.textContent=observed+" of 20 LGAs have at least one candidate with an identifiable LGA/location tag. "+osmRunState.candidates.size+" unique candidates retained. This is a tag-based preview, not proof of complete geographic coverage.";
+ }
  async function call(method="GET",body){
   const {data:{session}}=await client.auth.getSession();
   if(!session?.access_token)throw Error("Sign in with the authorised platform administrator account.");
@@ -97,7 +117,7 @@
       osmRunState.retryRound=0;osmRunState.retryQueue=[];osmRunState.retryCursor=0;
     }
     button.disabled=true;
-    const renderRows=()=>{const rows=Array.from(osmRunState.candidates.values());$("osmDryRunRows").innerHTML=rows.map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc(x.raw_tags?.amenity||x.raw_tags?.healthcare||"Unclassified")+'</td><td>'+esc(Number(x.latitude).toFixed(5)+", "+Number(x.longitude).toFixed(5))+'</td><td>'+esc(x.osm_type+"/"+x.osm_id)+'</td></tr>').join("")||'<tr><td colspan="4">No named candidates returned yet.</td></tr>';};
+    const renderRows=()=>{const rows=Array.from(osmRunState.candidates.values());$("osmDryRunRows").innerHTML=rows.map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc(x.raw_tags?.amenity||x.raw_tags?.healthcare||"Unclassified")+'</td><td>'+esc(Number(x.latitude).toFixed(5)+", "+Number(x.longitude).toFixed(5))+'</td><td>'+esc(x.osm_type+"/"+x.osm_id)+'</td></tr>').join("")||'<tr><td colspan="4">No named candidates returned yet.</td></tr>';renderOgunLgaCoverage();};
     const invokeOsmTile=async body=>{
       const {data:{session},error:sessionError}=await client.auth.getSession();
       if(sessionError)throw Error("Could not retrieve the signed-in session: "+sessionError.message);
