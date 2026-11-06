@@ -1,0 +1,105 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const PROJECT_URL = Deno.env.get("SUPABASE_URL")!;
+const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SOURCE_ID = "8476094d-07bd-47d0-8987-2aa41661f1a1";
+const LAYER_URL = "https://services3.arcgis.com/BU6Aadhn6tbBEdyk/arcgis/rest/services/GRID3_NGA_health_facilities_v2_0/FeatureServer/0/query";
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+    status, headers: { ...cors, "Content-Type": "application/json" }
+  });
+  if (req.method !== "POST") return json({ error: "POST required" }, 405);
+
+  try {
+    const auth = req.headers.get("Authorization");
+    if (!auth) return json({ error: "Sign-in required" }, 401);
+    const userClient = createClient(PROJECT_URL, ANON_KEY, {
+      global: { headers: { Authorization: auth } }, auth: { persistSession: false }
+    });
+    const { data: userData, error: userError } = await userClient.auth.getUser();
+    if (userError || !userData.user) return json({ error: "Valid signed-in session required" }, 401);
+
+    const adminClient = createClient(PROJECT_URL, SERVICE_KEY, { auth: { persistSession: false } });
+    const { data: admin } = await adminClient.from("healthos_platform_directory_admins")
+      .select("user_id").eq("user_id", userData.user.id).eq("is_active", true).maybeSingle();
+    if (!admin) return json({ error: "Active platform directory administrator access required" }, 403);
+
+    const { data: source, error: sourceError } = await adminClient.from("healthos_hospital_directory_sources")
+      .select("id,is_enabled").eq("id", SOURCE_ID).maybeSingle();
+    if (sourceError || !source) return json({ error: "GRID3 source registry record not found" }, 500);
+    if (source.is_enabled) return json({ error: "Preview blocked while source is enabled for another workflow." }, 409);
+
+    const where = "UPPER(state) = 'OGUN'";
+    const countUrl = new URL(LAYER_URL);
+    countUrl.search = new URLSearchParams({ where, returnCountOnly: "true", f: "json" }).toString();
+    const countResponse = await fetch(countUrl, { signal: AbortSignal.timeout(15000) });
+    if (!countResponse.ok) return json({ error: "GRID3 count request failed", upstream_status: countResponse.status }, 502);
+    const countData = await countResponse.json();
+    if (countData.error) return json({ error: "GRID3 count query rejected", details: countData.error.message }, 502);
+    const total = Number(countData.count || 0);
+    if (!Number.isFinite(total) || total < 0 || total > 20000) return json({ error: "Unexpected result count", matching_record_count: total }, 502);
+
+    const all: any[] = [];
+    for (let offset = 0; offset < total; offset += 1000) {
+      const params = new URLSearchParams({
+        where,
+        outFields: "OBJECTID,globalid,nhfr_uid,nhfr_facility_code,country,iso,state,lga,ward,facility_name,ownership,ownership_type,facility_level,latitude,longitude,geocoordinates_source,last_updated",
+        returnGeometry: "false", orderByFields: "OBJECTID",
+        resultOffset: String(offset), resultRecordCount: "1000", f: "json"
+      });
+      const response = await fetch(LAYER_URL + "?" + params.toString(), { signal: AbortSignal.timeout(20000) });
+      if (!response.ok) return json({ error: "GRID3 page request failed", upstream_status: response.status, offset }, 502);
+      const data = await response.json();
+      if (data.error) return json({ error: "GRID3 page query rejected", details: data.error.message, offset }, 502);
+      const page = Array.isArray(data.features) ? data.features : [];
+      all.push(...page);
+      if (!page.length) break;
+    }
+
+    const seen = new Set<string>();
+    const records = all.map((f: any) => {
+      const a = f.attributes || {};
+      const lat = a.latitude == null ? null : Number(a.latitude);
+      const lon = a.longitude == null ? null : Number(a.longitude);
+      const name = String(a.facility_name || "").trim();
+      const lga = String(a.lga || "").trim();
+      const key = String(a.globalid || a.nhfr_uid || (name + "|" + lga + "|" + lat + "|" + lon));
+      if (seen.has(key)) return null;
+      seen.add(key);
+      return {
+        source_record_id: String(a.globalid || a.OBJECTID),
+        nhfr_uid: a.nhfr_uid ?? null,
+        nhfr_facility_code: a.nhfr_facility_code ?? null,
+        public_name: name || "Unnamed facility",
+        state: a.state ?? null, local_government_area: lga || null, ward: a.ward ?? null,
+        ownership: a.ownership ?? a.ownership_type ?? null, facility_level: a.facility_level ?? null,
+        latitude: Number.isFinite(lat) && lat >= 6.0 && lat <= 8.1 ? lat : null,
+        longitude: Number.isFinite(lon) && lon >= 2.5 && lon <= 4.8 ? lon : null,
+        geocoordinates_source: a.geocoordinates_source ?? null,
+        source_last_updated: a.last_updated ?? null,
+        source_status: "external_unverified"
+      };
+    }).filter(Boolean);
+    const coordinateValid = records.filter((r: any) => r.latitude !== null && r.longitude !== null).length;
+
+    return json({
+      mode: "preview_only", staged: false, source_id: SOURCE_ID,
+      dataset: "GRID3_NGA_health_facilities_v2_0", state: "Ogun", lgas: "ALL_OGUN_LGAS",
+      matching_record_count: total, retrieved_record_count: all.length,
+      unique_record_count: records.length, preview_count: records.length, records,
+      coordinate_valid_count: coordinateValid,
+      coordinate_missing_or_out_of_bounds_count: records.length - coordinateValid,
+      notice: "Read-only preview. No database writes. All records remain externally sourced and unverified. Confirm reuse terms before import or republication."
+    });
+  } catch (error) {
+    return json({ error: "Collector failed", details: String(error) }, 500);
+  }
+});
