@@ -127,6 +127,7 @@
    if(!response.ok)throw Error(result.error||"Review save failed.");
    $("boundaryReconciliationMessage").textContent=result.message||"Decision saved and audited.";
    await loadBoundaryReconciliation();
+   await loadCodeReconciliation();
   }catch(error){$("boundaryReconciliationMessage").textContent=error.message||"Could not save decision.";}
   finally{button.disabled=false;}
  }
