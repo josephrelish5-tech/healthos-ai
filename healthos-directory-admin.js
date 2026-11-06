@@ -130,6 +130,20 @@
     }
    };
    $("grid3PreviewButton").addEventListener("click",e=>runGrid3("preview",e.currentTarget));
+   $("grid3PermissionReviewButton").addEventListener("click",async e=>{
+    const button=e.currentTarget;
+    const approved=confirm("Review the exact GRID3 Nigeria Health Facilities v2.0 ArcGIS metadata: CC BY 4.0 permits reuse with attribution. Dataset records are non-exhaustive and not fully validated. Do you approve this exact v2.0 dataset for controlled ingestion into restricted manual review only? This does not verify hospitals or publish listings.");
+    if(!approved)return;
+    button.disabled=true;
+    try{
+     const notes="Reviewed exact GRID3 NGA Health Facilities v2.0 ArcGIS item metadata (DOI 10.7916/kv1n-0743). CC BY 4.0 permits reuse with clear attribution. Approval is limited to v2.0 controlled ingestion into restricted manual review; records remain provisional and unverified. Does not cover v3.0 or authorise public publication.";
+     const result=await call("POST",{action:"review_source_permission",source_id:"8476094d-07bd-47d0-8987-2aa41661f1a1",decision:"approved",permission_evidence_url:"https://www.arcgis.com/home/item.html?id=081506afb7f14af1a3f64130343a6a6a",permission_review_notes:notes});
+     say(result.message||"GRID3 v2.0 permission review recorded. Source remains disabled.");
+     alert("Permission review recorded. The source is still disabled. A separate enable action is required before any staging.");
+    }catch(error){say(error.message||"Permission review failed.",true);alert(error.message||"Permission review failed.");}
+    finally{button.disabled=false;}
+   });
+
    $("grid3ReconcileButton").addEventListener("click",async e=>{
     const button=e.currentTarget,message=$("grid3ReconcileMessage"),rows=$("grid3ReconcileRows");
     button.disabled=true;message.textContent="Reading all restricted GRID3 staging records and comparing directory totals…";
