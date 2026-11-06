@@ -208,6 +208,9 @@
     // no name but do have a house number/street and are still useful discoveries.
     const query = '[out:json][timeout:20];(' +
       'nwr["name"](' + south + ',' + west + ',' + north + ',' + east + ');' +
+      'nwr["healthcare"](' + south + ',' + west + ',' + north + ',' + east + ');' +
+      'nwr["healthcare:speciality"](' + south + ',' + west + ',' + north + ',' + east + ');' +
+      'nwr["amenity"~"hospital|clinic|doctors|pharmacy|dentist|veterinary|social_facility"](' + south + ',' + west + ',' + north + ',' + east + ');' +
       'nwr["addr:housenumber"](' + south + ',' + west + ',' + north + ',' + east + ');' +
       'nwr["addr:street"](' + south + ',' + west + ',' + north + ',' + east + ');' +
       'nwr["addr:full"](' + south + ',' + west + ',' + north + ',' + east + ');' +
@@ -284,9 +287,11 @@
       if (seen.has(id)) return;
       seen.add(id);
 
-      const category = tags.amenity || tags.shop || tags.healthcare ||
+      const healthcareType = String(tags.healthcare || (["hospital","clinic","doctors","pharmacy","dentist","veterinary"].includes(tags.amenity) ? tags.amenity : "") || "").trim();
+      const category = healthcareType || tags.amenity || tags.shop ||
         tags.tourism || tags.leisure || tags.office || tags.highway ||
         tags.building || tags.place || "Place";
+      const isHealthcare = Boolean(healthcareType || tags["healthcare:speciality"]);
       const street = [houseNumber, streetName].filter(Boolean).join(" ");
       const locality = [
         tags["addr:suburb"], tags["addr:neighbourhood"], tags["addr:village"],
@@ -295,8 +300,11 @@
       ].filter(Boolean).join(", ");
       const address = fullAddress || [street, locality].filter(Boolean).join(", ");
       const marker = L.circleMarker([lat, lng], {
-        radius: 5, color: "#8b5e16", weight: 2,
-        fillColor: "#f4d27a", fillOpacity: 0.95
+        radius: isHealthcare ? 8 : 5,
+        color: isHealthcare ? "#075985" : "#8b5e16",
+        weight: isHealthcare ? 3 : 2,
+        fillColor: isHealthcare ? "#38bdf8" : "#f4d27a",
+        fillOpacity: 0.95
       });
       marker.bindTooltip(escapeText(name), {
         permanent: map.getZoom() >= 16,
@@ -310,7 +318,10 @@
       marker.bindPopup(
         "<div class='healthos-place-details'>" +
         "<strong>" + escapeText(name) + "</strong>" +
-        "<div><strong>Category:</strong> " + escapeText(String(category).replace(/_/g, " ")) + "</div>" +
+        "<div><strong>Category:</strong> " + escapeText(String(category).replace(/_/g, " ")) + (isHealthcare ? " · Healthcare facility" : "") + "</div>" +
+        (tags["healthcare:speciality"] ? "<div><strong>Specialties:</strong> " + escapeText(String(tags["healthcare:speciality"]).replace(/;/g, ", ")) + "</div>" : "") +
+        (tags.phone || tags["contact:phone"] ? "<div><strong>Phone:</strong> " + escapeText(tags.phone || tags["contact:phone"]) + "</div>" : "") +
+        (tags.opening_hours ? "<div><strong>Opening hours:</strong> " + escapeText(tags.opening_hours) + "</div>" : "") +
         "<div><strong>Address:</strong> " + escapeText(address || "Address not provided in OpenStreetMap data") + "</div>" +
         "<div><strong>Coordinates:</strong> " + escapeText(coordinateText) + "</div>" +
         "<div><strong>Map reference:</strong> " + osmReference + "</div>" +
@@ -327,9 +338,15 @@
     placeMarkers = nextMarkers;
     placeMarkers.forEach(marker => marker.addTo(map));
     lastPlaceLookupKey = key;
-    setStatus("Showing hospital listings and " + placeMarkers.length +
-      " named or address-tagged nearby places. Tap a marker to see its available address. " +
-      "Some locations may not have address details in OpenStreetMap yet.");
+    const healthFacilityCount = (data.elements || []).filter(place => {
+      const tags = place.tags || {};
+      return Boolean(tags.healthcare || tags["healthcare:speciality"] ||
+        ["hospital","clinic","doctors","pharmacy","dentist","veterinary"].includes(tags.amenity));
+    }).length;
+    setStatus("Showing hospital listings, " + healthFacilityCount +
+      " mapped healthcare facilities (including pharmacies, clinics and doctors), and " +
+      placeMarkers.length + " nearby places. Blue markers identify healthcare facilities. " +
+      "Some locations may not have complete address details in OpenStreetMap yet.");
   }
   function showUserLocation(lat,lng,accuracy) {
     currentUserLocation = { latitude: Number(lat), longitude: Number(lng) };
