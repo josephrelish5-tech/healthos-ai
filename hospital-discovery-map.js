@@ -9,6 +9,10 @@
   let lastHospitals = [];
   let selectedHospitalId = null;
   let popupCloseTimer = null;
+  let placeMarkers = [];
+  let placeLookupTimer = null;
+  let lastPlaceLookupAt = 0;
+  let lastPlaceLookupKey = "";
   const defaultCenter = [6.82, 3.48]; // Obafemi Owode, Ogun State (regional fallback only)
   function el(id) { return document.getElementById(id); }
   function escapeText(value) { return String(value || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -120,8 +124,10 @@
       document.head.appendChild(style);
     }
     L.control.zoom({position:"topright"}).addTo(map);
-    map.on("zoomend",()=>drawMarkers(lastHospitals,false));
+    map.on("zoomend",()=>{drawMarkers(lastHospitals,false);scheduleNearbyPlaces();});
+    map.on("moveend",scheduleNearbyPlaces);
     drawMarkers(lastHospitals);
+    scheduleNearbyPlaces();
   }
   function drawMarkers(hospitals,fit=true) {
     if(!map||!window.L) return;
@@ -167,6 +173,45 @@
       }
     });
     if(fit&&bounds.length)map.fitBounds(bounds,{padding:[35,35],maxZoom:14});
+  }
+  function scheduleNearbyPlaces() {
+    if(!map || map.getZoom()<14) { clearTimeout(placeLookupTimer); return; }
+    clearTimeout(placeLookupTimer);
+    placeLookupTimer=setTimeout(loadNearbyPlaces,900);
+  }
+  async function loadNearbyPlaces() {
+    if(!map || map.getZoom()<14) return;
+    const bounds=map.getBounds(), z=map.getZoom();
+    const south=bounds.getSouth().toFixed(3), west=bounds.getWest().toFixed(3);
+    const north=bounds.getNorth().toFixed(3), east=bounds.getEast().toFixed(3);
+    const key=[z,south,west,north,east].join(":");
+    if(key===lastPlaceLookupKey || Date.now()-lastPlaceLookupAt<12000) return;
+    lastPlaceLookupKey=key; lastPlaceLookupAt=Date.now();
+    const query='[out:json][timeout:12];(node["name"]('+south+','+west+','+north+','+east+');way["name"]('+south+','+west+','+north+','+east+');relation["name"]('+south+','+west+','+north+','+east+'););out center tags 100;';
+    try {
+      const response=await fetch("https://overpass-api.de/api/interpreter",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8","Accept":"application/json"},body:"data="+encodeURIComponent(query)});
+      if(!response.ok) throw new Error("Nearby map places unavailable");
+      const data=await response.json();
+      placeMarkers.forEach(marker=>marker.remove()); placeMarkers=[];
+      const seen=new Set();
+      (data.elements||[]).forEach(place=>{
+        const tags=place.tags||{}, name=String(tags.name||"").trim();
+        const lat=Number(place.lat??place.center?.lat),lng=Number(place.lon??place.center?.lon);
+        if(!name || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        const id=name.toLowerCase()+":"+lat.toFixed(5)+":"+lng.toFixed(5);
+        if(seen.has(id)) return; seen.add(id);
+        const category=tags.amenity||tags.shop||tags.tourism||tags.leisure||tags.office||tags.highway||tags.place||"Place";
+        const address=[tags["addr:housenumber"],tags["addr:street"],tags["addr:suburb"],tags["addr:city"]].filter(Boolean).join(", ");
+        const marker=L.circleMarker([lat,lng],{radius:5,color:"#8b5e16",weight:2,fillColor:"#f4d27a",fillOpacity:.95}).addTo(map);
+        marker.bindTooltip(escapeText(name),{permanent:true,direction:"top",offset:[0,-5],className:"healthos-hospital-name-label"});
+        marker.bindPopup("<strong>"+escapeText(name)+"</strong><br>"+escapeText(String(category).replace(/_/g," "))+(address?"<br>"+escapeText(address):""));
+        placeMarkers.push(marker);
+      });
+      setStatus("Showing hospital listings and "+placeMarkers.length+" named nearby places from OpenStreetMap. Place address details appear when available in the source map data.");
+    } catch(error) {
+      lastPlaceLookupKey="";
+      setStatus("Hospital listings are available. Nearby street and place names could not be loaded right now; the map will retry when you move or zoom.");
+    }
   }
   function showUserLocation(lat,lng,accuracy) {
     if(!map||!window.L) return;
