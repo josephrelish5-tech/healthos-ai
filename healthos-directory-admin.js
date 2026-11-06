@@ -59,7 +59,7 @@
  async function load(){
   try{
    const d=await call();sources=(d.sources||[]);$("platformDirectoryAdmin").hidden=false;$("openDirectoryAdminButton").hidden=false;const nav=$("platformDirectoryAdminNav");if(nav)nav.hidden=false;
-   $("directorySourceRows").innerHTML=sources.map(s=>'<tr><td>'+esc(s.source_name)+'</td><td>'+esc(s.source_type)+'</td><td>'+esc(s.data_license)+'<br><small>'+esc(s.permission_basis)+'</small></td><td>'+(s.is_enabled?"Enabled":"Disabled")+'</td><td>'+(s.is_enabled?"—":'<button class="logout-button" data-enable="'+esc(s.id)+'">Enable</button>')+'</td></tr>').join("")||'<tr><td colspan="5">No sources registered.</td></tr>';
+   $("directorySourceRows").innerHTML=sources.map(s=>'<tr><td>'+esc(s.source_name)+'</td><td>'+esc(s.source_type)+'</td><td>'+esc(s.data_license)+'<br><small>'+esc(s.permission_basis)+'</small></td><td>'+(s.permission_review_status||"pending")+' / '+(s.is_enabled?"Enabled":"Disabled")+'</td><td>'+(s.source_name.includes("GRID3 Nigeria Health Facilities v2.0")?'<button class="logout-button" data-permission-review="'+esc(s.id)+'">Review v2.0 licence</button> ':"")+(s.is_enabled?"—":'<button class="logout-button" data-enable="'+esc(s.id)+'">Enable</button>')+'</td></tr>').join("")||'<tr><td colspan="5">No sources registered.</td></tr>';
    $("directoryListingRows").innerHTML=(d.listings||[]).map(x=>'<tr><td>'+esc(x.public_name)+'</td><td>'+esc([x.city,x.state,x.address].filter(Boolean).join(", "))+'</td><td>'+esc(x.source_record_id)+'</td><td>'+esc(x.listing_status)+'</td><td>'+(x.duplicate_candidate?"Candidate — manual comparison":"No flag")+'</td><td>'+(x.listing_status==="review_required"?'<button class="logout-button" data-review="'+esc(x.id)+'" data-decision="approved_for_public">Approve</button> <button class="logout-button" data-review="'+esc(x.id)+'" data-decision="suppressed">Suppress</button>':"—")+'</td></tr>').join("")||'<tr><td colspan="6">No listings awaiting review.</td></tr>';
    $("directoryImportSource").innerHTML=sources.filter(s=>s.is_enabled).map(s=>'<option value="'+esc(s.id)+'">'+esc(s.source_name)+'</option>').join("");
    say("Authorised. "+sources.length+" sources and "+(d.listings||[]).length+" listings loaded.");
@@ -78,7 +78,14 @@
   client.auth.onAuthStateChange((event,session)=>{if(session){$("openDirectoryAdminButton").hidden=false;const nav=$("platformDirectoryAdminNav");if(nav)nav.hidden=false;load();}else{$("openDirectoryAdminButton").hidden=true;const nav=$("platformDirectoryAdminNav");if(nav)nav.hidden=true;$("platformDirectoryAdmin").hidden=true;}});
   $("directorySourceForm").addEventListener("submit",async e=>{e.preventDefault();try{await call("POST",{action:"register_source",source_name:$("directorySourceName").value,source_type:$("directorySourceType").value,source_website:$("directorySourceWebsite").value,data_license:$("directorySourceLicense").value,permission_basis:$("directorySourcePermission").value,country_code:"NG"});e.target.reset();say("Source registered disabled. Verify its permission before enabling.");await load();}catch(x){say(x.message,true);}});
   $("platformDirectoryAdmin").addEventListener("click",async e=>{try{
-   const en=e.target.closest("[data-enable]"),rv=e.target.closest("[data-review]");
+   const en=e.target.closest("[data-enable]"),rv=e.target.closest("[data-review]"),pr=e.target.closest("[data-permission-review]");
+   if(pr){
+    const approved=confirm("GRID3 v2.0 metadata identifies CC BY 4.0 and permits reuse with attribution. The dataset is non-exhaustive and not fully validated. Approve this exact v2.0 source for restricted manual review only? This does NOT verify hospitals or publish listings.");
+    if(!approved)return;
+    const notes="Reviewed exact GRID3 NGA Health Facilities v2.0 ArcGIS item metadata (DOI 10.7916/kv1n-0743). CC BY 4.0 permits reuse with clear attribution. Approval is limited to v2.0 controlled ingestion into restricted manual review; records remain provisional and unverified. Does not cover v3.0 or authorise public publication.";
+    await call("POST",{action:"review_source_permission",source_id:pr.dataset.permissionReview,decision:"approved",permission_evidence_url:"https://www.arcgis.com/home/item.html?id=081506afb7f14af1a3f64130343a6a6a",permission_review_notes:notes});
+    say("v2.0 permission review recorded. Source remains disabled; enable separately when ready for controlled staging.");await load();
+   }
    if(en){if(!confirm("Have you verified the licence and legal permission for public use?"))return;await call("POST",{action:"enable_source",source_id:en.dataset.enable});say("Source enabled.");await load();}
    if(rv){const reason=prompt("Enter the reason for this review decision:");if(!reason?.trim())return;await call("POST",{action:"review_listing",listing_id:rv.dataset.review,decision:rv.dataset.decision,reason});say("Decision recorded.");await load();}
   }catch(x){say(x.message,true);}});
