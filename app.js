@@ -1397,6 +1397,8 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
         const latitudeValue = latitudeInput.value.trim();
         const longitudeValue = longitudeInput.value.trim();
         const hasGps = Boolean(latitudeValue && longitudeValue);
+        const radiusControl = document.getElementById("hospitalSearchRadius");
+        const requestedRadiusKm = Math.min(100, Math.max(10, Number(radiusControl?.value || 50)));
         if (!hasGps && !cityValue && !state && !region && !lga) {
             throw new Error(gpsNotice ? gpsNotice + " Enter a city, state or LGA to continue." : "Allow location access to find hospitals near you, or enter a city, state or LGA.");
         }
@@ -1407,7 +1409,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
         const baseParams = {
             p_latitude: hasGps ? Number(latitudeValue) : null,
             p_longitude: hasGps ? Number(longitudeValue) : null,
-            p_radius_km: hasGps ? 10 : null,
+            p_radius_km: hasGps ? requestedRadiusKm : null,
             p_country_code: country,
             // When GPS is available, coordinates take priority over manually entered
             // state/city/LGA filters so the first results are truly near the person.
@@ -1421,17 +1423,12 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
         };
         let hospitals = [];
         if (hasGps) {
-            for (const radius of [10, 15, 25, 50, 100]) {
-                message.textContent = radius === 10
-                    ? "Searching hospitals closest to your live location (within 10 km)…"
-                    : "No nearby matches yet. Expanding the search to " + radius + " km…";
-                const result = await supabaseClient.rpc("healthos_search_hospitals_v2", {
-                    ...baseParams, p_radius_km: radius
-                });
-                if (result.error) throw result.error;
-                hospitals = result.data || [];
-                if (hospitals.length) break;
-            }
+            message.textContent = "Searching approved hospitals within " + requestedRadiusKm + " km of your live location…";
+            const result = await supabaseClient.rpc("healthos_search_hospitals_v2", {
+                ...baseParams, p_radius_km: requestedRadiusKm
+            });
+            if (result.error) throw result.error;
+            hospitals = result.data || [];
             // Final fallback: search the capital city of the state containing
             // the user's GPS position (not Lagos by default).
             if (!hospitals.length) {
