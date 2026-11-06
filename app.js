@@ -1361,6 +1361,9 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
     const region = document.getElementById("hospitalSearchRegion").value.trim();
     const lga = document.getElementById("hospitalSearchLga").value.trim();
     const specialty = document.getElementById("hospitalSearchSpecialty").value.trim();
+    // Explicitly entered location fields take priority over any GPS coordinates
+    // left over from an earlier "Use my location" action.
+    const hasManualLocation = Boolean(cityValue || state || region || lga);
     if (!country || !/^[A-Z]{2}$/.test(country)) {
         message.textContent = "Enter a valid two-letter country code.";
         message.className = "message error";
@@ -1371,9 +1374,9 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
     message.className = "message";
     let gpsNotice = "";
     try {
-        // GPS-first: request the user's position from this Search button gesture
-        // when no coordinates have already been supplied by the location button.
-        if ((!latitudeInput.value.trim() || !longitudeInput.value.trim()) && navigator.geolocation) {
+        // Use GPS only when the user has not entered a manual search area.
+        // Never let an old GPS coordinate override a newly typed city/state/LGA.
+        if (!hasManualLocation && (!latitudeInput.value.trim() || !longitudeInput.value.trim()) && navigator.geolocation) {
             try {
                 const position = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, {
                     enableHighAccuracy: true, timeout: 15000, maximumAge: 60000
@@ -1391,12 +1394,12 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
                             : "GPS is unavailable. Searching with your manually entered location instead.";
                 console.info(gpsNotice, locationError);
             }
-        } else if (!navigator.geolocation && (!latitudeInput.value.trim() || !longitudeInput.value.trim())) {
+        } else if (!hasManualLocation && !navigator.geolocation && (!latitudeInput.value.trim() || !longitudeInput.value.trim())) {
             gpsNotice = "GPS is not supported in this browser. Searching with your manually entered location instead.";
         }
         const latitudeValue = latitudeInput.value.trim();
         const longitudeValue = longitudeInput.value.trim();
-        const hasGps = Boolean(latitudeValue && longitudeValue);
+        const hasGps = !hasManualLocation && Boolean(latitudeValue && longitudeValue);
         const radiusControl = document.getElementById("hospitalSearchRadius");
         const requestedRadiusKm = Math.min(100, Math.max(10, Number(radiusControl?.value || 50)));
         if (!hasGps && !cityValue && !state && !region && !lga) {
