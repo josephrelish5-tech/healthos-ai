@@ -87,7 +87,8 @@
     const previewButton=$("grid3PreviewButton"),stageButton=$("grid3StageButton");
     if(previewButton)previewButton.disabled=true;if(stageButton)stageButton.disabled=true;
     const message=$("grid3PreviewMessage");
-    const selectedState=$("grid3StateSelect")?.value||"Lagos";\n    message.textContent=action==="stage_for_review"?"Retrieving "+selectedState+" records and staging them in the restricted manual-review queue…":"Retrieving GRID3 facilities for "+selectedState+"…";
+    const selectedState=$("grid3StateSelect")?.value||"Lagos";
+    message.textContent=action==="stage_for_review"?"Retrieving "+selectedState+" records and staging them in the restricted manual-review queue…":"Retrieving GRID3 facilities for "+selectedState+"…";
     if(action!=="stage_for_review")$("grid3PreviewRows").innerHTML='<tr><td colspan="5">Loading preview…</td></tr>';
     try{
      const {data,error}=await client.functions.invoke("healthos-grid3-hospital-collector",{body:{action,state:selectedState}});
