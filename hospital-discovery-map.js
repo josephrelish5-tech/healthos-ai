@@ -488,7 +488,7 @@
     const place=places[0],box=String(place.boundingbox||"").split(",").map(Number);
     if(box.length!==4||!box.every(Number.isFinite)) throw new Error("Location search did not return a valid map area.");
     const south=box[0],north=box[1],west=box[2],east=box[3];
-    const name=String(nameQuery||"").trim().replace(/[^a-z0-9\\s'-]/gi,"").slice(0,80);
+    const name=String(nameQuery||"").trim().replace(/[^a-z0-9\s'-]/gi,"").slice(0,80);
     const nameFilter=name?'[name~"'+name.replace(/"/g,'\\"')+'",i]':'';
     // Search the complete returned state/LGA/city area in bounded tiles. Large
     // state bounding boxes are split rather than silently returning zero results.
