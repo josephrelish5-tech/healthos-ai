@@ -16,8 +16,11 @@
   let lastPlaceLookupKey = "";
   let baseTileLayer = null;
   let fallbackTileLayer = null;
+  let tertiaryTileLayer = null;
+  let activeTileProvider = 0;
   let tileErrorCount = 0;
-  let usingFallbackTiles = false;
+  let tileLoadTimer = null;
+  let tileProviderStartedAt = 0;
   const defaultCenter = [6.82, 3.48]; // Obafemi Owode, Ogun State (regional fallback only)
   function el(id) { return document.getElementById(id); }
   function escapeText(value) { return String(value || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -122,26 +125,53 @@
     const node=el("hospitalDiscoveryMap");
     if(!node || !window.L || map) return;
     map=L.map(node,{zoomControl:false,scrollWheelZoom:true,preferCanvas:true}).setView(defaultCenter,12);
-    // Primary OSM basemap with an automatic CARTO fallback if tile requests fail.
-    const tileAttribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
-    fallbackTileLayer=L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{
-      subdomains:["a","b","c","d"],maxZoom:20,attribution:tileAttribution
-    });
+    // Three independent street-map providers. Fail over on repeated tile errors
+    // or when a provider produces no tiles at all (common on restricted mobile networks).
+    const osmAttribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+    const cartoAttribution='&copy; <a href="https://carto.com/attributions">CARTO</a> &copy; OpenStreetMap contributors';
+    const esriAttribution='Tiles &copy; Esri — Sources: Esri, HERE, Garmin, OpenStreetMap contributors';
     baseTileLayer=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-      subdomains:["a","b","c"],maxZoom:19,maxNativeZoom:19,attribution:tileAttribution
-    }).addTo(map);
-    baseTileLayer.on("tileerror",()=>{
-      tileErrorCount++;
-      if(tileErrorCount>=3&&!usingFallbackTiles){
-        usingFallbackTiles=true;
-        if(map.hasLayer(baseTileLayer))map.removeLayer(baseTileLayer);
-        fallbackTileLayer.addTo(map);
-        setStatus("Switching map provider after OpenStreetMap tile errors…");
-      }
+      subdomains:["a","b","c"],maxZoom:19,maxNativeZoom:19,attribution:osmAttribution
     });
-    baseTileLayer.on("load",()=>{if(!usingFallbackTiles)setStatus("Map tiles loaded. Search an area or zoom in to explore.");});
-    fallbackTileLayer.on("load",()=>{if(usingFallbackTiles)setStatus("Map loaded using the backup map provider.");});
-    fallbackTileLayer.on("tileerror",()=>setStatus("Map providers are not responding. Check your internet connection and reload."));
+    fallbackTileLayer=L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{
+      subdomains:["a","b","c","d"],maxZoom:20,attribution:cartoAttribution
+    });
+    tertiaryTileLayer=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",{
+      maxZoom:19,attribution:esriAttribution
+    });
+    const tileProviders=[baseTileLayer,fallbackTileLayer,tertiaryTileLayer];
+    function activateTileProvider(index,reason){
+      if(index>=tileProviders.length){
+        clearTimeout(tileLoadTimer);
+        setStatus("Street-map tiles could not be loaded from the available providers. Check your connection or disable any data-saving/content-blocking setting, then reload.");
+        return;
+      }
+      activeTileProvider=index;
+      tileErrorCount=0;
+      tileProviderStartedAt=Date.now();
+      tileProviders.forEach(layer=>{if(map.hasLayer(layer))map.removeLayer(layer);});
+      tileProviders[index].addTo(map);
+      setStatus(reason || (index===0?"Loading OpenStreetMap streets…":index===1?"Loading backup street map…":"Loading final street-map provider…"));
+      clearTimeout(tileLoadTimer);
+      tileLoadTimer=setTimeout(()=>{
+        if(activeTileProvider===index && Date.now()-tileProviderStartedAt>=9000){
+          activateTileProvider(index+1,"Map provider did not return tiles. Trying the next provider…");
+        }
+      },9000);
+    }
+    tileProviders.forEach((layer,index)=>{
+      layer.on("tileerror",()=>{
+        if(index!==activeTileProvider)return;
+        tileErrorCount++;
+        if(tileErrorCount>=3)activateTileProvider(index+1,"Map tile errors detected. Switching street-map provider…");
+      });
+      layer.on("tileload",()=>{
+        if(index!==activeTileProvider)return;
+        clearTimeout(tileLoadTimer);
+        setStatus(index===0?"Street map loaded. Search an area or zoom in to explore.":index===1?"Street map loaded using CARTO backup.":"Street map loaded using Esri backup.");
+      });
+    });
+    activateTileProvider(0);
     // Make hospital-name labels readable when users zoom in.
     if(!document.getElementById("healthos-hospital-map-label-style")){
       const style=document.createElement("style"); style.id="healthos-hospital-map-label-style";
