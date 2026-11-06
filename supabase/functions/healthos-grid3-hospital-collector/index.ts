@@ -49,52 +49,19 @@ Deno.serve(async (req) => {
     if (sourceError || !source) return json({ error: "GRID3 source registry record not found" }, 500);
     if (source.is_enabled) return json({ error: "Preview blocked while source is enabled for another workflow." }, 409);
     if (body?.action === "reconciliation_summary") {
-      const staged: any[] = [];
-      for (let offset = 0; ; offset += 1000) {
-        const { data: page, error: stagedError } = await adminClient
-          .from("healthos_grid3_hospital_staging")
-          .select("state,review_status,nhfr_uid,latitude,longitude,public_name")
-          .eq("source_id", SOURCE_ID)
-          .range(offset, offset + 999);
-        if (stagedError) return json({ error: "Could not read restricted staging records", details: stagedError.message }, 500);
-        staged.push(...(page || []));
-        if (!page || page.length < 1000) break;
-        if (staged.length > 100000) return json({ error: "Unexpected staging volume; reconciliation stopped safely." }, 500);
+      const { data: summary, error: summaryError } = await adminClient
+        .rpc("healthos_grid3_reconciliation_summary", { p_source_id: SOURCE_ID });
+      if (summaryError) {
+        console.error("GRID3_RECONCILIATION_RPC_FAILED", summaryError.message, summaryError.code);
+        return json({ error: "Reconciliation database summary failed", details: summaryError.message, code: summaryError.code || null }, 500);
       }
-      const { count: directoryCount, error: directoryError } = await adminClient
-        .from("healthos_hospital_directory")
-        .select("id", { count: "exact", head: true });
-      if (directoryError) return json({ error: "Could not count directory records", details: directoryError.message }, 500);
-      const rows = staged;
-      const byState = new Map<string, any>();
-      const uidCounts = new Map<string, number>();
-      for (const row of rows) {
-        const state = String(row.state || "Unspecified").trim() || "Unspecified";
-        if (!byState.has(state)) byState.set(state, { state, staged_records: 0, review_required: 0, needs_correction: 0, with_coordinates: 0, missing_coordinates: 0 });
-        const bucket = byState.get(state);
-        bucket.staged_records++;
-        if (row.review_status === "review_required") bucket.review_required++;
-        if (row.review_status === "needs_correction") bucket.needs_correction++;
-        if (row.latitude !== null && row.longitude !== null) bucket.with_coordinates++;
-        else bucket.missing_coordinates++;
-        const uid = String(row.nhfr_uid || "").trim();
-        if (uid) uidCounts.set(uid, (uidCounts.get(uid) || 0) + 1);
-      }
-      const repeatedUidGroups = Array.from(uidCounts.values()).filter(n => n > 1).length;
-      const recordsWithRepeatedUid = Array.from(uidCounts.values()).filter(n => n > 1).reduce((sum, n) => sum + n, 0);
-      return json({
+      return json(summary || {
         mode: "read_only_reconciliation_summary",
         source_id: SOURCE_ID,
-        dataset: "GRID3_NGA_health_facilities_v2_0",
-        staged_record_count: rows.length,
-        current_directory_record_count: directoryCount || 0,
-        potential_directory_matches: 0,
-        exact_uid_duplicate_groups_within_staging: repeatedUidGroups,
-        records_in_repeated_uid_groups: recordsWithRepeatedUid,
-        missing_coordinate_count: rows.filter(r => r.latitude === null || r.longitude === null).length,
-        missing_name_count: rows.filter(r => !String(r.public_name || "").trim()).length,
-        by_state: Array.from(byState.values()).sort((a,b) => a.state.localeCompare(b.state)),
-        notice: "Read-only summary. No records were changed, merged, approved, staged, or published. Repeated NHFR UIDs are review flags, not proof of duplicate facilities."
+        staged_record_count: 0,
+        current_directory_record_count: 0,
+        by_state: [],
+        notice: "No summary was returned. No records were changed."
       });
     }
 
