@@ -1415,7 +1415,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
         const hasGps = !hasManualLocation && Boolean(latitudeValue && longitudeValue);
         const radiusControl = document.getElementById("hospitalSearchRadius");
         const requestedRadiusKm = Math.min(100, Math.max(10, Number(radiusControl?.value || 50)));
-        if (!hasGps && !cityValue && !state && !region && !lga) {
+        if (!hasGps && !cityValue && !state && !region && !lga && !hospitalNameQuery) {
             throw new Error(gpsNotice ? gpsNotice + " Enter a city, state or LGA to continue." : "Allow location access to find hospitals near you, or enter a city, state or LGA.");
         }
         if (!hasGps && gpsNotice) {
