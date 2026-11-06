@@ -183,11 +183,23 @@
       if (locateButton) locateButton.disabled = false;
     }, { enableHighAccuracy: false, maximumAge: 60000, timeout: 12000 });
   }
+  function setResultsView(view) {
+    const mapPanel=el("hospitalMapViewPanel"),cardsPanel=el("hospitalCardsViewPanel");
+    const mapButton=el("hospitalMapViewButton"),cardsButton=el("hospitalCardsViewButton");
+    const showMap=view!=="cards";
+    if(mapPanel)mapPanel.hidden=!showMap;
+    if(cardsPanel)cardsPanel.hidden=showMap;
+    if(mapButton){mapButton.classList.toggle("is-active",showMap);mapButton.setAttribute("aria-pressed",String(showMap));}
+    if(cardsButton){cardsButton.classList.toggle("is-active",!showMap);cardsButton.setAttribute("aria-pressed",String(!showMap));}
+    if(showMap&&map){setTimeout(()=>map.invalidateSize(),80);}
+  }
   function render(hospitals) {
     lastHospitals=Array.isArray(hospitals)?hospitals:[];
     renderCards(lastHospitals); if(!map) initMap(); if(map) drawMarkers(lastHospitals);
-    if(lastHospitals.length) setStatus(lastHospitals.length+" verified hospital(s) found. Select a card or map pin to explore.");
-    else setStatus("No verified hospitals match this search yet. The map is ready for approved hospital listings.");
+    const count=el("hospitalNearbyCount");
+    if(count)count.textContent=lastHospitals.length+" hospital"+(lastHospitals.length===1?"":"s")+" found";
+    if(lastHospitals.length) setStatus(lastHospitals.length+" hospital(s) found. Select a card or map pin to explore.");
+    else setStatus("No approved hospital listings match this search yet. Try another location.");
   }
   function refresh() { if(!el("hospitalDiscoveryMap")) return; if(!map) initMap(); if(map){map.invalidateSize();drawMarkers(lastHospitals);} }
   window.HealthOSHospitalDiscovery={render,selectHospital,refresh,focusSearchLocation,locateUser};
@@ -196,5 +208,8 @@
     if(window.L){initMap();if(status)status.textContent="Map ready. Search an area or use GPS to show your location.";}
     else if(status)status.textContent="Map library could not load. Check your internet connection and reload.";
     el("hospitalMapLocateButton")?.addEventListener("click",locateUser);
+    el("hospitalMapViewButton")?.addEventListener("click",()=>setResultsView("map"));
+    el("hospitalCardsViewButton")?.addEventListener("click",()=>setResultsView("cards"));
+    setResultsView("map");
   });
 })();
