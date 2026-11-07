@@ -1587,8 +1587,8 @@ body{background:var(--page);color:#183247}.topbar{background:#fff;border-bottom:
     color-scheme: light;
     --navy: #111828;
     --navy-deep: #0B1220;
-    --medical-blue: #168ACB;
-    --blue-soft: #EAF3FA;
+    --medical-blue: #111828;
+    --blue-soft: #F4F7FA;
     --page: #F4F7FA;
     --border: #DCE5EE;
     --muted: #68798C;
@@ -1625,7 +1625,7 @@ button[type="submit"] {
     border-color: var(--medical-blue) !important;
     color: #FFFFFF !important;
 }
-.primary-button:hover, .assistant-send:hover { background: #0873B1 !important; }
+.primary-button:hover, .assistant-send:hover { background: #202D43 !important; }
 .panel, .stat-card, .auth-screen, .assistant-panel,
 .hospital-map-panel, .hospital-cards-panel {
     background: #FFFFFF !important;
