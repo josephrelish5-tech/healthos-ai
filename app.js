@@ -13151,7 +13151,7 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
      actions.append(action);
     };
     if(x.task_status==="assigned")addAction("accepted","Accept task");
-    if(["assigned","accepted"].includes(x.task_status))addAction("in_progress","Start task");
+    if(x.task_status==="accepted")addAction("in_progress","Start task");
     if(["accepted","in_progress"].includes(x.task_status))addAction("blocked","Report blocked");
     if(["accepted","in_progress","blocked"].includes(x.task_status))addAction("submitted","Submit for review");
     if(actions.childNodes.length)card.append(actions);
@@ -13344,10 +13344,10 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
     handoverRows.replaceChildren();
     const userNames=new Map((eligibleNurses||[]).map(n=>[n.staff_user_id,n.full_name]));
     const allHandovers=handoverResult.data||[];
-    if(!allHandovers.length){const tr=handoverRows.insertRow();const td=tr.insertCell();td.colSpan=8;td.textContent="No patient-specific ICU handovers have been recorded.";} 
+    if(!allHandovers.length){const tr=handoverRows.insertRow();const td=tr.insertCell();td.colSpan=9;td.textContent="No patient-specific ICU handovers have been recorded.";} 
     allHandovers.forEach(h=>{
      const tr=handoverRows.insertRow();
-     [fmt(h.recorded_at),(patientMap.get(admissions.find(a=>a.id===h.admission_id)?.patient_id)||"Patient")+" · "+(admissions.find(a=>a.id===h.admission_id)?.admission_number||"Admission"),h.shift_code,userNames.get(h.outgoing_staff_user_id)||"Outgoing nurse",userNames.get(h.incoming_staff_user_id)||"Any assigned nurse",h.pending_items||"None recorded",h.handover_status==="accepted"?"Accepted · "+fmt(h.accepted_at):"Awaiting acceptance"].forEach(value=>cell(tr,value));
+     [fmt(h.recorded_at),(patientMap.get(admissions.find(a=>a.id===h.admission_id)?.patient_id)||"Patient")+" · "+(admissions.find(a=>a.id===h.admission_id)?.admission_number||"Admission"),h.shift_code,userNames.get(h.outgoing_staff_user_id)||"Outgoing nurse",userNames.get(h.incoming_staff_user_id)||"Any assigned nurse",h.handover_summary,h.pending_items||"None recorded",h.handover_status==="accepted"?"Accepted · "+fmt(h.accepted_at):"Awaiting acceptance"].forEach(value=>cell(tr,value));
      const action=tr.insertCell();
      const canAccept=h.handover_status==="pending"&&activeNurseAssignments.some(x=>x.admission_id===h.admission_id&&x.staff_user_id===currentUser.id&&(!h.incoming_nurse_assignment_id||x.nurse_assignment_id===h.incoming_nurse_assignment_id));
      if(canAccept){const accept=document.createElement("button");accept.type="button";accept.className="secondary-button";accept.textContent="Accept handover";accept.addEventListener("click",async()=>{if(!confirm("Accept clinical handover responsibility for this ICU admission?"))return;await runAction(accept,()=>rpc("healthos_icu_accept_shift_handover",{p_clinic_id:clinicId,p_handover_id:h.id}),"ICU handover accepted. Acceptance identity and timestamp were audited.");});action.append(accept);}else action.textContent=h.handover_status==="accepted"?"Accepted":"—";
