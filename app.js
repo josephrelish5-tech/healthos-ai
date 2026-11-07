@@ -1601,9 +1601,12 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
             return;
         }
         const networkCount = hospitals.filter(h => h.listing_group === "network").length;
-        const otherCount = hospitals.length - networkCount;
-        message.textContent = networkCount + " HealthOS AI network hospital(s) and " + otherCount + " other hospital(s) found"
-            + (hasGps ? " from your live-location search." : ".");
+        const provisionalCount = hospitals.filter(h => h.listing_group === "provisional_external").length;
+        const externalCount = hospitals.filter(h => h.listing_group === "other").length;
+        message.textContent = networkCount + " verified HealthOS AI network hospital(s), "
+            + provisionalCount + " unverified GRID3 facility record(s), and "
+            + externalCount + " other external listing(s) found"
+            + (hasGps ? " from your live-location search." : ". Unverified records are clearly labelled and are not HealthOS-verified hospitals.");
         message.className = "message success";
     } catch (error) {
         console.error("Hospital discovery search failed:", error);
