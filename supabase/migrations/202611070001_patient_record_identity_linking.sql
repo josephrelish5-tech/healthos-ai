@@ -209,6 +209,9 @@ begin
  update public.healthos_patient_record_identity_links
  set status='revoked',revoked_by=v_uid,revoked_at=now()
  where id=v_link.id;
+ update public.healthos_patient_record_identity_requests
+ set status='revoked',updated_at=now()
+ where patient_user_id=v_uid and clinic_id=p_clinic_id and status='matched';
  insert into public.healthos_patient_identity_audit(link_id,patient_user_id,clinic_id,actor_user_id,event_type)
  values(v_link.id,v_uid,p_clinic_id,v_uid,'patient_revoked_identity_link');
  return true;
