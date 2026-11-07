@@ -12324,6 +12324,43 @@ document.getElementById("refreshGlobalReferrals")?.addEventListener("click",asyn
 (function initUssdCareRequestInbox(){
  const body=document.getElementById("ussdCareRequestBody"),message=document.getElementById("ussdCareRequestMessage");
  const say=(text,error=false)=>{if(message){message.textContent=text;message.className="message"+(error?" error":" success");}};
+ async function loadEmergencyResponse(){
+  const incidentRows=$("icuEmergencyIncidentRows"),eventRows=$("icuEmergencyResponseRows");
+  if(!incidentRows||!eventRows)return;
+  const status=$("icuEmergencyMessage"),setStatus=(s,e=false)=>{if(status){status.textContent=s;status.className="message"+(e?" error":" success");}};
+  try{
+   const clinic=currentClinic.id;
+   const [incidentResult,staffResult,assetResult]=await Promise.all([
+    supabaseClient.from("icu_emergency_incidents").select("id,patient_id,admission_id,equipment_asset_id,incident_type,severity,description,status,occurred_at,reported_by,assigned_to,created_at").eq("clinic_id",clinic).order("occurred_at",{ascending:false}).limit(200),
+    supabaseClient.from("staff_profiles").select("user_id,full_name,department,employment_status").eq("clinic_id",clinic).eq("employment_status","active").limit(500),
+    supabaseClient.from("icu_equipment_assets").select("id,asset_tag,equipment_type").eq("clinic_id",clinic).limit(500)
+   ]);
+   for(const r of [incidentResult,staffResult,assetResult])if(r.error)throw r.error;
+   const incidents=incidentResult.data||[],staff=staffResult.data||[],assets=assetResult.data||[];
+   const staffMap=new Map(staff.map(s=>[s.user_id,[s.full_name,s.department].filter(Boolean).join(" · ")||"Staff account"]));
+   const assetMap=new Map(assets.map(a=>[a.id,a.asset_tag+" · "+a.equipment_type.replaceAll("_"," ")]));
+   const patientsForSelect=patients.map(p=>({id:p.id,label:(p.patient_number||"Patient")+" · "+[p.first_name,p.last_name].filter(Boolean).join(" ")}));
+   const psel=$("icuEmergencyPatient"),oldPatient=psel.value;psel.replaceChildren(new Option("No patient linked",""));patientsForSelect.forEach(p=>psel.add(new Option(p.label,p.id)));if(patients.some(p=>p.id===oldPatient))psel.value=oldPatient;
+   const adm=$("icuEmergencyAdmission"),oldAdm=adm.value;adm.replaceChildren(new Option("No admission linked",""));admissions.forEach(a=>adm.add(new Option((a.admission_number||"ICU admission")+" · "+(patientMap.get(a.patient_id)||"Patient"),a.id)));if(admissions.some(a=>a.id===oldAdm))adm.value=oldAdm;
+   const eq=$("icuEmergencyEquipment"),oldEq=eq.value;eq.replaceChildren(new Option("No equipment linked",""));assets.forEach(a=>eq.add(new Option(assetMap.get(a.id),a.id)));if(assets.some(a=>a.id===oldEq))eq.value=oldEq;
+   const assignee=$("icuEmergencyAssignedStaff"),oldAssignee=assignee.value;assignee.replaceChildren(new Option("Select staff member for assignment",""));staff.forEach(s=>assignee.add(new Option(staffMap.get(s.user_id),s.user_id)));if(staff.some(s=>s.user_id===oldAssignee))assignee.value=oldAssignee;
+   const select=$("icuEmergencyResponseIncident"),oldIncident=select.value;select.replaceChildren(new Option("Select an open incident",""));incidents.filter(i=>!["resolved","closed"].includes(i.status)).forEach(i=>select.add(new Option(i.incident_type.replaceAll("_"," ")+" · "+i.severity+" · "+fmt(i.occurred_at),i.id)));if(incidents.some(i=>i.id===oldIncident&&!["resolved","closed"].includes(i.status)))select.value=oldIncident;
+   incidentRows.replaceChildren();
+   if(!incidents.length){const tr=incidentRows.insertRow();const td=tr.insertCell();td.colSpan=6;td.textContent="No ICU emergency incidents have been reported.";}
+   incidents.forEach(i=>{const tr=incidentRows.insertRow();[
+    fmt(i.occurred_at),i.incident_type.replaceAll("_"," ")+" · "+i.severity,
+    (patientMap.get(i.patient_id)||"No patient linked")+" / "+(assetMap.get(i.equipment_asset_id)||"No equipment linked"),
+    i.status.replaceAll("_"," "),staffMap.get(i.assigned_to)||"Unassigned",i.description
+   ].forEach(v=>cell(tr,v));});
+   const ids=incidents.map(i=>i.id);let events=[];
+   if(ids.length){const r=await supabaseClient.from("icu_emergency_response_events").select("id,incident_id,action_type,action_note,actor_user_id,action_at").eq("clinic_id",clinic).in("incident_id",ids).order("action_at",{ascending:false}).limit(300);if(r.error)throw r.error;events=r.data||[];}
+   const incidentMap=new Map(incidents.map(i=>[i.id,i]));
+   eventRows.replaceChildren();
+   if(!events.length){const tr=eventRows.insertRow();const td=tr.insertCell();td.colSpan=5;td.textContent="No response actions recorded yet.";}
+   events.forEach(e=>{const tr=eventRows.insertRow();[fmt(e.action_at),incidentMap.get(e.incident_id)?.incident_type.replaceAll("_"," ")||"Incident",e.action_type.replaceAll("_"," "),e.action_note,staffMap.get(e.actor_user_id)||staffNames.get(e.actor_user_id)||"Authorised staff account"].forEach(v=>cell(tr,v));});
+   setStatus("Emergency incidents and response accountability history loaded. No external responder notification is connected.");
+  }catch(error){console.warn("ICU emergency response panel unavailable",error);incidentRows.replaceChildren();const tr=incidentRows.insertRow();const td=tr.insertCell();td.colSpan=6;td.textContent="Emergency incident records could not be loaded. Confirm clinical-record read permission with the hospital administrator.";eventRows.replaceChildren();setStatus(error.message||"Emergency response records unavailable.",true);}
+ }
  async function load(){
   if(!body||!currentClinic)return;
   body.replaceChildren();say("Loading incoming USSD care requests...");
@@ -13494,6 +13531,7 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    const transferRows=$("icuTransferRows");if(transferRows){transferRows.replaceChildren();if(!transfers.length){const tr=transferRows.insertRow();const td=tr.insertCell();td.colSpan=6;td.textContent="No ICU transfers have been recorded.";}transfers.forEach(t=>{const tr=transferRows.insertRow();const from=bedResult.data.find(b=>b.id===t.from_bed_id),to=bedResult.data.find(b=>b.id===t.to_bed_id);[fmt(t.transferred_at),patientMap.get(t.patient_id)||"Patient record",from?.bed_number||"Bed record",to?.bed_number||"Bed record",t.transfer_reason,staffNames.get(t.transferred_by)||"Authorised staff account"].forEach(value=>cell(tr,value));});}
    await loadMedicationAdministration();
    await loadEquipmentRegister();
+   await loadEmergencyResponse();
    message("ICU records loaded. Admission, transfer and discharge actions are checked by the database and recorded in the tamper-evident audit log.");
   }catch(error){console.error("ICU workspace load failed",error);message(error.message||"Unable to load ICU records. Check clinic membership and permissions.",true);}
   finally{if(button)button.disabled=false;}
@@ -13621,6 +13659,27 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    p_next_inspection_due:null,p_next_maintenance_due:null
   }),"Equipment event recorded with staff identity and audit history.");
   if(ok){$("icuEquipmentEventForm").reset();$("icuEquipmentEventTime").value=new Date().toISOString().slice(0,16);}
+ });
+
+ $("icuEmergencyIncidentForm")?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  if(!currentClinic?.id){message("Select an active hospital first.",true);return;}
+  const patientId=$("icuEmergencyPatient").value||null,admissionId=$("icuEmergencyAdmission").value||null,equipmentId=$("icuEmergencyEquipment").value||null;
+  const occurred=new Date($("icuEmergencyOccurredAt").value);
+  if(Number.isNaN(occurred.getTime())||occurred.getTime()>Date.now()+5*60*1000){message("Enter a valid incident date and time.",true);return;}
+  if(admissionId&&!admissions.some(a=>a.id===admissionId&&(!patientId||a.patient_id===patientId))){message("The selected admission does not match the selected patient.",true);return;}
+  const b=$("icuEmergencyReportButton");
+  const ok=await runAction(b,()=>rpc("healthos_icu_report_emergency",{p_clinic_id:currentClinic.id,p_patient_id:patientId,p_admission_id:admissionId,p_equipment_asset_id:equipmentId,p_incident_type:$("icuEmergencyType").value,p_severity:$("icuEmergencySeverity").value,p_description:$("icuEmergencyDescription").value.trim(),p_occurred_at:occurred.toISOString()}),"Emergency incident reported and added to the audited response register.");
+  if(ok){$("icuEmergencyIncidentForm").reset();$("icuEmergencyOccurredAt").value=new Date().toISOString().slice(0,16);}
+ });
+ $("icuEmergencyResponseForm")?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  const incidentId=$("icuEmergencyResponseIncident").value,action=$("icuEmergencyResponseAction").value,note=$("icuEmergencyResponseNote").value.trim(),assigned=$("icuEmergencyAssignedStaff").value||null;
+  if(!incidentId||note.length<3){message("Select an open incident and enter the response note.",true);return;}
+  if(action==="assign"&&!assigned){message("Select an active staff account to assign responsibility.",true);return;}
+  const b=$("icuEmergencyResponseButton");
+  const ok=await runAction(b,()=>rpc("healthos_icu_update_emergency_incident",{p_clinic_id:currentClinic.id,p_incident_id:incidentId,p_action:action,p_action_note:note,p_assigned_to:action==="assign"?assigned:null}),"Emergency response action recorded in the accountability history.");
+  if(ok){$("icuEmergencyResponseNote").value="";$("icuEmergencyAssignedStaff").value="";}
  });
 
  $("icuRefreshButton")?.addEventListener("click",()=>void load());
