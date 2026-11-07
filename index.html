@@ -767,6 +767,32 @@
  <div class="panel"><h3>My authorised nursing tasks</h3><p class="muted">Tasks assigned to your active staff assignments. Use the existing task workflow to accept, start, block, submit evidence and obtain supervisor review.</p><div id="nursingTasksList" class="stats-grid"><p class="muted">Refresh to load assigned tasks.</p></div></div>
  <p class="stat-note">Clinical safety: urgent care must never be delayed for data entry. This workspace records observations; it does not calculate diagnoses, prescribe treatment or replace hospital protocols. Access is enforced by existing Supabase row-level security and clinical-record permissions.</p>
 </section>
+<!-- HEALTHOS ICU WORKSPACE: READ-ONLY INTEGRATION WITH EXISTING ADMISSIONS, BEDS AND VITALS -->
+<section class="panel" id="icuWorkspace" aria-labelledby="icuWorkspaceHeading">
+ <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=1100&q=85" alt="Critical care clinical team working in a hospital" loading="lazy" decoding="async"><figcaption>Coordinated critical care and continuous clinical attention</figcaption></figure>
+ <div class="panel-heading"><div><p class="eyebrow">INTENSIVE CARE · AUTHORISED CLINICAL STAFF</p><h2 id="icuWorkspaceHeading">Intensive Care Unit Workspace</h2><p class="muted">A shared ICU overview using existing hospital admissions, bed records and authorised patient observations.</p></div><button type="button" class="secondary-button" id="icuRefreshButton">Refresh ICU workspace</button></div>
+ <p id="icuWorkspaceMessage" class="message" role="status" aria-live="polite">Sign in with an authorised hospital staff account to load ICU records.</p>
+ <div class="stats-grid">
+  <article class="stat-card"><p>ICU beds recorded</p><h3 id="icuTotalBeds">—</h3></article>
+  <article class="stat-card"><p>Occupied ICU beds</p><h3 id="icuOccupiedBeds">—</h3></article>
+  <article class="stat-card"><p>Available ICU beds</p><h3 id="icuAvailableBeds">—</h3></article>
+  <article class="stat-card"><p>Current ICU admissions</p><h3 id="icuActiveAdmissions">—</h3></article>
+ </div>
+ <div class="panel"><h3>Current ICU patient list</h3><p class="muted">Patients appear here when an active admission is linked to a bed whose ward or bed type is labelled ICU or Intensive Care. This view does not assign beds or staff.</p>
+  <div class="table-wrap"><table><thead><tr><th>Patient</th><th>Admission reference</th><th>Bed</th><th>Ward</th><th>Admitted</th><th>Latest recorded observations</th></tr></thead><tbody id="icuAdmissionsRows"><tr><td colspan="6">Refresh to load ICU admissions.</td></tr></tbody></table></div>
+ </div>
+ <div class="panel"><h3>Recent ICU observations</h3><p class="muted">Displays observations already recorded in the clinical record. Values are shown as entered; this panel does not diagnose, score deterioration or generate treatment instructions.</p>
+  <div class="table-wrap"><table><thead><tr><th>Recorded</th><th>Patient</th><th>Temperature</th><th>Blood pressure</th><th>Pulse</th><th>Respiratory rate</th><th>Oxygen saturation</th><th>Recorded by</th></tr></thead><tbody id="icuVitalsRows"><tr><td colspan="8">Refresh to load observations.</td></tr></tbody></table></div>
+ </div>
+ <div class="panel"><h3>ICU operational capabilities</h3><div class="healthos-specialist-grid">
+  <article class="healthos-specialist-card"><div class="healthos-specialist-copy"><h4>Admission and bed coordination</h4><p>Uses the existing admission and bed register. ICU-specific bed allocation and transfers remain subject to the hospital's authorised bed-management workflow.</p></div></article>
+  <article class="healthos-specialist-card"><div class="healthos-specialist-copy"><h4>Clinical observations</h4><p>Uses the existing patient observation record and its clinical-record permissions. Staff must follow local monitoring frequency and escalation protocols.</p></div></article>
+  <article class="healthos-specialist-card"><div class="healthos-specialist-copy"><h4>Ventilator and equipment management</h4><p>Dedicated ventilator settings, device connectivity, alarm feeds and equipment maintenance are not connected in this release. Do not use this panel to monitor life-support equipment.</p></div></article>
+  <article class="healthos-specialist-card"><div class="healthos-specialist-copy"><h4>Care-team assignment and medication administration</h4><p>Dedicated ICU assignment and medication-administration workflows require separately authorised database workflows; this panel does not create or imply those records.</p></div></article>
+ </div></div>
+ <p class="stat-note">Critical-care safety: never delay bedside assessment, escalation or treatment for software entry. This overview is not a patient monitor, clinical decision tool or substitute for hospital protocols. Data visibility and writes remain governed by existing Supabase row-level security.</p>
+</section>
+
 <section class="panel laboratory-workspace" id="laboratoryWorkspace" aria-labelledby="laboratoryWorkspaceHeading">
  <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1579154204601-01588f351e67?auto=format&fit=crop&w=1100&q=85" alt="Laboratory professionals processing clinical samples in a hospital laboratory" loading="lazy" decoding="async"><figcaption>Laboratory professionals and diagnostic care</figcaption></figure>
  <div class="panel-heading"><div><p class="eyebrow">LABORATORY SERVICES · CONTROLLED WORKFLOW</p><h2 id="laboratoryWorkspaceHeading">Laboratory Department Workspace</h2><p class="muted">Test authorisation, specimen custody, processing, result validation and release with staff accountability.</p></div><button type="button" id="laboratoryRefreshButton" class="secondary-button">Refresh laboratory</button></div>
