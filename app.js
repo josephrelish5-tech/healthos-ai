@@ -13214,11 +13214,12 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    const activeEncounterIds=new Set(admissions.map(x=>x.patient_id));
    populateSelect("icuObservationAdmission",admissions,x=>(patientMap.get(x.patient_id)||"Patient")+" · "+(x.admission_number||"Admission"),"Select ICU admission");
    populateSelect("icuObservationEncounter",openEncounters.filter(x=>activeEncounterIds.has(x.patient_id)),x=>(patientMap.get(x.patient_id)||"Patient")+" · "+(x.encounter_number||x.encounter_type||"Encounter"),"Select open encounter");
-   const dueSchedules=schedulesForActive.filter(x=>x.status==="active");
+   const nowMs=Date.now();
+   const dueSchedules=schedulesForActive.filter(x=>x.status==="active"&&new Date(x.next_due_at).getTime()<=nowMs&&(!x.ends_at||new Date(x.ends_at).getTime()>=nowMs));
    populateSelect("icuObservationDueSchedule",dueSchedules,x=>{
     const due=new Date(x.next_due_at);
     return (patientMap.get(admissions.find(ad=>ad.id===x.admission_id)?.patient_id)||"Patient")+" · due "+due.toLocaleString();
-   },"Select due observation");
+   },dueSchedules.length?"Select due observation":"No observations are due yet");
    const scheduleRows=$("icuObservationScheduleRows");
    if(scheduleRows){scheduleRows.replaceChildren();if(!schedulesForActive.length){const tr=scheduleRows.insertRow();const td=tr.insertCell();td.colSpan=5;td.textContent="No observation schedules created."; }
     schedulesForActive.forEach(x=>{const tr=scheduleRows.insertRow();[
