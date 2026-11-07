@@ -1318,7 +1318,7 @@ async function loadPatientRecordShareAccessRequests() {
                 });
                 verifyOtp.addEventListener("click", async () => {
                     const code = otpInput.value.trim();
-                    if (!/^\\d{6}$/.test(code)) { otpMessage.textContent = "Enter the six-digit code."; otpMessage.className = "message error"; return; }
+                    if (!/^\d{6}$/.test(code)) { otpMessage.textContent = "Enter the six-digit code."; otpMessage.className = "message error"; return; }
                     verifyOtp.disabled = true;
                     try {
                         const { data, error } = await supabaseClient.functions.invoke("healthos-patient-record-otp", { body: { action: "verify", request_id: row.id, code } });
