@@ -1546,3 +1546,16 @@ body{background:var(--page);color:#183247}.topbar{background:#fff;border-bottom:
 .healthos-section-photo figcaption{padding:0 13px 10px;color:#607487;font-size:11px;line-height:1.4}
 #patientPortal .healthos-section-photo,#staffWorkspace .healthos-section-photo{margin-bottom:18px}
 @media(max-width:600px){.healthos-section-photo{border-radius:12px}.healthos-section-photo img{height:165px}}
+
+
+/* HealthOS specialist department guide cards */
+.healthos-specialist-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:16px;margin:16px 0}
+.healthos-specialist-card{overflow:hidden;border:1px solid #DCE5EE;border-radius:15px;background:#fff;box-shadow:0 7px 22px rgba(16,42,67,.055)}
+.healthos-specialist-photo img{display:block;width:100%;height:180px;object-fit:cover}
+.healthos-specialist-copy{padding:16px}
+.healthos-specialist-copy .eyebrow{margin:0 0 6px;color:#13A89E;font-size:11px;font-weight:800;letter-spacing:.12em}
+.healthos-specialist-copy h4{margin:0 0 9px;color:#102A43;font-size:18px}
+.healthos-specialist-copy p{color:#526779;line-height:1.6}
+.healthos-specialist-copy ul{padding-left:19px;color:#40586C;line-height:1.65}
+.healthos-specialist-copy li{margin:4px 0}
+@media(max-width:600px){.healthos-specialist-grid{grid-template-columns:1fr}.healthos-specialist-photo img{height:165px}.healthos-specialist-copy{padding:14px}}
