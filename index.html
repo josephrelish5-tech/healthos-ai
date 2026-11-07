@@ -430,7 +430,7 @@
 <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=1100&q=85" alt="Healthcare professional reviewing a medical report" loading="lazy" decoding="async"><figcaption>Medical documents and diagnostic reports</figcaption></figure>
 
                     <h4 id="patientDocumentOcrHeading">Medical Document OCR Preview</h4>
-                    <p class="muted">Preview text from a selected prescription, laboratory report or medical document in this browser before secure upload. The extracted text is not automatically added to your medical record or sent to an AI service. Always retain and verify the original document.</p>
+                    <p class="muted">Preview text from a selected prescription, laboratory report or medical document in this browser before secure upload. The extracted text is not automatically added to your medical record or sent to an external service. Always retain and verify the original document.</p>
                     <button type="button" id="patientDocumentOcrButton" class="secondary-button" disabled>Read selected document</button>
                     <p id="patientDocumentOcrStatus" class="message" role="status" aria-live="polite">Choose a PDF or image above to prepare a local OCR preview.</p>
                     <details id="patientDocumentOcrResult" hidden><summary>Review extracted text</summary><pre id="patientDocumentOcrText" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre></details>
@@ -1362,7 +1362,7 @@
   <button type="button" class="btn btn-secondary" id="saveDepartmentKnowledgeDraft">Save changes as draft</button>
   <button type="button" class="primary-button" id="publishDepartmentKnowledgeArticle">Approve and publish</button>
  </div>
- <p class="disclaimer">Only verified clinic administrators can publish. Published guidance becomes available to staff assigned to that department. AI guidance does not replace hospital policy, clinical judgement or statutory approvals.</p>
+ <p class="disclaimer">Only verified clinic administrators can publish. Published guidance becomes available to staff assigned to that department. automated guidance does not replace hospital policy, clinical judgement or statutory approvals.</p>
 </section>
 
 </div>
@@ -2216,7 +2216,7 @@
    <label>Clinician-owned open encounter<select id="scribeEncounterSelect" required><option value="">Select your encounter</option></select></label>
    <section id="scribePatientContext" class="panel" aria-live="polite" style="margin:12px 0;padding:14px">
     <h4>Patient history context</h4>
-    <p class="muted">Select your encounter to review relevant existing records. This context is for clinician review and is not automatically sent to the AI or added to a note.</p>
+    <p class="muted">Select your encounter to review relevant existing records. This context is for clinician review and is not automatically sent to the an automated service or added to a note.</p>
     <div id="scribePatientContextBody" class="muted">Select an encounter to load its patient context.</div>
    </section>
    <label>Transcript source<select id="scribeSourceType"><option value="manual_transcript">Manual / externally approved transcript</option><option value="approved_transcription_service">Clinic-approved secure transcription service</option></select></label>
@@ -2234,7 +2234,7 @@
    </div>
    <label>Transcript<textarea id="scribeTranscript" rows="5" maxlength="20000" placeholder="Generated transcript appears here, or paste an approved transcript. Verify names, medicines, dosages, dates and clinical terms." required></textarea></label>
    <label>Clinical note section<select id="scribeNoteType"><option value="progress">Progress</option><option value="history">History</option><option value="examination">Examination</option><option value="assessment">Assessment</option><option value="plan">Plan</option><option value="discharge">Discharge</option></select></label>
-   <label>AI-generated note draft — clinician must edit and verify<textarea id="scribeEditedNote" rows="6" maxlength="20000" placeholder="The AI draft appears here. Edit and verify every detail before saving." required></textarea></label>
+   <label>Draft note for clinician review — clinician must edit and verify<textarea id="scribeEditedNote" rows="6" maxlength="20000" placeholder="The draft appears here. Edit and verify every detail before saving." required></textarea></label>
    <label style="display:flex;gap:10px;align-items:flex-start"><input id="scribeReviewConfirm" type="checkbox" required style="width:auto;margin-top:4px"> I have personally reviewed the transcript and edited/corrected the note. It accurately reflects the consultation and contains no unverified information.</label>
    <label style="display:flex;gap:10px;align-items:flex-start"><input id="scribeConsent" type="checkbox" required style="width:auto;margin-top:4px"> I confirm that the patient or authorised representative has consented to this documentation process, and that I am authorised to process this clinical information.</label>
    <button class="primary-button" type="submit">Save Scribe Draft for Review</button>
@@ -3268,7 +3268,7 @@
     <!-- HEALTHOS MEDICAL SYSTEMS: ANALYTICS AND FORECASTING -->
     <section class="panel" id="healthOSAnalyticsWorkspace" style="margin:16px 0" aria-labelledby="hosAnalyticsHeading">
       <div class="panel-heading">
-        <div><p class="eyebrow">HOSPITAL INTELLIGENCE · AGGREGATE PERFORMANCE</p><h2 id="hosAnalyticsHeading">AI Analytics &amp; Forecasting</h2>
+        <div><p class="eyebrow">HOSPITAL INTELLIGENCE · AGGREGATE PERFORMANCE</p><h2 id="hosAnalyticsHeading">Hospital Analytics &amp; Forecasting</h2>
         <p class="muted">Clinic-scoped operational indicators for authorised management review.</p></div>
         <button type="button" id="hosAnalyticsRefresh" class="logout-button">Refresh analytics</button>
       </div>
@@ -3284,13 +3284,13 @@
       </div>
       <h3>Operational intelligence flags</h3><ul id="hosAnalyticsInsights"><li>Sign in to load aggregate indicators.</li></ul>
       <p id="hosAnalyticsMessage" class="message" role="status" aria-live="polite">Waiting for a secure clinic session.</p>
-      <p class="disclaimer">Initial release: read-only, rule-based analytics, not a validated predictive AI model. Figures depend on available source fields and up to 1,000 records per source. Verify all flags against source records. No patient-level details are displayed and no financial, clinical, staffing or stock records are changed.</p>
+      <p class="disclaimer">Initial release: read-only, rule-based analytics, not a validated predictive model. Figures depend on available source fields and up to 1,000 records per source. Verify all flags against source records. No patient-level details are displayed and no financial, clinical, staffing or stock records are changed.</p>
     </section>
     <!-- END HEALTHOS MEDICAL SYSTEMS: ANALYTICS AND FORECASTING -->
 
     <section class="panel" id="pharmacyDemandForecastPanel" aria-labelledby="pharmacyDemandForecastHeading">
         <h3 id="pharmacyDemandForecastHeading">Smart Inventory Demand Forecast</h3>
-        <p class="muted">Clinic-scoped, rule-based planning from recorded dispensing activity and current batch stock. This is an estimate, not an AI prediction or purchase order.</p>
+        <p class="muted">Clinic-scoped, rule-based planning from recorded dispensing activity and current batch stock. This is an estimate, not an automated prediction or purchase order.</p>
         <div class="stats-grid">
             <article class="stat-card"><p>Medicines Analysed</p><h3 id="pharmacyForecastMedicineCount">—</h3></article>
             <article class="stat-card"><p>Urgent Review</p><h3 id="pharmacyForecastUrgentCount">—</h3></article>
@@ -3318,7 +3318,7 @@
       </div>
       <p id="procurementIntelMessage" class="message" role="status" aria-live="polite">Open Pharmacy to review procurement exceptions.</p>
       <div class="table-wrap"><table><thead><tr><th>Flag</th><th>Reference</th><th>Finding</th><th>Amount</th><th>Recommended human review</th></tr></thead><tbody id="procurementIntelRows"><tr><td colspan="5">Not yet calculated.</td></tr></tbody></table></div>
-      <p class="disclaimer">These are deterministic review flags, not findings of fraud or proof of wrongdoing. AI does not create orders, approve invoices, release payments or change stock. Verify every flag against original purchase orders, supplier invoices, delivery notes, goods-receipt records and bank evidence. A same-account approval flag is advisory and must be checked against the hospital's configured separation-of-duties policy.</p>
+      <p class="disclaimer">These are deterministic review flags, not findings of fraud or proof of wrongdoing. The system does not create orders, approve invoices, release payments or change stock. Verify every flag against original purchase orders, supplier invoices, delivery notes, goods-receipt records and bank evidence. A same-account approval flag is advisory and must be checked against the hospital's configured separation-of-duties policy.</p>
     </section>
 
     <section class="panel" id="pharmacyStockControlWorkspace" aria-labelledby="pharmacyStockControlHeading">
@@ -3601,7 +3601,7 @@
 
     <section class="panel" id="pharmacyAnalyticsWorkspace" aria-labelledby="pharmacyAnalyticsHeading">
         <h3 id="pharmacyAnalyticsHeading">Pharmacy Expenditure, Valuation & Reorder Intelligence</h3>
-        <p class="muted">Financial totals use approved supplier payments and approved purchase orders. Stock valuation uses recorded purchase cost. Demand estimates use the latest 30 days of completed dispensing records; they are baseline forecasts, not a trained AI prediction.</p>
+        <p class="muted">Financial totals use approved supplier payments and approved purchase orders. Stock valuation uses recorded purchase cost. Demand estimates use the latest 30 days of completed dispensing records; they are baseline forecasts, not a trained predictive model.</p>
         <p id="pharmacyAnalyticsMessage" role="status" aria-live="polite"></p>
         <div class="stats-grid">
             <article class="stat-card"><p>Current Stock Value</p><h3 id="pharmacyAnalyticsStockValue">—</h3><p class="muted">Quantity × purchase cost, including expired batches</p></article>
@@ -3748,7 +3748,7 @@
  <p id="adminVoiceMessage" class="message" role="status" aria-live="polite"></p>
  <div class="panel-heading"><div><h3>Translation & Communication Register</h3><p class="muted">Authorised staff can review, archive and retrieve saved administrative messages.</p></div><button type="button" class="logout-button" id="refreshAdminVoice">Refresh</button></div>
  <div class="table-wrap"><table><thead><tr><th>Date</th><th>Language</th><th>Department</th><th>Original message</th><th>English version</th><th>Type</th><th>Status</th><th>Action</th></tr></thead><tbody id="adminVoiceBody"><tr><td colspan="8">Open Voice Translator to load records.</td></tr></tbody></table></div>
- <p class="disclaimer">This is an administrative communication tool, not a clinical translator or medical interpreter. Do not enter patient names, diagnoses, prescriptions, test results or other clinical information. Browser speech recognition may send audio to the browser provider for processing; use the microphone only with appropriate notice and permission. Speech recognition and translation quality are not guaranteed. A human must verify every transcript and translation. Automated translation and AI speech services are not yet connected.</p>
+ <p class="disclaimer">This is an administrative communication tool, not a clinical translator or medical interpreter. Do not enter patient names, diagnoses, prescriptions, test results or other clinical information. Browser speech recognition may send audio to the browser provider for processing; use the microphone only with appropriate notice and permission. Speech recognition and translation quality are not guaranteed. A human must verify every transcript and translation. Automated translation and speech services are not yet connected.</p>
 </section>
 <!-- END HEALTHOS MEDICAL SYSTEMS: ADMINISTRATIVE VOICE-TO-TEXT & TRANSLATION WORKFLOW -->
 
@@ -3788,7 +3788,7 @@
 <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=1100&q=85" alt="Clinician reviewing a patient's medical information" loading="lazy" decoding="async"><figcaption>Clinical record review</figcaption></figure>
 
   <p class="eyebrow">READ-ONLY CLINICAL CONTEXT</p><h3>Patient Medical Record Intelligence</h3>
-  <p class="muted">Consolidates existing clinic records into one view. This is a retrieval aid, not an AI diagnosis. Access remains subject to clinic permissions and database row-level security.</p>
+  <p class="muted">Consolidates existing clinic records into one view. This is a retrieval aid, not a diagnosis. Access remains subject to clinic permissions and database row-level security.</p>
   <button type="button" id="loadPatientRecordIntelligence" class="primary-button">Load selected patient's record overview</button>
   <p id="patientRecordIntelligenceMessage" class="message" role="status" aria-live="polite"></p>
   <div id="patientRecordIntelligenceOutput" class="stats-grid" aria-live="polite"><p class="muted">Select a patient above, then load the overview.</p></div>
@@ -3974,7 +3974,7 @@
 <!-- HEALTHOS MEDICAL SYSTEMS: OPERATIONAL INTELLIGENCE & ANALYTICS -->
 <section id="aiAnalytics" class="panel" hidden>
  <div class="panel-heading">
-  <div><p class="eyebrow">HOSPITAL INTELLIGENCE</p><h2>AI Intelligence &amp; Operational Analytics</h2>
+  <div><p class="eyebrow">HOSPITAL INTELLIGENCE</p><h2>Hospital Intelligence &amp; Operational Analytics</h2>
    <p class="muted">A live operational overview across revenue, appointments, patient flow, clinical activity and pharmacy risk for the active clinic.</p></div>
   <button type="button" id="aiAnalyticsRefresh" class="primary-button">Refresh Intelligence</button>
  </div>
@@ -4116,7 +4116,7 @@
 
 <!-- HEALTHOS MEDICAL SYSTEMS: CLINICAL DECISION SUPPORT -->
 <section class="panel" id="clinicalDecisionSupportWorkspace" style="margin:16px 0" aria-labelledby="cdsHeading">
-<div class="panel-heading"><div><p class="eyebrow">CLINICAL INTELLIGENCE · CLINICIAN-LED DECISIONS</p><h2 id="cdsHeading">AI Clinical Decision Support</h2><p class="muted">Structured clinical risk review and evidence-informed considerations. This workspace supports—not replaces—the licensed clinician's assessment.</p></div><button type="button" id="cdsRefreshButton" class="logout-button">Refresh reviews</button></div>
+<div class="panel-heading"><div><p class="eyebrow">CLINICAL INTELLIGENCE · CLINICIAN-LED DECISIONS</p><h2 id="cdsHeading">Clinical Decision Support</h2><p class="muted">Structured clinical risk review and evidence-informed considerations. This workspace supports—not replaces—the licensed clinician's assessment.</p></div><button type="button" id="cdsRefreshButton" class="logout-button">Refresh reviews</button></div>
 <div class="stats-grid"><article class="stat-card"><p>Total reviews</p><h3 id="cdsTotal">—</h3></article><article class="stat-card"><p>Awaiting clinician review</p><h3 id="cdsPending">—</h3></article><article class="stat-card"><p>Urgent / emergency flags</p><h3 id="cdsUrgent">—</h3></article></div>
 <h3>Record a clinical decision-support review</h3>
 <form id="cdsForm" class="auth-form">
