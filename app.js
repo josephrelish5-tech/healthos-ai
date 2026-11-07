@@ -13188,6 +13188,9 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    admissions=(admissionResult.data||[]).filter(a=>a.bed_id&&bedMap.has(a.bed_id));
    patients=patientResult.data||[];
    const transfers=transferResult.data||[];
+   const nursingData=await rpc("healthos_icu_nursing_workspace",{p_clinic_id:clinicId});
+   const eligibleNurses=nursingData?.eligible_nurses||[];
+   const activeNurseAssignments=nursingData?.active_assignments||[];
    patientMap=new Map(patients.map(p=>[p.id,[p.patient_number,p.first_name,p.last_name].filter(Boolean).join(" · ")||"Patient"]));
    put("icuTotalBeds",icuBeds.length);
    put("icuOccupiedBeds",icuBeds.filter(b=>b.status==="occupied").length);
@@ -13195,6 +13198,8 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    put("icuActiveAdmissions",admissions.length);
    populateSelect("icuAdmissionPatient",patients,p=>patientMap.get(p.id),"Select patient");
    populateSelect("icuAdmissionBed",icuBeds.filter(b=>b.status==="available"),b=>b.bed_number+" · "+b.ward_name,"Select available ICU bed");
+   populateSelect("icuNurseAdmission",admissions,a=>(patientMap.get(a.patient_id)||"Patient")+" · "+(a.admission_number||"Admission"),"Select ICU patient admission");
+   populateSelect("icuNurseStaff",eligibleNurses,n=>n.full_name+" · "+(n.professional_role||"Nurse")+" · "+(n.department_name||n.department||"Department"),"Select active nurse");
    const patientIds=[...new Set(admissions.map(a=>a.patient_id))];
    let vitals=[];
    if(patientIds.length){
@@ -13237,6 +13242,22 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
     });
     actionCell.append(transfer,discharge);
    });
+   const nurseRows=$("icuNurseAssignmentRows");
+   if(nurseRows){
+    nurseRows.replaceChildren();
+    if(!activeNurseAssignments.length){const tr=nurseRows.insertRow();const td=tr.insertCell();td.colSpan=6;td.textContent="No active ICU nurse assignments recorded.";}
+    activeNurseAssignments.forEach(x=>{
+     const tr=nurseRows.insertRow();
+     [patientMap.get(admissions.find(a=>a.id===x.admission_id)?.patient_id)||"Patient record",x.staff_name,x.professional_role,fmt(x.assigned_at),x.assignment_note].forEach(value=>cell(tr,value));
+     const td=tr.insertCell();const end=document.createElement("button");end.type="button";end.className="secondary-button";end.textContent="End assignment";
+     end.addEventListener("click",async()=>{
+      const note=prompt("Reason for ending this nurse assignment:");
+      if(!note||note.trim().length<5){message("A reason of at least 5 characters is required.",true);return;}
+      if(!confirm("End this ICU nurse assignment?"))return;
+      await runAction(end,()=>rpc("healthos_icu_end_nurse_assignment",{p_clinic_id:clinicId,p_assignment_id:x.id,p_note:note.trim()}),"Nurse assignment ended and audited.");
+     });td.append(end);
+    });
+   }
    const vitalsRows=$("icuVitalsRows");vitalsRows.replaceChildren();
    if(!vitals.length){const tr=vitalsRows.insertRow();const td=tr.insertCell();td.colSpan=8;td.textContent="No observations are available for current ICU admissions in the authorised clinical-record scope.";}
    vitals.slice(0,100).forEach(v=>{
@@ -13256,6 +13277,14 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
   try{await fn();message(success);await load();return true;}
   catch(error){message(error.message||"ICU action failed. No successful completion was confirmed.",true);button.disabled=false;return false;}
  }
+ $("icuNurseAssignmentForm")?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  const admissionId=$("icuNurseAdmission")?.value,nurseAssignmentId=$("icuNurseStaff")?.value,note=$("icuNurseAssignmentNote")?.value.trim();
+  if(!admissionId||!nurseAssignmentId||!note){message("Select an admission, nurse and provide an assignment note.",true);return;}
+  const button=$("icuAssignNurseButton");
+  const ok=await runAction(button,()=>rpc("healthos_icu_assign_nurse",{p_clinic_id:currentClinic.id,p_admission_id:admissionId,p_nurse_assignment_id:nurseAssignmentId,p_note:note}),"Nurse assigned to ICU patient. The assignment is recorded in the security audit log.");
+  if(ok)$("icuNurseAssignmentForm").reset();
+ });
  $("icuRefreshButton")?.addEventListener("click",()=>void load());
  $("icuAdmissionForm")?.addEventListener("submit",async event=>{
   event.preventDefault();
