@@ -13221,8 +13221,10 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
  }
 
  async function loadMedicationAdministration(){
-  const orderSelect=$("icuMedicationOrder"),rows=$("icuMedicationAdministrationRows");
+  const orderSelect=$("icuMedicationOrder"),rows=$("icuMedicationAdministrationRows"),status=$("icuMedicationMessage");
   if(!orderSelect||!rows)return;
+  const setStatus=text=>{if(status)status.textContent=text;};
+  try{
   const patientIds=[...new Set(admissions.map(a=>a.patient_id))];
   if(!patientIds.length){
    populateSelect("icuMedicationOrder",[],()=>"", "No active ICU medication orders");
