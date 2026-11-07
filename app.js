@@ -1104,6 +1104,7 @@ async function openPatientPortal(user) {
     document.getElementById("patientProfileLanguage").value = profile.preferred_language || "en";
     await loadPatientHospitalLinks();
     await loadPatientIdentityRequests();
+    await loadPatientRecordShareAccessRequests();
     await loadPatientAppointmentOptions();
     await loadPatientAppointmentList();
     await loadPatientGlobalReferrals();
@@ -1252,6 +1253,104 @@ async function loadPatientIdentityRequests() {
         target.appendChild(card);
     });
 }
+
+
+async function loadPatientRecordShareAccessRequests() {
+    const target = document.getElementById("patientRecordShareAccessRequests");
+    if (!target || !currentUser) return;
+    target.replaceChildren();
+    const { data, error } = await supabaseClient
+        .from("patient_record_share_access_requests")
+        .select("id,source_clinic_id,recipient_clinic_id,status,requested_at,patient_note")
+        .eq("patient_user_id", currentUser.id)
+        .order("requested_at", { ascending: false })
+        .limit(100);
+    if (error) throw error;
+    if (!data?.length) {
+        target.textContent = "No medical-record access requests.";
+        return;
+    }
+    const ids = [...new Set(data.flatMap(row => [row.source_clinic_id, row.recipient_clinic_id]))];
+    const { data: hospitals, error: hospitalError } = await supabaseClient
+        .from("healthos_hospital_directory")
+        .select("clinic_id,public_name,city,country_code")
+        .in("clinic_id", ids);
+    if (hospitalError) throw hospitalError;
+    const names = new Map((hospitals || []).map(row => [row.clinic_id, row.public_name + " — " + row.city + ", " + row.country_code]));
+    data.forEach(row => {
+        const card = document.createElement("article");
+        card.className = "stat-card";
+        const heading = document.createElement("h4");
+        heading.textContent = "Request from " + (names.get(row.recipient_clinic_id) || "receiving hospital");
+        const source = document.createElement("p");
+        source.textContent = "Records issued by: " + (names.get(row.source_clinic_id) || "connected hospital");
+        const status = document.createElement("strong");
+        status.textContent = "Status: " + row.status.replace(/_/g, " ");
+        const time = document.createElement("p");
+        time.textContent = "Requested: " + new Date(row.requested_at).toLocaleString();
+        card.append(heading, source, status, time);
+        if (row.status === "awaiting_patient_approval") {
+            const approve = document.createElement("button");
+            approve.type = "button"; approve.className = "primary-button"; approve.textContent = "Approve request";
+            const reject = document.createElement("button");
+            reject.type = "button"; reject.className = "logout-button"; reject.textContent = "Reject request";
+            const respond = async (decision) => {
+                approve.disabled = true; reject.disabled = true;
+                const { error: responseError } = await supabaseClient.rpc("respond_patient_record_share_access", {
+                    p_request_id: row.id, p_approve: decision, p_patient_note: null
+                });
+                if (responseError) {
+                    approve.disabled = false; reject.disabled = false;
+                    window.alert("Could not record your decision: " + friendlyError(responseError));
+                    return;
+                }
+                await loadPatientRecordShareAccessRequests();
+            };
+            approve.addEventListener("click", () => {
+                if (window.confirm("Approve this hospital's request? This records your consent for the request but does not itself release medical records.")) respond(true);
+            });
+            reject.addEventListener("click", () => {
+                if (window.confirm("Reject this medical-record access request?")) respond(false);
+            });
+            card.append(approve, reject);
+        }
+        target.appendChild(card);
+    });
+}
+
+const patientShareRecipientRequestForm = document.getElementById("patientShareRecipientRequestForm");
+if (patientShareRecipientRequestForm) patientShareRecipientRequestForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    const message = document.getElementById("patientShareRecipientRequestMessage");
+    const button = patientShareRecipientRequestForm.querySelector('button[type="submit"]');
+    if (!currentUser || !currentClinic?.id) {
+        message.textContent = "Sign in to the receiving hospital workspace first.";
+        message.className = "message error";
+        return;
+    }
+    const code = document.getElementById("patientShareRecipientCode").value.trim();
+    if (code.length < 20) {
+        message.textContent = "Enter the complete access code.";
+        message.className = "message error";
+        return;
+    }
+    button.disabled = true;
+    try {
+        const { data, error } = await supabaseClient.rpc("request_patient_record_share_access", {
+            p_share_code: code, p_recipient_clinic_id: currentClinic.id
+        });
+        if (error) throw error;
+        message.textContent = "Request sent to the patient for approval. No medical records have been released.";
+        message.className = "message success";
+        patientShareRecipientRequestForm.reset();
+        message.dataset.requestId = data;
+    } catch (error) {
+        message.textContent = friendlyError(error);
+        message.className = "message error";
+    } finally {
+        button.disabled = false;
+    }
+});
 
 const patientIdentityLinkForm = document.getElementById("patientIdentityLinkForm");
 if (patientIdentityLinkForm) patientIdentityLinkForm.addEventListener("submit", async event => {
