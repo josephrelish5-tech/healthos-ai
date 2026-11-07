@@ -81,6 +81,12 @@ create policy "Patients request own identity link"
    and consent_at is not null
    and reviewed_at is null
    and reviewed_by is null
+   and not exists (
+     select 1 from public.healthos_patient_record_identity_links x
+     where x.patient_user_id=(select auth.uid())
+       and x.clinic_id=healthos_patient_record_identity_requests.clinic_id
+       and x.status='active'
+   )
    and exists (
      select 1 from public.healthos_patient_hospital_links l
      where l.patient_user_id = (select auth.uid())
@@ -130,6 +136,7 @@ as $$
 declare
  v_uid uuid := auth.uid();
  v_request public.healthos_patient_record_identity_requests%rowtype;
+ v_link public.healthos_patient_record_identity_links%rowtype;
  v_link_id uuid;
 begin
  if v_uid is null then raise exception 'Authentication required'; end if;
@@ -153,6 +160,14 @@ begin
      where p.id=p_patient_id and p.clinic_id=v_request.clinic_id
        and lower(trim(p.patient_number))=lower(trim(v_request.patient_number))
    ) then raise exception 'The selected patient record does not match this hospital and patient number'; end if;
+
+   select * into v_link
+   from public.healthos_patient_record_identity_links
+   where patient_user_id=v_request.patient_user_id and clinic_id=v_request.clinic_id
+   for update;
+   if found and v_link.status='active' and v_link.patient_id<>p_patient_id then
+     raise exception 'An active identity link already exists. Revoke it before changing the linked hospital record.';
+   end if;
 
    insert into public.healthos_patient_record_identity_links(patient_user_id,clinic_id,patient_id,linked_by)
    values(v_request.patient_user_id,v_request.clinic_id,p_patient_id,v_uid)
