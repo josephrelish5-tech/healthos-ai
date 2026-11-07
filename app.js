@@ -13147,3 +13147,66 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
  document.querySelectorAll('.sidebar .nav-item').forEach(link=>link.addEventListener("click",()=>{if((link.getAttribute("href")||"")==="#staffWorkspace")void load();}));
  window.loadHealthOSNursingWorkspace=load;
 })();
+
+
+// Laboratory workspace: actions are routed through the existing audited database RPCs.
+(function initLaboratoryWorkspace(){
+ const $=id=>document.getElementById(id);
+ const message=(text,error=false)=>{const el=$("laboratoryWorkspaceMessage");if(el){el.textContent=text;el.className="message"+(error?" error":" success");}};
+ const esc=v=>String(v??"—");
+ const cell=(row,value)=>{const td=row.insertCell();td.textContent=esc(value);return td;};
+ let requests=[],specimens=[],results=[],catalogue=[],patients=[],testMap=new Map();
+ const call=async(name,args)=>{const {data,error}=await supabaseClient.rpc(name,args);if(error)throw error;return data;};
+ async function load(){
+  if(!supabaseClient||!currentClinic?.id||!currentUser?.id){message("Sign in to an authorised hospital staff account.",true);return;}
+  message("Loading laboratory requests, specimen custody and result queue...");
+  try{
+   const clinic=currentClinic.id;
+   const [r,s,t,p,c]=await Promise.all([
+    supabaseClient.from("laboratory_test_requests").select("id,patient_id,test_catalogue_id,request_reference,priority,status,requested_by,requested_at,authorised_by,authorised_at").eq("clinic_id",clinic).order("requested_at",{ascending:false}).limit(300),
+    supabaseClient.from("laboratory_specimens").select("id,request_id,barcode,specimen_type,status,collected_by,collected_at,received_by,received_at,rejection_reason").eq("clinic_id",clinic).order("created_at",{ascending:false}).limit(300),
+    supabaseClient.from("laboratory_test_results").select("id,request_id,specimen_id,status,entered_by,entered_at,validated_by,validated_at,released_by,released_at,is_critical,critical_note").eq("clinic_id",clinic).order("created_at",{ascending:false}).limit(300),
+    supabaseClient.from("patients").select("id,patient_number,first_name,last_name").eq("clinic_id",clinic).limit(500),
+    supabaseClient.from("laboratory_test_catalogue").select("id,test_code,test_name,specimen_type,default_price,currency").eq("clinic_id",clinic).eq("is_active",true).order("test_name").limit(500)
+   ]);
+   for(const x of [r,s,t,p,c])if(x.error)throw x.error;
+   requests=r.data||[];specimens=s.data||[];results=t.data||[];patients=p.data||[];catalogue=c.data||[];
+   const pmap=new Map(patients.map(x=>[x.id,[x.patient_number,x.first_name,x.last_name].filter(Boolean).join(" — ")]));
+   testMap=new Map(catalogue.map(x=>[x.id,x]));
+   const reqMap=new Map(requests.map(x=>[x.id,x]));
+   const name=x=>testMap.get(x.test_catalogue_id)?.test_name||"Test";
+   $("labPendingCount").textContent=requests.filter(x=>x.status==="requested").length;
+   $("labAwaitingReceiptCount").textContent=specimens.filter(x=>x.status==="collected").length;
+   $("labProcessingCount").textContent=specimens.filter(x=>x.status==="processing").length;
+   $("labValidationCount").textContent=results.filter(x=>x.status==="submitted").length;
+   const rb=$("labRequestsRows");rb.replaceChildren();
+   if(!requests.length){const tr=rb.insertRow();const td=tr.insertCell();td.colSpan=7;td.textContent="No laboratory requests found.";}
+   requests.forEach(x=>{const tr=rb.insertRow();[x.request_reference,pmap.get(x.patient_id)||"Patient",name(x),x.priority,new Date(x.requested_at).toLocaleString(),x.status].forEach(v=>cell(tr,v));const td=tr.insertCell();if(x.status==="requested"&&x.requested_by!==currentUser.id){const approve=document.createElement("button");approve.type="button";approve.className="primary-button";approve.textContent="Authorise";approve.addEventListener("click",()=>runAction(approve,async()=>call("laboratory_authorise_test_request",{p_request_id:x.id}),"Request authorised."));const reject=document.createElement("button");reject.type="button";reject.className="secondary-button";reject.textContent="Reject";reject.addEventListener("click",()=>{const reason=prompt("Enter a reason for rejecting this laboratory request:");if(reason&&reason.trim())runAction(reject,async()=>call("laboratory_reject_test_request",{p_request_id:x.id,p_reason:reason.trim()}),"Request rejected.");});td.append(approve,reject);}else td.textContent=x.status==="requested"?"Requester cannot authorise own request":"—";});
+   const authorised=requests.filter(x=>x.status==="authorised"&&!specimens.some(s=>s.request_id===x.id));
+   const cs=$("labCollectRequest"),old=cs.value;cs.replaceChildren(new Option("Select authorised request",""));
+   authorised.forEach(x=>cs.add(new Option(x.request_reference+" · "+(pmap.get(x.patient_id)||"Patient")+" · "+name(x),x.id)));
+   if(authorised.some(x=>x.id===old))cs.value=old;
+   const sb=$("labSpecimensRows");sb.replaceChildren();
+   if(!specimens.length){const tr=sb.insertRow();const td=tr.insertCell();td.colSpan=6;td.textContent="No specimens recorded.";}
+   specimens.forEach(x=>{const rq=reqMap.get(x.request_id);const tr=sb.insertRow();[x.barcode,rq?.request_reference||"Request",x.specimen_type,x.status,x.collected_at?new Date(x.collected_at).toLocaleString():"—",x.received_at?new Date(x.received_at).toLocaleString():"—"].forEach(v=>cell(tr,v));});
+   const processing=specimens.filter(x=>x.status==="processing");
+   const rs=$("labResultSpecimen"),oldSpec=rs.value;rs.replaceChildren(new Option("Select processing specimen",""));
+   processing.forEach(x=>rs.add(new Option(x.barcode+" · "+(reqMap.get(x.request_id)?.request_reference||"Request"),x.barcode)));
+   if(processing.some(x=>x.barcode===oldSpec))rs.value=oldSpec;
+   const tb=$("labResultsRows");tb.replaceChildren();
+   if(!results.length){const tr=tb.insertRow();const td=tr.insertCell();td.colSpan=6;td.textContent="No result records found.";}
+   results.forEach(x=>{const tr=tb.insertRow();const specimen=specimens.find(s=>s.id===x.specimen_id);[reqMap.get(x.request_id)?.request_reference||"Request",specimen?.barcode||"Specimen",new Date(x.entered_at).toLocaleString(),x.is_critical?"YES":"No",x.status].forEach(v=>cell(tr,v));const td=tr.insertCell();if(x.status==="submitted"&&x.entered_by!==currentUser.id){const b=document.createElement("button");b.type="button";b.className="primary-button";b.textContent="Validate";b.addEventListener("click",()=>runAction(b,async()=>call("laboratory_validate_result",{p_result_id:x.id}),"Result validated."));td.appendChild(b);}else if(x.status==="validated"&&x.validated_by!==currentUser.id){const b=document.createElement("button");b.type="button";b.className="primary-button";b.textContent="Release";b.addEventListener("click",()=>{if(!confirm("Release this validated result to the clinical record?"))return;runAction(b,async()=>call("laboratory_release_result",{p_result_id:x.id}),"Result released.");});td.appendChild(b);}else td.textContent="—";});
+   message("Laboratory workspace loaded. Workflow actions are checked and audited by the database.");
+  }catch(err){console.error("Laboratory workspace load failed",err);message(err.message||"Could not load laboratory workspace. Check your hospital access.",true);}
+ }
+ async function runAction(button,fn,success){button.disabled=true;try{await fn();message(success);await load();}catch(e){message(e.message||"Action failed.",true);button.disabled=false;}}
+ $("laboratoryRefreshButton")?.addEventListener("click",()=>void load());
+ $("labCollectForm")?.addEventListener("submit",async ev=>{ev.preventDefault();const id=$("labCollectRequest").value;if(!id){message("Select an authorised test request.",true);return;}const b=$("labCollectButton");await runAction(b,async()=>{const {data,error}=await supabaseClient.rpc("laboratory_collect_specimen",{p_request_id:id,p_specimen_type:$("labSpecimenType").value.trim(),p_handling_notes:$("labHandlingNotes").value.trim()||null});if(error)throw error;$("labBarcode").value=data?.[0]?.specimen_barcode||"";$("labCollectForm").reset();message("Specimen collected. Generated barcode: "+($("labBarcode").value||"see specimen register"));}, "Specimen collected.");});
+ async function barcodeAction(button,rpc,args,success){const barcode=$("labBarcode").value.trim();if(!barcode){message("Enter or scan a specimen barcode.",true);return;}await runAction(button,()=>call(rpc,{p_barcode:barcode,...args}),success);}
+ $("labReceiveButton")?.addEventListener("click",()=>void barcodeAction($("labReceiveButton"),"laboratory_receive_specimen",{},"Specimen receipt confirmed."));
+ $("labStartButton")?.addEventListener("click",()=>void barcodeAction($("labStartButton"),"laboratory_start_processing",{},"Specimen processing started."));
+ $("labRejectButton")?.addEventListener("click",()=>{const reason=$("labRejectReason").value.trim();if(!reason){message("A rejection reason is required.",true);return;}void barcodeAction($("labRejectButton"),"laboratory_reject_specimen",{p_reason:reason},"Specimen rejected with a recorded reason.");});
+ $("labResultForm")?.addEventListener("submit",async ev=>{ev.preventDefault();const barcode=$("labResultSpecimen").value;if(!barcode){message("Select a specimen currently in processing.",true);return;}let data;try{data=JSON.parse($("labResultData").value);}catch{message("Result data must be valid JSON.",true);return;}if(!data||Array.isArray(data)||typeof data!=="object"||!Object.keys(data).length){message("Enter a non-empty JSON object for the result.",true);return;}const critical=$("labIsCritical").checked;const note=$("labCriticalNote").value.trim();if(critical&&!note){message("Critical results require an escalation note.",true);return;}await runAction($("labSubmitResultButton"),()=>call("laboratory_submit_result",{p_barcode:barcode,p_result_data:data,p_interpretation:$("labInterpretation").value.trim()||null,p_result_notes:$("labResultNotes").value.trim()||null,p_is_critical:critical,p_critical_note:note||null}),"Result submitted for independent validation.");$("labResultForm").reset();});
+ document.querySelectorAll(".sidebar .nav-item").forEach(link=>link.addEventListener("click",()=>{if((link.getAttribute("href")||"")==="#staffWorkspace")void load();}));
+ window.loadHealthOSLaboratoryWorkspace=load;
+})();
