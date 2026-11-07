@@ -1559,3 +1559,13 @@ body{background:var(--page);color:#183247}.topbar{background:#fff;border-bottom:
 .healthos-specialist-copy ul{padding-left:19px;color:#40586C;line-height:1.65}
 .healthos-specialist-copy li{margin:4px 0}
 @media(max-width:600px){.healthos-specialist-grid{grid-template-columns:1fr}.healthos-specialist-photo img{height:165px}.healthos-specialist-copy{padding:14px}}
+
+/* Nursing workspace */
+.nursing-workspace{margin:18px 0;border:1px solid #dce5ee;border-radius:16px;background:#f8fbfe}
+.nursing-workspace>.panel,.nursing-workspace .panel{margin:14px 0;padding:16px;border:1px solid #dce5ee;border-radius:13px;background:#fff}
+.nursing-workspace .full-width{grid-column:1/-1}
+.nursing-workspace textarea{width:100%;box-sizing:border-box}
+.nursing-workspace .table-wrap{overflow-x:auto;margin-top:14px}
+.nursing-workspace table{min-width:720px}
+.nursing-workspace .stat-card{background:#fff}
+@media(max-width:600px){.nursing-workspace>.panel,.nursing-workspace .panel{padding:12px}.nursing-workspace .form-grid{grid-template-columns:1fr}}
