@@ -820,6 +820,22 @@
   <div class="table-wrap"><table><thead><tr><th>Recorded</th><th>Patient / admission</th><th>Shift</th><th>Outgoing nurse</th><th>Incoming nurse</th><th>Handover summary</th><th>Pending care</th><th>Status / acceptance</th><th>Action</th></tr></thead><tbody id="icuHandoverRows"><tr><td colspan="8">Refresh to load patient handovers.</td></tr></tbody></table></div>
  </div>
 
+ <div class="panel" id="icuSupervisorOversight">
+  <h3>ICU supervisor oversight and escalation</h3>
+  <p class="muted">This register highlights observation schedules overdue by more than 15 minutes, handovers awaiting acceptance for more than 15 minutes, and overdue tasks assigned to nurses actively responsible for ICU patients. Escalation status is refreshed from current clinical records; it does not replace urgent verbal escalation or hospital emergency procedures.</p>
+  <div class="stats-grid">
+   <article class="stat-card"><p>Overdue observations</p><h3 id="icuEscalationObservations">—</h3></article>
+   <article class="stat-card"><p>Unaccepted handovers</p><h3 id="icuEscalationHandovers">—</h3></article>
+   <article class="stat-card"><p>Overdue nursing tasks</p><h3 id="icuEscalationTasks">—</h3></article>
+   <article class="stat-card"><p>Open escalations</p><h3 id="icuEscalationOpen">—</h3></article>
+   <article class="stat-card"><p>Outstanding ICU tasks</p><h3 id="icuOutstandingTaskCount">—</h3></article>
+  </div>
+  <h4>Escalation register</h4>
+  <div class="table-wrap"><table><thead><tr><th>First detected</th><th>Issue</th><th>Severity</th><th>Status</th><th>Supervisor action</th></tr></thead><tbody id="icuEscalationRows"><tr><td colspan="5">Refresh to load ICU oversight.</td></tr></tbody></table></div>
+  <h4>Outstanding nursing tasks linked to active ICU responsibility</h4>
+  <div class="table-wrap"><table><thead><tr><th>Task</th><th>Assigned nurse</th><th>Patient admission / bed</th><th>Priority</th><th>Status</th><th>Deadline</th></tr></thead><tbody id="icuOutstandingTaskRows"><tr><td colspan="6">Refresh to load outstanding tasks.</td></tr></tbody></table></div>
+ </div>
+
  <div class="panel">
   <h3>ICU observation schedule</h3>
   <p class="muted">An authorised clinician sets the observation interval and reason. Use only the frequency specified by the responsible clinical team.</p>
