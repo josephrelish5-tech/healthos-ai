@@ -39,7 +39,7 @@
     if(map && h.latitude!=null && h.longitude!=null) map.flyTo([Number(h.latitude),Number(h.longitude)],16,{duration:0.8});
     selectedHospitalId=String(hospitalId);
     markers.forEach(item=>{ if(String(item.hospitalId)===String(hospitalId)) item.marker.openPopup(); else item.marker.closePopup(); });
-    document.querySelectorAll("[data-hospital-card]").forEach(card=>card.classList.toggle("hospital-card-selected",card.dataset.hospitalCard===String(hospitalId)));
+    document.querySelectorAll("[data-hospital-card]").forEach(card=>{const selected=card.dataset.hospitalCard===String(hospitalId);card.classList.toggle("hospital-card-selected",selected);if(selected)card.scrollIntoView({behavior:"smooth",block:"center"});});
   }
   function renderCards(hospitals) {
     const target=el("patientHospitalResults"); if(!target) return;
@@ -228,7 +228,7 @@
             ?"<div>Specialties: "+escapeText(h.specialties.join(", "))+"</div>":"";
           return "<li class='healthos-cluster-hospital-detail'><strong>"+escapeText(h.hospital_name||"Hospital")+
             "</strong><div>"+escapeText(address||"Address not provided")+"</div><div>"+escapeText(listing)+
-            "</div>"+distance+specialties+"</li>";
+            "</div>"+distance+specialties+"<button type='button' class='healthos-cluster-open-card' data-hospital-id='"+escapeText(h.hospital_id)+"'>View hospital card</button></li>";
         }).join("");
         cluster.bindPopup(
           "<div class='healthos-cluster-details'><strong>"+group.length+
@@ -237,6 +237,15 @@
           {maxWidth:340,maxHeight:320,autoPan:false,closeButton:true,keepInView:false}
         );
         cluster.on("click",()=>cluster.openPopup());
+        cluster.on("popupopen",event=>{
+          event.popup.getElement()?.querySelectorAll("[data-hospital-id]").forEach(button=>{
+            button.addEventListener("click",()=>{
+              const id=button.getAttribute("data-hospital-id");
+              cluster.closePopup();
+              selectHospital(id);
+            });
+          });
+        });
         markers.push({marker:cluster,hospitalId:null});
       }
     });
