@@ -11535,8 +11535,29 @@ if (refreshAppointmentsButton) {
   if(error){say("Could not create access code: "+error.message,true);return;}
   $s("patientShareCode").textContent=data.share_code;
   $s("patientShareExpiryText").textContent="Expires: "+date(data.expires_at)+" · Maximum uses: "+data.max_uses;
+  const qrTarget=$s("patientShareQr");
+  const downloadQr=$s("patientShareQrDownload");
+  if(qrTarget) {
+   qrTarget.replaceChildren();
+   if(typeof QRCode==="function") {
+    new QRCode(qrTarget,{text:data.share_code,width:240,height:240,colorDark:"#111111",colorLight:"#ffffff",correctLevel:QRCode.CorrectLevel.M});
+    if(downloadQr) {
+     downloadQr.disabled=false;
+     downloadQr.onclick=()=>{
+      const canvas=qrTarget.querySelector("canvas");
+      const image=qrTarget.querySelector("img");
+      const dataUrl=canvas?canvas.toDataURL("image/png"):(image?image.src:null);
+      if(!dataUrl){say("QR image is not ready yet. Try again.",true);return;}
+      const link=document.createElement("a");link.href=dataUrl;link.download="healthos-patient-record-access-qr.png";link.click();
+     };
+    }
+   } else {
+    qrTarget.textContent="QR generator could not load. Use the secure access code shown above instead.";
+    if(downloadQr)downloadQr.disabled=true;
+   }
+  }
   $s("patientShareCodePanel").hidden=false;
-  say("Patient-authorised access code created. It will not be shown again after leaving this screen.");
+  say("Temporary patient-authorised access code and QR generated. Scanning the QR does not bypass patient approval or verification. It will not be shown again after leaving this screen.");
   await loadPatientRecordShares();
  });
  window.loadPatientRecordShares=async()=>{await loadPatientSharePatients();await loadPatientRecordShares();};
