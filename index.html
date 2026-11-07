@@ -926,6 +926,38 @@
   <h4>Recent ICU medication administration history</h4>
   <div class="table-wrap"><table><thead><tr><th>Scheduled</th><th>Patient</th><th>Medicine</th><th>Ordered dose</th><th>Outcome</th><th>Actual dose / route</th><th>Reason / note</th><th>Recorded</th></tr></thead><tbody id="icuMedicationAdministrationRows"><tr><td colspan="8">Refresh to load medication records.</td></tr></tbody></table></div>
  </div>
+
+ <div class="panel" id="icuEquipmentManagement">
+  <h3>ICU ventilator and critical equipment register</h3>
+  <p class="muted">Register and account for ventilators, oxygen equipment, patient monitors, infusion pumps, suction units and defibrillators. This is an equipment register and maintenance log, not a live device feed or patient-monitoring system.</p>
+  <form id="icuEquipmentRegisterForm" class="form-grid">
+   <label>Asset tag / hospital ID<input id="icuEquipmentTag" required maxlength="80" placeholder="e.g. ICU-VENT-001"></label>
+   <label>Equipment type<select id="icuEquipmentType" required><option value="ventilator">Ventilator</option><option value="oxygen_cylinder">Oxygen cylinder</option><option value="oxygen_concentrator">Oxygen concentrator</option><option value="patient_monitor">Patient monitor</option><option value="infusion_pump">Infusion pump</option><option value="suction_unit">Suction unit</option><option value="defibrillator">Defibrillator</option><option value="other">Other critical equipment</option></select></label>
+   <label>Manufacturer<input id="icuEquipmentManufacturer" maxlength="120"></label>
+   <label>Model<input id="icuEquipmentModel" maxlength="120"></label>
+   <label>Serial number<input id="icuEquipmentSerial" maxlength="120"></label>
+   <label>Location / ICU bed reference<input id="icuEquipmentLocation" maxlength="200"></label>
+   <label>Next inspection due<input id="icuEquipmentInspectionDue" type="date"></label>
+   <label>Next maintenance due<input id="icuEquipmentMaintenanceDue" type="date"></label>
+   <label class="full-width">Notes<textarea id="icuEquipmentNotes" rows="2" maxlength="2000"></textarea></label>
+   <button id="icuEquipmentRegisterButton" type="submit" class="primary-button">Register equipment</button>
+  </form>
+  <h4>Equipment register</h4>
+  <div class="table-wrap"><table><thead><tr><th>Asset tag</th><th>Equipment</th><th>Manufacturer / model</th><th>Serial</th><th>Location</th><th>Status</th><th>Inspection due</th><th>Maintenance due</th></tr></thead><tbody id="icuEquipmentRows"><tr><td colspan="8">Refresh to load registered equipment.</td></tr></tbody></table></div>
+  <h4>Record equipment inspection, fault or maintenance</h4>
+  <form id="icuEquipmentEventForm" class="form-grid">
+   <label class="full-width">Equipment asset<select id="icuEquipmentEventAsset" required><option value="">Select equipment</option></select></label>
+   <label>Event type<select id="icuEquipmentEventType" required><option value="inspection">Inspection</option><option value="maintenance_started">Maintenance started</option><option value="maintenance_completed">Maintenance completed</option><option value="fault_reported">Fault reported</option><option value="allocated">Allocated to ICU</option><option value="returned">Returned to equipment store</option><option value="oxygen_supply_check">Oxygen supply check</option><option value="incident_reported">Equipment incident</option><option value="status_changed">Status change</option></select></label>
+   <label>Event status<select id="icuEquipmentEventStatus"><option value="recorded">Recorded</option><option value="open">Open</option><option value="in_progress">In progress</option><option value="resolved">Resolved</option></select></label>
+   <label>Update asset status<select id="icuEquipmentNewStatus"><option value="">Do not change status</option><option value="available">Available</option><option value="in_use">In use</option><option value="maintenance">Under maintenance</option><option value="out_of_service">Out of service</option><option value="retired">Retired</option></select></label>
+   <label>Event date and time<input id="icuEquipmentEventTime" type="datetime-local" required></label>
+   <label class="full-width">Inspection / fault / maintenance details<textarea id="icuEquipmentEventNote" rows="3" minlength="5" maxlength="3000" required placeholder="Record the inspection findings, fault symptoms, service work, oxygen cylinder pressure/contents as read from the physical gauge, or incident details."></textarea></label>
+   <button id="icuEquipmentEventButton" type="submit" class="primary-button">Save equipment record</button>
+  </form>
+  <h4>Equipment activity and maintenance history</h4>
+  <div class="table-wrap"><table><thead><tr><th>Date / time</th><th>Asset</th><th>Event</th><th>Status</th><th>Details</th><th>Recorded by</th></tr></thead><tbody id="icuEquipmentEventRows"><tr><td colspan="6">Refresh to load equipment history.</td></tr></tbody></table></div>
+  <p class="stat-note">Do not rely on this register for ventilator settings, oxygen flow, alarms, cylinder pressure, or patient observations. Enter only readings physically verified by authorised staff. Any faulty life-support equipment must be taken out of service and managed under hospital biomedical and emergency procedures.</p>
+ </div>
  <div class="panel"><h3>ICU transfer history</h3><p class="muted">Transfer history includes the patient, previous and destination bed, recorded reason, staff account and server timestamp.</p>
   <div class="table-wrap"><table><thead><tr><th>Transferred</th><th>Patient</th><th>Previous bed</th><th>Destination bed</th><th>Reason</th><th>Recorded by</th></tr></thead><tbody id="icuTransferRows"><tr><td colspan="6">Refresh to load transfer history.</td></tr></tbody></table></div>
  </div>
