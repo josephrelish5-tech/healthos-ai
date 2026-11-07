@@ -140,6 +140,10 @@
     [['Records audited',all.length],['High overlap ≥95%',high.length],['Moderate 80–<95%',moderate.length],['Low overlap <80%',low.length],['Zero overlap',zero.length]].map(([label,value])=>'<div style="padding:12px;border:1px solid #dbe3ec;border-radius:9px;background:#f8fafc"><strong style="display:block;font-size:22px">'+value+'</strong><span>'+label+'</span></div>').join("")+
     '</div><p>Geometry evidence present for '+withGeometry.length+' of '+all.length+' loaded cases. Low-overlap cases by OCHA state:</p>'+
     (stateRows.length?'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px">'+stateRows.map(([state,count])=>'<div style="padding:7px 9px;border:1px solid #e2e8f0;border-radius:7px">'+esc(state)+' <strong>('+count+')</strong></div>').join("")+'</div>':'<p>No low-overlap cases found in the retrieved records.</p>')+
+    '<h4 style="margin:18px 0 8px">Priority anomaly cases — manual investigation required</h4>'+
+    '<div style="overflow-x:auto"><table style="width:100%;min-width:760px;border-collapse:collapse"><thead><tr><th>Priority</th><th>State / LGA</th><th>Overlap</th><th>Alternative candidate</th><th>Diagnostic</th><th>Queue</th></tr></thead><tbody>'+
+    low.sort((a,b)=>Number(a.geometry_evidence.smaller_polygon_coverage)-Number(b.geometry_evidence.smaller_polygon_coverage)).map(item=>{const g=item.geometry_evidence||{};const index=all.findIndex(x=>x.id===item.id);return '<tr><td>'+(Number(g.smaller_polygon_coverage)<=0.000001?'ZERO':'LOW')+'</td><td>'+esc(item.state_name_ocha)+' / '+esc(item.lga_name_ocha)+'</td><td>'+(Number(g.smaller_polygon_coverage)*100).toFixed(2)+'%</td><td>'+esc(g.best_world_bank_candidate_name||'None identified')+(g.best_candidate_smaller_coverage!=null?' ('+(Number(g.best_candidate_smaller_coverage)*100).toFixed(1)+'%)':'')+'</td><td>'+esc(g.candidate_diagnostic||g.classification||'Manual comparison required')+'</td><td><button type="button" class="secondary-button" data-anomaly-open="'+index+'">Open case</button></td></tr>';}).join("")+
+    '</tbody></table></div>'+
     '<p class="disclaimer">Read-only diagnostic. Overlap is a screening signal, not proof of an incorrect boundary. No source polygons, canonical names, review decisions or hospital records were changed.</p>';
    if(all.length===0)throw Error("The endpoint returned no cases; the audit summary cannot be treated as complete.");
    if(all.length<(746))output.insertAdjacentHTML("beforeend",'<p class="message">Partial retrieval: '+all.length+' records returned. Refresh before relying on this summary.</p>');
@@ -322,7 +326,17 @@
    reconciliationPanel.querySelector("#boundaryReconciliationPrev").addEventListener("click",()=>{reconciliationOffset=Math.max(0,reconciliationOffset-200);loadBoundaryReconciliation();});
    reconciliationPanel.querySelector("#boundaryReconciliationNext").addEventListener("click",()=>{reconciliationOffset+=200;loadBoundaryReconciliation();});
    reconciliationPanel.querySelector("#boundaryReconciliationStatus").addEventListener("change",()=>{reconciliationOffset=0;loadBoundaryReconciliation();});
-   reconciliationPanel.addEventListener("click",event=>{const button=event.target.closest("[data-recon-save]");if(button)saveBoundaryReconciliation(button.dataset.reconSave,button);});
+   reconciliationPanel.addEventListener("click",event=>{
+    const saveButton=event.target.closest("[data-recon-save]");
+    if(saveButton){saveBoundaryReconciliation(saveButton.dataset.reconSave,saveButton);return;}
+    const anomalyButton=event.target.closest("[data-anomaly-open]");
+    if(anomalyButton){
+     const index=Number(anomalyButton.dataset.anomalyOpen);
+     if(!Number.isInteger(index)||index<0)return;
+     reconciliationOffset=Math.floor(index/200)*200;
+     loadBoundaryReconciliation().then(()=>document.getElementById("boundaryReconciliationRows")?.scrollIntoView({behavior:"smooth",block:"start"}));
+    }
+   });
   }
 
   if(adminPanel && !document.getElementById("codeReconciliationPanel")){
