@@ -13149,19 +13149,27 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
 })();
 
 
-// ICU workspace: read-only integration with existing clinic-scoped admissions, beds and observations.
+// ICU workspace: authorised admissions, bed transfers and discharges use audited database RPCs.
 (function initICUWorkspace(){
  const $=id=>document.getElementById(id);
  const message=(text,isError=false)=>{const el=$("icuWorkspaceMessage");if(el){el.textContent=text;el.className="message"+(isError?" error":" success");}};
  const put=(id,value)=>{const el=$(id);if(el)el.textContent=String(value??"—");};
  const cell=(row,value)=>{const td=row.insertCell();td.textContent=String(value??"—");return td;};
  const fmt=value=>value?new Date(value).toLocaleString():"—";
+ const rpc=async(name,args)=>{const {data,error}=await supabaseClient.rpc(name,args);if(error)throw error;return data;};
  const vitalSummary=v=>[
   v.temperature_c==null?null:"Temp "+v.temperature_c+" °C",
   v.systolic_bp==null&&v.diastolic_bp==null?null:"BP "+(v.systolic_bp??"—")+"/"+(v.diastolic_bp??"—"),
   v.pulse_bpm==null?null:"Pulse "+v.pulse_bpm,
   v.oxygen_saturation==null?null:"SpO₂ "+v.oxygen_saturation+"%"
  ].filter(Boolean).join(" · ")||"No observation recorded";
+ let icuBeds=[],patients=[],admissions=[],patientMap=new Map(),bedMap=new Map();
+ const isICU=bed=>/\bicu\b|intensive\s*care/i.test([bed.ward_name,bed.bed_type].filter(Boolean).join(" "));
+ function populateSelect(id,items,label,emptyLabel,selected){
+  const el=$(id);if(!el)return;el.replaceChildren(new Option(emptyLabel,""));
+  items.forEach(item=>el.add(new Option(label(item),item.id)));
+  if(selected&&items.some(x=>x.id===selected))el.value=selected;
+ }
  async function load(){
   if(!supabaseClient||!currentClinic?.id||!currentUser?.id){message("Sign in to an authorised hospital staff account.",true);return;}
   message("Loading ICU beds, active admissions and authorised observation records...");
@@ -13170,30 +13178,30 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    const clinicId=currentClinic.id;
    const [bedResult,admissionResult,patientResult]=await Promise.all([
     supabaseClient.from("hospital_beds").select("id,bed_number,ward_name,bed_type,status").eq("clinic_id",clinicId).limit(1000),
-    supabaseClient.from("patient_admissions").select("id,patient_id,bed_id,admission_number,admitted_at,status").eq("clinic_id",clinicId).eq("status","admitted").order("admitted_at",{ascending:false}).limit(1000),
+    supabaseClient.from("patient_admissions").select("id,patient_id,bed_id,admission_number,admission_reason,admitted_at,status").eq("clinic_id",clinicId).eq("status","admitted").order("admitted_at",{ascending:false}).limit(1000),
     supabaseClient.from("patients").select("id,patient_number,first_name,last_name").eq("clinic_id",clinicId).limit(1000)
    ]);
    for(const result of [bedResult,admissionResult,patientResult])if(result.error)throw result.error;
-   const isICU=bed=>/\bicu\b|intensive\s*care/i.test([bed.ward_name,bed.bed_type].filter(Boolean).join(" "));
-   const icuBeds=(bedResult.data||[]).filter(isICU);
-   const bedMap=new Map(icuBeds.map(b=>[b.id,b]));
-   const admissions=(admissionResult.data||[]).filter(a=>a.bed_id&&bedMap.has(a.bed_id));
-   const patientMap=new Map((patientResult.data||[]).map(p=>[p.id,[p.patient_number,p.first_name,p.last_name].filter(Boolean).join(" · ")||"Patient"]));
+   icuBeds=(bedResult.data||[]).filter(isICU);
+   bedMap=new Map(icuBeds.map(b=>[b.id,b]));
+   admissions=(admissionResult.data||[]).filter(a=>a.bed_id&&bedMap.has(a.bed_id));
+   patients=patientResult.data||[];
+   patientMap=new Map(patients.map(p=>[p.id,[p.patient_number,p.first_name,p.last_name].filter(Boolean).join(" · ")||"Patient"]));
    put("icuTotalBeds",icuBeds.length);
    put("icuOccupiedBeds",icuBeds.filter(b=>b.status==="occupied").length);
    put("icuAvailableBeds",icuBeds.filter(b=>b.status==="available").length);
    put("icuActiveAdmissions",admissions.length);
+   populateSelect("icuAdmissionPatient",patients,p=>patientMap.get(p.id),"Select patient");
+   populateSelect("icuAdmissionBed",icuBeds.filter(b=>b.status==="available"),b=>b.bed_number+" · "+b.ward_name,"Select available ICU bed");
    const patientIds=[...new Set(admissions.map(a=>a.patient_id))];
    let vitals=[];
    if(patientIds.length){
     const {data,error}=await supabaseClient.from("patient_vitals")
      .select("id,patient_id,temperature_c,systolic_bp,diastolic_bp,pulse_bpm,respiratory_rate,oxygen_saturation,recorded_by,recorded_at")
      .eq("clinic_id",clinicId).in("patient_id",patientIds).order("recorded_at",{ascending:false}).limit(500);
-    if(error)throw error;
-    vitals=data||[];
+    if(error)throw error;vitals=data||[];
    }
-   const latest=new Map();
-   vitals.forEach(v=>{if(!latest.has(v.patient_id))latest.set(v.patient_id,v);});
+   const latest=new Map();vitals.forEach(v=>{if(!latest.has(v.patient_id))latest.set(v.patient_id,v);});
    const staffIds=[...new Set(vitals.map(v=>v.recorded_by).filter(Boolean))];
    let staffNames=new Map();
    if(staffIds.length){
@@ -13201,10 +13209,31 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
     if(!staffResult.error)staffNames=new Map((staffResult.data||[]).map(s=>[s.user_id,s.full_name]));
    }
    const admissionRows=$("icuAdmissionsRows");admissionRows.replaceChildren();
-   if(!admissions.length){const tr=admissionRows.insertRow();const td=tr.insertCell();td.colSpan=6;td.textContent=icuBeds.length?"No active admissions are linked to configured ICU beds.":"No beds labelled ICU or Intensive Care are configured in the bed register.";}
+   if(!admissions.length){const tr=admissionRows.insertRow();const td=tr.insertCell();td.colSpan=7;td.textContent=icuBeds.length?"No active admissions are linked to configured ICU beds.":"No beds labelled ICU or Intensive Care are configured in the bed register.";}
    admissions.forEach(a=>{
     const bed=bedMap.get(a.bed_id),v=latest.get(a.patient_id),tr=admissionRows.insertRow();
     [patientMap.get(a.patient_id)||"Patient record",a.admission_number,bed?.bed_number,bed?.ward_name,fmt(a.admitted_at),v?vitalSummary(v):"No observation recorded"].forEach(value=>cell(tr,value));
+    const actionCell=tr.insertCell();
+    const transfer=document.createElement("button");transfer.type="button";transfer.className="secondary-button";transfer.textContent="Transfer";
+    transfer.addEventListener("click",async()=>{
+     const destinations=icuBeds.filter(b=>b.status==="available"&&b.id!==a.bed_id);
+     if(!destinations.length){message("No other available ICU bed is currently recorded.",true);return;}
+     const options=destinations.map((b,i)=>(i+1)+". "+b.bed_number+" · "+b.ward_name).join("\n");
+     const choice=prompt("Choose destination ICU bed by number:\n"+options);
+     if(choice===null)return;const idx=Number(choice)-1;
+     if(!Number.isInteger(idx)||idx<0||idx>=destinations.length){message("Invalid destination bed selection.",true);return;}
+     const note=prompt("Enter the clinical/operational reason for transfer:");
+     if(!note||!note.trim()){message("A transfer reason is required.",true);return;}
+     await runAction(transfer,()=>rpc("healthos_icu_transfer_patient",{p_clinic_id:clinicId,p_admission_id:a.id,p_new_bed_id:destinations[idx].id,p_transfer_note:note.trim()}),"Patient transferred. Bed and admission changes were recorded in the security audit log.");
+    });
+    const discharge=document.createElement("button");discharge.type="button";discharge.className="secondary-button";discharge.textContent="Discharge";
+    discharge.addEventListener("click",async()=>{
+     const note=prompt("Enter the authorised discharge note:");
+     if(!note||!note.trim()){message("A discharge note is required.",true);return;}
+     if(!confirm("Confirm discharge for "+(patientMap.get(a.patient_id)||"this patient")+"?"))return;
+     await runAction(discharge,()=>rpc("healthos_icu_discharge_patient",{p_clinic_id:clinicId,p_admission_id:a.id,p_discharge_note:note.trim()}),"Discharge recorded. The bed was released and the change was added to the security audit log.");
+    });
+    actionCell.append(transfer,discharge);
    });
    const vitalsRows=$("icuVitalsRows");vitalsRows.replaceChildren();
    if(!vitals.length){const tr=vitalsRows.insertRow();const td=tr.insertCell();td.colSpan=8;td.textContent="No observations are available for current ICU admissions in the authorised clinical-record scope.";}
@@ -13215,16 +13244,27 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
      v.pulse_bpm==null?"—":v.pulse_bpm,v.respiratory_rate==null?"—":v.respiratory_rate,
      v.oxygen_saturation==null?"—":v.oxygen_saturation+"%",staffNames.get(v.recorded_by)||"Authorised staff account"].forEach(value=>cell(tr,value));
    });
-   message("ICU overview refreshed from existing hospital records. This release is read-only; bed assignment, ICU treatment charts, ventilator feeds and medication administration are not enabled here.");
-  }catch(error){
-   console.error("ICU workspace load failed",error);
-   message(error.message||"Unable to load ICU records. Check clinic membership and bed-management / clinical-record permissions.",true);
-  }finally{if(button)button.disabled=false;}
+   message("ICU records loaded. Admission, transfer and discharge actions are checked by the database and recorded in the tamper-evident audit log.");
+  }catch(error){console.error("ICU workspace load failed",error);message(error.message||"Unable to load ICU records. Check clinic membership and permissions.",true);}
+  finally{if(button)button.disabled=false;}
+ }
+ async function runAction(button,fn,success){
+  button.disabled=true;
+  try{await fn();message(success);await load();}
+  catch(error){message(error.message||"ICU action failed. No successful completion was confirmed.",true);button.disabled=false;}
  }
  $("icuRefreshButton")?.addEventListener("click",()=>void load());
- document.querySelectorAll('.sidebar .nav-item').forEach(link=>link.addEventListener("click",()=>{
-  if((link.getAttribute("href")||"")==="#staffWorkspace")void load();
- }));
+ $("icuAdmissionForm")?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  if(!currentClinic?.id){message("Select an active hospital first.",true);return;}
+  const patientId=$("icuAdmissionPatient").value,bedId=$("icuAdmissionBed").value;
+  const admissionNumber=$("icuAdmissionNumber").value.trim(),reason=$("icuAdmissionReason").value.trim();
+  if(!patientId||!bedId||!admissionNumber||!reason){message("Complete all required admission fields.",true);return;}
+  const button=$("icuAdmitButton");
+  await runAction(button,()=>rpc("healthos_icu_admit_patient",{p_clinic_id:currentClinic.id,p_patient_id:patientId,p_bed_id:bedId,p_admission_number:admissionNumber,p_admission_reason:reason}),"Patient admitted to the selected ICU bed. Bed allocation and admission were audited.");
+  $("icuAdmissionForm").reset();
+ });
+ document.querySelectorAll(".sidebar .nav-item").forEach(link=>link.addEventListener("click",()=>{if((link.getAttribute("href")||"")==="#staffWorkspace")void load();}));
  window.loadHealthOSICUWorkspace=load;
 })();
 
