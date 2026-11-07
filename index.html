@@ -792,6 +792,17 @@
  <div class="panel"><h3>Current ICU patient list</h3><p class="muted">Patients appear here when an active admission is linked to a bed whose ward or bed type is labelled ICU or Intensive Care. This view does not assign beds or staff.</p>
   <div class="table-wrap"><table><thead><tr><th>Patient</th><th>Admission reference</th><th>Bed</th><th>Ward</th><th>Admitted</th><th>Latest recorded observations</th><th>Authorised actions</th></tr></thead><tbody id="icuAdmissionsRows"><tr><td colspan="7">Refresh to load ICU admissions.</td></tr></tbody></table></div>
  </div>
+ <div class="panel">
+  <h3>ICU nurse responsibility</h3>
+  <p class="muted">Only active nursing staff assignments are eligible. Supervisors with bed-management modification permission can assign or end responsibility. Each change is recorded in the security audit log.</p>
+  <form id="icuNurseAssignmentForm" class="form-grid">
+   <label>Active ICU admission<select id="icuNurseAdmission" required><option value="">Select ICU patient admission</option></select></label>
+   <label>Authorised nurse<select id="icuNurseStaff" required><option value="">Select active nurse</option></select></label>
+   <label class="full-width">Assignment note<textarea id="icuNurseAssignmentNote" rows="2" minlength="5" maxlength="1000" required placeholder="Document shift or care-team responsibility"></textarea></label>
+   <button type="submit" class="primary-button" id="icuAssignNurseButton">Assign nurse</button>
+  </form>
+  <div class="table-wrap"><table><thead><tr><th>Patient</th><th>Nurse</th><th>Professional role</th><th>Assigned</th><th>Assignment note</th><th>Action</th></tr></thead><tbody id="icuNurseAssignmentRows"><tr><td colspan="6">Refresh to load ICU nurse assignments.</td></tr></tbody></table></div>
+ </div>
  <div class="panel"><h3>ICU transfer history</h3><p class="muted">Transfer history includes the patient, previous and destination bed, recorded reason, staff account and server timestamp.</p>
   <div class="table-wrap"><table><thead><tr><th>Transferred</th><th>Patient</th><th>Previous bed</th><th>Destination bed</th><th>Reason</th><th>Recorded by</th></tr></thead><tbody id="icuTransferRows"><tr><td colspan="6">Refresh to load transfer history.</td></tr></tbody></table></div>
  </div>
