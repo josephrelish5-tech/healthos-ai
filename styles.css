@@ -1578,3 +1578,80 @@ body{background:var(--page);color:#183247}.topbar{background:#fff;border-bottom:
 .laboratory-workspace .lab-action-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .laboratory-workspace .lab-action-row button{margin:3px}
 @media(max-width:600px){.laboratory-workspace>.panel{padding:12px}.laboratory-workspace .form-grid{grid-template-columns:1fr}.laboratory-workspace .lab-action-row{display:grid;grid-template-columns:1fr}}
+
+/* =========================================
+   HEALTHOS MEDICAL SYSTEM
+   OFFICIAL NAVY BLUE & WHITE THEME
+   ========================================= */
+:root {
+    color-scheme: light;
+    --navy: #111828;
+    --navy-deep: #0B1220;
+    --medical-blue: #168ACB;
+    --blue-soft: #EAF3FA;
+    --page: #F4F7FA;
+    --border: #DCE5EE;
+    --muted: #68798C;
+}
+html, body {
+    background: var(--page) !important;
+    color: #243449 !important;
+}
+.topbar {
+    background: #FFFFFF !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+.sidebar, .assistant-panel-header, .assistant-launcher {
+    background: var(--navy) !important;
+    color: #FFFFFF !important;
+}
+.nav-item { color: #E8F0F8 !important; }
+.nav-item:hover, .sidebar-note { background: #202D43 !important; }
+.nav-item.active {
+    background: #FFFFFF !important;
+    color: var(--navy) !important;
+    border-color: var(--medical-blue) !important;
+}
+.brand h1, .welcome h2, .panel-heading h2, .stat-card h3 {
+    color: var(--navy) !important;
+}
+.brand h1::after { content: none !important; }
+.eyebrow, .assistant-greeting, .text-button {
+    color: var(--medical-blue) !important;
+}
+.primary-button, button.primary-button, .assistant-send,
+button[type="submit"] {
+    background: var(--medical-blue) !important;
+    border-color: var(--medical-blue) !important;
+    color: #FFFFFF !important;
+}
+.primary-button:hover, .assistant-send:hover { background: #0873B1 !important; }
+.panel, .stat-card, .auth-screen, .assistant-panel,
+.hospital-map-panel, .hospital-cards-panel {
+    background: #FFFFFF !important;
+    border-color: var(--border) !important;
+}
+.stat-card { border-top-color: var(--medical-blue) !important; }
+th { background: var(--blue-soft) !important; color: var(--navy) !important; }
+input, select, textarea { border-color: #C9D6E3; }
+button, input, select, textarea { accent-color: var(--medical-blue); }
+:focus-visible { outline-color: var(--medical-blue) !important; }
+.workspace-page-nav {
+    background: var(--blue-soft) !important;
+    border-color: var(--border) !important;
+}
+.workspace-page-button:hover, .workspace-page-button.active {
+    background: var(--navy) !important;
+    border-color: var(--navy) !important;
+    color: #FFFFFF !important;
+}
+body::before, .topbar::after { display: none !important; }
+/* Preserve meaningful clinical status colours. */
+.pill.matched, .staff-presence-online {
+    background: #DCFCE7 !important;
+    color: #166534 !important;
+}
+.pill.review {
+    background: #FFF0D5 !important;
+    color: #754900 !important;
+}
