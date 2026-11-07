@@ -803,6 +803,38 @@
   </form>
   <div class="table-wrap"><table><thead><tr><th>Patient</th><th>Nurse</th><th>Professional role</th><th>Assigned</th><th>Assignment note</th><th>Action</th></tr></thead><tbody id="icuNurseAssignmentRows"><tr><td colspan="6">Refresh to load ICU nurse assignments.</td></tr></tbody></table></div>
  </div>
+
+ <div class="panel">
+  <h3>ICU observation schedule</h3>
+  <p class="muted">An authorised clinician sets the observation interval and reason. Use only the frequency specified by the responsible clinical team.</p>
+  <form id="icuObservationScheduleForm" class="form-grid">
+   <label>Active ICU admission<select id="icuObservationAdmission" required><option value="">Select ICU admission</option></select></label>
+   <label>Open clinical encounter<select id="icuObservationEncounter" required><option value="">Select patient encounter</option></select></label>
+   <label>Authorised interval (minutes)<input id="icuObservationInterval" type="number" min="1" max="10080" step="1" required></label>
+   <label class="full-width">Clinical reason / authorisation note<textarea id="icuObservationReason" rows="2" minlength="5" maxlength="1000" required></textarea></label>
+   <button id="icuCreateObservationSchedule" type="submit" class="primary-button">Create observation schedule</button>
+  </form>
+  <h4>Active observation schedules</h4>
+  <div class="table-wrap"><table><thead><tr><th>Patient</th><th>Interval</th><th>Reason</th><th>Next due</th><th>Status</th></tr></thead><tbody id="icuObservationScheduleRows"><tr><td colspan="5">Refresh to load schedules.</td></tr></tbody></table></div>
+ </div>
+ <div class="panel">
+  <h3>Record scheduled ICU observation</h3>
+  <p class="muted">Only a nurse actively assigned to the admission can submit an observation. Enter actual measured values; leave unmeasured fields blank.</p>
+  <form id="icuScheduledObservationForm" class="form-grid">
+   <label class="full-width">Observation due<select id="icuObservationDueSchedule" required><option value="">Select due observation</option></select></label>
+   <label>Temperature °C<input id="icuObsTemperature" type="number" min="25" max="45" step="0.1"></label>
+   <label>Systolic BP<input id="icuObsSystolic" type="number" min="40" max="300" step="1"></label>
+   <label>Diastolic BP<input id="icuObsDiastolic" type="number" min="20" max="200" step="1"></label>
+   <label>Pulse / min<input id="icuObsPulse" type="number" min="20" max="250" step="1"></label>
+   <label>Respiratory rate / min<input id="icuObsRespiratory" type="number" min="4" max="80" step="1"></label>
+   <label>Oxygen saturation %<input id="icuObsOxygen" type="number" min="0" max="100" step="0.1"></label>
+   <label>Pain score (0–10)<input id="icuObsPain" type="number" min="0" max="10" step="1"></label>
+   <label class="full-width">Clinical notes<textarea id="icuObsNotes" rows="2" maxlength="4000"></textarea></label>
+   <label class="full-width">Completion note<textarea id="icuObsCompletionNote" rows="2" maxlength="1000"></textarea></label>
+   <button id="icuSaveScheduledObservation" type="submit" class="primary-button">Record observation</button>
+  </form>
+ </div>
+
  <div class="panel"><h3>ICU transfer history</h3><p class="muted">Transfer history includes the patient, previous and destination bed, recorded reason, staff account and server timestamp.</p>
   <div class="table-wrap"><table><thead><tr><th>Transferred</th><th>Patient</th><th>Previous bed</th><th>Destination bed</th><th>Reason</th><th>Recorded by</th></tr></thead><tbody id="icuTransferRows"><tr><td colspan="6">Refresh to load transfer history.</td></tr></tbody></table></div>
  </div>
