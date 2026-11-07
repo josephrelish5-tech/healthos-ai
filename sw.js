@@ -1,7 +1,7 @@
 /* HealthOS AI offline application shell.
    Deliberately excludes all authenticated API responses and patient data. */
-const CACHE_NAME = "healthos-shell-v38";
-const APP_SHELL = ["./", "./index.html", "./styles.css", "./app.js?v=20261103-49-auth-startup-fix", "./pharmacy-forecast.js", "./offline-ehr.js", "./pharmacy-offline.js", "./offline-sync-center.js", "./offline-department-tasks.js", "./hospital-incidents.js", "./hospital-compliance.js", "./compliance-evidence-vault.js", "./hospital-quality.js", "./clinical-governance.js", "./staff-credentialing.js", "./clinical-decision-support.js", "./departmental-knowledge.js"];
+const CACHE_NAME = "healthos-shell-v39";
+const APP_SHELL = ["./", "./index.html", "./styles.css", "./app.js?v=20261107-async-search-fix", "./hospital-discovery-map.js?v=20261107-marker-card-link", "./pharmacy-forecast.js", "./offline-ehr.js", "./pharmacy-offline.js", "./offline-sync-center.js", "./offline-department-tasks.js", "./hospital-incidents.js", "./hospital-compliance.js", "./compliance-evidence-vault.js", "./hospital-quality.js", "./clinical-governance.js", "./staff-credentialing.js", "./clinical-decision-support.js", "./departmental-knowledge.js"];
 
 self.addEventListener("install", event => {
   event.waitUntil((async () => {
@@ -25,7 +25,7 @@ self.addEventListener("fetch", event => {
 
   const url = new URL(request.url);
   const isAppShell = url.origin === self.location.origin &&
-    (url.pathname.endsWith("/") || /\/(index\.html|styles\.css|app\.js|pharmacy-forecast\.js|offline-ehr\.js|pharmacy-offline\.js|offline-sync-center\.js|offline-department-tasks\.js|hospital-incidents\.js|hospital-compliance\.js|compliance-evidence-vault\.js|hospital-quality\.js|clinical-governance\.js|staff-credentialing\.js|clinical-decision-support\.js|departmental-knowledge\.js)$/.test(url.pathname));
+    (url.pathname.endsWith("/") || /\/(index\.html|styles\.css|app\.js|pharmacy-forecast\.js|offline-ehr\.js|pharmacy-offline\.js|offline-sync-center\.js|offline-department-tasks\.js|hospital-incidents\.js|hospital-compliance\.js|compliance-evidence-vault\.js|hospital-quality\.js|clinical-governance\.js|staff-credentialing\.js|clinical-decision-support\.js|departmental-knowledge\.js|hospital-discovery-map\.js)$/.test(url.pathname));
   const isSupabaseLibrary = url.hostname === "cdn.jsdelivr.net" &&
     url.pathname.includes("/@supabase/supabase-js/");
 
