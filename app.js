@@ -13163,12 +13163,20 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
   v.pulse_bpm==null?null:"Pulse "+v.pulse_bpm,
   v.oxygen_saturation==null?null:"SpO₂ "+v.oxygen_saturation+"%"
  ].filter(Boolean).join(" · ")||"No observation recorded";
- let icuBeds=[],patients=[],admissions=[],patientMap=new Map(),bedMap=new Map();
+ let icuBeds=[],patients=[],admissions=[],activeNurseAssignments=[],patientMap=new Map(),bedMap=new Map();
  const isICU=bed=>/\bicu\b|intensive\s*care/i.test([bed.ward_name,bed.bed_type].filter(Boolean).join(" "));
  function populateSelect(id,items,label,emptyLabel,selected){
   const el=$(id);if(!el)return;el.replaceChildren(new Option(emptyLabel,""));
   items.forEach(item=>el.add(new Option(label(item),item.id)));
   if(selected&&items.some(x=>x.id===selected))el.value=selected;
+ }
+ function updateHandoverNurseOptions(){
+  const admissionId=$("icuHandoverAdmission")?.value;
+  const assigned=activeNurseAssignments.filter(x=>x.admission_id===admissionId);
+  const mine=assigned.filter(x=>x.staff_user_id===currentUser?.id).map(x=>({id:x.nurse_assignment_id,staff_name:x.staff_name,professional_role:x.professional_role}));
+  const others=assigned.filter(x=>x.staff_user_id!==currentUser?.id).map(x=>({id:x.nurse_assignment_id,staff_name:x.staff_name,professional_role:x.professional_role}));
+  populateSelect("icuHandoverOutgoing",mine,n=>n.staff_name+" · "+n.professional_role,"No active assignment for your account");
+  populateSelect("icuHandoverIncoming",others,n=>n.staff_name+" · "+n.professional_role,"Any assigned nurse may accept");
  }
  async function load(){
   if(!supabaseClient||!currentClinic?.id||!currentUser?.id){message("Sign in to an authorised hospital staff account.",true);return;}
@@ -13188,18 +13196,20 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    admissions=(admissionResult.data||[]).filter(a=>a.bed_id&&bedMap.has(a.bed_id));
    patients=patientResult.data||[];
    const transfers=transferResult.data||[];
-   const [nursingData,encounterResult,scheduleResult]=await Promise.all([
+   const [nursingData,encounterResult,scheduleResult,handoverResult]=await Promise.all([
     rpc("healthos_icu_nursing_workspace",{p_clinic_id:clinicId}),
     supabaseClient.from("clinical_encounters").select("id,patient_id,encounter_number,encounter_type,status,created_at").eq("clinic_id",clinicId).in("status",["open","in_progress"]).order("created_at",{ascending:false}).limit(1000),
-    supabaseClient.from("icu_observation_schedules").select("id,admission_id,encounter_id,interval_minutes,schedule_reason,next_due_at,status,starts_at,ends_at").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(500)
+    supabaseClient.from("icu_observation_schedules").select("id,admission_id,encounter_id,interval_minutes,schedule_reason,next_due_at,status,starts_at,ends_at").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(500),
+    supabaseClient.from("nursing_shift_handovers").select("id,admission_id,shift_code,outgoing_staff_user_id,incoming_staff_user_id,outgoing_nurse_assignment_id,incoming_nurse_assignment_id,handover_summary,pending_items,recorded_at,handover_status,accepted_by,accepted_at").eq("clinic_id",clinicId).not("admission_id","is",null).order("recorded_at",{ascending:false}).limit(200)
    ]);
    if(encounterResult.error)throw encounterResult.error;
    if(scheduleResult.error)throw scheduleResult.error;
+   if(handoverResult.error)throw handoverResult.error;
    const activeSchedules=scheduleResult.data||[];
    const openEncounters=encounterResult.data||[];
 
    const eligibleNurses=nursingData?.eligible_nurses||[];
-   const activeNurseAssignments=nursingData?.active_assignments||[];
+   activeNurseAssignments=nursingData?.active_assignments||[];
    patientMap=new Map(patients.map(p=>[p.id,[p.patient_number,p.first_name,p.last_name].filter(Boolean).join(" · ")||"Patient"]));
    put("icuTotalBeds",icuBeds.length);
    put("icuOccupiedBeds",icuBeds.filter(b=>b.status==="occupied").length);
@@ -13209,6 +13219,8 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    populateSelect("icuAdmissionBed",icuBeds.filter(b=>b.status==="available"),b=>b.bed_number+" · "+b.ward_name,"Select available ICU bed");
    populateSelect("icuNurseAdmission",admissions,a=>(patientMap.get(a.patient_id)||"Patient")+" · "+(a.admission_number||"Admission"),"Select ICU patient admission");
    populateSelect("icuNurseStaff",eligibleNurses,n=>n.full_name+" · "+(n.professional_role||"Nurse")+" · "+(n.department_name||n.department||"Department"),"Select active nurse");
+   populateSelect("icuHandoverAdmission",admissions,a=>(patientMap.get(a.patient_id)||"Patient")+" · "+(a.admission_number||"Admission"),"Select ICU admission");
+   updateHandoverNurseOptions();
    const icuAdmissionIds=new Set(admissions.map(x=>x.id));
    const schedulesForActive=activeSchedules.filter(x=>icuAdmissionIds.has(x.admission_id));
    const activeEncounterIds=new Set(admissions.map(x=>x.patient_id));
@@ -13286,6 +13298,20 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
      });td.append(end);
     });
    }
+   const handoverRows=$("icuHandoverRows");
+   if(handoverRows){
+    handoverRows.replaceChildren();
+    const userNames=new Map((eligibleNurses||[]).map(n=>[n.staff_user_id,n.full_name]));
+    const allHandovers=handoverResult.data||[];
+    if(!allHandovers.length){const tr=handoverRows.insertRow();const td=tr.insertCell();td.colSpan=8;td.textContent="No patient-specific ICU handovers have been recorded.";} 
+    allHandovers.forEach(h=>{
+     const tr=handoverRows.insertRow();
+     [fmt(h.recorded_at),(patientMap.get(admissions.find(a=>a.id===h.admission_id)?.patient_id)||"Patient")+" · "+(admissions.find(a=>a.id===h.admission_id)?.admission_number||"Admission"),h.shift_code,userNames.get(h.outgoing_staff_user_id)||"Outgoing nurse",userNames.get(h.incoming_staff_user_id)||"Any assigned nurse",h.pending_items||"None recorded",h.handover_status==="accepted"?"Accepted · "+fmt(h.accepted_at):"Awaiting acceptance"].forEach(value=>cell(tr,value));
+     const action=tr.insertCell();
+     const canAccept=h.handover_status==="pending"&&activeNurseAssignments.some(x=>x.admission_id===h.admission_id&&x.staff_user_id===currentUser.id&&(!h.incoming_nurse_assignment_id||x.nurse_assignment_id===h.incoming_nurse_assignment_id));
+     if(canAccept){const accept=document.createElement("button");accept.type="button";accept.className="secondary-button";accept.textContent="Accept handover";accept.addEventListener("click",async()=>{if(!confirm("Accept clinical handover responsibility for this ICU admission?"))return;await runAction(accept,()=>rpc("healthos_icu_accept_shift_handover",{p_clinic_id:clinicId,p_handover_id:h.id}),"ICU handover accepted. Acceptance identity and timestamp were audited.");});action.append(accept);}else action.textContent=h.handover_status==="accepted"?"Accepted":"—";
+    });
+   }
    const vitalsRows=$("icuVitalsRows");vitalsRows.replaceChildren();
    if(!vitals.length){const tr=vitalsRows.insertRow();const td=tr.insertCell();td.colSpan=8;td.textContent="No observations are available for current ICU admissions in the authorised clinical-record scope.";}
    vitals.slice(0,100).forEach(v=>{
@@ -13350,7 +13376,20 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
   const ok=await runAction(button,()=>rpc("healthos_icu_assign_nurse",{p_clinic_id:currentClinic.id,p_admission_id:admissionId,p_nurse_assignment_id:nurseAssignmentId,p_note:note}),"Nurse assigned to ICU patient. The assignment is recorded in the security audit log.");
   if(ok)$("icuNurseAssignmentForm").reset();
  });
- $("icuRefreshButton")?.addEventListener("click",()=>void load());
+ $("icuHandoverAdmission")?.addEventListener("change",updateHandoverNurseOptions);
+ $("icuShiftHandoverForm")?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  const admissionId=$("icuHandoverAdmission")?.value;
+  const outgoing=$("icuHandoverOutgoing")?.value;
+  const incoming=$("icuHandoverIncoming")?.value||null;
+  const summary=$("icuHandoverSummary")?.value.trim();
+  const pending=$("icuHandoverPending")?.value.trim()||null;
+  if(!admissionId||!outgoing||!summary||summary.length<10){message("Select your active ICU assignment and enter a patient-specific handover summary.",true);return;}
+  const button=$("icuSaveHandoverButton");
+  const ok=await runAction(button,()=>rpc("healthos_icu_record_shift_handover",{p_clinic_id:currentClinic.id,p_admission_id:admissionId,p_outgoing_nurse_assignment_id:outgoing,p_incoming_nurse_assignment_id:incoming,p_shift_code:$("icuHandoverShift").value,p_handover_summary:summary,p_pending_items:pending}),"Patient-specific ICU handover recorded. The incoming assigned nurse must accept it to complete the responsibility transfer.");
+  if(ok){$("icuShiftHandoverForm").reset();updateHandoverNurseOptions();}
+ });
+  $("icuRefreshButton")?.addEventListener("click",()=>void load());
  $("icuAdmissionForm")?.addEventListener("submit",async event=>{
   event.preventDefault();
   if(!currentClinic?.id){message("Select an active hospital first.",true);return;}
