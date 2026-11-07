@@ -908,6 +908,23 @@
   </form>
  </div>
 
+
+ <div class="panel" id="icuMedicationAdministrationPanel">
+  <h3>ICU medication administration record</h3>
+  <p class="muted">Shows active medication orders for current ICU patients. Only an active nurse can record the actual dose given, or document a withheld/omitted dose with a reason. Prescriptions must be created by an authorised prescriber in the medication-order workflow; this panel does not prescribe or recommend doses.</p>
+  <form id="icuMedicationAdministrationForm" class="form-grid">
+   <label class="full-width">Active medication order<select id="icuMedicationOrder" required><option value="">Select active ICU medication order</option></select></label>
+   <label>Scheduled administration time<input id="icuMedicationScheduledFor" type="datetime-local" required></label>
+   <label>Administration outcome<select id="icuMedicationStatus" required><option value="administered">Administered</option><option value="withheld">Withheld</option><option value="omitted">Omitted</option></select></label>
+   <label>Actual dose given<input id="icuMedicationDose" type="number" min="0.001" step="any" placeholder="Actual administered dose"></label>
+   <label>Dose unit<input id="icuMedicationUnit" maxlength="40" placeholder="e.g. mg, mL, tablet"></label>
+   <label>Route actually used<input id="icuMedicationRoute" maxlength="60" placeholder="e.g. oral, IV"></label>
+   <label class="full-width">Reason / administration note<textarea id="icuMedicationReason" rows="2" maxlength="2000" placeholder="Required for withheld or omitted doses; may also record a relevant administration note."></textarea></label>
+   <button type="submit" id="icuMedicationSaveButton" class="primary-button">Record administration outcome</button>
+  </form>
+  <h4>Recent ICU medication administration history</h4>
+  <div class="table-wrap"><table><thead><tr><th>Scheduled</th><th>Patient</th><th>Medicine</th><th>Ordered dose</th><th>Outcome</th><th>Actual dose / route</th><th>Reason / note</th><th>Recorded</th></tr></thead><tbody id="icuMedicationAdministrationRows"><tr><td colspan="8">Refresh to load medication records.</td></tr></tbody></table></div>
+ </div>
  <div class="panel"><h3>ICU transfer history</h3><p class="muted">Transfer history includes the patient, previous and destination bed, recorded reason, staff account and server timestamp.</p>
   <div class="table-wrap"><table><thead><tr><th>Transferred</th><th>Patient</th><th>Previous bed</th><th>Destination bed</th><th>Reason</th><th>Recorded by</th></tr></thead><tbody id="icuTransferRows"><tr><td colspan="6">Refresh to load transfer history.</td></tr></tbody></table></div>
  </div>
