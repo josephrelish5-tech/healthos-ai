@@ -13188,7 +13188,16 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    admissions=(admissionResult.data||[]).filter(a=>a.bed_id&&bedMap.has(a.bed_id));
    patients=patientResult.data||[];
    const transfers=transferResult.data||[];
-   const nursingData=await rpc("healthos_icu_nursing_workspace",{p_clinic_id:clinicId});
+   const [nursingData,encounterResult,scheduleResult]=await Promise.all([
+    rpc("healthos_icu_nursing_workspace",{p_clinic_id:clinicId}),
+    supabaseClient.from("clinical_encounters").select("id,patient_id,encounter_number,encounter_type,status,created_at").eq("clinic_id",clinicId).in("status",["open","in_progress"]).order("created_at",{ascending:false}).limit(1000),
+    supabaseClient.from("icu_observation_schedules").select("id,admission_id,encounter_id,interval_minutes,schedule_reason,next_due_at,status,starts_at,ends_at").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(500)
+   ]);
+   if(encounterResult.error)throw encounterResult.error;
+   if(scheduleResult.error)throw scheduleResult.error;
+   const activeSchedules=scheduleResult.data||[];
+   const openEncounters=encounterResult.data||[];
+
    const eligibleNurses=nursingData?.eligible_nurses||[];
    const activeNurseAssignments=nursingData?.active_assignments||[];
    patientMap=new Map(patients.map(p=>[p.id,[p.patient_number,p.first_name,p.last_name].filter(Boolean).join(" · ")||"Patient"]));
@@ -13200,6 +13209,24 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    populateSelect("icuAdmissionBed",icuBeds.filter(b=>b.status==="available"),b=>b.bed_number+" · "+b.ward_name,"Select available ICU bed");
    populateSelect("icuNurseAdmission",admissions,a=>(patientMap.get(a.patient_id)||"Patient")+" · "+(a.admission_number||"Admission"),"Select ICU patient admission");
    populateSelect("icuNurseStaff",eligibleNurses,n=>n.full_name+" · "+(n.professional_role||"Nurse")+" · "+(n.department_name||n.department||"Department"),"Select active nurse");
+   const icuAdmissionIds=new Set(admissions.map(x=>x.id));
+   const schedulesForActive=activeSchedules.filter(x=>icuAdmissionIds.has(x.admission_id));
+   const activeEncounterIds=new Set(admissions.map(x=>x.patient_id));
+   populateSelect("icuObservationAdmission",admissions,x=>(patientMap.get(x.patient_id)||"Patient")+" · "+(x.admission_number||"Admission"),"Select ICU admission");
+   populateSelect("icuObservationEncounter",openEncounters.filter(x=>activeEncounterIds.has(x.patient_id)),x=>(patientMap.get(x.patient_id)||"Patient")+" · "+(x.encounter_number||x.encounter_type||"Encounter"),"Select open encounter");
+   const dueSchedules=schedulesForActive.filter(x=>x.status==="active");
+   populateSelect("icuObservationDueSchedule",dueSchedules,x=>{
+    const due=new Date(x.next_due_at);
+    return (patientMap.get(admissions.find(ad=>ad.id===x.admission_id)?.patient_id)||"Patient")+" · due "+due.toLocaleString();
+   },"Select due observation");
+   const scheduleRows=$("icuObservationScheduleRows");
+   if(scheduleRows){scheduleRows.replaceChildren();if(!schedulesForActive.length){const tr=scheduleRows.insertRow();const td=tr.insertCell();td.colSpan=5;td.textContent="No observation schedules created."; }
+    schedulesForActive.forEach(x=>{const tr=scheduleRows.insertRow();[
+     patientMap.get(admissions.find(ad=>ad.id===x.admission_id)?.patient_id)||"Patient",
+     x.interval_minutes+" minutes",x.schedule_reason,fmt(x.next_due_at),x.status
+    ].forEach(v=>cell(tr,v));});
+   }
+
    const patientIds=[...new Set(admissions.map(a=>a.patient_id))];
    let vitals=[];
    if(patientIds.length){
@@ -13277,6 +13304,43 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
   try{await fn();message(success);await load();return true;}
   catch(error){message(error.message||"ICU action failed. No successful completion was confirmed.",true);button.disabled=false;return false;}
  }
+
+ $("icuObservationScheduleForm")?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  const admissionId=$("icuObservationAdmission")?.value,encounterId=$("icuObservationEncounter")?.value;
+  const interval=Number($("icuObservationInterval")?.value),reason=$("icuObservationReason")?.value.trim();
+  if(!admissionId||!encounterId||!Number.isInteger(interval)||interval<1||interval>10080||reason.length<5){message("Select an active ICU admission, its open encounter, an authorised interval and a clinical reason.",true);return;}
+  const button=$("icuCreateObservationSchedule");
+  const ok=await runAction(button,()=>rpc("healthos_icu_create_observation_schedule",{
+   p_clinic_id:currentClinic.id,p_admission_id:admissionId,p_encounter_id:encounterId,
+   p_interval_minutes:interval,p_schedule_reason:reason,p_starts_at:new Date().toISOString(),p_ends_at:null
+  }),"Observation schedule created under the authorised clinical account.");
+  if(ok)$("icuObservationScheduleForm").reset();
+ });
+ $("icuScheduledObservationForm")?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  const scheduleId=$("icuObservationDueSchedule")?.value;
+  if(!scheduleId){message("Select an observation schedule.",true);return;}
+  const number=id=>{const value=$(id)?.value.trim();return value===""?null:Number(value);};
+  const values={
+   p_clinic_id:currentClinic.id,p_schedule_id:scheduleId,
+   p_temperature_c:number("icuObsTemperature"),p_systolic_bp:number("icuObsSystolic"),
+   p_diastolic_bp:number("icuObsDiastolic"),p_pulse_bpm:number("icuObsPulse"),
+   p_respiratory_rate:number("icuObsRespiratory"),p_oxygen_saturation:number("icuObsOxygen"),
+   p_pain_score:number("icuObsPain"),p_notes:$("icuObsNotes")?.value.trim()||null,
+   p_completion_note:$("icuObsCompletionNote")?.value.trim()||null,
+   p_weight_kg:null,p_height_cm:null
+  };
+  const button=$("icuSaveScheduledObservation");button.disabled=true;
+  try{
+   await rpc("healthos_icu_record_scheduled_observation",values);
+   $("icuScheduledObservationForm").reset();
+   message("Observation recorded in the clinical record. The nurse, completion time and schedule update were audited.");
+   await load();
+  }catch(error){message(error.message||"Observation was not confirmed. Check nurse assignment, due time and measured values.",true);}
+  finally{button.disabled=false;}
+ });
+
  $("icuNurseAssignmentForm")?.addEventListener("submit",async event=>{
   event.preventDefault();
   const admissionId=$("icuNurseAdmission")?.value,nurseAssignmentId=$("icuNurseStaff")?.value,note=$("icuNurseAssignmentNote")?.value.trim();
