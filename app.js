@@ -13272,6 +13272,38 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
   }
  }
 
+
+ async function loadEquipmentRegister(){
+  const assetRows=$("icuEquipmentRows"),eventRows=$("icuEquipmentEventRows");
+  if(!assetRows||!eventRows)return;
+  const {data:assets,error:assetError}=await supabaseClient.from("icu_equipment_assets")
+   .select("id,asset_tag,equipment_type,manufacturer,model,serial_number,location_note,asset_status,last_inspected_at,next_inspection_due,next_maintenance_due")
+   .eq("clinic_id",currentClinic.id).order("asset_tag",{ascending:true}).limit(500);
+  if(assetError)throw assetError;
+  const list=assets||[],previous=$("icuEquipmentEventAsset")?.value;
+  populateSelect("icuEquipmentEventAsset",list,a=>a.asset_tag+" · "+a.equipment_type.replaceAll("_"," "),"No equipment registered",previous);
+  assetRows.replaceChildren();
+  if(!list.length){const tr=assetRows.insertRow();const td=tr.insertCell();td.colSpan=8;td.textContent="No ICU equipment assets have been registered.";}
+  list.forEach(a=>{
+   const tr=assetRows.insertRow();
+   [a.asset_tag,a.equipment_type.replaceAll("_"," "),[a.manufacturer,a.model].filter(Boolean).join(" / ")||"—",a.serial_number||"—",a.location_note||"—",a.asset_status.replaceAll("_"," "),a.next_inspection_due||"Not set",a.next_maintenance_due||"Not set"].forEach(v=>cell(tr,v));
+  });
+  const assetIds=list.map(a=>a.id);
+  let events=[];
+  if(assetIds.length){
+   const {data,error}=await supabaseClient.from("icu_equipment_events")
+    .select("id,asset_id,event_type,event_status,event_note,performed_at,recorded_by")
+    .eq("clinic_id",currentClinic.id).in("asset_id",assetIds).order("performed_at",{ascending:false}).limit(150);
+   if(error)throw error;events=data||[];
+  }
+  const names=new Map(list.map(a=>[a.id,a.asset_tag]));
+  eventRows.replaceChildren();
+  if(!events.length){const tr=eventRows.insertRow();const td=tr.insertCell();td.colSpan=6;td.textContent="No equipment activity has been recorded.";}
+  events.forEach(e=>{
+   const tr=eventRows.insertRow();
+   [fmt(e.performed_at),names.get(e.asset_id)||"Equipment",e.event_type.replaceAll("_"," "),e.event_status.replaceAll("_"," "),e.event_note,staffNames.get(e.recorded_by)||"Authorised staff account"].forEach(v=>cell(tr,v));
+  });
+ }
  async function load(){
   if(!supabaseClient||!currentClinic?.id||!currentUser?.id){message("Sign in to an authorised hospital staff account.",true);return;}
   message("Loading ICU beds, active admissions and authorised observation records...");
@@ -13461,6 +13493,7 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    });
    const transferRows=$("icuTransferRows");if(transferRows){transferRows.replaceChildren();if(!transfers.length){const tr=transferRows.insertRow();const td=tr.insertCell();td.colSpan=6;td.textContent="No ICU transfers have been recorded.";}transfers.forEach(t=>{const tr=transferRows.insertRow();const from=bedResult.data.find(b=>b.id===t.from_bed_id),to=bedResult.data.find(b=>b.id===t.to_bed_id);[fmt(t.transferred_at),patientMap.get(t.patient_id)||"Patient record",from?.bed_number||"Bed record",to?.bed_number||"Bed record",t.transfer_reason,staffNames.get(t.transferred_by)||"Authorised staff account"].forEach(value=>cell(tr,value));});}
    await loadMedicationAdministration();
+   await loadEquipmentRegister();
    message("ICU records loaded. Admission, transfer and discharge actions are checked by the database and recorded in the tamper-evident audit log.");
   }catch(error){console.error("ICU workspace load failed",error);message(error.message||"Unable to load ICU records. Check clinic membership and permissions.",true);}
   finally{if(button)button.disabled=false;}
@@ -13555,6 +13588,39 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    p_reason:reason
   }),"Medication administration outcome recorded by the authorised nursing workflow.");
   if(ok){$("icuMedicationAdministrationForm").reset();$("icuMedicationScheduledFor").value=new Date().toISOString().slice(0,16);}
+ });
+
+
+ $("icuEquipmentRegisterForm")?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  const dateValue=id=>$(id)?.value?new Date($(id).value+"T23:59:59").toISOString():null;
+  const tag=$("icuEquipmentTag").value.trim();
+  if(!tag){message("Enter the hospital asset tag.",true);return;}
+  const button=$("icuEquipmentRegisterButton");
+  const ok=await runAction(button,()=>rpc("healthos_icu_register_equipment",{
+   p_clinic_id:currentClinic.id,p_asset_tag:tag,p_equipment_type:$("icuEquipmentType").value,
+   p_manufacturer:$("icuEquipmentManufacturer").value.trim()||null,p_model:$("icuEquipmentModel").value.trim()||null,
+   p_serial_number:$("icuEquipmentSerial").value.trim()||null,p_location_note:$("icuEquipmentLocation").value.trim()||null,
+   p_notes:$("icuEquipmentNotes").value.trim()||null,p_next_inspection_due:dateValue("icuEquipmentInspectionDue"),
+   p_next_maintenance_due:dateValue("icuEquipmentMaintenanceDue")
+  }),"Equipment registered. Registration and audit history have been recorded.");
+  if(ok)$("icuEquipmentRegisterForm").reset();
+ });
+ $("icuEquipmentEventForm")?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  const assetId=$("icuEquipmentEventAsset").value,note=$("icuEquipmentEventNote").value.trim();
+  const timeValue=$("icuEquipmentEventTime").value;
+  if(!assetId||note.length<5||!timeValue){message("Select equipment, event date/time and enter the event details.",true);return;}
+  const performedAt=new Date(timeValue);
+  if(Number.isNaN(performedAt.getTime())||performedAt.getTime()>Date.now()+5*60*1000){message("Enter a valid event time that is not in the future.",true);return;}
+  const button=$("icuEquipmentEventButton");
+  const ok=await runAction(button,()=>rpc("healthos_icu_record_equipment_event",{
+   p_clinic_id:currentClinic.id,p_asset_id:assetId,p_event_type:$("icuEquipmentEventType").value,
+   p_event_note:note,p_event_status:$("icuEquipmentEventStatus").value,p_event_details:{source:"icu_equipment_workspace"},
+   p_performed_at:performedAt.toISOString(),p_new_asset_status:$("icuEquipmentNewStatus").value||null,
+   p_next_inspection_due:null,p_next_maintenance_due:null
+  }),"Equipment event recorded with staff identity and audit history.");
+  if(ok){$("icuEquipmentEventForm").reset();$("icuEquipmentEventTime").value=new Date().toISOString().slice(0,16);}
  });
 
  $("icuRefreshButton")?.addEventListener("click",()=>void load());
