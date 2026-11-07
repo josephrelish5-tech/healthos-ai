@@ -958,6 +958,33 @@
   <div class="table-wrap"><table><thead><tr><th>Date / time</th><th>Asset</th><th>Event</th><th>Status</th><th>Details</th><th>Recorded by</th></tr></thead><tbody id="icuEquipmentEventRows"><tr><td colspan="6">Refresh to load equipment history.</td></tr></tbody></table></div>
   <p class="stat-note">Do not rely on this register for ventilator settings, oxygen flow, alarms, cylinder pressure, or patient observations. Enter only readings physically verified by authorised staff. Any faulty life-support equipment must be taken out of service and managed under hospital biomedical and emergency procedures.</p>
  </div>
+ <div class="panel" id="icuEmergencyResponse">
+  <h3>ICU Emergency Response & Clinical Escalation</h3>
+  <p class="muted">Record an emergency, assign a responsible staff member, acknowledge and track response actions through resolution and supervisor closure. This is an operational escalation log: it does not automatically contact responders, trigger alarms, diagnose patients or replace the hospital emergency protocol. For an active emergency, activate the hospital emergency response process immediately.</p>
+  <form id="icuEmergencyIncidentForm" class="form-grid">
+   <label>Incident type<select id="icuEmergencyType" required><option value="patient_deterioration">Patient deterioration</option><option value="cardiac_arrest">Cardiac arrest</option><option value="respiratory_emergency">Respiratory emergency</option><option value="equipment_failure">Critical equipment failure</option><option value="oxygen_supply_issue">Oxygen supply issue</option><option value="medication_safety">Medication safety incident</option><option value="fall_or_injury">Fall or injury</option><option value="power_or_utility_failure">Power / utility failure</option><option value="fire_or_environmental">Fire / environmental incident</option><option value="security_or_access">Security / access incident</option><option value="other">Other emergency</option></select></label>
+   <label>Severity<select id="icuEmergencySeverity" required><option value="critical">Critical</option><option value="high">High</option><option value="moderate">Moderate</option><option value="low">Low</option></select></label>
+   <label>Related ICU patient<select id="icuEmergencyPatient"><option value="">No patient linked</option></select></label>
+   <label>Related admission<select id="icuEmergencyAdmission"><option value="">No admission linked</option></select></label>
+   <label>Related equipment<select id="icuEmergencyEquipment"><option value="">No equipment linked</option></select></label>
+   <label>When did it occur?<input id="icuEmergencyOccurredAt" type="datetime-local" required></label>
+   <label class="full-width">Incident details<textarea id="icuEmergencyDescription" rows="3" minlength="10" maxlength="4000" required placeholder="Describe observed facts, immediate actions already taken and any relevant location. Avoid assumptions or unverified diagnoses."></textarea></label>
+   <button id="icuEmergencyReportButton" type="submit" class="primary-button">Report emergency incident</button>
+  </form>
+  <p id="icuEmergencyMessage" class="message" role="status" aria-live="polite"></p>
+  <h4>Open incidents & response status</h4>
+  <div class="table-wrap"><table><thead><tr><th>Reported</th><th>Type / severity</th><th>Patient / equipment</th><th>Status</th><th>Assigned staff</th><th>Details</th></tr></thead><tbody id="icuEmergencyIncidentRows"><tr><td colspan="6">Refresh to load ICU incidents.</td></tr></tbody></table></div>
+  <h4>Record response / escalation action</h4>
+  <form id="icuEmergencyResponseForm" class="form-grid">
+   <label class="full-width">Incident<select id="icuEmergencyResponseIncident" required><option value="">Select an open incident</option></select></label>
+   <label>Response action<select id="icuEmergencyResponseAction" required><option value="acknowledge">Acknowledge receipt</option><option value="assign">Assign responsible staff member</option><option value="start_response">Response started</option><option value="update">Record response update</option><option value="resolve">Mark resolved</option><option value="close">Supervisor close (resolved only)</option></select></label>
+   <label>Assigned staff account<select id="icuEmergencyAssignedStaff"><option value="">Select staff member for assignment</option></select></label>
+   <label class="full-width">Action note<textarea id="icuEmergencyResponseNote" rows="2" minlength="3" maxlength="3000" required placeholder="Record who responded, actions taken, handover, outcome or reason for closure."></textarea></label>
+   <button id="icuEmergencyResponseButton" type="submit" class="primary-button">Save response action</button>
+  </form>
+  <h4>Emergency response accountability history</h4>
+  <div class="table-wrap"><table><thead><tr><th>Time</th><th>Incident</th><th>Action</th><th>Response note</th><th>Staff account</th></tr></thead><tbody id="icuEmergencyResponseRows"><tr><td colspan="5">Response history will appear here.</td></tr></tbody></table></div>
+ </div>
  <div class="panel"><h3>ICU transfer history</h3><p class="muted">Transfer history includes the patient, previous and destination bed, recorded reason, staff account and server timestamp.</p>
   <div class="table-wrap"><table><thead><tr><th>Transferred</th><th>Patient</th><th>Previous bed</th><th>Destination bed</th><th>Reason</th><th>Recorded by</th></tr></thead><tbody id="icuTransferRows"><tr><td colspan="6">Refresh to load transfer history.</td></tr></tbody></table></div>
  </div>
