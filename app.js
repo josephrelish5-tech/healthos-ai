@@ -13244,7 +13244,7 @@ window.loadHealthOSLaboratoryWorkspace=load;
     if(x.status==="requested"&&x.requested_by!==currentUser.id)button("Authorise","radiology_authorise_request",{p_request_id:x.id});
     if(x.status==="authorised")button("Schedule","radiology_update_workflow",{p_request_id:x.id,p_action:"schedule",p_accession:null});
     if(x.status==="scheduled")button("Start study","radiology_update_workflow",{p_request_id:x.id,p_action:"start",p_accession:null});
-    if(x.status==="in_progress"){const accession=prompt("Enter the imaging accession / study reference:");if(accession&&accession.trim())button("Complete study","radiology_update_workflow",{p_request_id:x.id,p_action:"complete",p_accession:accession.trim()});}
+    if(x.status==="in_progress"){const b=document.createElement("button");b.type="button";b.className="secondary-button";b.textContent="Complete study";b.addEventListener("click",()=>{const accession=prompt("Enter the imaging accession / study reference:");if(accession&&accession.trim())act(b,()=>rpc("radiology_update_workflow",{p_request_id:x.id,p_action:"complete",p_accession:accession.trim()}),"Study marked complete.");});td.appendChild(b);}
     if(!td.childNodes.length)td.textContent="—";
    });
    const sel=$("radReportRequest"),oldReq=sel.value;sel.replaceChildren(new Option("Select completed study",""));requests.filter(x=>x.status==="study_completed").forEach(x=>sel.add(new Option(x.request_reference+" · "+x.modality,x.id)));if(requests.some(x=>x.id===oldReq&&x.status==="study_completed"))sel.value=oldReq;
