@@ -8,7 +8,8 @@
     <title>HealthOS AI | Healthcare Intelligence</title>
     <link rel="stylesheet" href="styles.css?v=20261107-black-search-text">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js?v=20261107-patient-record-otp-fix" defer></script>
     <script src="healthos-directory-admin.js?v=20261106-national-lga-registry-ui-v1" defer></script>
     <script src="healthos-hospital-registration-review.js?v=20261107-risk-flags-ui" defer></script>
@@ -3639,7 +3640,7 @@
   <button class="primary-button" type="submit">Create Patient Access Code</button>
  </form>
  <p id="patientShareMessage" class="message" role="status" aria-live="polite"></p>
- <div id="patientShareCodePanel" hidden class="stat-card"><h3>One-time display — share securely with the authorised recipient</h3><p id="patientShareCode" style="font-size:1.3rem;word-break:break-all"></p><p id="patientShareExpiryText" class="muted"></p><p class="disclaimer">This code is shown only now. Copy it to the patient or their authorised recipient through a verified channel. Do not place it in public messages or clinical notes. A recipient verification and scoped record-release endpoint must be connected before external record retrieval is enabled.</p></div>
+ <div id="patientShareCodePanel" hidden class="stat-card"><h3>One-time display — secure QR access code</h3><p id="patientShareCode" style="font-size:1.3rem;word-break:break-all"></p><div id="patientShareQr" role="img" aria-label="QR code containing the temporary patient record access code" style="display:flex;justify-content:center;background:#fff;padding:16px;max-width:280px;margin:12px auto"></div><button id="patientShareQrDownload" type="button" class="logout-button">Download QR code</button><p id="patientShareExpiryText" class="muted"></p><p class="disclaimer">The QR code contains the same temporary bearer access code as the text above. Share it only with the intended recipient through a verified channel. Scanning it does not bypass hospital permissions, patient approval, OTP checks, expiry, use limits or audit logging. Do not post it publicly. Clinical record retrieval remains disabled until the separate secure release endpoint is connected.</p></div>
 
  <hr>
  <h3>Request access to another hospital's records</h3>
