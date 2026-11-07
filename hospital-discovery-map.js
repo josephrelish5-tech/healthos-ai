@@ -464,11 +464,13 @@
     const mapPanel=el("hospitalMapViewPanel"),cardsPanel=el("hospitalCardsViewPanel");
     const mapButton=el("hospitalMapViewButton"),cardsButton=el("hospitalCardsViewButton");
     const showMap=view!=="cards";
-    if(mapPanel)mapPanel.hidden=!showMap;
-    if(cardsPanel)cardsPanel.hidden=showMap;
+    if(mapPanel)mapPanel.hidden=false;
+    if(cardsPanel)cardsPanel.hidden=false;
     if(mapButton){mapButton.classList.toggle("is-active",showMap);mapButton.setAttribute("aria-pressed",String(showMap));}
     if(cardsButton){cardsButton.classList.toggle("is-active",!showMap);cardsButton.setAttribute("aria-pressed",String(!showMap));}
-    if(showMap&&map){setTimeout(()=>map.invalidateSize(),80);}
+    const target=showMap?mapPanel:cardsPanel;
+    if(target)target.scrollIntoView({behavior:"smooth",block:"start"});
+    if(showMap&&map){setTimeout(()=>map.invalidateSize(),120);}
   }
   function render(hospitals) {
     lastHospitals=Array.isArray(hospitals)?hospitals:[];
