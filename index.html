@@ -787,6 +787,26 @@
   <div class="table-wrap"><table><thead><tr><th>Request</th><th>Specimen</th><th>Entered</th><th>Critical</th><th>Status</th><th>Action</th></tr></thead><tbody id="labResultsRows"><tr><td colspan="6">Refresh to load results.</td></tr></tbody></table></div>
  </div>
  <p class="stat-note">Safety and accountability: the existing database RPCs enforce clinic membership, workflow transitions, specimen custody separation and independent result validation/release. Do not use this workspace to delay urgent clinical escalation.</p>
+
+<section class="panel" id="radiologyWorkspace" aria-labelledby="radiologyWorkspaceHeading">
+ <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=1100&q=85" alt="Radiology professionals reviewing medical imaging in a hospital" loading="lazy" decoding="async"><figcaption>Radiology professionals and diagnostic imaging</figcaption></figure>
+ <div class="panel-heading"><div><p class="eyebrow">RADIOLOGY & IMAGING · CONTROLLED WORKFLOW</p><h2 id="radiologyWorkspaceHeading">Radiology Department Workspace</h2><p class="muted">Imaging requests, authorisation, modality workflow, findings, independent verification and report release.</p></div><button type="button" class="secondary-button" id="radiologyRefreshButton">Refresh radiology</button></div>
+ <p class="message" id="radiologyMessage" role="status" aria-live="polite">Sign in with an authorised hospital staff account.</p>
+ <div class="stats-grid"><article class="stat-card"><p>Awaiting authorisation</p><h3 id="radPending">—</h3></article><article class="stat-card"><p>Scheduled / active</p><h3 id="radActive">—</h3></article><article class="stat-card"><p>Reports awaiting verification</p><h3 id="radVerify">—</h3></article><article class="stat-card"><p>Critical findings</p><h3 id="radCritical">—</h3></article></div>
+ <div class="panel"><h3>Request diagnostic imaging</h3><form id="radRequestForm" class="form-grid">
+ <label>Patient<select id="radPatient" required><option value="">Select patient</option></select></label><label>Encounter (optional)<input id="radEncounter" placeholder="Encounter ID (UUID)" maxlength="36"></label>
+ <label>Modality<select id="radModality" required><option value="xray">X-ray</option><option value="ultrasound">Ultrasound</option><option value="ct">CT</option><option value="mri">MRI</option><option value="mammography">Mammography</option><option value="fluoroscopy">Fluoroscopy</option><option value="ecg">ECG</option><option value="other">Other</option></select></label>
+ <label>Body region<input id="radBodyRegion" required maxlength="160" placeholder="e.g. chest, abdomen, left knee"></label>
+ <label>Priority<select id="radPriority"><option value="routine">Routine</option><option value="urgent">Urgent</option><option value="emergency">Emergency</option></select></label>
+ <label class="full-width">Clinical indication<textarea id="radIndication" required minlength="5" maxlength="3000"></textarea></label>
+ <button class="primary-button" type="submit" id="radCreateButton">Submit imaging request</button></form></div>
+ <div class="panel"><h3>Imaging worklist</h3><div class="table-wrap"><table><thead><tr><th>Reference</th><th>Patient</th><th>Modality</th><th>Region</th><th>Priority</th><th>Status</th><th>Workflow action</th></tr></thead><tbody id="radRequestsRows"><tr><td colspan="7">Refresh to load imaging requests.</td></tr></tbody></table></div></div>
+ <div class="panel"><h3>Radiology report entry</h3><p class="muted">Only completed studies can be reported. Critical findings require a documented escalation note and immediate communication through the hospital's emergency protocol.</p>
+ <form id="radReportForm" class="form-grid"><label>Completed study<select id="radReportRequest" required><option value="">Select completed study</option></select></label><label>Critical finding?<select id="radCritical"><option value="false">No</option><option value="true">Yes</option></select></label><label class="full-width">Findings<textarea id="radFindings" required minlength="5" maxlength="12000"></textarea></label><label class="full-width">Impression<textarea id="radImpression" required minlength="3" maxlength="4000"></textarea></label><label class="full-width">Critical escalation note<textarea id="radCriticalNote" maxlength="2000"></textarea></label><button class="primary-button" id="radSubmitReport" type="submit">Submit report for independent verification</button></form></div>
+ <div class="panel"><h3>Independent report verification and release</h3><div class="table-wrap"><table><thead><tr><th>Request</th><th>Findings summary</th><th>Critical</th><th>Status</th><th>Action</th></tr></thead><tbody id="radReportsRows"><tr><td colspan="5">No reports loaded.</td></tr></tbody></table></div></div>
+ <p class="stat-note">Accountability: database permissions and workflow functions control request authorisation, study progression, report verification and release. This workspace records study metadata and reports; it is not a DICOM/PACS image viewer or image-storage integration.</p>
+</section>
+
 </section>
 
 
