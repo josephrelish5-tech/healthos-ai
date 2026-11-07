@@ -13079,3 +13079,71 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
     });
 })();
 
+
+
+// Nursing workspace: uses existing clinical encounters/vitals permissions and the audited handover register.
+(function initNursingWorkspace(){
+ const $=id=>document.getElementById(id);
+ const setMessage=(t,isError=false)=>{const el=$("nursingWorkspaceMessage");if(el){el.textContent=t;el.className="message"+(isError?" error":" success");}};
+ const esc=t=>String(t??"—");
+ let encounters=[],staff=[];
+ const number=id=>$(id).value===""?null:Number($(id).value);
+ async function load(){
+  if(!supabaseClient||!currentClinic?.id||!currentUser?.id){setMessage("Sign in to an authorised hospital staff account.",true);return;}
+  setMessage("Loading authorised patient encounters, team members and handover records...");
+  try{
+   const clinicId=currentClinic.id;
+   const [e,p,s,h,v,t]=await Promise.all([
+    supabaseClient.from("clinical_encounters").select("id,patient_id,encounter_number,encounter_type,status,started_at").eq("clinic_id",clinicId).in("status",["open","in_progress"]).order("started_at",{ascending:false}).limit(250),
+    supabaseClient.from("patients").select("id,patient_number,first_name,last_name").eq("clinic_id",clinicId).limit(500),
+    supabaseClient.from("staff_profiles").select("user_id,full_name,department,professional_role").eq("clinic_id",clinicId).eq("employment_status","active").order("full_name").limit(300),
+    supabaseClient.from("nursing_shift_handovers").select("id,shift_code,outgoing_staff_user_id,incoming_staff_user_id,handover_summary,pending_items,recorded_at").eq("clinic_id",clinicId).order("recorded_at",{ascending:false}).limit(50),
+    supabaseClient.from("patient_vitals").select("id,recorded_at").eq("clinic_id",clinicId).gte("recorded_at",new Date(new Date().setHours(0,0,0,0)).toISOString()).limit(500),
+    supabaseClient.rpc("get_my_staff_tasks",{p_clinic_id:clinicId})
+   ]);
+   for(const x of [e,p,s,h,v,t])if(x.error)throw x.error;
+   encounters=e.data||[];staff=s.data||[];
+   const patients=new Map((p.data||[]).map(x=>[x.id,[x.patient_number,x.first_name,x.last_name].filter(Boolean).join(" — ")]));
+   const sel=$("nursingEncounterSelect"),old=sel.value;sel.replaceChildren(new Option("Select an open patient encounter",""));
+   encounters.forEach(x=>sel.add(new Option((patients.get(x.patient_id)||"Patient")+" · "+(x.encounter_number||"Encounter")+" · "+x.status,x.id)));
+   if(encounters.some(x=>x.id===old))sel.value=old;
+   const incoming=$("nursingIncomingStaff"),oldStaff=incoming.value;incoming.replaceChildren(new Option("Not specified",""));
+   staff.filter(x=>x.user_id!==currentUser.id).forEach(x=>incoming.add(new Option((x.full_name||"Staff member")+(x.department?" — "+x.department:""),x.user_id)));
+   if(staff.some(x=>x.user_id===oldStaff))incoming.value=oldStaff;
+   $("nursingOpenEncounters").textContent=encounters.length;
+   $("nursingVitalsToday").textContent=(v.data||[]).length;
+   $("nursingHandoversToday").textContent=(h.data||[]).filter(x=>new Date(x.recorded_at)>=new Date(new Date().setHours(0,0,0,0))).length;
+   const body=$("nursingHandoverRows");body.replaceChildren();
+   if(!(h.data||[]).length){const r=body.insertRow();const c=r.insertCell();c.colSpan=6;c.textContent="No handover records are available in your authorised scope.";}
+   const names=new Map(staff.map(x=>[x.user_id,x.full_name]));
+   (h.data||[]).forEach(x=>{const r=body.insertRow();[new Date(x.recorded_at).toLocaleString(),x.shift_code,names.get(x.outgoing_staff_user_id)||"Staff account",names.get(x.incoming_staff_user_id)||"Not specified",x.handover_summary,x.pending_items||"None recorded"].forEach(y=>{const c=r.insertCell();c.textContent=esc(y);});});
+   const taskList=$("nursingTasksList");taskList.replaceChildren();
+   const tasks=Array.isArray(t.data?.tasks)?t.data.tasks:[];
+   if(!tasks.length){const p=document.createElement("p");p.className="muted";p.textContent="No active assigned staff tasks were returned.";taskList.append(p);}
+   tasks.forEach(x=>{const card=document.createElement("article");card.className="stat-card";const title=document.createElement("h4");title.textContent=x.task_title||"Staff task";const meta=document.createElement("p");meta.textContent=(x.priority||"normal").toUpperCase()+" · "+String(x.task_status||"").replaceAll("_"," ")+" · "+(x.due_at?new Date(x.due_at).toLocaleString():"No deadline");const desc=document.createElement("p");desc.textContent=x.task_description||"No further instructions.";card.append(title,meta,desc);taskList.append(card);});
+   setMessage("Nursing workspace refreshed. Patient and handover data shown only when the database authorises access.");
+  }catch(err){console.error("Nursing workspace load failed",err);setMessage(err.message||"Unable to load nursing workspace. Check your active department assignment and clinical-record permissions.",true);}
+ }
+ $("nursingRefreshButton")?.addEventListener("click",()=>void load());
+ $("nursingVitalsForm")?.addEventListener("submit",async ev=>{
+  ev.preventDefault();if(!currentClinic?.id||!currentUser?.id)return;
+  const encounter=encounters.find(x=>x.id===$("nursingEncounterSelect").value);
+  if(!encounter){setMessage("Select an open patient encounter before recording observations.",true);return;}
+  const ids=["nursingTemperature","nursingSystolic","nursingDiastolic","nursingPulse","nursingRespiratory","nursingOxygen","nursingWeight","nursingHeight","nursingPain"];
+  if(ids.every(id=>$(id).value==="")){setMessage("Enter at least one observation.",true);return;}
+  const button=$("nursingSaveVitals");button.disabled=true;
+  const {error}=await supabaseClient.from("patient_vitals").insert({clinic_id:currentClinic.id,encounter_id:encounter.id,patient_id:encounter.patient_id,temperature_c:number("nursingTemperature"),systolic_bp:number("nursingSystolic"),diastolic_bp:number("nursingDiastolic"),pulse_bpm:number("nursingPulse"),respiratory_rate:number("nursingRespiratory"),oxygen_saturation:number("nursingOxygen"),weight_kg:number("nursingWeight"),height_cm:number("nursingHeight"),pain_score:number("nursingPain"),notes:$("nursingObservationNotes").value.trim()||null,recorded_by:currentUser.id});
+  button.disabled=false;if(error){setMessage(error.message,true);return;}
+  $("nursingVitalsForm").reset();setMessage("Patient observations saved with your staff account and timestamp.");await load();
+ });
+ $("nursingHandoverForm")?.addEventListener("submit",async ev=>{
+  ev.preventDefault();if(!currentClinic?.id||!currentUser?.id)return;
+  const summary=$("nursingHandoverSummary").value.trim();if(summary.length<10){setMessage("Enter a handover summary of at least 10 characters.",true);return;}
+  const button=$("nursingSaveHandover");button.disabled=true;
+  const {error}=await supabaseClient.from("nursing_shift_handovers").insert({clinic_id:currentClinic.id,shift_code:$("nursingShiftCode").value,outgoing_staff_user_id:currentUser.id,incoming_staff_user_id:$("nursingIncomingStaff").value||null,handover_summary:summary,pending_items:$("nursingPendingItems").value.trim()||null,recorded_by:currentUser.id});
+  button.disabled=false;if(error){setMessage(error.message,true);return;}
+  $("nursingHandoverForm").reset();setMessage("Shift handover recorded with the authenticated outgoing staff account and server timestamp.");await load();
+ });
+ document.querySelectorAll('.sidebar .nav-item').forEach(link=>link.addEventListener("click",()=>{if((link.getAttribute("href")||"")==="#staffWorkspace")void load();}));
+ window.loadHealthOSNursingWorkspace=load;
+})();
