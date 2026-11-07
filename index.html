@@ -427,6 +427,8 @@
                     <button id="patientFileUploadButton" class="primary-button" type="submit">Upload securely</button>
                 </form>
                 <section class="panel" id="patientDocumentOcrPanel" aria-labelledby="patientDocumentOcrHeading">
+<figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=1100&q=85" alt="Healthcare professional reviewing a medical report" loading="lazy" decoding="async"><figcaption>Medical documents and diagnostic reports</figcaption></figure>
+
                     <h4 id="patientDocumentOcrHeading">Medical Document OCR Preview</h4>
                     <p class="muted">Preview text from a selected prescription, laboratory report or medical document in this browser before secure upload. The extracted text is not automatically added to your medical record or sent to an AI service. Always retain and verify the original document.</p>
                     <button type="button" id="patientDocumentOcrButton" class="secondary-button" disabled>Read selected document</button>
@@ -3666,6 +3668,8 @@
 
 <!-- PATIENT-CONTROLLED INTEROPERABLE RECORD SHARING -->
 <section id="patientRecordSharing" class="panel" hidden>
+<figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1100&q=85" alt="Healthcare professional explaining care information to a patient" loading="lazy" decoding="async"><figcaption>Patient-controlled medical record sharing</figcaption></figure>
+
  <div class="panel-heading"><div><p class="eyebrow">PATIENT-CONTROLLED DATA</p><h2>Patient Record Sharing</h2><p class="muted">Create a limited, expiring access code only after documenting the patient's consent. The code is displayed once.</p></div></div>
  <form id="patientShareForm" class="auth-form">
   <label>Patient<select id="patientSharePatient" required><option value="">Loading patients…</option></select></label>
@@ -3694,6 +3698,8 @@
  </form>
  <p id="patientShareRecipientRequestMessage" class="message" role="status" aria-live="polite"></p>
  <hr><section class="panel" id="patientRecordIntelligencePanel">
+<figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=1100&q=85" alt="Clinician reviewing a patient's medical information" loading="lazy" decoding="async"><figcaption>Clinical record review</figcaption></figure>
+
   <p class="eyebrow">READ-ONLY CLINICAL CONTEXT</p><h3>Patient Medical Record Intelligence</h3>
   <p class="muted">Consolidates existing clinic records into one view. This is a retrieval aid, not an AI diagnosis. Access remains subject to clinic permissions and database row-level security.</p>
   <button type="button" id="loadPatientRecordIntelligence" class="primary-button">Load selected patient's record overview</button>
@@ -3707,6 +3713,8 @@
 
 <!-- USSD-ENABLED DIAGNOSTIC REQUEST WORKFLOW -->
 <section id="ussdDiagnostics" class="panel" hidden>
+<figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1581093458791-9d42e3c4e4d7?auto=format&fit=crop&w=1100&q=85" alt="Medical laboratory professional working with diagnostic equipment" loading="lazy" decoding="async"><figcaption>Diagnostic requests and laboratory coordination</figcaption></figure>
+
  <div class="panel-heading"><div><p class="eyebrow">PATIENT ACCESS & DIAGNOSTICS</p><h2>USSD Diagnostic Requests</h2><p class="muted">Register and manage diagnostic requests initiated through USSD enquiries or assisted channels. Staff must verify identity, consent and the appropriate test before acceptance.</p></div></div>
  <div class="stats-grid">
   <article class="stat-card"><p>New Requests</p><h3 id="ussdNewCount">—</h3></article>
