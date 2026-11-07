@@ -1579,79 +1579,113 @@ body{background:var(--page);color:#183247}.topbar{background:#fff;border-bottom:
 .laboratory-workspace .lab-action-row button{margin:3px}
 @media(max-width:600px){.laboratory-workspace>.panel{padding:12px}.laboratory-workspace .form-grid{grid-template-columns:1fr}.laboratory-workspace .lab-action-row{display:grid;grid-template-columns:1fr}}
 
-/* =========================================
-   HEALTHOS MEDICAL SYSTEM
-   OFFICIAL NAVY BLUE & WHITE THEME
-   ========================================= */
+
+/* HEALTHOS — FINAL NAVY & WHITE BRAND OVERRIDE
+   Supersedes legacy red/black branding and cached decorative elements. */
 :root {
-    color-scheme: light;
-    --navy: #111828;
-    --navy-deep: #0B1220;
-    --medical-blue: #111828;
-    --blue-soft: #F4F7FA;
-    --page: #F4F7FA;
-    --border: #DCE5EE;
-    --muted: #68798C;
+  color-scheme: light;
+  --navy: #111828;
+  --navy-deep: #0B1220;
+  --medical-blue: #111828;
+  --blue-soft: #F4F7FA;
+  --page: #F4F7FA;
+  --border: #DCE5EE;
+  --muted: #68798C;
 }
-html, body {
-    background: var(--page) !important;
-    color: #243449 !important;
+html, body, .main-content {
+  background: #F4F7FA !important;
+  background-image: none !important;
+  color: #243449 !important;
 }
 .topbar {
-    background: #FFFFFF !important;
-    border-bottom: 1px solid var(--border) !important;
+  background: #FFFFFF !important;
+  border: 0 !important;
+  border-bottom: 1px solid #DCE5EE !important;
 }
-.sidebar, .assistant-panel-header, .assistant-launcher {
-    background: var(--navy) !important;
-    color: #FFFFFF !important;
+.topbar::after,
+body::before,
+.brand-icon::after,
+.brand h1::after {
+  content: none !important;
+  display: none !important;
 }
-.nav-item { color: #E8F0F8 !important; }
-.nav-item:hover, .sidebar-note { background: #202D43 !important; }
-.nav-item.active {
-    background: #FFFFFF !important;
-    color: var(--navy) !important;
-    border-color: var(--medical-blue) !important;
+.brand-icon {
+  background: #111828 !important;
+  border: 2px solid #111828 !important;
+  color: #FFFFFF !important;
+  box-shadow: none !important;
 }
-.brand h1, .welcome h2, .panel-heading h2, .stat-card h3 {
-    color: var(--navy) !important;
+.brand h1, .brand h1::after {
+  color: #111828 !important;
 }
-.brand h1::after { content: none !important; }
+.brand p { color: #68798C !important; }
+.healthos-brand-hero {
+  background: #111828 !important;
+  border: 1px solid #111828 !important;
+  color: #FFFFFF !important;
+  box-shadow: none !important;
+}
+.healthos-brand-copy .eyebrow,
+.healthos-brand-copy .eyebrow::before {
+  color: #FFFFFF !important;
+}
+.healthos-brand-copy h2 {
+  color: #FFFFFF !important;
+}
+.healthos-brand-copy > p:not(.eyebrow) {
+  color: #E2E8F0 !important;
+}
+.healthos-brand-actions a,
+.healthos-brand-actions a.primary-button {
+  background: #FFFFFF !important;
+  color: #111828 !important;
+  border: 1px solid #FFFFFF !important;
+}
+.healthos-brand-actions span { color: #E2E8F0 !important; }
+.public-discovery-hero {
+  background: #FFFFFF !important;
+  border-color: #DCE5EE !important;
+  border-left-color: #111828 !important;
+}
 .eyebrow, .assistant-greeting, .text-button {
-    color: var(--medical-blue) !important;
+  color: #111828 !important;
 }
 .primary-button, button.primary-button, .assistant-send,
 button[type="submit"] {
-    background: var(--medical-blue) !important;
-    border-color: var(--medical-blue) !important;
-    color: #FFFFFF !important;
+  background: #111828 !important;
+  border-color: #111828 !important;
+  color: #FFFFFF !important;
 }
-.primary-button:hover, .assistant-send:hover { background: #202D43 !important; }
+.primary-button:hover, .assistant-send:hover,
+button[type="submit"]:hover {
+  background: #26354D !important;
+  border-color: #26354D !important;
+}
+.sidebar, .assistant-panel-header, .assistant-launcher {
+  background: #111828 !important;
+  color: #FFFFFF !important;
+}
+.nav-item { color: #E8F0F8 !important; }
+.nav-item:hover, .sidebar-note { background: #26354D !important; }
+.nav-item.active {
+  background: #FFFFFF !important;
+  color: #111828 !important;
+  border-color: #111828 !important;
+}
 .panel, .stat-card, .auth-screen, .assistant-panel,
 .hospital-map-panel, .hospital-cards-panel {
-    background: #FFFFFF !important;
-    border-color: var(--border) !important;
+  background: #FFFFFF !important;
+  border-color: #DCE5EE !important;
 }
-.stat-card { border-top-color: var(--medical-blue) !important; }
-th { background: var(--blue-soft) !important; color: var(--navy) !important; }
-input, select, textarea { border-color: #C9D6E3; }
-button, input, select, textarea { accent-color: var(--medical-blue); }
-:focus-visible { outline-color: var(--medical-blue) !important; }
-.workspace-page-nav {
-    background: var(--blue-soft) !important;
-    border-color: var(--border) !important;
-}
+.stat-card { border-top-color: #111828 !important; }
+th { background: #F4F7FA !important; color: #111828 !important; }
+input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
+:focus-visible { outline-color: #111828 !important; }
+.workspace-page-nav { background: #F4F7FA !important; border-color: #DCE5EE !important; }
 .workspace-page-button:hover, .workspace-page-button.active {
-    background: var(--navy) !important;
-    border-color: var(--navy) !important;
-    color: #FFFFFF !important;
+  background: #111828 !important;
+  border-color: #111828 !important;
+  color: #FFFFFF !important;
 }
-body::before, .topbar::after { display: none !important; }
-/* Preserve meaningful clinical status colours. */
-.pill.matched, .staff-presence-online {
-    background: #DCFCE7 !important;
-    color: #166534 !important;
-}
-.pill.review {
-    background: #FFF0D5 !important;
-    color: #754900 !important;
-}
+.pill.matched, .staff-presence-online { background: #DCFCE7 !important; color: #166534 !important; }
+.pill.review { background: #FFF0D5 !important; color: #754900 !important; }
