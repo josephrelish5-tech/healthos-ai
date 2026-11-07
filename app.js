@@ -1100,6 +1100,7 @@ async function openPatientPortal(user) {
     document.getElementById("patientProfileCountry").value = profile.country_code || "";
     document.getElementById("patientProfileLanguage").value = profile.preferred_language || "en";
     await loadPatientHospitalLinks();
+    await loadPatientIdentityRequests();
     await loadPatientAppointmentOptions();
     await loadPatientAppointmentList();
     await loadPatientGlobalReferrals();
@@ -1142,6 +1143,158 @@ async function loadPatientHospitalLinks() {
         target.appendChild(card);
     });
 }
+
+
+async function loadPatientIdentityRequests() {
+    const hospitalSelect = document.getElementById("patientIdentityClinic");
+    const target = document.getElementById("patientIdentityRequests");
+    if (!currentUser || !hospitalSelect || !target) return;
+
+    hospitalSelect.replaceChildren(new Option("Loading connected hospitals...", ""));
+    const linkResult = await supabaseClient
+        .from("healthos_patient_hospital_links")
+        .select("clinic_id")
+        .eq("patient_user_id", currentUser.id)
+        .eq("status", "verified");
+    if (linkResult.error) throw linkResult.error;
+
+    const clinicIds = [...new Set((linkResult.data || []).map(row => row.clinic_id))];
+    if (!clinicIds.length) {
+        hospitalSelect.replaceChildren(new Option("No approved hospital connections yet", ""));
+        hospitalSelect.disabled = true;
+    } else {
+        const directoryResult = await supabaseClient
+            .from("healthos_hospital_directory")
+            .select("clinic_id,public_name,city,country_code")
+            .in("clinic_id", clinicIds);
+        if (directoryResult.error) throw directoryResult.error;
+        hospitalSelect.replaceChildren(new Option("Choose a connected hospital", ""));
+        (directoryResult.data || []).forEach(hospital => {
+            hospitalSelect.add(new Option(
+                hospital.public_name + " — " + hospital.city + ", " + hospital.country_code,
+                hospital.clinic_id
+            ));
+        });
+        hospitalSelect.disabled = false;
+    }
+
+    target.replaceChildren();
+    const requestResult = await supabaseClient
+        .from("healthos_patient_record_identity_requests")
+        .select("id,clinic_id,patient_number,status,requested_at,reviewed_at,review_note")
+        .eq("patient_user_id", currentUser.id)
+        .order("requested_at", { ascending: false })
+        .limit(100);
+    if (requestResult.error) throw requestResult.error;
+
+    const hospitalNames = new Map();
+    const requestedClinicIds = [...new Set((requestResult.data || []).map(row => row.clinic_id))];
+    if (requestedClinicIds.length) {
+        const namesResult = await supabaseClient
+            .from("healthos_hospital_directory")
+            .select("clinic_id,public_name")
+            .in("clinic_id", requestedClinicIds);
+        if (namesResult.error) throw namesResult.error;
+        (namesResult.data || []).forEach(row => hospitalNames.set(row.clinic_id, row.public_name));
+    }
+
+    if (!requestResult.data?.length) {
+        target.textContent = "No hospital identity-link requests yet.";
+        return;
+    }
+
+    requestResult.data.forEach(row => {
+        const card = document.createElement("article");
+        card.className = "stat-card";
+        const title = document.createElement("h4");
+        title.textContent = hospitalNames.get(row.clinic_id) || "Connected hospital";
+        const number = document.createElement("p");
+        number.textContent = "Patient number submitted: " + row.patient_number;
+        const status = document.createElement("strong");
+        status.textContent = "Identity match: " + row.status.replace(/_/g, " ");
+        const date = document.createElement("p");
+        date.textContent = "Requested: " + new Date(row.requested_at).toLocaleString();
+        card.append(title, number, status, date);
+
+        if (row.review_note) {
+            const note = document.createElement("p");
+            note.textContent = "Hospital review note: " + row.review_note;
+            card.appendChild(note);
+        }
+        if (row.status === "matched") {
+            const explanation = document.createElement("p");
+            explanation.textContent = "The hospital matched your patient number. This identity link does not itself grant clinical record access; any record sharing requires separate permission.";
+            const revoke = document.createElement("button");
+            revoke.type = "button";
+            revoke.className = "logout-button";
+            revoke.textContent = "Revoke identity link";
+            revoke.addEventListener("click", async () => {
+                if (!window.confirm("Revoke this hospital identity link? This will not delete the hospital's clinical record.")) return;
+                revoke.disabled = true;
+                const { error } = await supabaseClient.rpc("healthos_patient_revoke_identity_link", {
+                    p_clinic_id: row.clinic_id
+                });
+                if (error) {
+                    document.getElementById("patientIdentityMessageStatus").textContent = friendlyError(error);
+                    document.getElementById("patientIdentityMessageStatus").className = "message error";
+                    revoke.disabled = false;
+                    return;
+                }
+                document.getElementById("patientIdentityMessageStatus").textContent = "Identity link revoked. The hospital's original clinical record was not deleted.";
+                document.getElementById("patientIdentityMessageStatus").className = "message success";
+                await loadPatientIdentityRequests();
+            });
+            card.append(explanation, revoke);
+        }
+        target.appendChild(card);
+    });
+}
+
+const patientIdentityLinkForm = document.getElementById("patientIdentityLinkForm");
+if (patientIdentityLinkForm) patientIdentityLinkForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    const message = document.getElementById("patientIdentityMessageStatus");
+    const button = document.getElementById("patientIdentitySubmit");
+    if (!currentUser) {
+        message.textContent = "Sign in to your patient account first.";
+        message.className = "message error";
+        return;
+    }
+    const clinicId = document.getElementById("patientIdentityClinic").value;
+    const patientNumber = document.getElementById("patientIdentityNumber").value.trim();
+    const patientMessage = document.getElementById("patientIdentityMessage").value.trim();
+    if (!clinicId || patientNumber.length < 2 || !document.getElementById("patientIdentityConsent").checked) {
+        message.textContent = "Choose an approved hospital, enter your hospital patient number and confirm consent.";
+        message.className = "message error";
+        return;
+    }
+    button.disabled = true;
+    button.textContent = "Submitting request...";
+    try {
+        const { error } = await supabaseClient
+            .from("healthos_patient_record_identity_requests")
+            .insert({
+                patient_user_id: currentUser.id,
+                clinic_id: clinicId,
+                patient_number: patientNumber,
+                patient_message: patientMessage || null,
+                consent_confirmed: true,
+                consent_at: new Date().toISOString(),
+                status: "requested"
+            });
+        if (error) throw error;
+        message.textContent = "Identity-match request sent. The hospital must verify the patient number against its own record. No clinical record access has been granted.";
+        message.className = "message success";
+        patientIdentityLinkForm.reset();
+        await loadPatientIdentityRequests();
+    } catch (error) {
+        message.textContent = friendlyError(error);
+        message.className = "message error";
+    } finally {
+        button.disabled = false;
+        button.textContent = "Request identity match";
+    }
+});
 
 
 async function loadPatientAppointmentOptions() {
