@@ -244,6 +244,35 @@
    reconciliationPanel.id="boundaryReconciliationPanel";
    reconciliationPanel.style.cssText="margin:22px 0;padding:18px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;color:#102b46;overflow-x:auto";
    reconciliationPanel.innerHTML='<h3 style="margin-top:0">OCHA ↔ World Bank Boundary Reconciliation — Restricted Review</h3><p>Review the 746 unique name-match proposals. A name match is not proof that boundaries are identical. Approval records a canonical naming decision only; it does not publish hospitals or alter source polygons.</p><div class="button-row"><label for="boundaryReconciliationStatus">Case status</label><select id="boundaryReconciliationStatus"><option value="">All statuses</option><option value="proposed">Proposed</option><option value="in_review">In review</option><option value="needs_evidence">Needs evidence</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><button type="button" id="boundaryReconciliationRefresh" class="secondary-button">Refresh cases</button><button type="button" id="boundaryReconciliationPrev" class="secondary-button" disabled>Previous 200</button><button type="button" id="boundaryReconciliationNext" class="secondary-button">Next 200</button></div><p id="boundaryReconciliationMessage" class="message" role="status" aria-live="polite">Restricted review queue not loaded yet.</p><div class="table-wrap"><table style="min-width:1150px"><thead><tr><th>OCHA state / LGA</th><th>World Bank state / LGA</th><th>Source codes</th><th>Name match</th><th>Status</th><th>Geometry evidence</th><th>Decision and evidence</th></tr></thead><tbody id="boundaryReconciliationRows"><tr><td colspan="6">Open administrator console to load cases.</td></tr></tbody></table></div><p class="disclaimer">Only an authorised platform directory administrator can access this queue. Every saved decision is audited.</p>';
+   // Mobile review layout: turn wide reconciliation rows into readable stacked records.
+   const mobileReviewStyle=document.createElement("style");
+   mobileReviewStyle.id="healthos-boundary-mobile-review-style";
+   mobileReviewStyle.textContent=`
+    @media (max-width: 700px) {
+     #boundaryReconciliationPanel { padding:14px!important; overflow:visible!important; }
+     #boundaryReconciliationPanel .button-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+     #boundaryReconciliationPanel .button-row label { width:100%; }
+     #boundaryReconciliationPanel .table-wrap { overflow:visible!important; }
+     #boundaryReconciliationPanel .table-wrap table { width:100%!important; min-width:0!important; border-collapse:separate!important; border-spacing:0 12px!important; }
+     #boundaryReconciliationPanel thead { display:none!important; }
+     #boundaryReconciliationPanel tbody tr { display:block!important; margin:0 0 14px!important; padding:10px!important; border:1px solid #d8e0e8!important; border-radius:10px!important; background:#fff!important; }
+     #boundaryReconciliationPanel tbody td { display:grid!important; grid-template-columns:minmax(104px, 34%) minmax(0, 1fr)!important; gap:9px!important; width:100%!important; padding:9px 4px!important; border:0!important; border-bottom:1px solid #edf1f5!important; overflow-wrap:anywhere!important; }
+     #boundaryReconciliationPanel tbody td:last-child { display:block!important; border-bottom:0!important; }
+     #boundaryReconciliationPanel tbody td:nth-child(1)::before { content:"OCHA"; }
+     #boundaryReconciliationPanel tbody td:nth-child(2)::before { content:"World Bank"; }
+     #boundaryReconciliationPanel tbody td:nth-child(3)::before { content:"Source codes"; }
+     #boundaryReconciliationPanel tbody td:nth-child(4)::before { content:"Name match"; }
+     #boundaryReconciliationPanel tbody td:nth-child(5)::before { content:"Review status"; }
+     #boundaryReconciliationPanel tbody td:nth-child(6)::before { content:"Geometry evidence"; }
+     #boundaryReconciliationPanel tbody td::before { font-weight:700; color:#334155; }
+     #boundaryReconciliationPanel tbody td:last-child::before { content:"Decision and evidence"; display:block; margin-bottom:8px; }
+     #boundaryReconciliationPanel tbody td:last-child input,
+     #boundaryReconciliationPanel tbody td:last-child select,
+     #boundaryReconciliationPanel tbody td:last-child button { box-sizing:border-box!important; width:100%!important; min-width:0!important; margin:5px 0!important; }
+     #boundaryReconciliationPanel #boundaryReconciliationMessage { overflow-wrap:anywhere; }
+    }
+   `;
+   document.head.appendChild(mobileReviewStyle);
    const adminHeading=adminPanel.querySelector(".panel-heading");
    if(adminHeading)adminHeading.insertAdjacentElement("afterend",reconciliationPanel);
    else adminPanel.insertBefore(reconciliationPanel,adminPanel.firstChild);
