@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#111828">
     <title>HealthOS Medical Systems | Hospital Management Software</title>
-    <link rel="stylesheet" href="styles.css?v=20261107-navy-white-contrast-v1">
+    <link rel="stylesheet" href="styles.css?v=20261107-care-pathways-v1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -237,6 +237,47 @@
                 <p>Find HealthOS Medical Systems member hospitals and external public hospital listings by location. External listings are clearly labelled as not independently verified. Search and get directions without signing in.</p>
                 <button id="openPublicHospitalDiscoveryButton" class="primary-button" type="button" onclick="window.openHealthOSHospitalDiscovery()">⌖ Find Hospitals & View Map</button>
             </section>
+            <section id="healthosCarePathways" class="healthos-care-pathways" aria-labelledby="healthosCarePathwaysTitle">
+                <div class="healthos-care-intro">
+                    <p class="eyebrow">CONNECTED CARE · ONE PLATFORM</p>
+                    <h2 id="healthosCarePathwaysTitle">Care that stays connected, wherever it happens.</h2>
+                    <p>Bring hospital visits, virtual care, follow-up and patient monitoring into a more coordinated healthcare experience.</p>
+                </div>
+                <div class="healthos-care-layout">
+                    <div class="healthos-care-list">
+                        <article class="healthos-care-item">
+                            <span class="healthos-care-icon" aria-hidden="true">
+                                <svg viewBox="0 0 48 48"><rect x="5" y="12" width="27" height="24" rx="4"></rect><path d="m32 20 11-6v20l-11-6z"></path></svg>
+                            </span>
+                            <div><h3>Video Consultations</h3><p>Support secure virtual visits between patients and their healthcare teams.</p></div>
+                        </article>
+                        <article class="healthos-care-item">
+                            <span class="healthos-care-icon" aria-hidden="true">
+                                <svg viewBox="0 0 48 48"><path d="M4 25h9l6-16 10 31 7-19h8"></path></svg>
+                            </span>
+                            <div><h3>Remote Monitoring</h3><p>Bring recorded observations and care-plan follow-up into the wider patient record.</p></div>
+                        </article>
+                        <article class="healthos-care-item">
+                            <span class="healthos-care-icon" aria-hidden="true">
+                                <svg viewBox="0 0 48 48"><path d="M7 9h34v25H22L11 42v-8H7z"></path><path d="M15 18h18M15 25h13"></path></svg>
+                            </span>
+                            <div><h3>Secure Patient Follow-up</h3><p>Organise patient questions, care instructions and follow-up communication.</p></div>
+                        </article>
+                        <article class="healthos-care-item">
+                            <span class="healthos-care-icon" aria-hidden="true">
+                                <svg viewBox="0 0 48 48"><rect x="8" y="11" width="32" height="31" rx="4"></rect><path d="M16 6v10M32 6v10M8 21h32M17 29h6M28 29h4"></path></svg>
+                            </span>
+                            <div><h3>In-Person Visits</h3><p>Connect hospital appointments with clinical, administrative and billing workflows.</p></div>
+                        </article>
+                    </div>
+                    <figure class="healthos-care-visual">
+                        <img src="https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&amp;fit=crop&amp;w=1100&amp;q=85" alt="Healthcare professional discussing a patient's care" loading="lazy" decoding="async">
+                        <figcaption><strong>People first. Connected care.</strong><span>Designed to support coordinated care across the patient journey.</span></figcaption>
+                    </figure>
+                </div>
+                <p class="healthos-care-disclaimer">These are platform capability areas. Availability of individual virtual-care services depends on implementation, clinical governance and hospital configuration.</p>
+            </section>
+
             <h2 id="authHeading">Welcome to HealthOS Medical Systems</h2>
             <p id="authDescription">
                 Sign in to access your secure hospital workspace.
