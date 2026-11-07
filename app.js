@@ -1350,8 +1350,10 @@ if (useMyHospitalLocationButton) useMyHospitalLocationButton.addEventListener("c
     }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
 });
 
+let hospitalDiscoverySearchRun = 0;
 const searchHospitalsButton = document.getElementById("searchHospitalsButton");
 if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async () => {
+    const searchRun = ++hospitalDiscoverySearchRun;
     const message = document.getElementById("hospitalSearchMessage");
     const country = document.getElementById("hospitalSearchCountry").value.trim().toUpperCase();
     const latitudeInput = document.getElementById("hospitalSearchLatitude");
@@ -1552,26 +1554,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
                 }
             }
         }
-        // Supplement approved HealthOS directory results with live OpenStreetMap
-        // hospital/clinic discoveries for the entered area. These remain clearly
-        // labelled external and unverified; nothing is imported or published.
-        if (!hasGps && window.HealthOSHospitalDiscovery?.searchExternalHospitals) {
-            const externalLocation = [lga, cityValue, state].filter(Boolean).join(", ");
-            if (externalLocation) {
-                message.textContent = "Checking external OpenStreetMap hospital listings for " + externalLocation + "…";
-                try {
-                    const externalResults = await window.HealthOSHospitalDiscovery.searchExternalHospitals(externalLocation, hospitalNameQuery);
-                    const existingKeys = new Set(hospitals.map(h => String(h.hospital_name||"").trim().toLowerCase()+"|"+Number(h.latitude||0).toFixed(4)+"|"+Number(h.longitude||0).toFixed(4)));
-                    externalResults.forEach(item => {
-                        const key = String(item.hospital_name||"").trim().toLowerCase()+"|"+Number(item.latitude||0).toFixed(4)+"|"+Number(item.longitude||0).toFixed(4);
-                        if (!existingKeys.has(key)) { hospitals.push(item); existingKeys.add(key); }
-                    });
-                } catch (externalSearchError) {
-                    console.warn("External OpenStreetMap hospital search unavailable:", externalSearchError);
-                    message.textContent = "Directory search completed. External map search is temporarily unavailable: " + (externalSearchError.message||"upstream error");
-                }
-            }
-        }
+        // External map lookup is deferred until after database results render; it must not block search.
         // Load only published, server-moderated patient review summaries.
         await Promise.all(hospitals.map(async hospital => {
             hospital.review_count = 0;
@@ -1608,6 +1591,33 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
             + externalCount + " other external listing(s) found"
             + (hasGps ? " from your live-location search." : ". Unverified records are clearly labelled and are not HealthOS-verified hospitals.");
         message.className = "message success";
+        // Supplement database results asynchronously; ignore late results from older searches.
+        if (!hasGps && window.HealthOSHospitalDiscovery?.searchExternalHospitals) {
+            const externalLocation = [lga, cityValue, state].filter(Boolean).join(", ");
+            if (externalLocation) {
+                const databaseMessage = message.textContent;
+                window.HealthOSHospitalDiscovery.searchExternalHospitals(externalLocation, hospitalNameQuery)
+                    .then(externalResults => {
+                        if (searchRun !== hospitalDiscoverySearchRun || !Array.isArray(externalResults) || !externalResults.length) return;
+                        const keys = new Set(hospitals.map(h => String(h.hospital_name || "").trim().toLowerCase() + "|" + Number(h.latitude || 0).toFixed(4) + "|" + Number(h.longitude || 0).toFixed(4)));
+                        const additions = externalResults.filter(item => {
+                            const key = String(item.hospital_name || "").trim().toLowerCase() + "|" + Number(item.latitude || 0).toFixed(4) + "|" + Number(item.longitude || 0).toFixed(4);
+                            if (keys.has(key)) return false;
+                            keys.add(key);
+                            return true;
+                        });
+                        if (!additions.length) return;
+                        hospitals.push(...additions);
+                        window.HealthOSHospitalDiscovery.render(hospitals);
+                        message.textContent = databaseMessage + " Live map listings added separately.";
+                        message.className = "message success";
+                    })
+                    .catch(error => {
+                        console.warn("Background OpenStreetMap lookup unavailable:", error);
+                        if (searchRun === hospitalDiscoverySearchRun) message.textContent = databaseMessage + " Live map listings are temporarily unavailable.";
+                    });
+            }
+        }
     } catch (error) {
         console.error("Hospital discovery search failed:", error);
         message.textContent = friendlyError(error);
