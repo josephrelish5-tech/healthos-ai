@@ -13219,6 +13219,48 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
   populateSelect("icuHandoverOutgoing",mine,n=>n.staff_name+" · "+n.professional_role,"No active assignment for your account");
   populateSelect("icuHandoverIncoming",others,n=>n.staff_name+" · "+n.professional_role,"Any assigned nurse may accept");
  }
+
+ async function loadMedicationAdministration(){
+  const orderSelect=$("icuMedicationOrder"),rows=$("icuMedicationAdministrationRows");
+  if(!orderSelect||!rows)return;
+  const patientIds=[...new Set(admissions.map(a=>a.patient_id))];
+  if(!patientIds.length){
+   populateSelect("icuMedicationOrder",[],()=>"", "No active ICU medication orders");
+   rows.replaceChildren();const tr=rows.insertRow();const td=tr.insertCell();td.colSpan=8;td.textContent="No active ICU admissions to match medication orders.";
+   return;
+  }
+  const {data:orders,error:orderError}=await supabaseClient.from("medication_orders")
+   .select("id,patient_id,medicine_name,dose_value,dose_unit,route,frequency,instructions,status,prescribed_at")
+   .eq("clinic_id",currentClinic.id).in("patient_id",patientIds).eq("status","active")
+   .order("prescribed_at",{ascending:false}).limit(300);
+  if(orderError)throw orderError;
+  const activeOrders=orders||[];
+  const previous=orderSelect.value;
+  populateSelect("icuMedicationOrder",activeOrders,o=>(patientMap.get(o.patient_id)||"Patient")+" · "+o.medicine_name+" · "+o.dose_value+" "+o.dose_unit+" · "+o.route+" · "+o.frequency,"No active ICU medication orders",previous);
+  const orderIds=activeOrders.map(o=>o.id);
+  let records=[];
+  if(orderIds.length){
+   const {data,error}=await supabaseClient.from("medication_administration_records")
+    .select("id,medication_order_id,scheduled_for,administration_status,administered_dose,administered_unit,administered_route,reason,recorded_by,recorded_at")
+    .eq("clinic_id",currentClinic.id).in("medication_order_id",orderIds)
+    .order("scheduled_for",{ascending:false}).limit(100);
+   if(error)throw error;records=data||[];
+  }
+  const orderMap=new Map(activeOrders.map(o=>[o.id,o]));
+  rows.replaceChildren();
+  if(!records.length){const tr=rows.insertRow();const td=tr.insertCell();td.colSpan=8;td.textContent="No administration outcomes recorded for active ICU medication orders.";}
+  records.forEach(record=>{
+   const order=orderMap.get(record.medication_order_id),tr=rows.insertRow();
+   [
+    fmt(record.scheduled_for),patientMap.get(order?.patient_id)||"Patient",
+    order?.medicine_name||"Medication order",
+    order?(order.dose_value+" "+order.dose_unit+" · "+order.route):"—",
+    record.administration_status,
+    record.administration_status==="administered"?(record.administered_dose+" "+record.administered_unit+" · "+record.administered_route):"—",
+    record.reason||"—",fmt(record.recorded_at)
+   ].forEach(value=>cell(tr,value));
+  });
+ }
  async function load(){
   if(!supabaseClient||!currentClinic?.id||!currentUser?.id){message("Sign in to an authorised hospital staff account.",true);return;}
   message("Loading ICU beds, active admissions and authorised observation records...");
@@ -13407,6 +13449,7 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
      v.oxygen_saturation==null?"—":v.oxygen_saturation+"%",staffNames.get(v.recorded_by)||"Authorised staff account"].forEach(value=>cell(tr,value));
    });
    const transferRows=$("icuTransferRows");if(transferRows){transferRows.replaceChildren();if(!transfers.length){const tr=transferRows.insertRow();const td=tr.insertCell();td.colSpan=6;td.textContent="No ICU transfers have been recorded.";}transfers.forEach(t=>{const tr=transferRows.insertRow();const from=bedResult.data.find(b=>b.id===t.from_bed_id),to=bedResult.data.find(b=>b.id===t.to_bed_id);[fmt(t.transferred_at),patientMap.get(t.patient_id)||"Patient record",from?.bed_number||"Bed record",to?.bed_number||"Bed record",t.transfer_reason,staffNames.get(t.transferred_by)||"Authorised staff account"].forEach(value=>cell(tr,value));});}
+   await loadMedicationAdministration();
    message("ICU records loaded. Admission, transfer and discharge actions are checked by the database and recorded in the tamper-evident audit log.");
   }catch(error){console.error("ICU workspace load failed",error);message(error.message||"Unable to load ICU records. Check clinic membership and permissions.",true);}
   finally{if(button)button.disabled=false;}
@@ -13474,7 +13517,36 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
   const ok=await runAction(button,()=>rpc("healthos_icu_record_shift_handover",{p_clinic_id:currentClinic.id,p_admission_id:admissionId,p_outgoing_nurse_assignment_id:outgoing,p_incoming_nurse_assignment_id:incoming,p_shift_code:$("icuHandoverShift").value,p_handover_summary:summary,p_pending_items:pending}),"Patient-specific ICU handover recorded. The incoming assigned nurse must accept it to complete the responsibility transfer.");
   if(ok){$("icuShiftHandoverForm").reset();updateHandoverNurseOptions();}
  });
-  $("icuRefreshButton")?.addEventListener("click",()=>void load());
+ 
+ $("icuMedicationStatus")?.addEventListener("change",()=>{
+  const administered=$("icuMedicationStatus").value==="administered";
+  ["icuMedicationDose","icuMedicationUnit","icuMedicationRoute"].forEach(id=>{const field=$(id);if(field)field.required=administered;});
+ });
+ $("icuMedicationAdministrationForm")?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  const orderId=$("icuMedicationOrder")?.value;
+  const scheduledValue=$("icuMedicationScheduledFor")?.value;
+  const status=$("icuMedicationStatus")?.value;
+  const doseText=$("icuMedicationDose")?.value.trim();
+  const unit=$("icuMedicationUnit")?.value.trim();
+  const route=$("icuMedicationRoute")?.value.trim();
+  const reason=$("icuMedicationReason")?.value.trim()||null;
+  if(!orderId||!scheduledValue){message("Select an active ICU medication order and scheduled time.",true);return;}
+  const scheduledFor=new Date(scheduledValue);
+  if(Number.isNaN(scheduledFor.getTime())||scheduledFor.getTime()>Date.now()+5*60*1000){message("Enter a valid scheduled administration time that is not in the future.",true);return;}
+  if(status==="administered"&&(!doseText||Number(doseText)<=0||!unit||!route)){message("For an administered dose, enter the actual dose, unit and route used.",true);return;}
+  if(status!=="administered"&&(!reason||reason.length<5)){message("A reason of at least 5 characters is required when a dose is withheld or omitted.",true);return;}
+  const button=$("icuMedicationSaveButton");
+  const ok=await runAction(button,()=>rpc("healthos_record_medication_administration",{
+   p_clinic_id:currentClinic.id,p_medication_order_id:orderId,p_scheduled_for:scheduledFor.toISOString(),
+   p_administration_status:status,p_administered_dose:status==="administered"?Number(doseText):null,
+   p_administered_unit:status==="administered"?unit:null,p_administered_route:status==="administered"?route:null,
+   p_reason:reason
+  }),"Medication administration outcome recorded by the authorised nursing workflow.");
+  if(ok){$("icuMedicationAdministrationForm").reset();$("icuMedicationScheduledFor").value=new Date().toISOString().slice(0,16);}
+ });
+
+ $("icuRefreshButton")?.addEventListener("click",()=>void load());
  $("icuAdmissionForm")?.addEventListener("submit",async event=>{
   event.preventDefault();
   if(!currentClinic?.id){message("Select an active hospital first.",true);return;}
