@@ -377,6 +377,9 @@
                 </form>
                 <p id="patientIdentityMessageStatus" class="message" role="status" aria-live="polite"></p>
                 <div id="patientIdentityRequests" class="stats-grid"><p class="muted">No identity-link requests loaded.</p></div>
+                <h3>Medical record access requests</h3>
+                <p class="muted">A hospital requesting your records must be connected to your patient account. Review each request and approve or reject it. Approval here authorises a request only; records are not released until the secure verification and release stage is completed.</p>
+                <div id="patientRecordShareAccessRequests" class="stats-grid"><p class="muted">No record-access requests loaded.</p></div>
                 <h3>Book an appointment</h3>
                 <p class="muted">Requests can be sent only to hospitals that have approved your connection. The hospital must confirm the requested time.</p>
                 <form id="patientAppointmentForm" class="auth-form">
@@ -3637,6 +3640,15 @@
  </form>
  <p id="patientShareMessage" class="message" role="status" aria-live="polite"></p>
  <div id="patientShareCodePanel" hidden class="stat-card"><h3>One-time display — share securely with the authorised recipient</h3><p id="patientShareCode" style="font-size:1.3rem;word-break:break-all"></p><p id="patientShareExpiryText" class="muted"></p><p class="disclaimer">This code is shown only now. Copy it to the patient or their authorised recipient through a verified channel. Do not place it in public messages or clinical notes. A recipient verification and scoped record-release endpoint must be connected before external record retrieval is enabled.</p></div>
+
+ <hr>
+ <h3>Request access to another hospital's records</h3>
+ <p class="muted">Enter an access code supplied by the issuing hospital. Your hospital identity and verified patient connection are checked before the patient is asked to approve. This step does not release records.</p>
+ <form id="patientShareRecipientRequestForm" class="auth-form">
+  <label>Patient access code<input id="patientShareRecipientCode" type="password" autocomplete="off" minlength="20" maxlength="200" required></label>
+  <button class="primary-button" type="submit">Send request for patient approval</button>
+ </form>
+ <p id="patientShareRecipientRequestMessage" class="message" role="status" aria-live="polite"></p>
  <hr><section class="panel" id="patientRecordIntelligencePanel">
   <p class="eyebrow">READ-ONLY CLINICAL CONTEXT</p><h3>Patient Medical Record Intelligence</h3>
   <p class="muted">Consolidates existing clinic records into one view. This is a retrieval aid, not an AI diagnosis. Access remains subject to clinic permissions and database row-level security.</p>
