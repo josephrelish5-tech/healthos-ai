@@ -13225,44 +13225,53 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
   if(!orderSelect||!rows)return;
   const setStatus=text=>{if(status)status.textContent=text;};
   try{
-  const patientIds=[...new Set(admissions.map(a=>a.patient_id))];
-  if(!patientIds.length){
-   populateSelect("icuMedicationOrder",[],()=>"", "No active ICU medication orders");
-   rows.replaceChildren();const tr=rows.insertRow();const td=tr.insertCell();td.colSpan=8;td.textContent="No active ICU admissions to match medication orders.";
-   return;
+   const patientIds=[...new Set(admissions.map(a=>a.patient_id))];
+   if(!patientIds.length){
+    populateSelect("icuMedicationOrder",[],()=>"", "No active ICU medication orders");
+    rows.replaceChildren();const tr=rows.insertRow();const td=tr.insertCell();td.colSpan=8;td.textContent="No active ICU admissions to match medication orders.";
+    setStatus("No active ICU admissions.");
+    return;
+   }
+   const {data:orders,error:orderError}=await supabaseClient.from("medication_orders")
+    .select("id,patient_id,medicine_name,dose_value,dose_unit,route,frequency,instructions,status,prescribed_at")
+    .eq("clinic_id",currentClinic.id).in("patient_id",patientIds).eq("status","active")
+    .order("prescribed_at",{ascending:false}).limit(300);
+   if(orderError)throw orderError;
+   const activeOrders=orders||[];
+   const previous=orderSelect.value;
+   populateSelect("icuMedicationOrder",activeOrders,o=>(patientMap.get(o.patient_id)||"Patient")+" · "+o.medicine_name+" · "+o.dose_value+" "+o.dose_unit+" · "+o.route+" · "+o.frequency,"No active ICU medication orders",previous);
+   const orderIds=activeOrders.map(o=>o.id);
+   let records=[];
+   if(orderIds.length){
+    const {data,error}=await supabaseClient.from("medication_administration_records")
+     .select("id,medication_order_id,scheduled_for,administration_status,administered_dose,administered_unit,administered_route,reason,recorded_by,recorded_at")
+     .eq("clinic_id",currentClinic.id).in("medication_order_id",orderIds)
+     .order("scheduled_for",{ascending:false}).limit(100);
+    if(error)throw error;records=data||[];
+   }
+   const orderMap=new Map(activeOrders.map(o=>[o.id,o]));
+   rows.replaceChildren();
+   if(!records.length){const tr=rows.insertRow();const td=tr.insertCell();td.colSpan=8;td.textContent="No administration outcomes recorded for active ICU medication orders.";}
+   records.forEach(record=>{
+    const order=orderMap.get(record.medication_order_id),tr=rows.insertRow();
+    [
+     fmt(record.scheduled_for),patientMap.get(order?.patient_id)||"Patient",
+     order?.medicine_name||"Medication order",
+     order?(order.dose_value+" "+order.dose_unit+" · "+order.route):"—",
+     record.administration_status,
+     record.administration_status==="administered"?(record.administered_dose+" "+record.administered_unit+" · "+record.administered_route):"—",
+     record.reason||"—",fmt(record.recorded_at)
+    ].forEach(value=>cell(tr,value));
+   });
+   setStatus("Medication orders and administration history loaded within your authorised clinical-record access.");
+  }catch(error){
+   console.warn("ICU medication administration panel could not load",error);
+   populateSelect("icuMedicationOrder",[],()=>"", "Medication records unavailable for this account");
+   rows.replaceChildren();const tr=rows.insertRow();const td=tr.insertCell();td.colSpan=8;td.textContent="Medication administration records could not be loaded. Confirm clinical-record read permission with the hospital administrator.";
+   setStatus(error.message||"Medication records are restricted or temporarily unavailable.");
   }
-  const {data:orders,error:orderError}=await supabaseClient.from("medication_orders")
-   .select("id,patient_id,medicine_name,dose_value,dose_unit,route,frequency,instructions,status,prescribed_at")
-   .eq("clinic_id",currentClinic.id).in("patient_id",patientIds).eq("status","active")
-   .order("prescribed_at",{ascending:false}).limit(300);
-  if(orderError)throw orderError;
-  const activeOrders=orders||[];
-  const previous=orderSelect.value;
-  populateSelect("icuMedicationOrder",activeOrders,o=>(patientMap.get(o.patient_id)||"Patient")+" · "+o.medicine_name+" · "+o.dose_value+" "+o.dose_unit+" · "+o.route+" · "+o.frequency,"No active ICU medication orders",previous);
-  const orderIds=activeOrders.map(o=>o.id);
-  let records=[];
-  if(orderIds.length){
-   const {data,error}=await supabaseClient.from("medication_administration_records")
-    .select("id,medication_order_id,scheduled_for,administration_status,administered_dose,administered_unit,administered_route,reason,recorded_by,recorded_at")
-    .eq("clinic_id",currentClinic.id).in("medication_order_id",orderIds)
-    .order("scheduled_for",{ascending:false}).limit(100);
-   if(error)throw error;records=data||[];
-  }
-  const orderMap=new Map(activeOrders.map(o=>[o.id,o]));
-  rows.replaceChildren();
-  if(!records.length){const tr=rows.insertRow();const td=tr.insertCell();td.colSpan=8;td.textContent="No administration outcomes recorded for active ICU medication orders.";}
-  records.forEach(record=>{
-   const order=orderMap.get(record.medication_order_id),tr=rows.insertRow();
-   [
-    fmt(record.scheduled_for),patientMap.get(order?.patient_id)||"Patient",
-    order?.medicine_name||"Medication order",
-    order?(order.dose_value+" "+order.dose_unit+" · "+order.route):"—",
-    record.administration_status,
-    record.administration_status==="administered"?(record.administered_dose+" "+record.administered_unit+" · "+record.administered_route):"—",
-    record.reason||"—",fmt(record.recorded_at)
-   ].forEach(value=>cell(tr,value));
-  });
  }
+
  async function load(){
   if(!supabaseClient||!currentClinic?.id||!currentUser?.id){message("Sign in to an authorised hospital staff account.",true);return;}
   message("Loading ICU beds, active admissions and authorised observation records...");
