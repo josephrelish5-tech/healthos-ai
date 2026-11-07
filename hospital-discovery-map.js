@@ -237,13 +237,15 @@
           {maxWidth:340,maxHeight:320,autoPan:false,closeButton:true,keepInView:false}
         );
         cluster.on("click",()=>cluster.openPopup());
+        // Cluster-card taps are handled by one document-level capture listener.
+        // This is reliable on mobile browsers where Leaflet popup scrolling and
+        // map gesture handlers can otherwise interfere with nested button clicks.
         cluster.on("popupopen",event=>{
-          event.popup.getElement()?.querySelectorAll("[data-hospital-id]").forEach(button=>{
-            button.addEventListener("click",()=>{
-              const id=button.getAttribute("data-hospital-id");
-              cluster.closePopup();
-              selectHospital(id);
-            });
+          const popupElement=event.popup.getElement();
+          if(popupElement) popupElement.querySelectorAll(".healthos-cluster-open-card").forEach(button=>{
+            button.setAttribute("aria-label","View hospital card");
+            button.style.pointerEvents="auto";
+            button.style.touchAction="manipulation";
           });
         });
         markers.push({marker:cluster,hospitalId:null});
@@ -559,6 +561,21 @@
   }
   function refresh() { if(!el("hospitalDiscoveryMap")) return; if(!map) initMap(); if(map){map.invalidateSize();drawMarkers(lastHospitals);} }
   window.HealthOSHospitalDiscovery={render,selectHospital,refresh,focusSearchLocation,locateUser,searchExternalHospitals};
+  // Capture cluster-card clicks before Leaflet's map/popup gesture handlers.
+  // Delegation also survives popup content being recreated during map interactions.
+  document.addEventListener("click",event=>{
+    const button=event.target && event.target.closest
+      ? event.target.closest(".healthos-cluster-open-card[data-hospital-id]") : null;
+    if(!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if(typeof event.stopImmediatePropagation==="function") event.stopImmediatePropagation();
+    const hospitalId=button.getAttribute("data-hospital-id");
+    const popup=button.closest(".leaflet-popup");
+    if(popup && map) map.closePopup();
+    selectHospital(hospitalId);
+  },true);
+
   document.addEventListener("DOMContentLoaded",()=>{
     const status=el("hospitalMapStatus");
     if(window.L){initMap();if(status)status.textContent="Map ready. Search an area or use GPS to show your location.";}
