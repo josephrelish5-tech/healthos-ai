@@ -3691,6 +3691,11 @@
  </div>
  <p id="patientConnectionRequestsMessage" class="message" role="status" aria-live="polite">Open this page to load requests for your active hospital.</p>
  <div class="table-wrap"><table><thead><tr><th>Requested</th><th>Patient</th><th>Phone</th><th>Country</th><th>Message</th><th>Status</th><th>Review</th></tr></thead><tbody id="patientConnectionRequestsBody"><tr><td colspan="7">Requests will appear here.</td></tr></tbody></table></div>
+ <h3 style="margin-top:28px">Patient Record Identity Match Requests</h3>
+ <p class="muted">Patients can request a link using a hospital-issued patient number. Confirm the exact number against this hospital's own patient register before matching. This identity link does not grant clinical-record access.</p>
+ <button id="refreshPatientIdentityLinkRequests" type="button" class="logout-button">Refresh identity requests</button>
+ <p id="patientIdentityLinkReviewMessage" class="message" role="status" aria-live="polite">Refresh to load identity-match requests.</p>
+ <div class="table-wrap"><table><thead><tr><th>Requested</th><th>Patient account</th><th>Patient number submitted</th><th>Matching hospital record</th><th>Patient message</th><th>Decision</th></tr></thead><tbody id="patientIdentityLinkReviewBody"><tr><td colspan="6">No requests loaded.</td></tr></tbody></table></div>
  <h3 style="margin-top:28px">Patient Appointment Requests</h3>
  <p class="muted">Review requests from patients whose hospital connection has been approved.</p>
  <div class="stats-grid"><article class="stat-card"><p>Awaiting review</p><h3 id="patientAppointmentPendingCount">—</h3></article><article class="stat-card"><p>Accepted</p><h3 id="patientAppointmentAcceptedCount">—</h3></article><article class="stat-card"><p>Rejected</p><h3 id="patientAppointmentRejectedCount">—</h3></article></div>
