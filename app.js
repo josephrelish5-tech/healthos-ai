@@ -2007,7 +2007,7 @@ window.loadPatientIdentityLinkRequests = async function loadPatientIdentityLinkR
                 .from("patients")
                 .select("id,patient_number,first_name,last_name")
                 .eq("clinic_id", currentClinic.id)
-                .ilike("patient_number", request.patient_number)
+                .eq("patient_number", request.patient_number)
                 .limit(10);
             if (matchError) throw matchError;
 
