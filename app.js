@@ -1261,7 +1261,7 @@ async function loadPatientRecordShareAccessRequests() {
     target.replaceChildren();
     const { data, error } = await supabaseClient
         .from("patient_record_share_access_requests")
-        .select("id,source_clinic_id,recipient_clinic_id,status,requested_at,patient_note")
+        .select("id,source_clinic_id,recipient_clinic_id,status,requested_at,patient_note,otp_verified_at")
         .eq("patient_user_id", currentUser.id)
         .order("requested_at", { ascending: false })
         .limit(100);
@@ -1289,6 +1289,49 @@ async function loadPatientRecordShareAccessRequests() {
         const time = document.createElement("p");
         time.textContent = "Requested: " + new Date(row.requested_at).toLocaleString();
         card.append(heading, source, status, time);
+        if (row.status === "approved") {
+            const otpStatus = document.createElement("p");
+            otpStatus.textContent = row.otp_verified_at ? "Additional phone verification completed: " + new Date(row.otp_verified_at).toLocaleString() : "Additional phone verification is required."; 
+            card.appendChild(otpStatus);
+            if (!row.otp_verified_at) {
+                const sendOtp = document.createElement("button");
+                sendOtp.type = "button"; sendOtp.className = "primary-button";
+                sendOtp.textContent = "Send verification code to my registered phone";
+                const otpInput = document.createElement("input");
+                otpInput.type = "text"; otpInput.inputMode = "numeric"; otpInput.autocomplete = "one-time-code";
+                otpInput.maxLength = 6; otpInput.placeholder = "Enter 6-digit OTP";
+                otpInput.setAttribute("aria-label", "Six-digit phone verification code");
+                const verifyOtp = document.createElement("button");
+                verifyOtp.type = "button"; verifyOtp.className = "logout-button"; verifyOtp.textContent = "Verify code";
+                const otpMessage = document.createElement("p");
+                otpMessage.className = "message"; otpMessage.setAttribute("role", "status");
+                sendOtp.addEventListener("click", async () => {
+                    sendOtp.disabled = true;
+                    try {
+                        const { data, error } = await supabaseClient.functions.invoke("healthos-patient-record-otp", { body: { action: "send", request_id: row.id } });
+                        if (error) throw error;
+                        if (data?.error) throw new Error(data.error);
+                        otpMessage.textContent = "Code sent to " + (data?.destination || "your registered phone") + ". It expires in 10 minutes."; 
+                        otpMessage.className = "message success";
+                    } catch (error) { otpMessage.textContent = friendlyError(error); otpMessage.className = "message error"; }
+                    finally { sendOtp.disabled = false; }
+                });
+                verifyOtp.addEventListener("click", async () => {
+                    const code = otpInput.value.trim();
+                    if (!/^\\d{6}$/.test(code)) { otpMessage.textContent = "Enter the six-digit code."; otpMessage.className = "message error"; return; }
+                    verifyOtp.disabled = true;
+                    try {
+                        const { data, error } = await supabaseClient.functions.invoke("healthos-patient-record-otp", { body: { action: "verify", request_id: row.id, code } });
+                        if (error) throw error;
+                        if (data?.error) throw new Error(data.error);
+                        otpMessage.textContent = data?.message || "Phone verification completed."; otpMessage.className = "message success";
+                        await loadPatientRecordShareAccessRequests();
+                    } catch (error) { otpMessage.textContent = friendlyError(error); otpMessage.className = "message error"; }
+                    finally { verifyOtp.disabled = false; }
+                });
+                card.append(sendOtp, otpInput, verifyOtp, otpMessage);
+            }
+        }
         if (row.status === "awaiting_patient_approval") {
             const approve = document.createElement("button");
             approve.type = "button"; approve.className = "primary-button"; approve.textContent = "Approve request";
