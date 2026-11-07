@@ -56,8 +56,9 @@
       items.forEach(h=>{
         const card=document.createElement("article"); card.className="hospital-discovery-card"; card.dataset.hospitalCard=h.hospital_id;
         const title=document.createElement("h3"); title.textContent=h.hospital_name||"Hospital";
-        const badge=document.createElement("span"); badge.className="hospital-verified-badge"; badge.textContent=group.key==="network"?"✓ HealthOS AI verified member":group.key==="provisional_external"?"Unverified — restricted external dataset":h.source_provider==="OpenStreetMap"?"OpenStreetMap result — not independently verified":"External listing — not independently verified";
+        const badge=document.createElement("span"); badge.className="hospital-verified-badge"; badge.textContent=group.key==="network"?"✓ HealthOS AI verified member":group.key==="provisional_external"?"Unverified — GRID3 public dataset":h.source_provider==="OpenStreetMap"?"OpenStreetMap result — not independently verified":"External listing — not independently verified";
         const address=document.createElement("p"); address.textContent=[h.address,h.local_government_area,h.city,h.state,h.country_code].filter(Boolean).join(", ")||"Address not provided";
+        if(group.key==="provisional_external" && h.public_description){const source=document.createElement("small");source.className="hospital-source-attribution";source.textContent=h.public_description;card.appendChild(source);}
         const distance=document.createElement("p"); distance.className="hospital-distance"; distance.textContent=h.distance_km==null?"Distance unavailable":Number(h.distance_km).toFixed(1)+" km away";
         const specialty=document.createElement("p"); specialty.textContent="Specialties: "+((h.specialties||[]).join(", ")||"Not listed");
         const services=document.createElement("p"); services.textContent="Services: "+((h.public_services||[]).join(", ")||"Contact hospital for details");
@@ -208,7 +209,7 @@
       const lng=group.reduce((sum,x)=>sum+x.lng,0)/group.length;
       if(group.length===1){
         const h=group[0].h,marker=L.marker([lat,lng]).addTo(map);
-        marker.bindPopup("<strong>"+escapeText(h.hospital_name)+"</strong><br>"+escapeText([h.address,h.local_government_area,h.city,h.state].filter(Boolean).join(", "))+"<br>"+(h.listing_group==="network"?"HealthOS AI verified member":h.listing_group==="provisional_external"?"Unverified — GRID3 external dataset":"External listing — not independently verified")+(h.distance_km==null?"":"<br>"+Number(h.distance_km).toFixed(1)+" km away"),{autoClose:false,closeOnClick:false,keepInView:true});
+        marker.bindPopup("<strong>"+escapeText(h.hospital_name)+"</strong><br>"+escapeText([h.address,h.local_government_area,h.city,h.state].filter(Boolean).join(", "))+"<br>"+(h.listing_group==="network"?"HealthOS AI verified member":h.listing_group==="provisional_external"?"Unverified — GRID3 public dataset":"External listing — not independently verified")+(h.distance_km==null?"":"<br>"+Number(h.distance_km).toFixed(1)+" km away")+(h.listing_group==="provisional_external"&&h.public_description?"<br><small>"+escapeText(h.public_description)+"</small>":""),{autoClose:false,closeOnClick:false,keepInView:true});
         marker.bindTooltip(escapeText(h.hospital_name||"Hospital"),{permanent:map.getZoom()>=15,direction:"top",offset:[0,-16],className:"healthos-hospital-name-label"});
         marker.on("popupopen",()=>{clearTimeout(popupCloseTimer);popupCloseTimer=setTimeout(()=>marker.closePopup(),60000);});
         marker.on("click",()=>selectHospital(h.hospital_id));
