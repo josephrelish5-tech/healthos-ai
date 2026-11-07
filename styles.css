@@ -1569,3 +1569,12 @@ body{background:var(--page);color:#183247}.topbar{background:#fff;border-bottom:
 .nursing-workspace table{min-width:720px}
 .nursing-workspace .stat-card{background:#fff}
 @media(max-width:600px){.nursing-workspace>.panel,.nursing-workspace .panel{padding:12px}.nursing-workspace .form-grid{grid-template-columns:1fr}}
+
+/* Laboratory department workspace */
+.laboratory-workspace{margin:18px 0;border:1px solid #dce5ee;border-radius:16px;background:#f8fbfe}
+.laboratory-workspace>.panel{margin:14px 0;padding:16px;border:1px solid #dce5ee;border-radius:13px;background:#fff}
+.laboratory-workspace .table-wrap{overflow-x:auto;margin-top:14px}
+.laboratory-workspace table{min-width:820px}
+.laboratory-workspace .lab-action-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.laboratory-workspace .lab-action-row button{margin:3px}
+@media(max-width:600px){.laboratory-workspace>.panel{padding:12px}.laboratory-workspace .form-grid{grid-template-columns:1fr}.laboratory-workspace .lab-action-row{display:grid;grid-template-columns:1fr}}
