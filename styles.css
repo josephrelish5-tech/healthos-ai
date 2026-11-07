@@ -1491,3 +1491,50 @@ th {
   .grid3-table-wrap table { min-width: 940px; }
   .grid3-table-wrap th, .grid3-table-wrap td { padding: 12px 10px; }
 }
+
+
+/* HEALTHOS MEDICAL SYSTEMS — approved navy / medical blue / teal identity */
+:root{--navy:#102A43;--navy-deep:#0B1F33;--medical-blue:#1769E0;--blue-soft:#EAF2FF;--page:#F4F7FA;--border:#DCE5EE;--muted:#607487;--healthos-teal:#13A89E}
+body{background:var(--page);color:#183247}.topbar{background:#fff;border-bottom:1px solid var(--border)}
+.brand-icon{background:linear-gradient(145deg,#1769E0,#13A89E);border-radius:12px}
+.primary-button{background:var(--medical-blue)}.primary-button:hover{background:#1056BF}.text-button{color:var(--medical-blue)}
+.auth-screen#authPanel{max-width:1120px;padding:clamp(18px,3vw,34px);border-color:#E0E8F0;border-radius:20px}
+.healthos-brand-hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(280px,.95fr);gap:clamp(20px,3vw,36px);align-items:center;margin:0 0 26px;padding:clamp(18px,3vw,30px);border:1px solid #DCE7F1;border-radius:20px;background:linear-gradient(125deg,#F7FAFF 0%,#EDF5FF 58%,#E8F7F5 100%);overflow:hidden}
+.healthos-brand-copy .eyebrow{color:var(--healthos-teal);font-weight:800;letter-spacing:.14em}
+.healthos-brand-copy h2{max-width:620px;margin:10px 0 14px;color:var(--navy);font-size:clamp(30px,4.3vw,52px);line-height:1.08;letter-spacing:-.04em}
+.healthos-brand-copy>p:not(.eyebrow){max-width:580px;color:#526779;font-size:clamp(15px,1.6vw,18px);line-height:1.75}
+.healthos-brand-actions{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:22px}
+.healthos-brand-actions a{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:12px 18px;text-decoration:none;border-radius:10px}
+.healthos-brand-actions span{color:#607487;font-size:12px}
+.healthos-brand-photo{min-width:0;margin:0}.healthos-brand-photo img{display:block;width:100%;height:clamp(250px,32vw,390px);object-fit:cover;object-position:center;border-radius:16px;box-shadow:0 12px 30px rgba(16,42,67,.15)}
+.healthos-brand-photo figcaption{margin-top:7px;color:#708294;font-size:10px;text-align:right}
+#authPanel>#authHeading,#authPanel>#authDescription,#authPanel>#connectionStatus,#authPanel>#authForm,#authPanel>#authMessage,#authPanel>p{max-width:520px}
+#authPanel>#authForm{width:100%}
+.public-discovery-hero{background:#F0F6FD;border-color:#D9E7F5;border-left-color:var(--medical-blue)}
+/* Replace the former black-and-gold map skin with the approved light clinical palette. */
+#hospitalMap{background:#fff!important;color:#183247!important;border:1px solid var(--border)!important}
+#hospitalMap>.panel-heading h2,#hospitalMap h3{color:var(--navy)!important}
+#hospitalMap .hospital-search-card,#hospitalMap .hospital-map-panel,#hospitalMap .hospital-cards-panel{background:#fff!important;border:1px solid var(--border)!important;color:#183247!important;box-shadow:0 8px 24px rgba(16,42,67,.05)!important}
+#hospitalMap .hospital-search-title h3,#hospitalMap .hospital-map-heading h3,#hospitalMap .hospital-cards-panel h3,#hospitalMap .hospital-discovery-card h3{color:var(--navy)!important}
+#hospitalMap .hospital-search-form label{color:#40586C!important}
+#hospitalMap .hospital-search-form input{background:#fff!important;color:#183247!important;-webkit-text-fill-color:#183247!important;border-color:#CBD8E5!important}
+#hospitalMap .hospital-search-actions .primary-button,#hospitalMap .hospital-card-actions .primary-button{background:var(--medical-blue)!important;color:#fff!important;border-color:var(--medical-blue)!important}
+#hospitalMap .hospital-search-actions .secondary-button,#hospitalMap .hospital-card-actions .secondary-button,#hospitalMap .healthos-map-locate{background:#fff!important;color:var(--navy)!important;border:1px solid #CBD8E5!important}
+#hospitalMap .hospital-view-switch{background:#F1F6FB!important;border-color:#DCE5EE!important}
+#hospitalMap .hospital-view-switch button{color:#40586C!important}
+#hospitalMap .hospital-view-switch button.is-active{background:var(--medical-blue)!important;color:#fff!important}
+#hospitalMap .hospital-map-heading span,#hospitalMap .hospital-verified-badge{background:#E8F7F0!important;color:#176B45!important;border-color:#C6E9D7!important}
+#hospitalMap .hospital-discovery-card{background:#fff!important;border-color:var(--border)!important;color:#183247!important}
+#hospitalMap .hospital-discovery-card p{color:#607487!important}
+#hospitalMap .hospital-card-selected{border-color:var(--medical-blue)!important;background:#F2F7FF!important}
+#hospitalMap .hospital-distance{color:var(--medical-blue)!important}
+#hospitalMap .hospital-map-empty,#hospitalMap .public-discovery-note{background:#F6F9FC!important;color:#526779!important;border-color:#DCE5EE!important}
+#hospitalMap .leaflet-popup-content-wrapper,#hospitalMap .leaflet-popup-tip{background:#fff!important;color:#183247!important}
+#hospitalMap .leaflet-control-zoom a{background:#fff!important;color:var(--navy)!important;border-color:#DCE5EE!important}
+#hospitalMap .leaflet-control-attribution{background:rgba(255,255,255,.9)!important;color:#526779!important}
+#hospitalMap .leaflet-control-attribution a{color:var(--medical-blue)!important}
+#hospitalMap .hospital-radius-control{color:var(--navy)!important}
+#hospitalMap .hospital-radius-control select{background:#fff!important;color:var(--navy)!important;border-color:#CBD8E5!important}
+#hospitalMap .healthos-hospital-cluster{background:var(--navy)!important;border-color:#fff!important;box-shadow:0 2px 10px rgba(16,42,67,.3)!important}
+#hospitalMap .healthos-cluster-list li{color:#40586C!important}
+@media(max-width:760px){.healthos-brand-hero{grid-template-columns:1fr}.healthos-brand-copy h2{font-size:clamp(30px,8vw,42px)}.healthos-brand-photo img{height:260px}.healthos-brand-actions{align-items:stretch}.healthos-brand-actions a{width:100%}.auth-screen#authPanel{margin:14px 10px;padding:14px}}
