@@ -13149,6 +13149,85 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
 })();
 
 
+// ICU workspace: read-only integration with existing clinic-scoped admissions, beds and observations.
+(function initICUWorkspace(){
+ const $=id=>document.getElementById(id);
+ const message=(text,isError=false)=>{const el=$("icuWorkspaceMessage");if(el){el.textContent=text;el.className="message"+(isError?" error":" success");}};
+ const put=(id,value)=>{const el=$(id);if(el)el.textContent=String(value??"—");};
+ const cell=(row,value)=>{const td=row.insertCell();td.textContent=String(value??"—");return td;};
+ const fmt=value=>value?new Date(value).toLocaleString():"—";
+ const vitalSummary=v=>[
+  v.temperature_c==null?null:"Temp "+v.temperature_c+" °C",
+  v.systolic_bp==null&&v.diastolic_bp==null?null:"BP "+(v.systolic_bp??"—")+"/"+(v.diastolic_bp??"—"),
+  v.pulse_bpm==null?null:"Pulse "+v.pulse_bpm,
+  v.oxygen_saturation==null?null:"SpO₂ "+v.oxygen_saturation+"%"
+ ].filter(Boolean).join(" · ")||"No observation recorded";
+ async function load(){
+  if(!supabaseClient||!currentClinic?.id||!currentUser?.id){message("Sign in to an authorised hospital staff account.",true);return;}
+  message("Loading ICU beds, active admissions and authorised observation records...");
+  const button=$("icuRefreshButton");if(button)button.disabled=true;
+  try{
+   const clinicId=currentClinic.id;
+   const [bedResult,admissionResult,patientResult]=await Promise.all([
+    supabaseClient.from("hospital_beds").select("id,bed_number,ward_name,bed_type,status").eq("clinic_id",clinicId).limit(1000),
+    supabaseClient.from("patient_admissions").select("id,patient_id,bed_id,admission_number,admitted_at,status").eq("clinic_id",clinicId).eq("status","admitted").order("admitted_at",{ascending:false}).limit(1000),
+    supabaseClient.from("patients").select("id,patient_number,first_name,last_name").eq("clinic_id",clinicId).limit(1000)
+   ]);
+   for(const result of [bedResult,admissionResult,patientResult])if(result.error)throw result.error;
+   const isICU=bed=>/\bicu\b|intensive\s*care/i.test([bed.ward_name,bed.bed_type].filter(Boolean).join(" "));
+   const icuBeds=(bedResult.data||[]).filter(isICU);
+   const bedMap=new Map(icuBeds.map(b=>[b.id,b]));
+   const admissions=(admissionResult.data||[]).filter(a=>a.bed_id&&bedMap.has(a.bed_id));
+   const patientMap=new Map((patientResult.data||[]).map(p=>[p.id,[p.patient_number,p.first_name,p.last_name].filter(Boolean).join(" · ")||"Patient"]));
+   put("icuTotalBeds",icuBeds.length);
+   put("icuOccupiedBeds",icuBeds.filter(b=>b.status==="occupied").length);
+   put("icuAvailableBeds",icuBeds.filter(b=>b.status==="available").length);
+   put("icuActiveAdmissions",admissions.length);
+   const patientIds=[...new Set(admissions.map(a=>a.patient_id))];
+   let vitals=[];
+   if(patientIds.length){
+    const {data,error}=await supabaseClient.from("patient_vitals")
+     .select("id,patient_id,temperature_c,systolic_bp,diastolic_bp,pulse_bpm,respiratory_rate,oxygen_saturation,recorded_by,recorded_at")
+     .eq("clinic_id",clinicId).in("patient_id",patientIds).order("recorded_at",{ascending:false}).limit(500);
+    if(error)throw error;
+    vitals=data||[];
+   }
+   const latest=new Map();
+   vitals.forEach(v=>{if(!latest.has(v.patient_id))latest.set(v.patient_id,v);});
+   const staffIds=[...new Set(vitals.map(v=>v.recorded_by).filter(Boolean))];
+   let staffNames=new Map();
+   if(staffIds.length){
+    const staffResult=await supabaseClient.from("staff_profiles").select("user_id,full_name").eq("clinic_id",clinicId).in("user_id",staffIds);
+    if(!staffResult.error)staffNames=new Map((staffResult.data||[]).map(s=>[s.user_id,s.full_name]));
+   }
+   const admissionRows=$("icuAdmissionsRows");admissionRows.replaceChildren();
+   if(!admissions.length){const tr=admissionRows.insertRow();const td=tr.insertCell();td.colSpan=6;td.textContent=icuBeds.length?"No active admissions are linked to configured ICU beds.":"No beds labelled ICU or Intensive Care are configured in the bed register.";}
+   admissions.forEach(a=>{
+    const bed=bedMap.get(a.bed_id),v=latest.get(a.patient_id),tr=admissionRows.insertRow();
+    [patientMap.get(a.patient_id)||"Patient record",a.admission_number,bed?.bed_number,bed?.ward_name,fmt(a.admitted_at),v?vitalSummary(v):"No observation recorded"].forEach(value=>cell(tr,value));
+   });
+   const vitalsRows=$("icuVitalsRows");vitalsRows.replaceChildren();
+   if(!vitals.length){const tr=vitalsRows.insertRow();const td=tr.insertCell();td.colSpan=8;td.textContent="No observations are available for current ICU admissions in the authorised clinical-record scope.";}
+   vitals.slice(0,100).forEach(v=>{
+    const tr=vitalsRows.insertRow();
+    [fmt(v.recorded_at),patientMap.get(v.patient_id)||"Patient record",v.temperature_c==null?"—":v.temperature_c+" °C",
+     v.systolic_bp==null&&v.diastolic_bp==null?"—":(v.systolic_bp??"—")+"/"+(v.diastolic_bp??"—"),
+     v.pulse_bpm==null?"—":v.pulse_bpm,v.respiratory_rate==null?"—":v.respiratory_rate,
+     v.oxygen_saturation==null?"—":v.oxygen_saturation+"%",staffNames.get(v.recorded_by)||"Authorised staff account"].forEach(value=>cell(tr,value));
+   });
+   message("ICU overview refreshed from existing hospital records. This release is read-only; bed assignment, ICU treatment charts, ventilator feeds and medication administration are not enabled here.");
+  }catch(error){
+   console.error("ICU workspace load failed",error);
+   message(error.message||"Unable to load ICU records. Check clinic membership and bed-management / clinical-record permissions.",true);
+  }finally{if(button)button.disabled=false;}
+ }
+ $("icuRefreshButton")?.addEventListener("click",()=>void load());
+ document.querySelectorAll('.sidebar .nav-item').forEach(link=>link.addEventListener("click",()=>{
+  if((link.getAttribute("href")||"")==="#staffWorkspace")void load();
+ }));
+ window.loadHealthOSICUWorkspace=load;
+})();
+
 // Laboratory workspace: actions are routed through the existing audited database RPCs.
 (function initLaboratoryWorkspace(){
  const $=id=>document.getElementById(id);
