@@ -13208,5 +13208,61 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
  $("labRejectButton")?.addEventListener("click",()=>{const reason=$("labRejectReason").value.trim();if(!reason){message("A rejection reason is required.",true);return;}void barcodeAction($("labRejectButton"),"laboratory_reject_specimen",{p_reason:reason},"Specimen rejected with a recorded reason.");});
  $("labResultForm")?.addEventListener("submit",async ev=>{ev.preventDefault();const barcode=$("labResultSpecimen").value;if(!barcode){message("Select a specimen currently in processing.",true);return;}let data;try{data=JSON.parse($("labResultData").value);}catch{message("Result data must be valid JSON.",true);return;}if(!data||Array.isArray(data)||typeof data!=="object"||!Object.keys(data).length){message("Enter a non-empty JSON object for the result.",true);return;}const critical=$("labIsCritical").checked;const note=$("labCriticalNote").value.trim();if(critical&&!note){message("Critical results require an escalation note.",true);return;}await runAction($("labSubmitResultButton"),()=>call("laboratory_submit_result",{p_barcode:barcode,p_result_data:data,p_interpretation:$("labInterpretation").value.trim()||null,p_result_notes:$("labResultNotes").value.trim()||null,p_is_critical:critical,p_critical_note:note||null}),"Result submitted for independent validation.");$("labResultForm").reset();});
  document.querySelectorAll(".sidebar .nav-item").forEach(link=>link.addEventListener("click",()=>{if((link.getAttribute("href")||"")==="#staffWorkspace")void load();}));
- window.loadHealthOSLaboratoryWorkspace=load;
+ 
+window.loadHealthOSLaboratoryWorkspace=load;
+})();
+
+// Radiology workspace: clinic-scoped data and server-enforced workflow permissions.
+(function initRadiologyWorkspace(){
+ const $=id=>document.getElementById(id);
+ const msg=(s,e=false)=>{const el=$("radiologyMessage");if(el){el.textContent=s;el.className="message"+(e?" error":" success");}};
+ const rpc=async(name,args)=>{const {data,error}=await supabaseClient.rpc(name,args);if(error)throw error;return data;};
+ let requests=[],reports=[],patients=[];
+ const cell=(tr,v)=>{const td=tr.insertCell();td.textContent=String(v??"—");return td;};
+ async function load(){
+  if(!supabaseClient||!currentClinic?.id||!currentUser?.id){msg("Sign in to an authorised hospital staff account.",true);return;}
+  msg("Loading radiology worklist...");
+  try{
+   const clinic=currentClinic.id;
+   const [r,p,t]=await Promise.all([
+    supabaseClient.from("radiology_imaging_requests").select("id,patient_id,request_reference,modality,body_region,priority,status,requested_by,created_at,accession_number").eq("clinic_id",clinic).order("created_at",{ascending:false}).limit(300),
+    supabaseClient.from("patients").select("id,patient_number,first_name,last_name").eq("clinic_id",clinic).limit(500),
+    supabaseClient.from("radiology_reports").select("id,request_id,findings,impression,critical_finding,status,entered_by,verified_by").eq("clinic_id",clinic).order("created_at",{ascending:false}).limit(300)
+   ]);
+   for(const x of [r,p,t])if(x.error)throw x.error;
+   requests=r.data||[];patients=p.data||[];reports=t.data||[];
+   const names=new Map(patients.map(x=>[x.id,[x.patient_number,x.first_name,x.last_name].filter(Boolean).join(" · ")]));
+   $("radPending").textContent=requests.filter(x=>x.status==="requested").length;
+   $("radActive").textContent=requests.filter(x=>["authorised","scheduled","in_progress"].includes(x.status)).length;
+   $("radVerify").textContent=reports.filter(x=>x.status==="submitted").length;
+   $("radCritical").textContent=reports.filter(x=>x.critical_finding&&x.status!=="released").length;
+   const ps=$("radPatient"),old=ps.value;ps.replaceChildren(new Option("Select patient",""));patients.forEach(x=>ps.add(new Option(names.get(x.id),x.id)));if(patients.some(x=>x.id===old))ps.value=old;
+   const body=$("radRequestsRows");body.replaceChildren();
+   if(!requests.length){const tr=body.insertRow();const td=tr.insertCell();td.colSpan=7;td.textContent="No imaging requests recorded.";}
+   requests.forEach(x=>{const tr=body.insertRow();[x.request_reference,names.get(x.patient_id)||"Patient",x.modality,x.body_region,x.priority,x.status].forEach(v=>cell(tr,v));const td=tr.insertCell();
+    const button=(label,action,args)=>{const b=document.createElement("button");b.type="button";b.className="secondary-button";b.textContent=label;b.addEventListener("click",()=>act(b,()=>rpc(action,args),label+" completed."));td.appendChild(b);};
+    if(x.status==="requested"&&x.requested_by!==currentUser.id)button("Authorise","radiology_authorise_request",{p_request_id:x.id});
+    if(x.status==="authorised")button("Schedule","radiology_update_workflow",{p_request_id:x.id,p_action:"schedule",p_accession:null});
+    if(x.status==="scheduled")button("Start study","radiology_update_workflow",{p_request_id:x.id,p_action:"start",p_accession:null});
+    if(x.status==="in_progress"){const accession=prompt("Enter the imaging accession / study reference:");if(accession&&accession.trim())button("Complete study","radiology_update_workflow",{p_request_id:x.id,p_action:"complete",p_accession:accession.trim()});}
+    if(!td.childNodes.length)td.textContent="—";
+   });
+   const sel=$("radReportRequest"),oldReq=sel.value;sel.replaceChildren(new Option("Select completed study",""));requests.filter(x=>x.status==="study_completed").forEach(x=>sel.add(new Option(x.request_reference+" · "+x.modality,x.id)));if(requests.some(x=>x.id===oldReq&&x.status==="study_completed"))sel.value=oldReq;
+   const rb=$("radReportsRows");rb.replaceChildren();
+   if(!reports.length){const tr=rb.insertRow();const td=tr.insertCell();td.colSpan=5;td.textContent="No radiology reports recorded.";}
+   reports.forEach(x=>{const tr=rb.insertRow();[requests.find(r=>r.id===x.request_id)?.request_reference||"Request",x.impression,x.critical_finding?"YES":"No",x.status].forEach(v=>cell(tr,v));const td=tr.insertCell();
+    const b=document.createElement("button");b.type="button";b.className="primary-button";
+    if(x.status==="submitted"&&x.entered_by!==currentUser.id){b.textContent="Verify";b.addEventListener("click",()=>act(b,()=>rpc("radiology_verify_report",{p_report_id:x.id}),"Report verified."));td.appendChild(b);}
+    else if(x.status==="verified"&&x.verified_by!==currentUser.id){b.textContent="Release";b.addEventListener("click",()=>{if(confirm("Release this verified report to the clinical workflow?"))act(b,()=>rpc("radiology_release_report",{p_report_id:x.id}),"Report released.");});td.appendChild(b);}
+    else td.textContent="—";
+   });
+   msg("Radiology worklist loaded. All workflow actions are permission-checked and audited in the database.");
+  }catch(e){console.error("Radiology workspace",e);msg(e.message||"Could not load radiology workspace.",true);}
+ }
+ async function act(b,fn,success){b.disabled=true;try{await fn();msg(success);await load();}catch(e){msg(e.message||"Action failed.",true);b.disabled=false;}}
+ $("radiologyRefreshButton")?.addEventListener("click",()=>void load());
+ $("radRequestForm")?.addEventListener("submit",async ev=>{ev.preventDefault();const b=$("radCreateButton");await act(b,async()=>{const encounter=$("radEncounter").value.trim()||null;if(encounter&&!/^[0-9a-f-]{36}$/i.test(encounter))throw new Error("Encounter ID must be a valid UUID.");await rpc("radiology_create_request",{p_clinic_id:currentClinic.id,p_patient_id:$("radPatient").value,p_encounter_id:encounter,p_modality:$("radModality").value,p_body_region:$("radBodyRegion").value.trim(),p_indication:$("radIndication").value.trim(),p_priority:$("radPriority").value});$("radRequestForm").reset();},"Imaging request submitted.");});
+ $("radReportForm")?.addEventListener("submit",async ev=>{ev.preventDefault();const critical=$("radCritical").value==="true",note=$("radCriticalNote").value.trim();if(critical&&!note){msg("Critical findings require an escalation note.",true);return;}const b=$("radSubmitReport");await act(b,async()=>{await rpc("radiology_submit_report",{p_request_id:$("radReportRequest").value,p_findings:$("radFindings").value.trim(),p_impression:$("radImpression").value.trim(),p_critical:critical,p_critical_note:note||null});$("radReportForm").reset();},"Report submitted for independent verification.");});
+ document.querySelectorAll(".sidebar .nav-item").forEach(a=>a.addEventListener("click",()=>{if((a.getAttribute("href")||"")==="#staffWorkspace")void load();}));
+ window.loadHealthOSRadiologyWorkspace=load;
 })();
