@@ -1409,8 +1409,16 @@ th {
 }
 #hospitalMap .hospital-search-title h3{color:#f2df9c}
 #hospitalMap .hospital-search-form label{color:#e8dfbd}
-#hospitalMap .hospital-search-form input{background:#1b1c16;color:#fff4d2;border:1px solid #51472a;border-radius:10px}
-#hospitalMap .hospital-search-form input::placeholder{color:#9e9987}
+/* Keep entered search text clearly readable on mobile: black text on white fields. */
+#hospitalMap .hospital-search-form input{
+  background:#fff!important;
+  color:#111!important;
+  -webkit-text-fill-color:#111!important;
+  caret-color:#111;
+  border:1px solid #b8b8b8;
+  border-radius:10px;
+}
+#hospitalMap .hospital-search-form input::placeholder{color:#666!important;opacity:1}
 #hospitalMap .hospital-search-actions .primary-button,#hospitalMap .hospital-card-actions .primary-button{background:#d9bd78;color:#19170f;border:1px solid #ead49a}
 #hospitalMap .hospital-search-actions .secondary-button,#hospitalMap .hospital-card-actions .secondary-button,#hospitalMap .healthos-map-locate{background:#202118;color:#f2df9c;border:1px solid #8f7944}
 #hospitalMap .hospital-nearby-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 2px 12px;color:#f2df9c}
