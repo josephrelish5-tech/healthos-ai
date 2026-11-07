@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#111111">
-    <title>HealthOS AI | Healthcare Intelligence</title>
-    <link rel="stylesheet" href="styles.css?v=20261107-black-search-text">
+    <meta name="theme-color" content="#102A43">
+    <title>HealthOS Medical Systems | Hospital Management Software</title>
+    <link rel="stylesheet" href="styles.css?v=20261107-healthos-brand-v1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -196,8 +196,8 @@
         <div class="brand">
             <div class="brand-icon">H</div>
             <div>
-                <h1>HealthOS AI</h1>
-                <p>Healthcare Intelligence Platform</p>
+                <h1>HealthOS Medical Systems</h1>
+                <p>Connected care. Smarter hospitals.</p>
             </div>
         </div>
         <div class="user-info">
@@ -216,15 +216,30 @@
 
     <main>
         <section id="authPanel" class="auth-screen">
+            <section class="healthos-brand-hero" aria-labelledby="healthosBrandHeadline">
+                <div class="healthos-brand-copy">
+                    <p class="eyebrow">HEALTHOS MEDICAL SYSTEMS</p>
+                    <h2 id="healthosBrandHeadline">Nigeria's most trusted hospital management software.</h2>
+                    <p>One intelligent platform connecting hospitals, healthcare professionals, patients and hospital operations — built for how Nigerian hospitals actually work.</p>
+                    <div class="healthos-brand-actions">
+                        <a class="primary-button" href="#publicDiscoveryHeading">Explore hospital discovery</a>
+                        <span>Designed around people. Built for better care.</span>
+                    </div>
+                </div>
+                <figure class="healthos-brand-photo">
+                    <img src="https://images.pexels.com/photos/6303645/pexels-photo-6303645.jpeg?cs=srgb&amp;dl=pexels-klaus-nielsen-6303645.jpg&amp;fm=jpg" alt="A healthcare professional speaking with a patient in a hospital" loading="eager" fetchpriority="high">
+                    <figcaption>Real healthcare photography · Photo: Klaus Nielsen / Pexels</figcaption>
+                </figure>
+            </section>
             <section class="public-discovery-hero" aria-labelledby="publicDiscoveryHeading">
                 <p class="eyebrow">PATIENTS · FAMILIES · VISITORS</p>
                 <h2 id="publicDiscoveryHeading">Find the right hospital before you travel.</h2>
                 <p>Find HealthOS AI member hospitals and external public hospital listings by location. External listings are clearly labelled as not independently verified. Search and get directions without signing in.</p>
                 <button id="openPublicHospitalDiscoveryButton" class="primary-button" type="button" onclick="window.openHealthOSHospitalDiscovery()">⌖ Find Hospitals & View Map</button>
             </section>
-            <h2 id="authHeading">Welcome to HealthOS AI</h2>
+            <h2 id="authHeading">Welcome to HealthOS Medical Systems</h2>
             <p id="authDescription">
-                Sign in to access your healthcare operations workspace.
+                Sign in to access your secure hospital workspace.
             </p>
             <span class="connection-label" id="connectionStatus">
                 Checking connection...
@@ -315,7 +330,7 @@
             </div>
             <div class="panel-heading">
                 <div>
-                    <p class="eyebrow">HEALTHOS AI · PATIENT ACCESS</p>
+                    <p class="eyebrow">HEALTHOS MEDICAL SYSTEMS · PATIENT ACCESS</p>
                     <h2>Healthcare, connected.</h2>
                     <p>Find verified hospitals, request a connection, and manage your healthcare access.</p>
                 </div>
