@@ -13120,7 +13120,48 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    const taskList=$("nursingTasksList");taskList.replaceChildren();
    const tasks=Array.isArray(t.data?.tasks)?t.data.tasks:[];
    if(!tasks.length){const p=document.createElement("p");p.className="muted";p.textContent="No active assigned staff tasks were returned.";taskList.append(p);}
-   tasks.forEach(x=>{const card=document.createElement("article");card.className="stat-card";const title=document.createElement("h4");title.textContent=x.task_title||"Staff task";const meta=document.createElement("p");meta.textContent=(x.priority||"normal").toUpperCase()+" · "+String(x.task_status||"").replaceAll("_"," ")+" · "+(x.due_at?new Date(x.due_at).toLocaleString():"No deadline");const desc=document.createElement("p");desc.textContent=x.task_description||"No further instructions.";card.append(title,meta,desc);taskList.append(card);});
+   tasks.forEach(x=>{
+    const card=document.createElement("article");card.className="stat-card";
+    const title=document.createElement("h4");title.textContent=x.task_title||"Staff task";
+    const meta=document.createElement("p");meta.textContent=(x.priority||"normal").toUpperCase()+" · "+String(x.task_status||"").replaceAll("_"," ")+" · "+(x.due_at?new Date(x.due_at).toLocaleString():"No deadline");
+    const desc=document.createElement("p");desc.textContent=x.task_description||"No further instructions.";
+    const evidenceInfo=document.createElement("p");evidenceInfo.className="muted";evidenceInfo.textContent="Evidence recorded: "+(x.evidence_count||0)+(x.requires_evidence?" · Evidence required before submission":"");
+    card.append(title,meta,desc,evidenceInfo);
+    const evidenceBox=document.createElement("textarea");evidenceBox.rows=2;evidenceBox.maxLength=5000;evidenceBox.placeholder="Record task evidence, action taken or completion reference";
+    const evidenceButton=document.createElement("button");evidenceButton.type="button";evidenceButton.className="secondary-button";evidenceButton.textContent="Save evidence";
+    evidenceButton.addEventListener("click",async()=>{
+     const note=evidenceBox.value.trim();if(note.length<3){setMessage("Enter at least 3 characters of task evidence.",true);return;}
+     evidenceButton.disabled=true;
+     const {error}=await supabaseClient.rpc("add_my_staff_task_evidence",{p_clinic_id:currentClinic.id,p_task_id:x.id,p_evidence_type:"note",p_evidence_text:note,p_source_reference:null});
+     if(error){setMessage(error.message,true);evidenceButton.disabled=false;return;}
+     setMessage("Task evidence saved with your staff identity and timestamp.");await load();
+    });
+    card.append(evidenceBox,evidenceButton);
+    const actions=document.createElement("div");actions.style.display="flex";actions.style.flexWrap="wrap";actions.style.gap="8px";
+    const addAction=(status,label)=>{
+     const action=document.createElement("button");action.type="button";action.className="secondary-button";action.textContent=label;
+     action.addEventListener("click",async()=>{
+      let notes=null;if(status==="blocked"){notes=prompt("Explain why this task is blocked:");if(!notes||notes.trim().length<3){setMessage("A reason is required to mark a task blocked.",true);return;}}
+      if(status==="submitted"&&!confirm("Submit this task for supervisor review?"))return;
+      action.disabled=true;
+      const {error}=await supabaseClient.rpc("update_my_staff_task_status",{p_clinic_id:currentClinic.id,p_task_id:x.id,p_new_status:status,p_notes:notes});
+      if(error){setMessage(error.message,true);action.disabled=false;return;}
+      setMessage("Task status updated. The action and staff identity were recorded.");await load();
+     });
+     actions.append(action);
+    };
+    if(x.task_status==="assigned")addAction("accepted","Accept task");
+    if(["assigned","accepted"].includes(x.task_status))addAction("in_progress","Start task");
+    if(["accepted","in_progress"].includes(x.task_status))addAction("blocked","Report blocked");
+    if(["accepted","in_progress","blocked"].includes(x.task_status))addAction("submitted","Submit for review");
+    if(actions.childNodes.length)card.append(actions);
+    if(Array.isArray(x.evidence)&&x.evidence.length){
+     const evidenceList=document.createElement("details");const summary=document.createElement("summary");summary.textContent="View saved evidence";evidenceList.append(summary);
+     x.evidence.forEach(ev=>{const p=document.createElement("p");p.textContent=(ev.evidence_text||ev.source_reference||ev.evidence_type)+" · "+new Date(ev.captured_at||ev.created_at).toLocaleString();evidenceList.append(p);});
+     card.append(evidenceList);
+    }
+    taskList.append(card);
+   });
    setMessage("Nursing workspace refreshed. Patient and handover data shown only when the database authorises access.");
   }catch(err){console.error("Nursing workspace load failed",err);setMessage(err.message||"Unable to load nursing workspace. Check your active department assignment and clinical-record permissions.",true);}
  }
