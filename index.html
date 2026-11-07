@@ -360,6 +360,23 @@
                 <p id="patientProfileMessage" class="message" role="status" aria-live="polite"></p>
                 <h3>My hospital connection requests</h3>
                 <div id="patientHospitalLinks" class="stats-grid"><p class="muted">No requests loaded.</p></div>
+                <h3>Link my hospital patient record</h3>
+                <p class="muted">If you already have a patient number at a connected hospital, request a secure identity match. The hospital must confirm that number against its own record. This does not automatically grant access to your medical records.</p>
+                <form id="patientIdentityLinkForm" class="auth-form">
+                    <label>Connected hospital
+                        <select id="patientIdentityClinic" required><option value="">Loading connected hospitals...</option></select>
+                    </label>
+                    <label>Hospital patient number
+                        <input id="patientIdentityNumber" type="text" minlength="2" maxlength="60" required placeholder="Enter the patient number issued by the hospital">
+                    </label>
+                    <label>Message to the hospital (optional)
+                        <textarea id="patientIdentityMessage" maxlength="500" rows="2" placeholder="Optional details to help the hospital identify your record"></textarea>
+                    </label>
+                    <label class="checkbox-label"><input id="patientIdentityConsent" type="checkbox" required> I consent to this hospital checking the patient number I provided and linking the matching hospital record to my HealthOS patient account.</label>
+                    <button id="patientIdentitySubmit" class="primary-button" type="submit">Request identity match</button>
+                </form>
+                <p id="patientIdentityMessageStatus" class="message" role="status" aria-live="polite"></p>
+                <div id="patientIdentityRequests" class="stats-grid"><p class="muted">No identity-link requests loaded.</p></div>
                 <h3>Book an appointment</h3>
                 <p class="muted">Requests can be sent only to hospitals that have approved your connection. The hospital must confirm the requested time.</p>
                 <form id="patientAppointmentForm" class="auth-form">
