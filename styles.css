@@ -1538,3 +1538,11 @@ body{background:var(--page);color:#183247}.topbar{background:#fff;border-bottom:
 #hospitalMap .healthos-hospital-cluster{background:var(--navy)!important;border-color:#fff!important;box-shadow:0 2px 10px rgba(16,42,67,.3)!important}
 #hospitalMap .healthos-cluster-list li{color:#40586C!important}
 @media(max-width:760px){.healthos-brand-hero{grid-template-columns:1fr}.healthos-brand-copy h2{font-size:clamp(30px,8vw,42px)}.healthos-brand-photo img{height:260px}.healthos-brand-actions{align-items:stretch}.healthos-brand-actions a{width:100%}.auth-screen#authPanel{margin:14px 10px;padding:14px}}
+
+
+/* Human-centred photography across primary HealthOS workspaces */
+.healthos-section-photo{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;margin:0 0 20px;overflow:hidden;border:1px solid #DCE5EE;border-radius:15px;background:#F4F8FC}
+.healthos-section-photo img{display:block;width:100%;height:clamp(145px,22vw,235px);object-fit:cover;object-position:center}
+.healthos-section-photo figcaption{padding:0 13px 10px;color:#607487;font-size:11px;line-height:1.4}
+#patientPortal .healthos-section-photo,#staffWorkspace .healthos-section-photo{margin-bottom:18px}
+@media(max-width:600px){.healthos-section-photo{border-radius:12px}.healthos-section-photo img{height:165px}}
