@@ -241,8 +241,8 @@ function setMode(signUp) {
     isSignUpMode = signUp;
 
     authHeading.textContent = signUp
-        ? "Create your HealthOS AI account"
-        : "Welcome to HealthOS AI";
+        ? "Create your HealthOS account"
+        : "Welcome to HealthOS";
 
     authDescription.textContent = signUp
         ? "Create an account to begin setting up your clinic workspace."
@@ -261,7 +261,7 @@ function setMode(signUp) {
 
     authModeText.textContent = signUp
         ? "Already have an account?"
-        : "New to HealthOS AI?";
+        : "New to HealthOS?";
 
     authModeToggle.textContent = signUp
         ? "Sign in"
@@ -1884,7 +1884,7 @@ if (searchHospitalsButton) searchHospitalsButton.addEventListener("click", async
         const networkCount = hospitals.filter(h => h.listing_group === "network").length;
         const provisionalCount = hospitals.filter(h => h.listing_group === "provisional_external").length;
         const externalCount = hospitals.filter(h => h.listing_group === "other").length;
-        message.textContent = networkCount + " verified HealthOS AI network hospital(s), "
+        message.textContent = networkCount + " verified HealthOS network hospital(s), "
             + provisionalCount + " unverified GRID3 facility record(s), and "
             + externalCount + " other external listing(s) found"
             + (hasGps ? " from your live-location search." : ". Unverified records are clearly labelled and are not HealthOS-verified hospitals.");
@@ -11193,9 +11193,9 @@ if (refreshAppointmentsButton) {
    $c("scribeEditedNote").value=data.draft_note;
    $c("scribeSourceType").value="approved_transcription_service";
    $c("scribeReviewConfirm").checked=false;
-   audioStatus("Transcript and AI note draft prepared. Listen/read the source, correct the transcript and personally edit the note before saving.");
-   scribeMessage("AI-assisted draft prepared for clinician review only. Nothing has been signed or added to the medical record.");
-  }catch(error){audioStatus("Secure transcription failed. No audio was saved in HealthOS AI. Please try again or enter an approved transcript manually.");}
+   audioStatus("Transcript and note draft prepared. Listen/read the source, correct the transcript and personally edit the note before saving.");
+   scribeMessage("Draft prepared for clinician review only. Nothing has been signed or added to the medical record.");
+  }catch(error){audioStatus("Secure transcription failed. No audio was saved in HealthOS. Please try again or enter an approved transcript manually.");}
   finally{button.disabled=false;}
  });
 
