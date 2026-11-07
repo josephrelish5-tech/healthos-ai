@@ -144,7 +144,10 @@ function showHealthOSView(viewId) {
     if (viewId === "ussdDiagnostics" && typeof window.loadUssdDiagnosticRequests === "function") window.loadUssdDiagnosticRequests().catch(error => console.error("USSD diagnostic requests refresh failed:", error));
     if (viewId === "ussdDiagnostics" && typeof window.loadUssdCareRequests === "function") window.loadUssdCareRequests().catch(error => console.error("USSD care request inbox refresh failed:", error));
     if (viewId === "multiFacilityManagement" && typeof window.loadMultiFacilityManagement === "function") window.loadMultiFacilityManagement().catch(error => console.error("Multi-facility workspace refresh failed:", error));
-    if (viewId === "patientConnectionRequests" && typeof window.loadPatientConnectionRequests === "function") window.loadPatientConnectionRequests().catch(error => console.error("Patient connection requests refresh failed:", error));
+    if (viewId === "patientConnectionRequests") {
+        window.loadPatientConnectionRequests?.().catch(error => console.error("Patient connection requests refresh failed:", error));
+        window.loadPatientIdentityLinkRequests?.().catch(error => console.error("Patient identity-link requests refresh failed:", error));
+    }
     if (viewId === "globalReferrals") { loadGlobalReferralOptions().catch(error => { const m=document.getElementById("globalReferralMessage"); if(m){m.textContent=friendlyError(error);m.className="message error";} }); loadGlobalReferralInbox(); }
     if (viewId === "internationalPayments" && currentClinic && managementVerified) loadInternationalPaymentWorkspace(currentClinic).catch(error => console.error("International payment workspace failed:",error));
     if (viewId === "telemedicineDashboard" && typeof loadTelemedicineDashboard === "function") loadTelemedicineDashboard();
@@ -1937,6 +1940,178 @@ window.loadPatientConnectionRequests = async function loadPatientConnectionReque
 };
 document.getElementById("refreshPatientConnectionRequests")?.addEventListener("click", () => {
     window.loadPatientConnectionRequests?.();
+});
+
+window.loadPatientIdentityLinkRequests = async function loadPatientIdentityLinkRequests() {
+    const body = document.getElementById("patientIdentityLinkReviewBody");
+    const message = document.getElementById("patientIdentityLinkReviewMessage");
+    if (!body || !message) return;
+    if (!supabaseClient || !currentUser || !currentClinic) {
+        message.textContent = "Sign in to an active hospital workspace first.";
+        message.className = "message error";
+        return;
+    }
+    body.replaceChildren();
+    message.textContent = "Loading patient identity-match requests...";
+    message.className = "message";
+    try {
+        const { data: requests, error } = await supabaseClient
+            .from("healthos_patient_record_identity_requests")
+            .select("id,patient_user_id,patient_number,patient_message,status,requested_at")
+            .eq("clinic_id", currentClinic.id)
+            .order("requested_at", { ascending: false })
+            .limit(200);
+        if (error) throw error;
+        const rows = requests || [];
+        if (!rows.length) {
+            const tr = body.insertRow(), td = tr.insertCell();
+            td.colSpan = 6;
+            td.textContent = "No patient identity-match requests have been received.";
+            message.textContent = "Identity request queue loaded.";
+            message.className = "message success";
+            return;
+        }
+
+        const userIds = [...new Set(rows.map(row => row.patient_user_id))];
+        const { data: profiles, error: profileError } = await supabaseClient
+            .from("healthos_patient_profiles")
+            .select("user_id,full_name,phone_e164")
+            .in("user_id", userIds);
+        if (profileError) throw profileError;
+        const profileMap = new Map((profiles || []).map(profile => [profile.user_id, profile]));
+
+        for (const request of rows) {
+            const tr = body.insertRow();
+            const profile = profileMap.get(request.patient_user_id);
+            const cells = [
+                new Date(request.requested_at).toLocaleString(),
+                profile?.full_name || "Patient account",
+                request.patient_number,
+                "",
+                request.patient_message || "—",
+                request.status.replace(/_/g, " ")
+            ];
+            cells.forEach(value => {
+                const td = tr.insertCell();
+                td.textContent = value;
+            });
+            const matchCell = tr.cells[3];
+            const decisionCell = tr.cells[5];
+
+            if (request.status !== "requested") {
+                decisionCell.textContent = "Reviewed";
+                continue;
+            }
+
+            const { data: matches, error: matchError } = await supabaseClient
+                .from("patients")
+                .select("id,patient_number,first_name,last_name")
+                .eq("clinic_id", currentClinic.id)
+                .ilike("patient_number", request.patient_number)
+                .limit(10);
+            if (matchError) throw matchError;
+
+            const candidateSelect = document.createElement("select");
+            candidateSelect.setAttribute("aria-label", "Select matching hospital patient record");
+            candidateSelect.add(new Option(
+                matches?.length ? "Select exact patient record" : "No matching patient number found",
+                ""
+            ));
+            (matches || []).forEach(patient => {
+                candidateSelect.add(new Option(
+                    [patient.patient_number, patient.first_name, patient.last_name].filter(Boolean).join(" — "),
+                    patient.id
+                ));
+            });
+            candidateSelect.disabled = !matches?.length;
+            matchCell.appendChild(candidateSelect);
+
+            const reviewNote = document.createElement("input");
+            reviewNote.type = "text";
+            reviewNote.maxLength = 1000;
+            reviewNote.placeholder = "Required review note";
+            reviewNote.setAttribute("aria-label", "Identity match review note");
+            decisionCell.appendChild(reviewNote);
+
+            const approve = document.createElement("button");
+            approve.type = "button";
+            approve.className = "primary-button";
+            approve.textContent = "Confirm match";
+            approve.disabled = !matches?.length;
+            approve.style.margin = "3px";
+            approve.addEventListener("click", async () => {
+                const patientId = candidateSelect.value;
+                const note = reviewNote.value.trim();
+                if (!patientId || note.length < 5) {
+                    message.textContent = "Select the exact hospital patient record and enter at least five characters of review notes.";
+                    message.className = "message error";
+                    return;
+                }
+                if (!window.confirm("Confirm that this hospital patient record belongs to the patient account that submitted this request?")) return;
+                approve.disabled = true;
+                const { error: reviewError } = await supabaseClient.rpc("healthos_review_patient_identity_link_request", {
+                    p_request_id: request.id,
+                    p_decision: "matched",
+                    p_patient_id: patientId,
+                    p_review_note: note
+                });
+                if (reviewError) {
+                    message.textContent = friendlyError(reviewError);
+                    message.className = "message error";
+                    approve.disabled = false;
+                    return;
+                }
+                message.textContent = "Patient identity match confirmed and audit event recorded.";
+                message.className = "message success";
+                await window.loadPatientIdentityLinkRequests();
+            });
+
+            const reject = document.createElement("button");
+            reject.type = "button";
+            reject.className = "logout-button";
+            reject.textContent = "Reject";
+            reject.style.margin = "3px";
+            reject.addEventListener("click", async () => {
+                const note = reviewNote.value.trim();
+                if (note.length < 5) {
+                    message.textContent = "Enter at least five characters explaining why the request is rejected.";
+                    message.className = "message error";
+                    return;
+                }
+                if (!window.confirm("Reject this patient identity-match request?")) return;
+                reject.disabled = true;
+                const { error: reviewError } = await supabaseClient.rpc("healthos_review_patient_identity_link_request", {
+                    p_request_id: request.id,
+                    p_decision: "rejected",
+                    p_patient_id: null,
+                    p_review_note: note
+                });
+                if (reviewError) {
+                    message.textContent = friendlyError(reviewError);
+                    message.className = "message error";
+                    reject.disabled = false;
+                    return;
+                }
+                message.textContent = "Identity-match request rejected and audit event recorded.";
+                message.className = "message success";
+                await window.loadPatientIdentityLinkRequests();
+            });
+            decisionCell.append(approve, reject);
+        }
+        message.textContent = rows.length + " identity request(s) loaded for " + (currentClinic.name || "this hospital") + ".";
+        message.className = "message success";
+    } catch (error) {
+        console.error("Patient identity-link request loading failed:", error);
+        body.replaceChildren();
+        const tr = body.insertRow(), td = tr.insertCell();
+        td.colSpan = 6;
+        td.textContent = "Identity requests could not be loaded. Check hospital management and patient-record permissions.";
+        message.textContent = friendlyError(error);
+        message.className = "message error";
+    }
+};
+document.getElementById("refreshPatientIdentityLinkRequests")?.addEventListener("click", () => {
+    window.loadPatientIdentityLinkRequests?.();
 });
 
 // END GLOBAL PATIENT ACCESS
