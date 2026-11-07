@@ -1689,3 +1689,50 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
 }
 .pill.matched, .staff-presence-online { background: #DCFCE7 !important; color: #166534 !important; }
 .pill.review { background: #FFF0D5 !important; color: #754900 !important; }
+
+
+/* FINAL ACCESSIBLE TEXT-CONTRAST FIX — hospital discovery */
+#hospitalMap,
+#hospitalMap p,
+#hospitalMap .muted,
+#hospitalMap label,
+#hospitalMap small,
+#hospitalMap li,
+#hospitalMap .hospital-radius-label,
+#hospitalMap .hospital-nearby-toolbar,
+#hospitalMap .hospital-discovery-card p,
+#hospitalMap .public-discovery-note {
+  color: #243449 !important;
+}
+#hospitalMap .eyebrow,
+#hospitalMap .hospital-search-title .eyebrow,
+#hospitalMap .hospital-nearby-toolbar .eyebrow {
+  color: #111828 !important;
+}
+#hospitalMap h2,
+#hospitalMap h3,
+#hospitalMap h4,
+#hospitalMap .hospital-search-title h3,
+#hospitalMap .hospital-map-heading h3,
+#hospitalMap .hospital-results-title h3,
+#hospitalMap .hospital-discovery-card h3 {
+  color: #111828 !important;
+}
+#hospitalMap .hospital-search-form input,
+#hospitalMap .hospital-radius-control select {
+  color: #243449 !important;
+  -webkit-text-fill-color: #243449 !important;
+  background: #FFFFFF !important;
+}
+#hospitalMap .hospital-search-actions .primary-button,
+#hospitalMap .hospital-card-actions .primary-button,
+#hospitalMap .hospital-view-switch button.is-active {
+  color: #FFFFFF !important;
+  background: #111828 !important;
+}
+#hospitalMap .hospital-search-actions .secondary-button,
+#hospitalMap .hospital-card-actions .secondary-button,
+#hospitalMap .healthos-map-locate {
+  color: #111828 !important;
+  background: #FFFFFF !important;
+}
