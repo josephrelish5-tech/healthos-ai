@@ -110,6 +110,41 @@
    $("boundaryReconciliationNext").disabled=reconciliationOffset+cases.length>=(result.total??cases.length);
   }catch(error){message.textContent=error.message||"Reconciliation queue unavailable.";rows.innerHTML='<tr><td colspan="6">Restricted reconciliation queue unavailable.</td></tr>';}
  }
+ async function loadBoundaryAnomalySummary(){
+  const panel=$("boundaryAnomalySummary");
+  if(!panel)return;
+  const output=$("boundaryAnomalySummaryContent");
+  output.textContent="Auditing all 746 restricted geometry records…";
+  try{
+   const {data:{session}}=await client.auth.getSession();
+   if(!session?.access_token)throw Error("Administrator session expired. Sign in again.");
+   const all=[];
+   for(let offset=0;offset<800;offset+=200){
+    const response=await fetch(URL+"/functions/v1/healthos-geo-reconciliation-admin?limit=200&offset="+offset,{
+     headers:{Authorization:"Bearer "+session.access_token,apikey:KEY}
+    });
+    const result=await response.json().catch(()=>({error:"Invalid anomaly summary response"}));
+    if(!response.ok)throw Error(result.error||"Could not retrieve the complete anomaly set.");
+    all.push(...(result.cases||[]));
+    if(all.length>=(result.total??746))break;
+   }
+   const withGeometry=all.filter(x=>x.geometry_evidence&&Number.isFinite(Number(x.geometry_evidence.smaller_polygon_coverage)));
+   const zero=withGeometry.filter(x=>Number(x.geometry_evidence.smaller_polygon_coverage)<=0.000001);
+   const low=withGeometry.filter(x=>Number(x.geometry_evidence.smaller_polygon_coverage)<0.8);
+   const moderate=withGeometry.filter(x=>Number(x.geometry_evidence.smaller_polygon_coverage)>=0.8&&Number(x.geometry_evidence.smaller_polygon_coverage)<0.95);
+   const high=withGeometry.filter(x=>Number(x.geometry_evidence.smaller_polygon_coverage)>=0.95);
+   const byState=new Map();
+   low.forEach(x=>{const state=x.state_name_ocha||"State not recorded";byState.set(state,(byState.get(state)||0)+1);});
+   const stateRows=Array.from(byState.entries()).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+   output.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin:12px 0">'+
+    [['Records audited',all.length],['High overlap ≥95%',high.length],['Moderate 80–<95%',moderate.length],['Low overlap <80%',low.length],['Zero overlap',zero.length]].map(([label,value])=>'<div style="padding:12px;border:1px solid #dbe3ec;border-radius:9px;background:#f8fafc"><strong style="display:block;font-size:22px">'+value+'</strong><span>'+label+'</span></div>').join("")+
+    '</div><p>Geometry evidence present for '+withGeometry.length+' of '+all.length+' loaded cases. Low-overlap cases by OCHA state:</p>'+
+    (stateRows.length?'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px">'+stateRows.map(([state,count])=>'<div style="padding:7px 9px;border:1px solid #e2e8f0;border-radius:7px">'+esc(state)+' <strong>('+count+')</strong></div>').join("")+'</div>':'<p>No low-overlap cases found in the retrieved records.</p>')+
+    '<p class="disclaimer">Read-only diagnostic. Overlap is a screening signal, not proof of an incorrect boundary. No source polygons, canonical names, review decisions or hospital records were changed.</p>';
+   if(all.length===0)throw Error("The endpoint returned no cases; the audit summary cannot be treated as complete.");
+   if(all.length<(746))output.insertAdjacentHTML("beforeend",'<p class="message">Partial retrieval: '+all.length+' records returned. Refresh before relying on this summary.</p>');
+  }catch(error){output.textContent=error.message||"Could not complete the nationwide anomaly summary.";}
+ }
  async function saveBoundaryReconciliation(id,button){
   const notes=document.querySelector('[data-recon-notes="'+id+'"]')?.value?.trim()||"";
   const decision=document.querySelector('[data-recon-decision="'+id+'"]')?.value||"";
@@ -127,6 +162,7 @@
    if(!response.ok)throw Error(result.error||"Review save failed.");
    $("boundaryReconciliationMessage").textContent=result.message||"Decision saved and audited.";
    await loadBoundaryReconciliation();
+   await loadBoundaryAnomalySummary();
    await loadCodeReconciliation();
    await loadLgaRegistry();
    await loadCodeReconciliation();
@@ -273,9 +309,14 @@
     }
    `;
    document.head.appendChild(mobileReviewStyle);
+   const anomalySummary=document.createElement("div");
+   anomalySummary.id="boundaryAnomalySummary";
+   anomalySummary.style.cssText="margin:14px 0;padding:14px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc;color:#102b46";
+   anomalySummary.innerHTML='<h4 style="margin:0 0 8px">Nationwide Geometry Anomaly Summary — Read Only</h4><div id="boundaryAnomalySummaryContent" aria-live="polite">Open the administrator console to audit all restricted cases.</div>';
    const adminHeading=adminPanel.querySelector(".panel-heading");
    if(adminHeading)adminHeading.insertAdjacentElement("afterend",reconciliationPanel);
    else adminPanel.insertBefore(reconciliationPanel,adminPanel.firstChild);
+   reconciliationPanel.insertBefore(anomalySummary,reconciliationPanel.querySelector("#boundaryReconciliationMessage"));
    reconciliationPanel.querySelector("#boundaryReconciliationRefresh").addEventListener("click",()=>{reconciliationOffset=0;loadBoundaryReconciliation();});
    reconciliationPanel.querySelector("#boundaryReconciliationPrev").addEventListener("click",()=>{reconciliationOffset=Math.max(0,reconciliationOffset-200);loadBoundaryReconciliation();});
    reconciliationPanel.querySelector("#boundaryReconciliationNext").addEventListener("click",()=>{reconciliationOffset+=200;loadBoundaryReconciliation();});
