@@ -265,6 +265,7 @@
    say("Authorised. "+sources.length+" sources and "+(d.listings||[]).length+" listings loaded.");
    await loadGeographicReview();
    await loadBoundaryReconciliation();
+   await loadBoundaryAnomalySummary();
   }catch(e){$("openDirectoryAdminButton").hidden=false;const nav=$("platformDirectoryAdminNav");if(nav)nav.hidden=false;$("platformDirectoryAdmin").hidden=false;say("Directory check failed"+(e.code?" ("+e.code+")":"")+": "+(e.message||"Unknown error"),true);}
  }
  document.addEventListener("DOMContentLoaded",()=>{
