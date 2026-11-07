@@ -13176,16 +13176,18 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
   const button=$("icuRefreshButton");if(button)button.disabled=true;
   try{
    const clinicId=currentClinic.id;
-   const [bedResult,admissionResult,patientResult]=await Promise.all([
+   const [bedResult,admissionResult,patientResult,transferResult]=await Promise.all([
     supabaseClient.from("hospital_beds").select("id,bed_number,ward_name,bed_type,status").eq("clinic_id",clinicId).limit(1000),
     supabaseClient.from("patient_admissions").select("id,patient_id,bed_id,admission_number,admission_reason,admitted_at,status").eq("clinic_id",clinicId).eq("status","admitted").order("admitted_at",{ascending:false}).limit(1000),
-    supabaseClient.from("patients").select("id,patient_number,first_name,last_name").eq("clinic_id",clinicId).limit(1000)
+    supabaseClient.from("patients").select("id,patient_number,first_name,last_name").eq("clinic_id",clinicId).limit(1000),
+    supabaseClient.from("icu_patient_transfers").select("id,patient_id,from_bed_id,to_bed_id,transfer_reason,transferred_by,transferred_at").eq("clinic_id",clinicId).order("transferred_at",{ascending:false}).limit(100)
    ]);
-   for(const result of [bedResult,admissionResult,patientResult])if(result.error)throw result.error;
+   for(const result of [bedResult,admissionResult,patientResult,transferResult])if(result.error)throw result.error;
    icuBeds=(bedResult.data||[]).filter(isICU);
    bedMap=new Map(icuBeds.map(b=>[b.id,b]));
    admissions=(admissionResult.data||[]).filter(a=>a.bed_id&&bedMap.has(a.bed_id));
    patients=patientResult.data||[];
+   const transfers=transferResult.data||[];
    patientMap=new Map(patients.map(p=>[p.id,[p.patient_number,p.first_name,p.last_name].filter(Boolean).join(" · ")||"Patient"]));
    put("icuTotalBeds",icuBeds.length);
    put("icuOccupiedBeds",icuBeds.filter(b=>b.status==="occupied").length);
@@ -13202,7 +13204,7 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
     if(error)throw error;vitals=data||[];
    }
    const latest=new Map();vitals.forEach(v=>{if(!latest.has(v.patient_id))latest.set(v.patient_id,v);});
-   const staffIds=[...new Set(vitals.map(v=>v.recorded_by).filter(Boolean))];
+   const staffIds=[...new Set([...vitals.map(v=>v.recorded_by),...transfers.map(t=>t.transferred_by)].filter(Boolean))];
    let staffNames=new Map();
    if(staffIds.length){
     const staffResult=await supabaseClient.from("staff_profiles").select("user_id,full_name").eq("clinic_id",clinicId).in("user_id",staffIds);
@@ -13244,14 +13246,15 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
      v.pulse_bpm==null?"—":v.pulse_bpm,v.respiratory_rate==null?"—":v.respiratory_rate,
      v.oxygen_saturation==null?"—":v.oxygen_saturation+"%",staffNames.get(v.recorded_by)||"Authorised staff account"].forEach(value=>cell(tr,value));
    });
+   const transferRows=$("icuTransferRows");if(transferRows){transferRows.replaceChildren();if(!transfers.length){const tr=transferRows.insertRow();const td=tr.insertCell();td.colSpan=6;td.textContent="No ICU transfers have been recorded.";}transfers.forEach(t=>{const tr=transferRows.insertRow();const from=bedResult.data.find(b=>b.id===t.from_bed_id),to=bedResult.data.find(b=>b.id===t.to_bed_id);[fmt(t.transferred_at),patientMap.get(t.patient_id)||"Patient record",from?.bed_number||"Bed record",to?.bed_number||"Bed record",t.transfer_reason,staffNames.get(t.transferred_by)||"Authorised staff account"].forEach(value=>cell(tr,value));});}
    message("ICU records loaded. Admission, transfer and discharge actions are checked by the database and recorded in the tamper-evident audit log.");
   }catch(error){console.error("ICU workspace load failed",error);message(error.message||"Unable to load ICU records. Check clinic membership and permissions.",true);}
   finally{if(button)button.disabled=false;}
  }
  async function runAction(button,fn,success){
   button.disabled=true;
-  try{await fn();message(success);await load();}
-  catch(error){message(error.message||"ICU action failed. No successful completion was confirmed.",true);button.disabled=false;}
+  try{await fn();message(success);await load();return true;}
+  catch(error){message(error.message||"ICU action failed. No successful completion was confirmed.",true);button.disabled=false;return false;}
  }
  $("icuRefreshButton")?.addEventListener("click",()=>void load());
  $("icuAdmissionForm")?.addEventListener("submit",async event=>{
@@ -13261,8 +13264,8 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
   const admissionNumber=$("icuAdmissionNumber").value.trim(),reason=$("icuAdmissionReason").value.trim();
   if(!patientId||!bedId||!admissionNumber||!reason){message("Complete all required admission fields.",true);return;}
   const button=$("icuAdmitButton");
-  await runAction(button,()=>rpc("healthos_icu_admit_patient",{p_clinic_id:currentClinic.id,p_patient_id:patientId,p_bed_id:bedId,p_admission_number:admissionNumber,p_admission_reason:reason}),"Patient admitted to the selected ICU bed. Bed allocation and admission were audited.");
-  $("icuAdmissionForm").reset();
+  const succeeded=await runAction(button,()=>rpc("healthos_icu_admit_patient",{p_clinic_id:currentClinic.id,p_patient_id:patientId,p_bed_id:bedId,p_admission_number:admissionNumber,p_admission_reason:reason}),"Patient admitted to the selected ICU bed. Bed allocation and admission were audited.");
+  if(succeeded)$("icuAdmissionForm").reset();
  });
  document.querySelectorAll(".sidebar .nav-item").forEach(link=>link.addEventListener("click",()=>{if((link.getAttribute("href")||"")==="#staffWorkspace")void load();}));
  window.loadHealthOSICUWorkspace=load;
