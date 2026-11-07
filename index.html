@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#102A43">
     <title>HealthOS Medical Systems | Hospital Management Software</title>
-    <link rel="stylesheet" href="styles.css?v=20261107-specialist-dept-guide-v1">
+    <link rel="stylesheet" href="styles.css?v=20261107-nursing-workspace-v1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -234,7 +234,7 @@
             <section class="public-discovery-hero" aria-labelledby="publicDiscoveryHeading">
                 <p class="eyebrow">PATIENTS · FAMILIES · VISITORS</p>
                 <h2 id="publicDiscoveryHeading">Find the right hospital before you travel.</h2>
-                <p>Find HealthOS AI member hospitals and external public hospital listings by location. External listings are clearly labelled as not independently verified. Search and get directions without signing in.</p>
+                <p>Find HealthOS Medical Systems member hospitals and external public hospital listings by location. External listings are clearly labelled as not independently verified. Search and get directions without signing in.</p>
                 <button id="openPublicHospitalDiscoveryButton" class="primary-button" type="button" onclick="window.openHealthOSHospitalDiscovery()">⌖ Find Hospitals & View Map</button>
             </section>
             <h2 id="authHeading">Welcome to HealthOS Medical Systems</h2>
@@ -305,7 +305,7 @@
             <p id="authMessage" class="message" role="status" aria-live="polite"></p>
 
             <p>
-                <span id="authModeText">New to HealthOS AI?</span>
+                <span id="authModeText">New to HealthOS Medical Systems?</span>
                 <button id="authModeToggle" class="text-button" type="button">
                     Create an account
                 </button>
@@ -321,13 +321,13 @@
             </div>
         </section>
 
-        <!-- HEALTHOS AI: GLOBAL PATIENT ACCESS PORTAL -->
+        <!-- HEALTHOS MEDICAL SYSTEMS: GLOBAL PATIENT ACCESS PORTAL -->
         <section id="patientPortal" class="auth-screen setup-screen" hidden>
 <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=1100&q=85" alt="Healthcare professional listening to a patient" loading="lazy" decoding="async"><figcaption>Patient care and connection</figcaption></figure>
 
             <div class="patient-discovery-shortcut">
                 <strong>Looking for a hospital?</strong>
-                <p>Search HealthOS AI member hospitals and external public listings, then get directions before requesting care.</p>
+                <p>Search HealthOS Medical Systems member hospitals and external public listings, then get directions before requesting care.</p>
                 <button id="patientOpenHospitalDiscoveryButton" class="secondary-button" type="button" onclick="openHealthOSHospitalDiscovery()">Find a Hospital</button>
             </div>
             <div class="panel-heading">
@@ -449,7 +449,7 @@
 
             <p>
                 Enter your new password below to regain access to your
-                HealthOS AI account.
+                HealthOS Medical Systems account.
             </p>
 
             <form id="passwordRecoveryForm" class="auth-form">
@@ -548,7 +548,7 @@
 
             <p id="clinicMessage" class="message" role="status" aria-live="polite"></p>
         </section>
-<!-- HEALTHOS AI ADMIN VERIFICATION -->
+<!-- HEALTHOS MEDICAL SYSTEMS ADMIN VERIFICATION -->
 <section
     id="adminVerification"
     class="auth-screen"
@@ -563,7 +563,7 @@
 
     <p>
         Verify your identity using your existing
-        HealthOS AI account password.
+        HealthOS Medical Systems account password.
     </p>
 
     <form id="adminVerificationForm" class="auth-form">
@@ -604,7 +604,7 @@
         Cancel and return
     </button>
 </section>
-        <!-- HEALTHOS AI: STAFF REGISTRATION PANEL -->
+        <!-- HEALTHOS MEDICAL SYSTEMS: STAFF REGISTRATION PANEL -->
 <section id="staffRegistrationPanel" class="panel" hidden>
 
     <div class="panel-heading">
@@ -730,10 +730,44 @@
     </p>
 
 </section>
-<!-- END HEALTHOS AI: STAFF REGISTRATION PANEL -->
-        <!-- HEALTHOS AI: STAFF ACTIVITY WORKSPACE -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: STAFF REGISTRATION PANEL -->
+        <!-- HEALTHOS MEDICAL SYSTEMS: STAFF ACTIVITY WORKSPACE -->
 <section id="staffWorkspace" class="panel" hidden>
 <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=1100&q=85" alt="Medical professionals working together in a clinical setting" loading="lazy" decoding="async"><figcaption>People behind every hospital service</figcaption></figure>
+<section class="panel nursing-workspace" id="nursingWorkspace" aria-labelledby="nursingWorkspaceHeading">
+ <div class="panel-heading"><div><p class="eyebrow">NURSING DEPARTMENT · AUTHORISED STAFF</p><h2 id="nursingWorkspaceHeading">Nursing Care Workspace</h2><p class="muted">Patient observations, nursing tasks, shift handover and accountable documentation.</p></div><button type="button" id="nursingRefreshButton" class="secondary-button">Refresh nursing workspace</button></div>
+ <p id="nursingWorkspaceMessage" class="message" role="status" aria-live="polite">Load your authorised nursing workspace.</p>
+ <div class="stats-grid"><article class="stat-card"><p>Open encounters</p><h3 id="nursingOpenEncounters">—</h3></article><article class="stat-card"><p>Observations recorded today</p><h3 id="nursingVitalsToday">—</h3></article><article class="stat-card"><p>Handover records today</p><h3 id="nursingHandoversToday">—</h3></article></div>
+ <div class="panel"><h3>Patient observations</h3><p class="muted">Select an open encounter. Only authorised staff with clinical-record creation permission can save observations. Values are recorded as entered and are not interpreted as a diagnosis.</p>
+  <form id="nursingVitalsForm" class="form-grid">
+   <label>Open patient encounter<select id="nursingEncounterSelect" required><option value="">Refresh to load encounters</option></select></label>
+   <label>Temperature (°C)<input id="nursingTemperature" type="number" step="0.1" min="25" max="45"></label>
+   <label>Systolic BP (mmHg)<input id="nursingSystolic" type="number" min="40" max="300"></label>
+   <label>Diastolic BP (mmHg)<input id="nursingDiastolic" type="number" min="20" max="200"></label>
+   <label>Pulse (bpm)<input id="nursingPulse" type="number" min="20" max="250"></label>
+   <label>Respiratory rate (/min)<input id="nursingRespiratory" type="number" min="4" max="80"></label>
+   <label>Oxygen saturation (%)<input id="nursingOxygen" type="number" min="50" max="100" step="0.1"></label>
+   <label>Weight (kg)<input id="nursingWeight" type="number" min="0.2" max="500" step="0.1"></label>
+   <label>Height (cm)<input id="nursingHeight" type="number" min="20" max="260" step="0.1"></label>
+   <label>Pain score (0–10)<input id="nursingPain" type="number" min="0" max="10"></label>
+   <label class="full-width">Observation notes<textarea id="nursingObservationNotes" rows="3" maxlength="2000" placeholder="Objective observations and context only"></textarea></label>
+   <button type="submit" class="primary-button" id="nursingSaveVitals">Save patient observations</button>
+  </form>
+ </div>
+ <div class="panel"><h3>Shift handover register</h3><p class="muted">Record what was handed over, the receiving staff member and outstanding care tasks. Each entry is time-stamped and attributed to the signed-in staff account. This register does not replace verbal escalation for urgent care.</p>
+  <form id="nursingHandoverForm" class="form-grid">
+   <label>Shift<select id="nursingShiftCode" required><option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="night">Night</option><option value="other">Other</option></select></label>
+   <label>Incoming staff member<select id="nursingIncomingStaff"><option value="">Not specified</option></select></label>
+   <label class="full-width">Handover summary<textarea id="nursingHandoverSummary" rows="4" minlength="10" maxlength="5000" required placeholder="Summarise care delivered, current concerns and key handover information"></textarea></label>
+   <label class="full-width">Outstanding tasks / follow-up<textarea id="nursingPendingItems" rows="3" maxlength="3000" placeholder="List pending actions, owner and expected follow-up"></textarea></label>
+   <button type="submit" class="primary-button" id="nursingSaveHandover">Record shift handover</button>
+  </form>
+  <div class="table-wrap"><table><thead><tr><th>Recorded</th><th>Shift</th><th>Outgoing staff</th><th>Incoming staff</th><th>Handover summary</th><th>Outstanding items</th></tr></thead><tbody id="nursingHandoverRows"><tr><td colspan="6">Refresh to load authorised handover records.</td></tr></tbody></table></div>
+ </div>
+ <div class="panel"><h3>My authorised nursing tasks</h3><p class="muted">Tasks assigned to your active staff assignments. Use the existing task workflow to accept, start, block, submit evidence and obtain supervisor review.</p><div id="nursingTasksList" class="stats-grid"><p class="muted">Refresh to load assigned tasks.</p></div></div>
+ <p class="stat-note">Clinical safety: urgent care must never be delayed for data entry. This workspace records observations; it does not calculate diagnoses, prescribe treatment or replace hospital protocols. Access is enforced by existing Supabase row-level security and clinical-record permissions.</p>
+</section>
+
 
     <div class="panel-heading">
         <div>
@@ -855,7 +889,7 @@
             <h3 id="staffWorkspaceRole">Loading...</h3>
         </article>
     </div>
-    <!-- HEALTHOS AI: STAFF ATTENDANCE SECTION -->
+    <!-- HEALTHOS MEDICAL SYSTEMS: STAFF ATTENDANCE SECTION -->
     <div class="panel-heading">
         <div>
             <h3>My Attendance</h3>
@@ -911,7 +945,7 @@
         role="status"
         aria-live="polite"
     ></p>
-    <!-- END HEALTHOS AI: STAFF ATTENDANCE SECTION -->
+    <!-- END HEALTHOS MEDICAL SYSTEMS: STAFF ATTENDANCE SECTION -->
     <div class="panel-heading">
         <div>
             <h3>My Work Areas</h3>
@@ -942,11 +976,11 @@
         clinic membership, and staff profile.
     </p>
 </section>
-<!-- END HEALTHOS AI: STAFF ACTIVITY WORKSPACE -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: STAFF ACTIVITY WORKSPACE -->
             <section id="publicHospitalDiscoveryScreen" class="public-discovery-screen" hidden>
                 <div class="public-discovery-topbar">
                     <button id="hospitalDiscoveryBackButton" class="secondary-button" type="button">← Back</button>
-                    <span class="eyebrow">HEALTHOS AI · PUBLIC HOSPITAL DIRECTORY</span>
+                    <span class="eyebrow">HEALTHOS MEDICAL SYSTEMS · PUBLIC HOSPITAL DIRECTORY</span>
                 </div>
                 <section id="hospitalMap" class="workspace-section">
 <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1100&q=85" alt="Modern hospital exterior and care environment" loading="lazy" decoding="async"><figcaption>Find care close to home</figcaption></figure>
@@ -955,11 +989,11 @@
                             <div>
                                 <p class="eyebrow">PATIENT & PUBLIC ACCESS</p>
                                 <h2>Hospital Discovery Map</h2>
-                                <p class="muted">Find HealthOS AI members and external public hospital listings by location. External listings are not independently verified.</p>
+                                <p class="muted">Find HealthOS Medical Systems members and external public hospital listings by location. External listings are not independently verified.</p>
                             </div>
                         </div>
                                         <section class="hospital-search-card" aria-label="Search public hospital directory">
-                                            <div class="hospital-search-title"><div><p class="eyebrow">HOSPITAL FINDER</p><h3>Where do you need care?</h3><p>Search HealthOS AI members and external public listings near your preferred location.</p></div><span class="hospital-search-symbol" aria-hidden="true">✚</span></div>
+                                            <div class="hospital-search-title"><div><p class="eyebrow">HOSPITAL FINDER</p><h3>Where do you need care?</h3><p>Search HealthOS Medical Systems members and external public listings near your preferred location.</p></div><span class="hospital-search-symbol" aria-hidden="true">✚</span></div>
                                         <div class="auth-form hospital-search-form">
                                             <label>Country code
                                                 <input id="hospitalSearchCountry" type="text" maxlength="2" value="NG" placeholder="NG">
@@ -1023,7 +1057,7 @@
                                             </div>
                                         </section>
                     </section>
-                <p class="public-discovery-note">Search and view public hospital listings without creating an account. HealthOS AI member hospitals are shown separately from external listings that have not been independently verified. Sign in as a patient when you are ready to request a hospital connection or appointment.</p>
+                <p class="public-discovery-note">Search and view public hospital listings without creating an account. HealthOS Medical Systems member hospitals are shown separately from external listings that have not been independently verified. Sign in as a patient when you are ready to request a hospital connection or appointment.</p>
             </section>
 
         <section id="appPanel" hidden>
@@ -1059,7 +1093,7 @@
                     <a href="#reports" class="nav-item">▤ Reports</a>
 
                     <div class="sidebar-note">
-                        <strong>HealthOS AI</strong>
+                        <strong>HealthOS Medical Systems</strong>
                         <p>
                             Helping healthcare teams work smarter,
                             improve operations and protect revenue.
@@ -1131,7 +1165,7 @@
                         <span class="demo-badge" id="dataModeBadge">
                             DEMONSTRATION
                         </span>
-                        <!-- HEALTHOS AI: REGISTER STAFF BUTTON -->
+                        <!-- HEALTHOS MEDICAL SYSTEMS: REGISTER STAFF BUTTON -->
 <button
     type="button"
     id="openStaffRegistrationButton"
@@ -1139,7 +1173,7 @@
 >
     + Register Staff
 </button>
-<!-- END HEALTHOS AI: REGISTER STAFF BUTTON -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: REGISTER STAFF BUTTON -->
                     </section>
 
                     <p
@@ -1148,7 +1182,7 @@
                         role="status"
                         aria-live="polite"
                     ></p>
-                    <!-- HEALTHOS AI: ADMIN STAFF DASHBOARD -->
+                    <!-- HEALTHOS MEDICAL SYSTEMS: ADMIN STAFF DASHBOARD -->
                     <section
                         id="adminStaffDashboard"
                         class="panel"
@@ -1265,7 +1299,7 @@
 
 <section class="panel" id="departmentKnowledgeReviewPanel" style="margin-top:24px" aria-labelledby="departmentKnowledgeReviewHeading">
  <div class="panel-heading">
-  <div><p class="eyebrow">HEALTHOS AI KNOWLEDGE GOVERNANCE</p><h3 id="departmentKnowledgeReviewHeading">Department Knowledge Review</h3>
+  <div><p class="eyebrow">HEALTHOS MEDICAL SYSTEMS KNOWLEDGE GOVERNANCE</p><h3 id="departmentKnowledgeReviewHeading">Department Knowledge Review</h3>
   <p class="muted">Review, correct and approve departmental duties, FAQs and work instructions before staff can use them.</p></div>
   <button type="button" class="btn btn-secondary" id="refreshDepartmentKnowledge">Refresh drafts</button>
  </div>
@@ -1300,7 +1334,7 @@
 <button type="button" class="workspace-page-button" data-workspace-target="adminLeadership">Department Leadership</button>
 <button type="button" class="workspace-page-button" data-workspace-target="adminPerformance">Department Performance</button>
 </nav>
-<div class="workspace-subpage" data-workspace-page="adminStaffActivity" id="adminStaffActivityPage" hidden><!-- HEALTHOS AI: INDIVIDUAL STAFF ACTIVITY TABLE -->
+<div class="workspace-subpage" data-workspace-page="adminStaffActivity" id="adminStaffActivityPage" hidden><figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1100&q=85" alt="Healthcare team reviewing staff operations together" loading="lazy" decoding="async"><figcaption>People supporting safe hospital operations</figcaption></figure><!-- HEALTHOS MEDICAL SYSTEMS: INDIVIDUAL STAFF ACTIVITY TABLE -->
 <div class="panel-heading">
     <div>
         <p class="eyebrow">STAFF ACTIVITY</p>
@@ -1335,9 +1369,9 @@
         </tbody>
     </table>
 </div>
-<!-- END HEALTHOS AI: INDIVIDUAL STAFF ACTIVITY TABLE -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: INDIVIDUAL STAFF ACTIVITY TABLE -->
 </div>
-<div class="workspace-subpage" data-workspace-page="adminShifts" id="adminShiftsPage" hidden><!-- HEALTHOS AI: STAFF SHIFT ASSIGNMENT -->
+<div class="workspace-subpage" data-workspace-page="adminShifts" id="adminShiftsPage" hidden><figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=1100&q=85" alt="Hospital clinicians coordinating shift coverage" loading="lazy" decoding="async"><figcaption>Coordinated teams across every shift</figcaption></figure><!-- HEALTHOS MEDICAL SYSTEMS: STAFF SHIFT ASSIGNMENT -->
 <div class="panel-heading">
     <div>
         <p class="eyebrow">SHIFT MANAGEMENT</p>
@@ -1461,14 +1495,14 @@
  <p class="disclaimer">Attendance hours are calculated from recorded clock-in/out timestamps. Open sessions are not counted as completed hours. Late arrival is compared with an assigned shift where one exists; sessions without a matching shift are marked accordingly.</p>
 </div>
 
-<!-- END HEALTHOS AI: STAFF SHIFT ASSIGNMENT -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: STAFF SHIFT ASSIGNMENT -->
                         <p class="disclaimer">
                             Staff statistics will be calculated from
                             authorised clinic records. Online presence
                             and shift attendance are separate measures.
                         </p>
 </div>
-<div class="workspace-subpage" data-workspace-page="adminTasks" id="adminTasksPage" hidden><!-- HEALTHOS AI: TASK ASSIGNMENT -->
+<div class="workspace-subpage" data-workspace-page="adminTasks" id="adminTasksPage" hidden><figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1100&q=85" alt="Healthcare professionals planning daily work" loading="lazy" decoding="async"><figcaption>Accountability through teamwork</figcaption></figure><!-- HEALTHOS MEDICAL SYSTEMS: TASK ASSIGNMENT -->
                         <div class="panel-heading">
                             <div>
                                 <p class="eyebrow">WORKFLOW CONTROL</p>
@@ -1499,9 +1533,9 @@
                             <button id="createStaffTaskButton" class="primary-button" type="submit">Assign Task</button>
                         </form>
                         <p id="taskAssignmentMessage" class="message" role="status" aria-live="polite">Task assignment is ready.</p>
-                        <!-- END HEALTHOS AI: TASK ASSIGNMENT -->
+                        <!-- END HEALTHOS MEDICAL SYSTEMS: TASK ASSIGNMENT -->
 </div>
-<div class="workspace-subpage" data-workspace-page="adminLeadership" id="adminLeadershipPage" hidden><!-- HEALTHOS AI: DEPARTMENT LEADERSHIP APPOINTMENTS -->
+<div class="workspace-subpage" data-workspace-page="adminLeadership" id="adminLeadershipPage" hidden><figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=1100&q=85" alt="Healthcare leaders collaborating" loading="lazy" decoding="async"><figcaption>Leadership that supports clinical teams</figcaption></figure><!-- HEALTHOS MEDICAL SYSTEMS: DEPARTMENT LEADERSHIP APPOINTMENTS -->
                         <div class="panel-heading">
                             <div>
                                 <p class="eyebrow">HOSPITAL STRUCTURE</p>
@@ -1536,9 +1570,9 @@
                         </form>
                         <p id="managementAppointmentMessage" class="message" role="status" aria-live="polite">Leadership appointment manager is ready.</p>
                         <div id="managementAppointmentList"></div>
-                        <!-- END HEALTHOS AI: DEPARTMENT LEADERSHIP APPOINTMENTS -->
+                        <!-- END HEALTHOS MEDICAL SYSTEMS: DEPARTMENT LEADERSHIP APPOINTMENTS -->
 </div>
-<div class="workspace-subpage" data-workspace-page="adminPerformance" id="adminPerformancePage" hidden><!-- HEALTHOS AI: DEPARTMENT PERFORMANCE -->
+<div class="workspace-subpage" data-workspace-page="adminPerformance" id="adminPerformancePage" hidden><figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1582750433449-648ed127bb54?auto=format&fit=crop&w=1100&q=85" alt="Hospital team reviewing service performance" loading="lazy" decoding="async"><figcaption>People behind hospital performance</figcaption></figure><!-- HEALTHOS MEDICAL SYSTEMS: DEPARTMENT PERFORMANCE -->
                         <div class="panel-heading">
                             <div>
                                 <p class="eyebrow">OPERATIONS INTELLIGENCE</p>
@@ -1578,10 +1612,10 @@
                             <p id="departmentTaskEscalationsMessage" class="message" role="status">Escalation report will appear here.</p>
                             <div style="overflow-x:auto"><table><thead><tr><th>Issue</th><th>Task</th><th>Department / Unit</th><th>Assigned Staff</th><th>Priority</th><th>Deadline</th><th>Current Status</th></tr></thead><tbody id="departmentTaskEscalationsBody"><tr><td colspan="7">Loading...</td></tr></tbody></table></div>
                         </section>
-                        <!-- END HEALTHOS AI: DEPARTMENT PERFORMANCE -->
+                        <!-- END HEALTHOS MEDICAL SYSTEMS: DEPARTMENT PERFORMANCE -->
 </div>
 </section>
-                    <!-- END HEALTHOS AI: ADMIN STAFF DASHBOARD -->
+                    <!-- END HEALTHOS MEDICAL SYSTEMS: ADMIN STAFF DASHBOARD -->
                     <section class="stats-grid">
                         <article class="stat-card">
                     
@@ -1618,12 +1652,12 @@
                             <span class="stat-note">Transactions in this workspace</span>
                         </article>
                     </section>
-<!-- HEALTHOS AI: SERVICE CAPTURE MODULE -->
+<!-- HEALTHOS MEDICAL SYSTEMS: SERVICE CAPTURE MODULE -->
 <!-- ==========================================
-     HEALTHOS AI STAFF ASSISTANT
+     HEALTHOS MEDICAL SYSTEMS STAFF ASSISTANT
 =========================================== -->
 
-<!-- HEALTHOS AI FLOATING ASSISTANT -->
+<!-- HEALTHOS MEDICAL SYSTEMS FLOATING ASSISTANT -->
 
 <button
     type="button"
@@ -1643,7 +1677,7 @@
 <section
     class="assistant-panel"
     id="staffAssistant"
-    aria-label="HealthOS AI Assistant"
+    aria-label="HealthOS Assistant"
     hidden
 >
     <div class="assistant-panel-header">
@@ -1651,7 +1685,7 @@
             <span class="assistant-brand-icon" aria-hidden="true">✦</span>
 
             <div>
-                <h2>HealthOS AI</h2>
+                <h2>HealthOS Medical Systems</h2>
                 <p>Your healthcare operations assistant</p>
             </div>
         </div>
@@ -1750,7 +1784,7 @@
             hidden
         >
             <h3 id="staffAssistantResponseTitle">
-                HealthOS AI Assistant
+                HealthOS Assistant
             </h3>
 
             <p id="staffAssistantResponseText"></p>
@@ -1773,8 +1807,8 @@
     </div>
 </section>
 
-<!-- END HEALTHOS AI FLOATING ASSISTANT -->
-<!-- HEALTHOS AI: PATIENT REGISTRATION -->
+<!-- END HEALTHOS MEDICAL SYSTEMS FLOATING ASSISTANT -->
+<!-- HEALTHOS MEDICAL SYSTEMS: PATIENT REGISTRATION -->
 
 <section class="panel" id="patients">
 <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=1100&q=85" alt="Doctor consulting with a patient" loading="lazy" decoding="async"><figcaption>Patient management</figcaption></figure>
@@ -1894,7 +1928,7 @@
 
 <!-- END PATIENT REGISTRATION --> 
     <!-- ==========================================
-     HEALTHOS AI — APPOINTMENTS MODULE
+     HEALTHOS MEDICAL SYSTEMS — APPOINTMENTS MODULE
 =========================================== -->
 
 <section class="panel" id="appointments">
@@ -2029,9 +2063,9 @@
 
 </section>
 
-<!-- END HEALTHOS AI — APPOINTMENTS MODULE -->
+<!-- END HEALTHOS MEDICAL SYSTEMS — APPOINTMENTS MODULE -->
 
-<!-- HEALTHOS AI: SMART QUEUE AND BED MANAGEMENT -->
+<!-- HEALTHOS MEDICAL SYSTEMS: SMART QUEUE AND BED MANAGEMENT -->
 <section class="panel" id="patientFlow">
 <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1100&q=85" alt="Healthcare team providing clinical care" loading="lazy" decoding="async"><figcaption>Patient flow and coordinated care</figcaption></figure>
 
@@ -2088,7 +2122,7 @@
 </section>
 <!-- END SMART QUEUE AND BED MANAGEMENT -->
 
-<!-- HEALTHOS AI: CLINICAL MANAGEMENT AND ELECTRONIC MEDICAL RECORDS -->
+<!-- HEALTHOS MEDICAL SYSTEMS: CLINICAL MANAGEMENT AND ELECTRONIC MEDICAL RECORDS -->
 <section class="panel" id="clinicalRecords" aria-labelledby="clinicalRecordsHeading">
 <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=1100&q=85" alt="Doctor reviewing clinical information" loading="lazy" decoding="async"><figcaption>Clinical records and professional care</figcaption></figure>
 
@@ -2136,7 +2170,7 @@
  <h3>Encounter Notes</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>Section</th><th>Note</th><th>Status</th><th>Action</th></tr></thead><tbody id="clinicalNotesBody"><tr><td colspan="5">Select an encounter to view notes.</td></tr></tbody></table></div>
  <hr><div id="clinicalScribe">
   <h3>AI Medical Scribe — Clinician Review</h3>
-  <p class="muted">Record a consultation in this browser or select an audio file after explicit patient consent. Audio is sent to the clinic-configured secure transcription function only after encounter ownership and consent checks; HealthOS AI does not retain the audio file.</p>
+  <p class="muted">Record a consultation in this browser or select an audio file after explicit patient consent. Audio is sent to the clinic-configured secure transcription function only after encounter ownership and consent checks; HealthOS Medical Systems does not retain the audio file.</p>
   <form id="clinicalScribeForm" class="auth-form">
    <label>Clinician-owned open encounter<select id="scribeEncounterSelect" required><option value="">Select your encounter</option></select></label>
    <section id="scribePatientContext" class="panel" aria-live="polite" style="margin:12px 0;padding:14px">
@@ -2147,7 +2181,7 @@
    <label>Transcript source<select id="scribeSourceType"><option value="manual_transcript">Manual / externally approved transcript</option><option value="approved_transcription_service">Clinic-approved secure transcription service</option></select></label>
    <div class="scribe-audio-workspace">
     <h4>Secure audio transcription</h4>
-    <p class="muted">Record a consultation or select an audio file. Audio is sent only to the clinic-configured server-side provider after consent and access checks. HealthOS AI does not store the audio file.</p>
+    <p class="muted">Record a consultation or select an audio file. Audio is sent only to the clinic-configured server-side provider after consent and access checks. HealthOS Medical Systems does not store the audio file.</p>
     <label>Choose audio file<input id="scribeAudioFile" type="file" accept="audio/*"></label>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
      <button type="button" class="logout-button" id="scribeRecordStart">Start recording</button>
@@ -2167,7 +2201,7 @@
   <p id="scribeMessage" class="message" role="status" aria-live="polite"></p>
   <h4>My Scribe Drafts</h4>
   <div class="table-wrap"><table><thead><tr><th>Created</th><th>Encounter</th><th>Note section</th><th>Status</th><th>Action</th></tr></thead><tbody id="scribeDraftsBody"><tr><td colspan="5">No scribe drafts loaded.</td></tr></tbody></table></div>
-  <p class="disclaimer">Nothing is automatically diagnosed, prescribed, signed or added to the medical record. The clinician must review and approve the edited note. Signed clinical notes remain immutable. Use real patient audio only after the clinic has approved the transcription provider, privacy assessment, retention controls and NDPA safeguards. Audio is not stored by HealthOS AI; the configured provider may process it under its own terms.</p>
+  <p class="disclaimer">Nothing is automatically diagnosed, prescribed, signed or added to the medical record. The clinician must review and approve the edited note. Signed clinical notes remain immutable. Use real patient audio only after the clinic has approved the transcription provider, privacy assessment, retention controls and NDPA safeguards. Audio is not stored by HealthOS Medical Systems; the configured provider may process it under its own terms.</p>
  </div>
  <hr><h3>3. Record Vital Signs</h3>
  <form id="clinicalVitalsForm" class="auth-form">
@@ -2196,7 +2230,7 @@
  </section>
 
  <section class="panel" id="offlineSyncCentre" style="margin:16px 0" aria-labelledby="offlineSyncHeading">
-  <h3 id="offlineSyncHeading">HealthOS AI — Offline Synchronisation Centre</h3>
+  <h3 id="offlineSyncHeading">HealthOS Medical Systems — Offline Synchronisation Centre</h3>
   <p class="muted">A central connection and workflow guide for offline-capable modules. Clinical drafts and pharmacy operation intents remain separate, encrypted queues and require their own authorised review before they can enter live records.</p>
   <div class="stats-grid">
    <article class="stat-card"><p>Network</p><h4 id="offlineSyncNetwork">Checking…</h4></article>
@@ -2326,7 +2360,7 @@
  <hr><div id="clinicalDecisionSupport">
   <h3>4. Clinical Decision Support &amp; Safety Alerts</h3>
   <p class="muted">Rule-based screening of the latest recorded observations. Current numeric thresholds are adult screening prompts and run only when the patient has a verified date of birth confirming age 18 or older. Children and patients with missing/unknown dates of birth are not assessed by these adult rules; clinicians must use the hospital-approved age-specific protocol. Verify measurements and assess the patient. Alerts are not diagnoses or treatment instructions.</p>
-  <!-- HEALTHOS AI: CLINICAL RISK MONITORING -->
+  <!-- HEALTHOS MEDICAL SYSTEMS: CLINICAL RISK MONITORING -->
   <div class="stats-grid" id="clinicalRiskSummary">
    <article class="stat-card"><p>Critical Alerts</p><h3 id="clinicalCriticalCount">0</h3><p class="muted">Require immediate clinician review.</p></article>
    <article class="stat-card"><p>High-Risk Alerts</p><h3 id="clinicalHighCount">0</h3><p class="muted">Require prompt clinical attention.</p></article>
@@ -2790,7 +2824,7 @@
 
 <section class="panel" id="departmentSourcingWorkspace" style="margin:18px 0">
 <h3>Department Supplier Quotations, Award & Purchase Orders</h3>
-<p class="muted">Approved departmental requests can enter competitive supplier quotation. Only active, verified suppliers are eligible. Price flags support human review; HealthOS AI never automatically selects a supplier.</p>
+<p class="muted">Approved departmental requests can enter competitive supplier quotation. Only active, verified suppliers are eligible. Price flags support human review; HealthOS Medical Systems never automatically selects a supplier.</p>
 <form id="healthosOpenQuoteForm" class="form-grid">
 <label>Approved department request<select id="healthosSourceRequest" required><option value="">Load approved requests…</option></select></label>
 <label>Quotation request reference<input id="healthosQuoteRequestNumber" maxlength="80" required placeholder="RFQ-2026-001"></label>
@@ -2812,7 +2846,7 @@
 
 <section class="panel" id="revenueLeakageAuditPanel" hidden>
                             <h3>Invoice-to-Bank Reconciliation &amp; Revenue Leakage Audit</h3>
-                            <p class="muted">Cross-checks performed services, invoice references, department receipts and recorded payments. Each flag requires Finance review; HealthOS AI does not automatically change invoices, payments or accounting balances.</p>
+                            <p class="muted">Cross-checks performed services, invoice references, department receipts and recorded payments. Each flag requires Finance review; HealthOS Medical Systems does not automatically change invoices, payments or accounting balances.</p>
                             <p id="revenueLeakageAuditMessage" class="message" role="status" aria-live="polite">Revenue audit findings will appear here.</p>
                             <div class="table-wrap">
                                 <table>
@@ -2826,7 +2860,7 @@
                         </section>
 
                         <p class="disclaimer" id="dashboardDisclaimer">
-                            HealthOS AI is under development. Do not use this
+                            HealthOS Medical Systems is under development. Do not use this
                             prototype to make clinical decisions or process real
                             patient information. Billing findings must be reviewed
                             by authorised staff.
@@ -2834,7 +2868,7 @@
                     </section>
 
                     
-                    <!-- HEALTHOS AI: PHARMACY MODULE -->
+                    <!-- HEALTHOS MEDICAL SYSTEMS: PHARMACY MODULE -->
 
 <section class="panel" id="posReconciliation" hidden>
     <div class="panel-heading">
@@ -3190,7 +3224,7 @@
       <p class="disclaimer">Do not use this queue as authority to administer or dispense medicine. Never include patient names, phone numbers, diagnoses, or other patient identifiers. Online review and normal pharmacy controls remain mandatory. Local queue encryption is device/browser protection, not a substitute for device security.</p>
     </section>
 
-    <!-- HEALTHOS AI: ANALYTICS AND FORECASTING -->
+    <!-- HEALTHOS MEDICAL SYSTEMS: ANALYTICS AND FORECASTING -->
     <section class="panel" id="healthOSAnalyticsWorkspace" style="margin:16px 0" aria-labelledby="hosAnalyticsHeading">
       <div class="panel-heading">
         <div><p class="eyebrow">HOSPITAL INTELLIGENCE · AGGREGATE PERFORMANCE</p><h2 id="hosAnalyticsHeading">AI Analytics &amp; Forecasting</h2>
@@ -3211,7 +3245,7 @@
       <p id="hosAnalyticsMessage" class="message" role="status" aria-live="polite">Waiting for a secure clinic session.</p>
       <p class="disclaimer">Initial release: read-only, rule-based analytics, not a validated predictive AI model. Figures depend on available source fields and up to 1,000 records per source. Verify all flags against source records. No patient-level details are displayed and no financial, clinical, staffing or stock records are changed.</p>
     </section>
-    <!-- END HEALTHOS AI: ANALYTICS AND FORECASTING -->
+    <!-- END HEALTHOS MEDICAL SYSTEMS: ANALYTICS AND FORECASTING -->
 
     <section class="panel" id="pharmacyDemandForecastPanel" aria-labelledby="pharmacyDemandForecastHeading">
         <h3 id="pharmacyDemandForecastHeading">Smart Inventory Demand Forecast</h3>
@@ -3547,8 +3581,8 @@
         medicine batches, quantities, and expiry dates before dispensing.
     </p>
 </section>
-<!-- END HEALTHOS AI PHARMACY MODULE -->
-                    <!-- HEALTHOS AI: REPORTS MODULE -->
+<!-- END HEALTHOS MEDICAL SYSTEMS PHARMACY MODULE -->
+                    <!-- HEALTHOS MEDICAL SYSTEMS: REPORTS MODULE -->
 <section class="panel" id="reports" hidden>
 <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1551601651-2a8555f1a136?auto=format&fit=crop&w=1100&q=85" alt="Healthcare professionals discussing hospital operations" loading="lazy" decoding="async"><figcaption>Hospital performance and reporting</figcaption></figure>
 
@@ -3614,9 +3648,9 @@
         used for operational or financial decisions.
     </p>
 </section>
-<!-- END HEALTHOS AI REPORTS MODULE -->
+<!-- END HEALTHOS MEDICAL SYSTEMS REPORTS MODULE -->
 
-<!-- HEALTHOS AI: WHATSAPP AI TRIAGE & PATIENT INTAKE FOUNDATION -->
+<!-- HEALTHOS MEDICAL SYSTEMS: WHATSAPP AI TRIAGE & PATIENT INTAKE FOUNDATION -->
 <section id="whatsappIntake" class="panel" hidden>
 <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1559757175-0eb30cd8c063?auto=format&fit=crop&w=1100&q=85" alt="Healthcare worker assisting a patient with digital intake" loading="lazy" decoding="async"><figcaption>Patient intake and human triage</figcaption></figure>
 
@@ -3646,10 +3680,10 @@
  <p class="disclaimer">Safety: this foundation does not diagnose, prescribe or automatically determine clinical urgency. A qualified staff member must review every concern. If a person reports a life-threatening emergency, advise them to seek immediate local emergency care; do not wait for a WhatsApp reply. Do not request photographs, test results or detailed medical histories through this basic intake form.</p>
  <p class="muted">WhatsApp provider connection is not active yet. This workspace records enquiries manually until Meta WhatsApp Business Cloud API credentials, webhook verification and privacy review are configured.</p>
 </section>
-<!-- END HEALTHOS AI: WHATSAPP AI TRIAGE & PATIENT INTAKE FOUNDATION -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: WHATSAPP AI TRIAGE & PATIENT INTAKE FOUNDATION -->
 
 
-<!-- HEALTHOS AI: ADMINISTRATIVE VOICE-TO-TEXT & TRANSLATION WORKFLOW -->
+<!-- HEALTHOS MEDICAL SYSTEMS: ADMINISTRATIVE VOICE-TO-TEXT & TRANSLATION WORKFLOW -->
 <section id="adminVoiceTranslator" class="panel" hidden>
  <div class="panel-heading"><div><p class="eyebrow">ADMINISTRATIVE COMMUNICATION</p><h2>Voice-to-Text Administrative Translator</h2>
  <p class="muted">Capture routine staff instructions and administrative messages, then prepare a clear English version for human review.</p></div></div>
@@ -3675,7 +3709,7 @@
  <div class="table-wrap"><table><thead><tr><th>Date</th><th>Language</th><th>Department</th><th>Original message</th><th>English version</th><th>Type</th><th>Status</th><th>Action</th></tr></thead><tbody id="adminVoiceBody"><tr><td colspan="8">Open Voice Translator to load records.</td></tr></tbody></table></div>
  <p class="disclaimer">This is an administrative communication tool, not a clinical translator or medical interpreter. Do not enter patient names, diagnoses, prescriptions, test results or other clinical information. Browser speech recognition may send audio to the browser provider for processing; use the microphone only with appropriate notice and permission. Speech recognition and translation quality are not guaranteed. A human must verify every transcript and translation. Automated translation and AI speech services are not yet connected.</p>
 </section>
-<!-- END HEALTHOS AI: ADMINISTRATIVE VOICE-TO-TEXT & TRANSLATION WORKFLOW -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: ADMINISTRATIVE VOICE-TO-TEXT & TRANSLATION WORKFLOW -->
 
 
 <!-- PATIENT-CONTROLLED INTEROPERABLE RECORD SHARING -->
@@ -3757,7 +3791,7 @@
 </section>
 
 
-<!-- HEALTHOS AI: HOSPITAL-SIDE PATIENT CONNECTION REQUESTS -->
+<!-- HEALTHOS MEDICAL SYSTEMS: HOSPITAL-SIDE PATIENT CONNECTION REQUESTS -->
 <section id="patientConnectionRequests" class="panel" hidden>
  <div class="panel-heading"><div><p class="eyebrow">GLOBAL PATIENT ACCESS</p><h2>Patient Connection Requests</h2><p class="muted">Review requests from patients who want to connect their HealthOS account to this hospital.</p></div><button id="refreshPatientConnectionRequests" type="button" class="logout-button">Refresh requests</button></div>
  <div class="stats-grid">
@@ -3802,9 +3836,9 @@
  <p class="disclaimer">FHIR R4-shaped Bundle export is an initial interoperability adapter. Validate mappings and conformance with each receiving system before production exchange.</p>
 </section>
 
-<!-- END HEALTHOS AI: HOSPITAL-SIDE PATIENT CONNECTION REQUESTS -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: HOSPITAL-SIDE PATIENT CONNECTION REQUESTS -->
 
-<!-- HEALTHOS AI: TELEMEDICINE DASHBOARD — STEP 1 -->
+<!-- HEALTHOS MEDICAL SYSTEMS: TELEMEDICINE DASHBOARD — STEP 1 -->
 <section id="telemedicineDashboard" class="panel" hidden>
 <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=1100&q=85" alt="Doctor conducting a remote consultation with a patient" loading="lazy" decoding="async"><figcaption>Virtual care and consultations</figcaption></figure>
 
@@ -3844,9 +3878,9 @@
  <div class="panel-heading" style="margin-top:12px"><div><h3>Session controls</h3><p class="muted">Live video, audio rooms, patient join links and electronic consent capture remain unavailable until an approved provider and secure server-side integration are configured.</p></div><span class="demo-badge">PROVIDER NOT CONNECTED</span></div>
  <p class="disclaimer">Step 1 provides the hospital-side telemedicine dashboard and request visibility. It does not yet provide live video/audio rooms. Do not use this dashboard as proof that a consultation has occurred. Clinical notes, prescriptions and charges must be recorded only by authorised staff after the actual consultation.</p>
 </section>
-<!-- END HEALTHOS AI: TELEMEDICINE DASHBOARD — STEP 1 -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: TELEMEDICINE DASHBOARD — STEP 1 -->
 
-<!-- HEALTHOS AI: MULTI-FACILITY MANAGEMENT -->
+<!-- HEALTHOS MEDICAL SYSTEMS: MULTI-FACILITY MANAGEMENT -->
 <section id="multiFacilityManagement" class="panel" hidden>
 <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1100&q=85" alt="Hospital facility and healthcare environment" loading="lazy" decoding="async"><figcaption>Coordinated hospital networks</figcaption></figure>
 
@@ -3879,9 +3913,9 @@
  <div class="table-wrap"><table><thead><tr><th>Organisation</th><th>Facility</th><th>Code</th><th>Type</th><th>Clinic Workspace</th><th>Status</th></tr></thead><tbody id="facilityRegisterBody"><tr><td colspan="6">Open this page to load your facilities.</td></tr></tbody></table></div>
  <p class="disclaimer">This is the organisation and facility directory foundation. It does not yet combine financial, patient or operational records across facilities. Each clinic remains a separate data boundary; central consolidated reporting and controlled cross-facility staff assignments are planned as later implementation steps.</p>
 </section>
-<!-- END HEALTHOS AI: MULTI-FACILITY MANAGEMENT -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: MULTI-FACILITY MANAGEMENT -->
 
-<!-- HEALTHOS AI: SECURITY & FRAUD REVIEW -->
+<!-- HEALTHOS MEDICAL SYSTEMS: SECURITY & FRAUD REVIEW -->
 <section id="healthOSSecurityReview" class="panel" hidden>
  <div class="panel-heading"><div><p class="eyebrow">CONTROL &amp; ACCOUNTABILITY</p><h2>Security &amp; Fraud Review</h2><p class="muted">Clinic-scoped, read-only review of stock-control, revenue-audit and performed-service billing signals.</p></div><button id="healthOSSecurityRefresh" type="button" class="primary-button">Run review</button></div>
  <p id="healthOSSecurityMessage" class="message" role="status" aria-live="polite">Open this workspace and run a review. Signals require human investigation and are not proof of wrongdoing.</p>
@@ -3894,9 +3928,9 @@
  <div class="table-wrap"><table><thead><tr><th>Signal</th><th>Details</th><th>Recorded</th></tr></thead><tbody id="healthOSSecurityRows"><tr><td colspan="3">Run review to load signals.</td></tr></tbody></table></div>
  <p class="disclaimer">Read-only indicators only. A stock reduction may be legitimate; an unlinked service may be a workflow delay; an audit finding may be under review. This module does not accuse staff, change inventory, create charges, issue refunds or alter financial records. Review evidence through authorised hospital procedures.</p>
 </section>
-<!-- END HEALTHOS AI: SECURITY & FRAUD REVIEW -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: SECURITY & FRAUD REVIEW -->
 
-<!-- HEALTHOS AI: OPERATIONAL INTELLIGENCE & ANALYTICS -->
+<!-- HEALTHOS MEDICAL SYSTEMS: OPERATIONAL INTELLIGENCE & ANALYTICS -->
 <section id="aiAnalytics" class="panel" hidden>
  <div class="panel-heading">
   <div><p class="eyebrow">HOSPITAL INTELLIGENCE</p><h2>AI Intelligence &amp; Operational Analytics</h2>
@@ -3920,10 +3954,10 @@
  <div id="aiOperationalInsights" class="stats-grid"><article class="stat-card"><p>Loading</p><h3>—</h3><p class="muted">Operational signals will appear here.</p></article></div>
  <p class="disclaimer">These indicators are calculated from records currently available to your signed-in clinic account. They are operational summaries and rule-based alerts, not autonomous clinical decisions or a trained predictive AI model. Financial totals use the latest 5,000 billing records; confirm against the Finance and Revenue Audit workspaces before accounting decisions. Patient data remains clinic-scoped.</p>
 </section>
-<!-- END HEALTHOS AI: OPERATIONAL INTELLIGENCE & ANALYTICS -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: OPERATIONAL INTELLIGENCE & ANALYTICS -->
 
 
-<!-- HEALTHOS AI: QUALITY ASSURANCE, ACCREDITATION & PERFORMANCE -->
+<!-- HEALTHOS MEDICAL SYSTEMS: QUALITY ASSURANCE, ACCREDITATION & PERFORMANCE -->
 <section class="panel" id="hospitalQualityWorkspace" style="margin:16px 0" aria-labelledby="hospitalQualityHeading">
 <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1100&q=85" alt="Healthcare team working together in a hospital" loading="lazy" decoding="async"><figcaption>Quality improvement</figcaption></figure>
 
@@ -3965,10 +3999,10 @@
  <div class="table-wrap"><table><thead><tr><th>Reference</th><th>Category</th><th>Title</th><th>Department</th><th>Owner</th><th>Target / Actual</th><th>Due</th><th>Status</th></tr></thead><tbody id="qualityRecordsBody"><tr><td colspan="8">Sign in to load records.</td></tr></tbody></table></div>
  <p class="disclaimer">This is a quality-management record system, not an accreditation decision or certificate. Targets and results require validation by qualified hospital personnel. Patient feedback should be anonymous; do not enter patient names, contact details, diagnoses or other identifiable clinical information. Submissions are immutable and pending review; authorised review/approval workflow is a subsequent governance control.</p>
 </section>
-<!-- END HEALTHOS AI: QUALITY ASSURANCE, ACCREDITATION & PERFORMANCE -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: QUALITY ASSURANCE, ACCREDITATION & PERFORMANCE -->
 
 
-<!-- HEALTHOS AI: CLINICAL GOVERNANCE & PATIENT SAFETY -->
+<!-- HEALTHOS MEDICAL SYSTEMS: CLINICAL GOVERNANCE & PATIENT SAFETY -->
 <section class="panel" id="clinicalGovernanceWorkspace" style="margin:16px 0" aria-labelledby="clinicalGovernanceHeading">
 <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1582750433449-648ed127bb54?auto=format&fit=crop&w=1100&q=85" alt="Doctors and nurses in a clinical team discussion" loading="lazy" decoding="async"><figcaption>Clinical governance and patient safety</figcaption></figure>
 
@@ -4004,9 +4038,9 @@
  <div class="table-wrap"><table><thead><tr><th>Reference</th><th>Review type</th><th>Department</th><th>Event date</th><th>Harm</th><th>Action owner</th><th>Due date</th><th>Status</th></tr></thead><tbody id="governanceReviewRows"><tr><td colspan="8">Sign in to load reviews.</td></tr></tbody></table></div>
  <p class="disclaimer">Patient safety first: immediately provide necessary clinical care and escalate urgent events through the hospital's approved emergency and incident channels. This register does not replace statutory reporting, a formal morbidity and mortality meeting, clinical judgment or a legally required investigation. Do not enter patient names, hospital numbers, phone numbers, addresses or identifiable clinical details. Use a separately controlled case code. Review findings and actions require authorised human governance; this module does not determine negligence or cause of death.</p>
 </section>
-<!-- END HEALTHOS AI: CLINICAL GOVERNANCE & PATIENT SAFETY -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: CLINICAL GOVERNANCE & PATIENT SAFETY -->
 
-<!-- HEALTHOS AI: STAFF CREDENTIALING, LICENSING & COMPETENCY -->
+<!-- HEALTHOS MEDICAL SYSTEMS: STAFF CREDENTIALING, LICENSING & COMPETENCY -->
 <section class="panel" id="staffCredentialingWorkspace" style="margin:16px 0" aria-labelledby="staffCredentialHeading">
 <figure class="healthos-section-photo"><img src="https://images.unsplash.com/photo-1581056771107-24ca5f033842?auto=format&fit=crop&w=1100&q=85" alt="Healthcare professional reviewing training and credentials" loading="lazy" decoding="async"><figcaption>Professional standards and staff development</figcaption></figure>
 
@@ -4037,9 +4071,9 @@
  <div class="table-wrap"><table><thead><tr><th>Staff member</th><th>Department</th><th>Professional role</th><th>Category</th><th>Record</th><th>Expiry / review</th><th>Alert</th><th>Verification</th></tr></thead><tbody id="credentialRows"><tr><td colspan="8">Sign in to load records.</td></tr></tbody></table></div>
  <p class="disclaimer">A submitted credential is not verified merely because it is recorded here. Verification must be completed by an authorised hospital officer against the relevant professional body's official records and evidence. No external licensing authority API is connected. This register does not automatically activate, suspend or grant clinical system permissions; urgent scope restrictions must be communicated through the hospital's approved governance process.</p>
 </section>
-<!-- END HEALTHOS AI: STAFF CREDENTIALING, LICENSING & COMPETENCY -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: STAFF CREDENTIALING, LICENSING & COMPETENCY -->
 
-<!-- HEALTHOS AI: CLINICAL DECISION SUPPORT -->
+<!-- HEALTHOS MEDICAL SYSTEMS: CLINICAL DECISION SUPPORT -->
 <section class="panel" id="clinicalDecisionSupportWorkspace" style="margin:16px 0" aria-labelledby="cdsHeading">
 <div class="panel-heading"><div><p class="eyebrow">CLINICAL INTELLIGENCE · CLINICIAN-LED DECISIONS</p><h2 id="cdsHeading">AI Clinical Decision Support</h2><p class="muted">Structured clinical risk review and evidence-informed considerations. This workspace supports—not replaces—the licensed clinician's assessment.</p></div><button type="button" id="cdsRefreshButton" class="logout-button">Refresh reviews</button></div>
 <div class="stats-grid"><article class="stat-card"><p>Total reviews</p><h3 id="cdsTotal">—</h3></article><article class="stat-card"><p>Awaiting clinician review</p><h3 id="cdsPending">—</h3></article><article class="stat-card"><p>Urgent / emergency flags</p><h3 id="cdsUrgent">—</h3></article></div>
@@ -4059,7 +4093,7 @@
 <h3>Clinical decision-support review register</h3><div class="table-wrap"><table><thead><tr><th>Encounter</th><th>Department</th><th>Review domain</th><th>Urgency</th><th>Status</th><th>Submitted</th><th>Disposition</th></tr></thead><tbody id="cdsRows"><tr><td colspan="7">Sign in to load reviews.</td></tr></tbody></table></div>
 <p class="disclaimer">Safety boundary: this initial module is a structured review and risk-documentation workflow, not a validated diagnostic or treatment recommendation engine. It does not calculate patient-specific probabilities, prescribe medicines, interpret results autonomously or generate treatment orders. Clinicians must independently verify findings against current approved guidelines and the patient's complete record. For emergencies, activate the hospital's emergency response immediately; do not wait for this system. Do not enter unnecessary patient-identifying information.</p>
 </section>
-<!-- END HEALTHOS AI: CLINICAL DECISION SUPPORT -->
+<!-- END HEALTHOS MEDICAL SYSTEMS: CLINICAL DECISION SUPPORT -->
 <!-- HEALTHOS DEPARTMENTAL KNOWLEDGE CENTRE -->
 <section class="panel" id="departmentKnowledgeCentre" style="margin:16px 0">
  <div class="panel-heading"><div><p class="eyebrow">HOSPITAL-WIDE KNOWLEDGE · DEPARTMENT-SCOPED ACCESS</p><h2>Departmental Knowledge Centre</h2><p class="muted">Department duties, approved procedures, work instructions, FAQs and workspace navigation guides.</p></div><button type="button" id="dkcRefresh" class="logout-button">Refresh</button></div>
@@ -4088,7 +4122,7 @@
 </section>
 <!-- END HEALTHOS DEPARTMENTAL KNOWLEDGE CENTRE -->
 
-<!-- HEALTHOS AI PLATFORM DIRECTORY ADMIN CONSOLE -->
+<!-- HEALTHOS MEDICAL SYSTEMS PLATFORM DIRECTORY ADMIN CONSOLE -->
 <section id="platformDirectoryAdmin" class="panel" hidden style="margin:16px 0">
  <div class="panel-heading"><div><p class="eyebrow">RESTRICTED PLATFORM OPERATIONS</p><h2>Hospital Directory Administration</h2><p class="muted">Register permitted data sources, import licensed listings and review publication requests.</p></div><button id="directoryAdminClose" type="button" class="logout-button">Close</button></div>
  <p id="directoryAdminMessage" class="message" role="status" aria-live="polite">Checking administrator access…</p>
@@ -4110,12 +4144,12 @@
  <div class="panel"><h3>Import permitted data (JSON)</h3><label for="directoryImportSource">Enabled source</label><select id="directoryImportSource"></select><label for="directoryImportJson">JSON array of records (maximum 500)</label><textarea id="directoryImportJson" rows="8" placeholder='[{"source_record_id":"…","public_name":"…","state":"…","city":"…"}]'></textarea><button id="directoryImportButton" type="button" class="primary-button">Import for review (not public)</button></div>
  <div class="panel"><div class="panel-heading"><div><h3>Hospital Registration Applications</h3><p class="muted">Review submitted facility documents and complete the nine identity checks before making a final decision.</p></div><button type="button" id="openHospitalRegistrationReview" class="primary-button" hidden>Open registration review queue</button></div>
  <section id="hospitalRegistrationReview" hidden><div class="panel-heading"><p id="hospitalReviewQueueCount" class="muted">Applications</p><div class="button-row"><button type="button" id="refreshHospitalReview" class="secondary-button">Refresh queue</button><button type="button" id="closeHospitalRegistrationReview" class="logout-button">Close review queue</button></div></div><p id="hospitalReviewMessage" class="message" role="status" aria-live="polite">Sign in as an authorised platform administrator to review applications.</p><div id="hospitalRegistrationReviewRows"></div></section></div>
- <p class="disclaimer">Never import patient information. Imported hospitals remain private review_required records until an authorised human approves them. External listings are not HealthOS AI network members.</p>
+ <p class="disclaimer">Never import patient information. Imported hospitals remain private review_required records until an authorised human approves them. External listings are not HealthOS Medical Systems network members.</p>
 </section>
-<!-- END HEALTHOS AI PLATFORM DIRECTORY ADMIN CONSOLE -->
+<!-- END HEALTHOS MEDICAL SYSTEMS PLATFORM DIRECTORY ADMIN CONSOLE -->
 
                     <footer>
-    HealthOS AI · Healthcare operations and revenue protection
+    HealthOS Medical Systems · Healthcare operations and revenue protection
                     </footer>
                 </div>
             </div>
