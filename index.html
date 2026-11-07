@@ -805,6 +805,22 @@
  </div>
 
  <div class="panel">
+  <h3>ICU patient shift handover</h3>
+  <p class="muted">Record a patient-specific handover from the nurse currently responsible for the admission. The incoming assigned nurse must accept it before responsibility is marked as transferred. Every record and acceptance is audited.</p>
+  <form id="icuShiftHandoverForm" class="form-grid">
+   <label>ICU admission<select id="icuHandoverAdmission" required><option value="">Select ICU admission</option></select></label>
+   <label>Outgoing nurse (your active assignment)<select id="icuHandoverOutgoing" required><option value="">Select your assignment</option></select></label>
+   <label>Incoming nurse (optional)<select id="icuHandoverIncoming"><option value="">Not specified — any assigned ICU nurse may accept</option></select></label>
+   <label>Shift<select id="icuHandoverShift" required><option value="morning">Morning</option><option value="afternoon">Afternoon</option><option value="night">Night</option><option value="other">Other</option></select></label>
+   <label class="full-width">Patient-specific handover summary<textarea id="icuHandoverSummary" rows="3" minlength="10" maxlength="5000" required placeholder="Document current condition, care delivered, important changes and immediate concerns."></textarea></label>
+   <label class="full-width">Outstanding care tasks / follow-up<textarea id="icuHandoverPending" rows="2" maxlength="3000" placeholder="List pending actions and any required follow-up. Do not use this field as a substitute for an urgent verbal handover."></textarea></label>
+   <button type="submit" class="primary-button" id="icuSaveHandoverButton">Record patient handover</button>
+  </form>
+  <h4>ICU handover register</h4>
+  <div class="table-wrap"><table><thead><tr><th>Recorded</th><th>Patient / admission</th><th>Shift</th><th>Outgoing nurse</th><th>Incoming nurse</th><th>Pending care</th><th>Status / acceptance</th><th>Action</th></tr></thead><tbody id="icuHandoverRows"><tr><td colspan="8">Refresh to load patient handovers.</td></tr></tbody></table></div>
+ </div>
+
+ <div class="panel">
   <h3>ICU observation schedule</h3>
   <p class="muted">An authorised clinician sets the observation interval and reason. Use only the frequency specified by the responsible clinical team.</p>
   <form id="icuObservationScheduleForm" class="form-grid">
