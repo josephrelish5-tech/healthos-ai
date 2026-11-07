@@ -13237,15 +13237,18 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
    admissions=(admissionResult.data||[]).filter(a=>a.bed_id&&bedMap.has(a.bed_id));
    patients=patientResult.data||[];
    const transfers=transferResult.data||[];
-   const [nursingData,encounterResult,scheduleResult,handoverResult]=await Promise.all([
+   const [nursingData,encounterResult,scheduleResult,handoverResult,supervisorData]=await Promise.all([
     rpc("healthos_icu_nursing_workspace",{p_clinic_id:clinicId}),
     supabaseClient.from("clinical_encounters").select("id,patient_id,encounter_number,encounter_type,status,created_at").eq("clinic_id",clinicId).in("status",["open","in_progress"]).order("created_at",{ascending:false}).limit(1000),
     supabaseClient.from("icu_observation_schedules").select("id,admission_id,encounter_id,interval_minutes,schedule_reason,next_due_at,status,starts_at,ends_at").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(500),
-    supabaseClient.from("nursing_shift_handovers").select("id,admission_id,shift_code,outgoing_staff_user_id,incoming_staff_user_id,outgoing_nurse_assignment_id,incoming_nurse_assignment_id,handover_summary,pending_items,recorded_at,handover_status,accepted_by,accepted_at").eq("clinic_id",clinicId).not("admission_id","is",null).order("recorded_at",{ascending:false}).limit(200)
+    supabaseClient.from("nursing_shift_handovers").select("id,admission_id,shift_code,outgoing_staff_user_id,incoming_staff_user_id,outgoing_nurse_assignment_id,incoming_nurse_assignment_id,handover_summary,pending_items,recorded_at,handover_status,accepted_by,accepted_at").eq("clinic_id",clinicId).not("admission_id","is",null).order("recorded_at",{ascending:false}).limit(200),
+    rpc("healthos_icu_supervisor_overview",{p_clinic_id:clinicId})
    ]);
    if(encounterResult.error)throw encounterResult.error;
    if(scheduleResult.error)throw scheduleResult.error;
    if(handoverResult.error)throw handoverResult.error;
+   const oversight=supervisorData||{};
+   const oversightSummary=oversight.summary||{};
    const activeSchedules=scheduleResult.data||[];
    const openEncounters=encounterResult.data||[];
 
@@ -13351,6 +13354,47 @@ document.querySelectorAll('.sidebar .nav-item[href="#telemedicineDashboard"]').f
      const action=tr.insertCell();
      const canAccept=h.handover_status==="pending"&&activeNurseAssignments.some(x=>x.admission_id===h.admission_id&&x.staff_user_id===currentUser.id&&(!h.incoming_nurse_assignment_id||x.nurse_assignment_id===h.incoming_nurse_assignment_id));
      if(canAccept){const accept=document.createElement("button");accept.type="button";accept.className="secondary-button";accept.textContent="Accept handover";accept.addEventListener("click",async()=>{if(!confirm("Accept clinical handover responsibility for this ICU admission?"))return;await runAction(accept,()=>rpc("healthos_icu_accept_shift_handover",{p_clinic_id:clinicId,p_handover_id:h.id}),"ICU handover accepted. Acceptance identity and timestamp were audited.");});action.append(accept);}else action.textContent=h.handover_status==="accepted"?"Accepted":"—";
+    });
+   }
+   put("icuEscalationObservations",oversightSummary.overdue_observations??0);
+   put("icuEscalationHandovers",oversightSummary.unaccepted_handovers??0);
+   put("icuEscalationTasks",oversightSummary.overdue_tasks??0);
+   put("icuEscalationOpen",oversightSummary.open_escalations??0);
+   put("icuOutstandingTaskCount",oversightSummary.outstanding_tasks??0);
+   const escalationRows=$("icuEscalationRows");
+   if(escalationRows){
+    escalationRows.replaceChildren();
+    const escalations=Array.isArray(oversight.escalations)?oversight.escalations:[];
+    if(!escalations.length){const tr=escalationRows.insertRow();const td=tr.insertCell();td.colSpan=5;td.textContent="No active ICU escalations were detected at this refresh.";}
+    escalations.forEach(item=>{
+     const tr=escalationRows.insertRow();
+     cell(tr,fmt(item.first_detected_at));cell(tr,item.detail||item.source_type);cell(tr,item.severity);cell(tr,item.status);
+     const actionCell=tr.insertCell();
+     if(item.status==="open"){
+      const acknowledge=document.createElement("button");acknowledge.type="button";acknowledge.className="secondary-button";acknowledge.textContent="Acknowledge";
+      acknowledge.addEventListener("click",async()=>{await runAction(acknowledge,()=>rpc("healthos_icu_update_supervisor_escalation",{p_clinic_id:clinicId,p_escalation_id:item.id,p_action:"acknowledge",p_note:null}),"Escalation acknowledged by the authorised supervisor.");});
+      actionCell.append(acknowledge);
+     }
+     if(item.status!=="resolved"){
+      const resolve=document.createElement("button");resolve.type="button";resolve.className="secondary-button";resolve.textContent="Resolve";
+      resolve.addEventListener("click",async()=>{
+       const note=prompt("Record the corrective action and outcome (at least 5 characters):");
+       if(!note||note.trim().length<5){message("A resolution note of at least 5 characters is required.",true);return;}
+       if(!confirm("Confirm that this escalation has been addressed?"))return;
+       await runAction(resolve,()=>rpc("healthos_icu_update_supervisor_escalation",{p_clinic_id:clinicId,p_escalation_id:item.id,p_action:"resolve",p_note:note.trim()}),"Escalation resolution recorded with supervisor identity and reason.");
+      });
+      actionCell.append(resolve);
+     }
+    });
+   }
+   const outstandingRows=$("icuOutstandingTaskRows");
+   if(outstandingRows){
+    outstandingRows.replaceChildren();
+    const outstanding=Array.isArray(oversight.outstanding_tasks)?oversight.outstanding_tasks:[];
+    if(!outstanding.length){const tr=outstandingRows.insertRow();const td=tr.insertCell();td.colSpan=6;td.textContent="No outstanding tasks are currently linked to active ICU nurse responsibilities.";}
+    outstanding.forEach(task=>{
+     const tr=outstandingRows.insertRow();
+     [task.task_title,task.nurse_name,(task.admission_number||"Admission")+" · "+(task.bed_number||"Bed"),task.priority,String(task.task_status||"").replaceAll("_"," "),fmt(task.due_at)].forEach(value=>cell(tr,value));
     });
    }
    const vitalsRows=$("icuVitalsRows");vitalsRows.replaceChildren();
