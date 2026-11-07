@@ -778,8 +778,19 @@
   <article class="stat-card"><p>Available ICU beds</p><h3 id="icuAvailableBeds">—</h3></article>
   <article class="stat-card"><p>Current ICU admissions</p><h3 id="icuActiveAdmissions">—</h3></article>
  </div>
+ <div class="panel">
+  <h3>Authorised ICU admission</h3>
+  <p class="muted">Admission requires bed-management create permission. The database verifies the patient, ICU bed availability and admission reference before recording the admission.</p>
+  <form id="icuAdmissionForm" class="form-grid">
+   <label>Patient<select id="icuAdmissionPatient" required><option value="">Select patient</option></select></label>
+   <label>Available ICU bed<select id="icuAdmissionBed" required><option value="">Select available ICU bed</option></select></label>
+   <label>Admission reference<input id="icuAdmissionNumber" maxlength="80" required placeholder="Enter hospital admission number"></label>
+   <label class="full-width">Admission reason<textarea id="icuAdmissionReason" rows="2" maxlength="2000" required placeholder="Document the authorised admission reason"></textarea></label>
+   <button type="submit" class="primary-button" id="icuAdmitButton">Admit patient to ICU</button>
+  </form>
+ </div>
  <div class="panel"><h3>Current ICU patient list</h3><p class="muted">Patients appear here when an active admission is linked to a bed whose ward or bed type is labelled ICU or Intensive Care. This view does not assign beds or staff.</p>
-  <div class="table-wrap"><table><thead><tr><th>Patient</th><th>Admission reference</th><th>Bed</th><th>Ward</th><th>Admitted</th><th>Latest recorded observations</th></tr></thead><tbody id="icuAdmissionsRows"><tr><td colspan="6">Refresh to load ICU admissions.</td></tr></tbody></table></div>
+  <div class="table-wrap"><table><thead><tr><th>Patient</th><th>Admission reference</th><th>Bed</th><th>Ward</th><th>Admitted</th><th>Latest recorded observations</th><th>Authorised actions</th></tr></thead><tbody id="icuAdmissionsRows"><tr><td colspan="6">Refresh to load ICU admissions.</td></tr></tbody></table></div>
  </div>
  <div class="panel"><h3>Recent ICU observations</h3><p class="muted">Displays observations already recorded in the clinical record. Values are shown as entered; this panel does not diagnose, score deterioration or generate treatment instructions.</p>
   <div class="table-wrap"><table><thead><tr><th>Recorded</th><th>Patient</th><th>Temperature</th><th>Blood pressure</th><th>Pulse</th><th>Respiratory rate</th><th>Oxygen saturation</th><th>Recorded by</th></tr></thead><tbody id="icuVitalsRows"><tr><td colspan="8">Refresh to load observations.</td></tr></tbody></table></div>
