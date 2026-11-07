@@ -1,4 +1,4 @@
-// HealthOS AI
+// HealthOS
 // Authentication and clinic workspace setup.
 // Use fictional demonstration information only.
 
@@ -206,7 +206,7 @@ function showDashboardMessage(message, type = "") {
 
 // Display only the requested screen.
 
-// Display only the requested HealthOS AI workspace.
+// Display only the requested HealthOS workspace.
 function showOnly(screen) {
     authPanel.hidden = screen !== "auth";
         const recoveryPanel = document.getElementById("passwordRecoveryPanel");
@@ -421,7 +421,7 @@ await loadTaskAssignmentOptions(currentClinic);
 await loadStaffShiftOptions(currentClinic);
     } catch (error) { 
         console.error(
-            "HealthOS AI management verification failed:",
+            "HealthOS management verification failed:",
             error
         );
 
@@ -1052,7 +1052,7 @@ async function startStaffPresenceTracking(
     );
 
     console.log(
-        "HealthOS AI staff presence tracking started."
+        "HealthOS staff presence tracking started."
     );
 }
 
@@ -3274,7 +3274,7 @@ areas.forEach(function (area) {
 
     } catch (error) {
         console.error(
-            "HealthOS AI workspace lookup failed:",
+            "HealthOS workspace lookup failed:",
             error
         );
 
@@ -3752,7 +3752,7 @@ async function loadAdminStaffDashboard(clinic) {
 
     } catch (error) {
         console.error(
-            "HealthOS AI staff dashboard loading failed:",
+            "HealthOS staff dashboard loading failed:",
             error
         );
 
@@ -4539,7 +4539,7 @@ async function loadStaffActivityTable(clinic) {
 
     } catch (error) {
         console.error(
-            "HealthOS AI: Staff activity table failed:",
+            "HealthOS: Staff activity table failed:",
             error
         );
 
@@ -4586,7 +4586,7 @@ async function loadBillingData(clinic) {
     ) {
 
         console.error(
-            "HealthOS AI: Billing dashboard elements are missing."
+            "HealthOS: Billing dashboard elements are missing."
         );
         return;
     }
@@ -5139,7 +5139,7 @@ async function loadBillingData(clinic) {
 
     } catch (error) {
         console.error(
-            "HealthOS AI billing data loading failed:",
+            "HealthOS billing data loading failed:",
             error
         );
 
@@ -5335,7 +5335,7 @@ if (transactionForm) {
 
         } catch (error) {
             console.error(
-                "HealthOS AI transaction save failed:",
+                "HealthOS transaction save failed:",
                 error
             );
 
@@ -5645,7 +5645,7 @@ if (staffRegistrationForm) {
 
             } catch (error) {
                 console.error(
-                    "HealthOS AI staff registration failed:",
+                    "HealthOS staff registration failed:",
                     error
                 );
 
@@ -5850,7 +5850,7 @@ async function checkConnection() {
         }
     } catch (error) {
         console.error(
-            "HealthOS AI connection check failed:",
+            "HealthOS connection check failed:",
             error
         );
 
@@ -6303,7 +6303,7 @@ if (error) {
     }
 });
 
-// Start HealthOS AI.
+// Start HealthOS.
 setMode(false);
 showOnly("auth");
 checkConnection();
@@ -11304,7 +11304,7 @@ if (refreshAppointmentsButton) {
     if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
         window.addEventListener("load", () => {
             navigator.serviceWorker.register("./sw.js")
-                .then(() => console.info("HealthOS AI offline application shell registered."))
+                .then(() => console.info("HealthOS offline application shell registered."))
                 .catch(error => console.warn("Offline shell registration unavailable:", error));
         });
     }
