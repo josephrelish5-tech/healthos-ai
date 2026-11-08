@@ -4385,6 +4385,172 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                         });
                         void loadDepartmentWorkspaceTaskBoard(clinic, department.id, taskBoard);
 
+                        // Stage 3C: department-scoped supervisor review queue.
+                        const reviewHeading = document.createElement("h4");
+                        reviewHeading.textContent = "Supervisor review & approval";
+                        const reviewPanel = document.createElement("section");
+                        reviewPanel.className = "panel";
+                        reviewPanel.style.margin = "18px 0";
+                        const reviewIntro = document.createElement("p");
+                        reviewIntro.className = "muted";
+                        reviewIntro.textContent = "Review submitted work and its evidence. The database checks supervisor authority and separate-approval requirements before any decision is recorded.";
+                        const reviewStatus = document.createElement("p");
+                        reviewStatus.className = "message";
+                        reviewStatus.setAttribute("role", "status");
+                        reviewStatus.setAttribute("aria-live", "polite");
+                        const reviewList = document.createElement("div");
+                        const reviewRefresh = document.createElement("button");
+                        reviewRefresh.type = "button";
+                        reviewRefresh.className = "secondary-button";
+                        reviewRefresh.textContent = "Refresh review queue";
+                        reviewPanel.append(reviewIntro, reviewRefresh, reviewStatus, reviewList);
+                        detail.append(reviewHeading, reviewPanel);
+
+                        async function refreshDepartmentSupervisorReviews() {
+                            reviewList.replaceChildren();
+                            reviewStatus.textContent = "Loading submitted work for this department...";
+                            reviewStatus.className = "message";
+                            reviewRefresh.disabled = true;
+                            try {
+                                const { data: reviewData, error: reviewLoadError } = await supabaseClient.rpc(
+                                    "get_department_supervisor_task_reviews",
+                                    { p_clinic_id: clinic.id, p_department_id: department.id }
+                                );
+                                if (reviewLoadError) throw reviewLoadError;
+                                const reviewTasks = Array.isArray(reviewData?.tasks) ? reviewData.tasks : [];
+                                if (!reviewTasks.length) {
+                                    reviewStatus.textContent = "No submitted tasks are currently waiting for your review in this department.";
+                                    reviewStatus.className = "message success";
+                                    return;
+                                }
+                                reviewStatus.textContent = reviewTasks.length + " submitted task(s) awaiting an authorised review.";
+                                reviewStatus.className = "message success";
+                                reviewTasks.forEach(task => {
+                                    const card = document.createElement("article");
+                                    card.className = "stat-card";
+                                    const title = document.createElement("h5");
+                                    title.textContent = task.task_title || "Submitted task";
+                                    const meta = document.createElement("p");
+                                    meta.className = "muted";
+                                    meta.textContent = (task.assignee_name || "Staff member") +
+                                        (task.assignee_staff_id ? " (" + task.assignee_staff_id + ")" : "") +
+                                        (task.unit_name ? " · " + task.unit_name : "") +
+                                        " · " + String(task.priority || "normal").toUpperCase() +
+                                        (task.submitted_at ? " · Submitted " + formatDate(task.submitted_at) : "");
+                                    card.append(title, meta);
+                                    if (task.task_description) {
+                                        const instructions = document.createElement("p");
+                                        instructions.textContent = task.task_description;
+                                        card.appendChild(instructions);
+                                    }
+                                    const requirements = document.createElement("p");
+                                    requirements.className = "stat-note";
+                                    requirements.textContent =
+                                        (task.requires_evidence ? "Evidence required" : "Evidence not mandatory") +
+                                        (task.requires_separate_approval ? " · Separate approval required" : "");
+                                    card.appendChild(requirements);
+
+                                    const evidenceHeading = document.createElement("strong");
+                                    evidenceHeading.textContent = "Submitted evidence";
+                                    card.appendChild(evidenceHeading);
+                                    const evidenceItems = Array.isArray(task.evidence) ? task.evidence : [];
+                                    if (!evidenceItems.length) {
+                                        const noEvidence = document.createElement("p");
+                                        noEvidence.className = "muted";
+                                        noEvidence.textContent = task.requires_evidence
+                                            ? "No evidence item was returned. Do not approve until the required evidence is available and verified."
+                                            : "No evidence was attached to this submission.";
+                                        card.appendChild(noEvidence);
+                                    } else {
+                                        evidenceItems.forEach(item => {
+                                            const evidence = document.createElement("p");
+                                            evidence.textContent = (item.type || "Evidence") + ": " +
+                                                (item.text || item.reference || "Evidence record") +
+                                                (item.submitted_by ? " · Submitted by " + item.submitted_by : "") +
+                                                (item.captured_at ? " · " + formatDate(item.captured_at) : "");
+                                            card.appendChild(evidence);
+                                        });
+                                    }
+
+                                    const notesLabel = document.createElement("label");
+                                    notesLabel.textContent = "Review notes (required for rejection or correction request)";
+                                    const notes = document.createElement("textarea");
+                                    notes.rows = 3;
+                                    notes.maxLength = 3000;
+                                    notes.placeholder = "Record findings, corrections or reason for rejection";
+                                    notesLabel.appendChild(notes);
+                                    card.appendChild(notesLabel);
+
+                                    const actionStatus = document.createElement("p");
+                                    actionStatus.className = "message";
+                                    actionStatus.setAttribute("role", "status");
+                                    const actions = document.createElement("div");
+                                    actions.className = "button-group";
+                                    [
+                                        ["approved", "Approve completion"],
+                                        ["changes_requested", "Request corrections"],
+                                        ["rejected", "Reject submission"]
+                                    ].forEach(([decision, label]) => {
+                                        const button = document.createElement("button");
+                                        button.type = "button";
+                                        button.className = decision === "approved" ? "primary-button" : "secondary-button";
+                                        button.textContent = label;
+                                        button.addEventListener("click", async () => {
+                                            if (decision !== "approved" && notes.value.trim().length < 3) {
+                                                actionStatus.textContent = "Enter at least 3 characters explaining the decision.";
+                                                actionStatus.className = "message error";
+                                                return;
+                                            }
+                                            if (decision === "approved" && task.requires_evidence && !evidenceItems.length) {
+                                                actionStatus.textContent = "Approval blocked in this screen: required evidence is missing. Verify and submit the evidence before approval.";
+                                                actionStatus.className = "message error";
+                                                return;
+                                            }
+                                            actions.querySelectorAll("button").forEach(item => item.disabled = true);
+                                            actionStatus.textContent = "Submitting review decision to the secured database workflow...";
+                                            actionStatus.className = "message";
+                                            try {
+                                                const { error: reviewError } = await supabaseClient.rpc(
+                                                    "review_supervisor_staff_task",
+                                                    {
+                                                        p_clinic_id: clinic.id,
+                                                        p_task_id: task.id,
+                                                        p_decision: decision,
+                                                        p_notes: notes.value.trim() || null
+                                                    }
+                                                );
+                                                if (reviewError) throw reviewError;
+                                                actionStatus.textContent = decision === "approved"
+                                                    ? "Completion approved and recorded."
+                                                    : decision === "changes_requested"
+                                                        ? "Corrections requested and recorded."
+                                                        : "Submission rejected and recorded.";
+                                                actionStatus.className = "message success";
+                                                await refreshDepartmentSupervisorReviews();
+                                                await loadDepartmentWorkspaceTaskBoard(clinic, department.id, taskBoard);
+                                            } catch (reviewError) {
+                                                console.error("Department task review failed:", reviewError);
+                                                actionStatus.textContent = friendlyError(reviewError);
+                                                actionStatus.className = "message error";
+                                                actions.querySelectorAll("button").forEach(item => item.disabled = false);
+                                            }
+                                        });
+                                        actions.appendChild(button);
+                                    });
+                                    card.append(actions, actionStatus);
+                                    reviewList.appendChild(card);
+                                });
+                            } catch (reviewLoadError) {
+                                console.error("Department supervisor review queue failed:", reviewLoadError);
+                                reviewStatus.textContent = friendlyError(reviewLoadError);
+                                reviewStatus.className = "message error";
+                            } finally {
+                                reviewRefresh.disabled = false;
+                            }
+                        }
+                        reviewRefresh.addEventListener("click", () => void refreshDepartmentSupervisorReviews());
+                        void refreshDepartmentSupervisorReviews();
+
                         // Stage 3B: department-scoped task assignment. Reuses the existing
                         // authorised options RPC and server-side task creation RPC.
                         const assignmentHeading = document.createElement("h4");
