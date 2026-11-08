@@ -70,6 +70,13 @@ document.querySelectorAll("#adminStaffDashboard [data-workspace-target]").forEac
 }
 
 function showHealthOSView(viewId) {
+    // Navigation guard for owner-only workspace routes. Backend RLS remains authoritative.
+    const ownerOnlyViews = ["multiFacilityManagement", "hospitalOwnerRegistration"];
+    if (ownerOnlyViews.includes(viewId) &&
+        !["owner", "clinic_owner", "super_admin"].includes(String(currentManagementRole || "").toLowerCase())) {
+        alert("This workspace is reserved for the verified hospital owner.");
+        return;
+    }
     if (viewId === "hospitalMap") {
         showOnly("hospitalDiscovery");
         if (window.HealthOSHospitalDiscovery) window.HealthOSHospitalDiscovery.refresh();
@@ -366,6 +373,11 @@ async function verifyManagementAccess(password) {
 // Update the management landing identity from the verified clinic membership role.
 // This changes presentation only; database policies and server-side permissions remain authoritative.
 function updateManagementWorkspaceIdentity(role) {
+    const isOwner = ["owner", "clinic_owner", "super_admin"].includes(String(role || "").toLowerCase());
+    document.querySelectorAll("[data-owner-only]").forEach(control => {
+        control.hidden = !isOwner;
+        control.setAttribute("aria-hidden", isOwner ? "false" : "true");
+    });
     const banner = document.getElementById("managementRoleBanner");
     const heading = document.getElementById("workspaceLaunchpadHeading");
     const description = document.querySelector("#workspaceLaunchpad .workspace-launchpad-heading .muted");
