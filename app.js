@@ -11716,6 +11716,25 @@ if (refreshAppointmentsButton) {
  const set=(id,value)=>{const el=$(id);if(el)el.textContent=value;};
  const say=(message,error=false)=>{const el=$("aiAnalyticsMessage");if(el){el.textContent=message;el.className="message"+(error?" error":" success");}};
  const cell=(row,value)=>{const td=document.createElement("td");td.textContent=value==null||value===""?"—":String(value);row.appendChild(td);};
+
+ function renderMiniChart(id,kind,rows,formatValue){
+  const host=$(id);if(!host)return;host.replaceChildren();
+  const values=(rows||[]).filter(r=>Number.isFinite(Number(r.value)));
+  if(!values.length||values.every(r=>Number(r.value)===0)){const p=document.createElement("p");p.className="muted";p.textContent="No recorded data for this reporting period.";host.appendChild(p);return;}
+  const w=520,h=190,l=48,r=12,t=12,b=38,pw=w-l-r,ph=h-t-b,max=Math.max(1,...values.map(x=>Number(x.value)));
+  const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");svg.setAttribute("viewBox","0 0 "+w+" "+h);svg.setAttribute("width","100%");
+  const add=(tag,attrs,txt)=>{const e=document.createElementNS("http://www.w3.org/2000/svg",tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,String(v)));if(txt!==undefined)e.textContent=txt;svg.appendChild(e);};
+  [0,.5,1].forEach(f=>{const y=t+ph*(1-f);add("line",{x1:l,y1:y,x2:w-r,y2:y,stroke:"#dbe4ef"});add("text",{x:l-8,y:y+4,"text-anchor":"end",fill:"#52657d","font-size":11},Math.round(max*f).toLocaleString());});
+  if(kind==="line"){
+   const pts=values.map((x,i)=>({x:l+(values.length===1?pw/2:i*pw/(values.length-1)),y:t+ph-(Number(x.value)/max)*ph,label:x.label,value:Number(x.value)}));
+   add("polyline",{points:pts.map(p=>p.x+","+p.y).join(" "),fill:"none",stroke:"#123b68","stroke-width":3,"stroke-linecap":"round","stroke-linejoin":"round"});
+   pts.forEach(p=>{add("circle",{cx:p.x,cy:p.y,r:4,fill:"#168a83"});add("text",{x:p.x,y:Math.max(12,p.y-9),"text-anchor":"middle",fill:"#123b68","font-size":10},formatValue?formatValue(p.value):p.value.toLocaleString());add("text",{x:p.x,y:h-12,"text-anchor":"middle",fill:"#52657d","font-size":10},p.label);});
+  }else{
+   const slot=pw/values.length,bw=Math.min(46,slot*.62);
+   values.forEach((x,i)=>{const v=Number(x.value),bh=v/max*ph,bx=l+i*slot+(slot-bw)/2,by=t+ph-bh;add("rect",{x:bx,y:by,width:bw,height:Math.max(0,bh),rx:4,fill:"#1c527f"});add("text",{x:bx+bw/2,y:Math.max(12,by-5),"text-anchor":"middle",fill:"#123b68","font-size":10},v.toLocaleString());add("text",{x:bx+bw/2,y:h-12,"text-anchor":"middle",fill:"#52657d","font-size":10},x.label);});
+  }
+  host.appendChild(svg);
+ }
  function renderInsights(items){
   const box=$("aiOperationalInsights");if(!box)return;box.replaceChildren();
   items.forEach(item=>{const card=document.createElement("article");card.className="stat-card";const p=document.createElement("p");p.textContent=item.title;const h=document.createElement("h3");h.textContent=item.value;const note=document.createElement("p");note.className="muted";note.textContent=item.note;card.append(p,h,note);box.appendChild(card);});
@@ -11727,7 +11746,7 @@ if (refreshAppointmentsButton) {
   say("Calculating clinic operational indicators…");
   const results=await Promise.all([
    supabaseClient.from("patients").select("id",{count:"exact",head:true}).eq("clinic_id",clinicId),
-   supabaseClient.from("appointments").select("id,scheduled_at,status").eq("clinic_id",clinicId).gte("scheduled_at",todayStart.toISOString()).lt("scheduled_at",isoTomorrow).limit(3000),
+   supabaseClient.from("appointments").select("id,scheduled_at,status").eq("clinic_id",clinicId).gte("scheduled_at",isoStart).lt("scheduled_at",isoTomorrow).order("scheduled_at",{ascending:true}).limit(5000),
    supabaseClient.from("billing_transactions").select("invoice_amount,amount_paid,payment_status,transaction_date").eq("clinic_id",clinicId).order("transaction_date",{ascending:false}).limit(5000),
    supabaseClient.from("service_events").select("id,quantity,unit_price,event_status,performed_at").eq("clinic_id",clinicId).gte("performed_at",todayStart.toISOString()).lt("performed_at",isoTomorrow).in("event_status",["performed","verified"]).limit(3000),
    supabaseClient.from("patient_queue").select("id,priority,status").eq("clinic_id",clinicId).not("status","in","(completed,cancelled)").limit(3000),
@@ -11737,6 +11756,7 @@ if (refreshAppointmentsButton) {
   ]);
   const failed=results.find(r=>r.error);if(failed)throw failed.error;
   const patients=results[0].count||0,appointments=results[1].data||[],billing=results[2].data||[],services=results[3].data||[],queue=results[4].data||[],beds=results[5].data||[],stock=results[6].data||[],encounters=results[7].data||[];
+  const appointmentsToday=appointments.filter(x=>x.scheduled_at&&new Date(x.scheduled_at)>=todayStart&&new Date(x.scheduled_at)<tomorrow);
   const todaysBills=billing.filter(x=>x.transaction_date&&new Date(x.transaction_date)>=todayStart&&new Date(x.transaction_date)<tomorrow);
   const collectedToday=todaysBills.reduce((n,x)=>n+Number(x.amount_paid||0),0);
   const outstanding=billing.reduce((n,x)=>n+Math.max(0,Number(x.invoice_amount||0)-Number(x.amount_paid||0)),0);
@@ -11747,7 +11767,7 @@ if (refreshAppointmentsButton) {
   const low=stock.filter(x=>Number(x.quantity||0)<=Number(x.reorder_level||0));
   const expired=stock.filter(x=>x.expiry_date&&new Date(x.expiry_date)<todayStart);
   const soon=stock.filter(x=>x.expiry_date&&new Date(x.expiry_date)>=todayStart&&new Date(x.expiry_date)<new Date(todayStart.getTime()+30*86400000));
-  set("aiPatientsTotal",num(patients));set("aiAppointmentsToday",num(appointments.length));set("aiRevenueToday",money(collectedToday));
+  set("aiPatientsTotal",num(patients));set("aiAppointmentsToday",num(appointmentsToday.length));set("aiRevenueToday",money(collectedToday));
   set("aiOutstanding",money(outstanding));set("aiServicesToday",num(services.length));set("aiQueueWaiting",num(waiting.length));
   set("aiBedsOccupied",num(occupied));set("aiLowStock",num(low.length));
   const trend=$("aiRevenueTrendBody");trend.replaceChildren();
@@ -11757,6 +11777,29 @@ if (refreshAppointmentsButton) {
    const invoiced=rows.reduce((n,x)=>n+Number(x.invoice_amount||0),0),paid=rows.reduce((n,x)=>n+Number(x.amount_paid||0),0);
    const tr=trend.insertRow();cell(tr,day.toLocaleDateString());cell(tr,num(rows.length));cell(tr,money(invoiced));cell(tr,money(paid));cell(tr,money(Math.max(0,invoiced-paid)));
   }
+
+  const dailyRevenue=[];
+  for(let offset=6;offset>=0;offset--){const day=new Date(todayStart);day.setDate(day.getDate()-offset);const key=dateKey(day);const rows=billing.filter(x=>x.transaction_date&&dateKey(x.transaction_date)===key);dailyRevenue.push({label:day.toLocaleDateString("en-NG",{weekday:"short"}),value:rows.reduce((n,x)=>n+Number(x.amount_paid||0),0)});}
+  renderMiniChart("aiRevenueChart","line",dailyRevenue,v=>money(v));
+  const revenueTotal=dailyRevenue.reduce((n,x)=>n+x.value,0),dailyMean=revenueTotal/7;
+  set("aiRevenueChartEvidence","Source: billing_transactions · 7 calendar days · "+num(todaysBills.length)+" payments today · 7-day mean "+money(dailyMean)+".");
+  const appointmentStatus=["scheduled","confirmed","completed","cancelled","no_show","checked_in"];
+  const appointmentCounts=appointmentStatus.map(status=>({label:status.replaceAll("_"," "),value:appointments.filter(a=>a.status===status).length}));
+  renderMiniChart("aiAppointmentChart","bar",appointmentCounts);
+  set("aiAppointmentChartEvidence","Source: appointments.scheduled_at · "+num(appointments.length)+" records in 7 days · today "+num(appointmentsToday.length)+".");
+  const stockRisk=[
+   {label:"Healthy",value:stock.filter(x=>Number(x.quantity||0)>Number(x.reorder_level||0)&&!(x.expiry_date&&new Date(x.expiry_date)<todayStart)).length},
+   {label:"Low stock",value:low.length},{label:"Expired",value:expired.length},{label:"Expiring soon",value:soon.length}
+  ];
+  renderMiniChart("aiStockChart","bar",stockRisk);
+  set("aiStockChartEvidence","Source: pharmacy_inventory · "+num(stock.length)+" batches · expiring soon means within 30 days. Risk categories may overlap.");
+  const analysis=[
+   {title:"7-day revenue average",value:money(dailyMean),note:"Recorded amount_paid divided by 7 calendar days; not a forecast."},
+   {title:"Appointment completion rate",value:appointments.length?((appointments.filter(a=>a.status==="completed").length/appointments.length)*100).toFixed(1)+"%":"No data",note:"Completed appointments divided by all appointments in the 7-day window."},
+   {title:"Low-stock batch share",value:stock.length?((low.length/stock.length)*100).toFixed(1)+"%":"No data",note:"Batches at/below reorder level divided by all inventory batches."},
+   {title:"Occupied bed share",value:beds.length?((occupied/beds.length)*100).toFixed(1)+"%":"No data",note:"Beds marked occupied divided by all beds returned for this clinic."}
+  ];
+  const evidence=$("aiEvidenceAnalysis");if(evidence){evidence.replaceChildren();analysis.forEach(x=>{const card=document.createElement("article");card.className="stat-card";const p=document.createElement("p");p.textContent=x.title;const v=document.createElement("h3");v.textContent=x.value;const n=document.createElement("p");n.className="muted";n.textContent=x.note;card.append(p,v,n);evidence.appendChild(card);});}
   const insights=[
    {title:"Urgent / emergency queue",value:num(urgent.length),note:urgent.length?"Priority patients need prompt staff attention.":"No urgent or emergency priority entries currently in the active queue."},
    {title:"Expired medicine batches",value:num(expired.length),note:expired.length?"Quarantine and review expired batches; do not dispense.":"No expired batch is currently recorded in this inventory result."},
