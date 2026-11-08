@@ -15544,3 +15544,187 @@ window.loadHealthOSLaboratoryWorkspace=load;
  document.querySelectorAll(".sidebar .nav-item").forEach(a=>a.addEventListener("click",()=>{if((a.getAttribute("href")||"")==="#staffWorkspace")void load();}));
  window.loadHealthOSRadiologyWorkspace=load;
 })();
+
+
+// STAGE 3I-E: HOSPITAL-WIDE ESCALATION MONITORING (ADMIN ONLY)
+(function initHospitalEscalationMonitoring() {
+    const byId = (id) => document.getElementById(id);
+    const message = byId("hospitalEscalationMonitorMessage");
+    const rows = byId("hospitalEscalationMonitorRows");
+    const refresh = byId("refreshHospitalEscalationMonitor");
+    if (!message || !rows || !refresh || refresh.dataset.bound === "1") return;
+    refresh.dataset.bound = "1";
+
+    function setMessage(text, isError) {
+        message.textContent = text;
+        message.className = isError ? "message error" : "message";
+    }
+    function addCell(row, value) {
+        const cell = document.createElement("td");
+        cell.textContent = value == null || value === "" ? "—" : String(value);
+        row.appendChild(cell);
+        return cell;
+    }
+    function setCount(id, value) {
+        const node = byId(id);
+        if (node) node.textContent = String(Number(value || 0));
+    }
+    function formatDate(value) {
+        if (!value) return "—";
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+    }
+    function renderHistory(container, events) {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        summary.textContent = "View event history (" + events.length + ")";
+        details.appendChild(summary);
+        const list = document.createElement("ol");
+        events.forEach((event) => {
+            const item = document.createElement("li");
+            const heading = document.createElement("strong");
+            heading.textContent = String(event.action || "event").replaceAll("_", " ").toUpperCase();
+            item.appendChild(heading);
+            item.appendChild(document.createTextNode(" — " + formatDate(event.created_at)));
+            if (event.notes) {
+                const note = document.createElement("p");
+                note.textContent = event.notes;
+                item.appendChild(note);
+            }
+            list.appendChild(item);
+        });
+        if (!events.length) {
+            const item = document.createElement("li");
+            item.textContent = "No additional event history recorded.";
+            list.appendChild(item);
+        }
+        details.appendChild(list);
+        container.appendChild(details);
+    }
+
+    async function load() {
+        if (!currentClinic || !currentClinic.id) {
+            setMessage("Select an active hospital before loading escalation monitoring.", true);
+            return;
+        }
+        refresh.disabled = true;
+        rows.replaceChildren();
+        setMessage("Loading hospital-wide escalation records. Server-side administrator permissions are being checked.", false);
+        try {
+            const status = byId("hospitalEscalationStatus")?.value || null;
+            const severity = byId("hospitalEscalationSeverity")?.value || null;
+            const { data, error } = await supabaseClient.rpc("get_department_task_escalation_monitoring", {
+                p_clinic_id: currentClinic.id,
+                p_status: status,
+                p_severity: severity,
+                p_limit: 200
+            });
+            if (error) throw error;
+            const counts = data?.counts || {};
+            setCount("hospitalEscOpen", counts.open);
+            setCount("hospitalEscAcknowledged", counts.acknowledged);
+            setCount("hospitalEscCritical", counts.critical);
+            setCount("hospitalEscUrgent", counts.urgent);
+            setCount("hospitalEscResolved", counts.resolved);
+
+            const items = Array.isArray(data?.items) ? data.items : [];
+            if (!items.length) {
+                const row = document.createElement("tr");
+                const cell = document.createElement("td");
+                cell.colSpan = 6;
+                cell.textContent = "No escalation records match the selected filters.";
+                row.appendChild(cell);
+                rows.appendChild(row);
+            }
+            items.forEach((item) => {
+                const row = document.createElement("tr");
+                addCell(row, String(item.severity || "normal").toUpperCase() + " / " + String(item.status || "—").toUpperCase());
+                addCell(row, (item.department_name || "Unassigned department") + (item.unit_name ? " / " + item.unit_name : ""));
+                addCell(row, (item.task_title || "Untitled task") + (item.task_status ? " (" + item.task_status.replaceAll("_", " ") + ")" : ""));
+                addCell(row, item.reason || item.source || "—");
+                addCell(row, formatDate(item.created_at));
+
+                const actionCell = document.createElement("td");
+                renderHistory(actionCell, Array.isArray(item.events) ? item.events : []);
+                const actionBar = document.createElement("div");
+                actionBar.style.display = "flex";
+                actionBar.style.flexWrap = "wrap";
+                actionBar.style.gap = ".4rem";
+                actionBar.style.marginTop = ".5rem";
+
+                if (item.status === "open") {
+                    const acknowledge = document.createElement("button");
+                    acknowledge.type = "button";
+                    acknowledge.className = "secondary-button";
+                    acknowledge.textContent = "Acknowledge";
+                    acknowledge.addEventListener("click", async () => {
+                        acknowledge.disabled = true;
+                        try {
+                            const result = await supabaseClient.rpc("acknowledge_department_task_escalation", {
+                                p_clinic_id: currentClinic.id,
+                                p_escalation_id: item.id,
+                                p_notes: "Acknowledged from the hospital escalation monitor."
+                            });
+                            if (result.error) throw result.error;
+                            await load();
+                        } catch (error) {
+                            setMessage(error.message || "Could not acknowledge escalation.", true);
+                            acknowledge.disabled = false;
+                        }
+                    });
+                    actionBar.appendChild(acknowledge);
+                }
+                if (item.status === "open" || item.status === "acknowledged") {
+                    const resolve = document.createElement("button");
+                    resolve.type = "button";
+                    resolve.className = "primary-button";
+                    resolve.textContent = "Resolve";
+                    resolve.addEventListener("click", async () => {
+                        const notes = window.prompt("Enter the resolution notes (at least 5 characters).");
+                        if (notes === null) return;
+                        if (notes.trim().length < 5) {
+                            setMessage("Resolution notes must contain at least 5 characters.", true);
+                            return;
+                        }
+                        resolve.disabled = true;
+                        try {
+                            const result = await supabaseClient.rpc("resolve_department_task_escalation", {
+                                p_clinic_id: currentClinic.id,
+                                p_escalation_id: item.id,
+                                p_resolution_notes: notes.trim()
+                            });
+                            if (result.error) throw result.error;
+                            await load();
+                        } catch (error) {
+                            setMessage(error.message || "Could not resolve escalation.", true);
+                            resolve.disabled = false;
+                        }
+                    });
+                    actionBar.appendChild(resolve);
+                }
+                if (actionBar.childElementCount) actionCell.appendChild(actionBar);
+                row.appendChild(actionCell);
+                rows.appendChild(row);
+            });
+            setMessage("Loaded " + items.length + " escalation record(s). Hospital-wide administrator scope confirmed by the server. Last refreshed: " + formatDate(data?.generated_at) + ".", false);
+        } catch (error) {
+            rows.replaceChildren();
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+            cell.colSpan = 6;
+            cell.textContent = "Escalation records are unavailable for this account or hospital.";
+            row.appendChild(cell);
+            rows.appendChild(row);
+            setMessage(error.message || "Could not load hospital escalation monitoring.", true);
+            ["hospitalEscOpen","hospitalEscAcknowledged","hospitalEscCritical","hospitalEscUrgent","hospitalEscResolved"].forEach((id) => setCount(id, "—"));
+        } finally {
+            refresh.disabled = false;
+        }
+    }
+
+    refresh.addEventListener("click", () => void load());
+    byId("hospitalEscalationStatus")?.addEventListener("change", () => void load());
+    byId("hospitalEscalationSeverity")?.addEventListener("change", () => void load());
+    window.loadHospitalEscalationMonitor = load;
+})();
+// END STAGE 3I-E HOSPITAL ESCALATION MONITORING
