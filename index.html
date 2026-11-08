@@ -11,6 +11,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js?v=20261107-healthos-brand-v1" defer></script>
+    <script src="icu-supervisor-management.js?v=20261108-supervisor-access-v1" defer></script>
     <script src="healthos-directory-admin.js?v=20261106-national-lga-registry-ui-v1" defer></script>
     <script src="healthos-hospital-registration-review.js?v=20261107-risk-flags-ui" defer></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
@@ -1854,7 +1855,38 @@
                         </form>
                         <p id="managementAppointmentMessage" class="message" role="status" aria-live="polite">Leadership appointment manager is ready.</p>
                         <div id="managementAppointmentList"></div>
-                        <!-- END HEALTHOS MEDICAL SYSTEMS: DEPARTMENT LEADERSHIP APPOINTMENTS -->
+                        
+<section class="panel" id="icuSupervisorManagementPanel" style="margin-top:24px" aria-labelledby="icuSupervisorManagementHeading">
+ <div class="panel-heading">
+  <div><p class="eyebrow">CRITICAL CARE GOVERNANCE</p><h3 id="icuSupervisorManagementHeading">ICU Supervisor Access Management</h3>
+   <p class="muted">Grant or revoke ICU supervisory authority for a verified professional role in the selected hospital department. This is role-based access, not a substitute for a formal staff appointment.</p>
+  </div>
+  <button type="button" class="secondary-button" id="icuSupervisorRefresh">Refresh access register</button>
+ </div>
+ <p id="icuSupervisorManagementMessage" class="message" role="status" aria-live="polite">Administrator verification required.</p>
+ <form id="icuSupervisorPermissionForm" class="form-grid">
+  <label for="icuSupervisorDepartment">Department
+   <select id="icuSupervisorDepartment" required><option value="">Load active Nursing / ICU departments</option></select>
+  </label>
+  <label for="icuSupervisorProfessionalRole">Verified professional role
+   <select id="icuSupervisorProfessionalRole" required disabled><option value="">Select a department first</option></select>
+  </label>
+  <label for="icuSupervisorPermissionState">Access decision
+   <select id="icuSupervisorPermissionState" required><option value="true">Grant ICU supervisor access</option><option value="false">Revoke ICU supervisor access</option></select>
+  </label>
+  <label class="full-width" for="icuSupervisorPermissionNote">Reason for this access change
+   <textarea id="icuSupervisorPermissionNote" rows="3" minlength="5" maxlength="2000" required placeholder="Record the appointment authority, responsibility, or reason for revocation."></textarea>
+  </label>
+  <button type="submit" class="primary-button" id="icuSupervisorSavePermission">Save supervisor access</button>
+ </form>
+ <h4>Current ICU supervisor permissions</h4>
+ <div class="table-wrap"><table><thead><tr><th>Department</th><th>Professional role</th><th>Access</th><th>Last changed</th></tr></thead><tbody id="icuSupervisorPermissionRows"><tr><td colspan="4">Refresh to load access records.</td></tr></tbody></table></div>
+ <h4>Supervisor access change history</h4>
+ <div class="table-wrap"><table><thead><tr><th>Changed</th><th>Department</th><th>Professional role</th><th>Decision</th><th>Reason</th></tr></thead><tbody id="icuSupervisorAuditRows"><tr><td colspan="5">Refresh to load audit history.</td></tr></tbody></table></div>
+ <p class="disclaimer">Only active clinic owners and administrators can make changes. A role receives supervisory authority only when the department and professional role are active and linked in the hospital's role register. No staff access is granted automatically.</p>
+</section>
+
+ <!-- END HEALTHOS MEDICAL SYSTEMS: DEPARTMENT LEADERSHIP APPOINTMENTS -->
 </div>
 <div class="workspace-subpage" data-workspace-page="adminPerformance" id="adminPerformancePage" hidden><figure class="healthos-section-photo"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/General%20Hospital%20Maru.jpg" alt="General Hospital Maru in Zamfara State, Nigeria." loading="lazy" decoding="async" data-photo-credit="Gwanki — CC0 1.0"><figcaption>General Hospital Maru in Zamfara State, Nigeria. · Photo: Gwanki — CC0 1.0</figcaption></figure><!-- HEALTHOS MEDICAL SYSTEMS: DEPARTMENT PERFORMANCE -->
                         <div class="panel-heading">
