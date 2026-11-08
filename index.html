@@ -1722,6 +1722,24 @@
    <button class="primary-button" type="submit">Save duty as draft</button>
   </form>
  </div>
+ <div class="panel" style="margin-top:22px" aria-labelledby="staffingRequirementHeading">
+  <h4 id="staffingRequirementHeading">Hospital staffing requirements</h4>
+  <p class="muted">Set minimum staffing levels from your hospital's approved policy. Requirements remain drafts until independently approved.</p>
+  <form id="staffingRequirementCreateForm" class="department-governance-grid">
+   <label>Department<select id="staffingRequirementDepartment" required><option value="">Select department</option></select></label>
+   <label>Professional role<select id="staffingRequirementRole" required><option value="">Select department first</option></select></label>
+   <label>Shift type<input id="staffingRequirementShift" maxlength="80" required placeholder="Use the same shift label as your roster"></label>
+   <label>Minimum headcount<input id="staffingRequirementHeadcount" type="number" min="1" max="500" step="1" required></label>
+   <label>Effective from<input id="staffingRequirementFrom" type="date" required></label>
+   <label>Effective to (optional)<input id="staffingRequirementTo" type="date"></label>
+   <label>Hospital policy reference<input id="staffingRequirementPolicy" maxlength="300" placeholder="Policy / circular / approved schedule reference"></label>
+   <label>Notes<textarea id="staffingRequirementNotes" rows="2" maxlength="2000"></textarea></label>
+   <div><button class="primary-button" type="submit">Save staffing requirement draft</button></div>
+  </form>
+  <p id="staffingRequirementMessage" class="message" role="status" aria-live="polite">Administrator verification required.</p>
+  <div id="staffingRequirementRegister" class="department-governance-register"><p class="muted">Staffing requirement register will load after administrator verification.</p></div>
+  <p class="disclaimer">The person who creates a requirement cannot approve it. Coverage compares approved requirements with recorded shift rosters and clock-ins; it is not a clinical staffing-ratio assessment.</p>
+ </div>
  <h4 style="margin-top:22px">Governance register & review queue</h4>
  <div id="departmentRoleGovernanceRegister" class="department-governance-register"><p class="muted">Load the register to review role structures and draft submissions.</p></div>
  <p class="disclaimer">Only an active hospital owner or administrator can manage this register. Approval is restricted to a different administrator from the original author. A job profile must be approved before its duties can be approved. Clinical and regulated duties still require credential verification, hospital policy and applicable professional/statutory scope.</p>
