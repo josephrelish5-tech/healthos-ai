@@ -4222,6 +4222,15 @@
   <article class="stat-card"><p>Occupied Beds</p><h3 id="aiBedsOccupied">—</h3><p class="muted">Beds currently marked occupied</p></article>
   <article class="stat-card"><p>Low / Reorder Stock</p><h3 id="aiLowStock">—</h3><p class="muted">Medicine batches at or below reorder level</p></article>
  </div>
+ <h3>Evidence-based charts &amp; statistical analysis</h3>
+ <p class="muted">Charts are calculated from this clinic's saved records. Each chart displays its reporting period and source. Missing or restricted records are shown as unavailable—not replaced with invented values.</p>
+ <div class="stats-grid">
+  <article class="stat-card"><h4>Revenue collected trend</h4><p class="muted">Daily payments recorded in the last 7 days</p><div id="aiRevenueChart" class="healthos-chart" role="img" aria-label="Seven day revenue collection chart"><p class="muted">Chart loads from billing records.</p></div><p id="aiRevenueChartEvidence" class="stat-note"></p></article>
+  <article class="stat-card"><h4>Appointment activity</h4><p class="muted">Appointments scheduled over the last 7 days, by status</p><div id="aiAppointmentChart" class="healthos-chart" role="img" aria-label="Seven day appointment activity chart"><p class="muted">Chart loads from appointment records.</p></div><p id="aiAppointmentChartEvidence" class="stat-note"></p></article>
+  <article class="stat-card"><h4>Pharmacy stock risk</h4><p class="muted">Medicine batches grouped by recorded stock condition</p><div id="aiStockChart" class="healthos-chart" role="img" aria-label="Pharmacy stock risk chart"><p class="muted">Chart loads from inventory records.</p></div><p id="aiStockChartEvidence" class="stat-note"></p></article>
+ </div>
+ <h4>Evidence interpretation</h4>
+ <div id="aiEvidenceAnalysis" class="stats-grid"><article class="stat-card"><p>Evidence status</p><h3>Waiting</h3><p class="muted">Open this workspace to calculate interpretation from clinic records.</p></article></div>
  <h3>Revenue Collection — Last 7 Days</h3>
  <div class="table-wrap"><table><thead><tr><th>Date</th><th>Transactions</th><th>Invoiced</th><th>Collected</th><th>Outstanding</th></tr></thead><tbody id="aiRevenueTrendBody"><tr><td colspan="5">Open this workspace to calculate the trend.</td></tr></tbody></table></div>
  <h3>Operational Risk &amp; Attention List</h3>
