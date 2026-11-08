@@ -1833,3 +1833,20 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
         padding: 16px;
     }
 }
+
+
+/* Verified owner / administrator workspace identity */
+.management-role-banner {
+    display: inline-flex;
+    align-items: center;
+    margin: 0.55rem 0 0;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid var(--border-color, #d8e1eb);
+    border-left: 4px solid var(--primary-color, #173b68);
+    border-radius: 8px;
+    background: var(--surface-muted, #f3f6fa);
+    color: var(--text-color, #18324f);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+}
