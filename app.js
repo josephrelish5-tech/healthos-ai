@@ -4312,6 +4312,7 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
         render();
         message.textContent = (departments || []).length + " active departments loaded from this hospital's records. Department access and task figures remain limited by database permissions.";
         message.className = "message success";
+        void loadDepartmentRoleGovernance(clinic);
     } catch (error) {
         console.error("Department workspace directory failed:", error);
         message.textContent = friendlyError(error);
@@ -4324,6 +4325,228 @@ if (refreshDepartmentWorkspaceDirectoryButton) {
         if (currentClinic) void loadDepartmentWorkspaceDirectory(currentClinic);
     });
 }
+
+// HEALTHOS MEDICAL SYSTEMS: DEPARTMENT ROLE & DUTY GOVERNANCE
+async function loadDepartmentRoleGovernance(clinic) {
+    const message = document.getElementById("departmentRoleGovernanceMessage");
+    const register = document.getElementById("departmentRoleGovernanceRegister");
+    if (!message || !register || !clinic || !currentUser || !managementVerified || clinic.id !== currentClinic?.id) return;
+    message.textContent = "Loading the hospital role and duty register...";
+    message.className = "message";
+    try {
+        const { data, error } = await supabaseClient.rpc("get_department_role_catalog", { p_clinic_id: clinic.id });
+        if (error) throw error;
+        const departments = Array.isArray(data?.departments) ? data.departments : [];
+        const roles = Array.isArray(data?.roles) ? data.roles : [];
+        const departmentSelect = document.getElementById("governanceRoleDepartment");
+        const roleSelect = document.getElementById("governanceProfileRole");
+        const profileSelect = document.getElementById("governanceDutyProfile");
+        if (departmentSelect) {
+            const selected = departmentSelect.value;
+            departmentSelect.replaceChildren(new Option("Select department", ""));
+            departments.forEach(item => departmentSelect.add(new Option(item.name, item.id)));
+            if (departments.some(item => item.id === selected)) departmentSelect.value = selected;
+        }
+        if (roleSelect) {
+            const selected = roleSelect.value;
+            roleSelect.replaceChildren(new Option("Select department role", ""));
+            roles.forEach(item => roleSelect.add(new Option(item.department_name + " — " + item.role_name, item.department_role_id)));
+            if (roles.some(item => item.department_role_id === selected)) roleSelect.value = selected;
+        }
+        const allProfiles = [];
+        roles.forEach(role => (role.job_profiles || []).forEach(profile => {
+            allProfiles.push({ ...profile, department_name: role.department_name, role_name: role.role_name });
+        }));
+        if (profileSelect) {
+            const selected = profileSelect.value;
+            profileSelect.replaceChildren(new Option("Select job profile", ""));
+            allProfiles.forEach(profile => profileSelect.add(new Option(profile.department_name + " — " + profile.role_name + " — " + profile.job_title, profile.id)));
+            if (allProfiles.some(profile => profile.id === selected)) profileSelect.value = selected;
+        }
+        const profiles = allProfiles;
+        const duties = profiles.flatMap(profile => profile.duties || []);
+        const approvedDuties = duties.filter(duty => duty.validation_status === "hospital_approved").length;
+        const awaiting = profiles.filter(profile => profile.validation_status === "under_review").length +
+            duties.filter(duty => duty.validation_status === "under_review").length;
+        const setCount = (id, value) => { const node = document.getElementById(id); if (node) node.textContent = String(value); };
+        setCount("roleGovernanceRoleCount", roles.length);
+        setCount("roleGovernanceProfileCount", profiles.length);
+        setCount("roleGovernanceDutyCount", approvedDuties);
+        setCount("roleGovernanceReviewCount", awaiting);
+
+        register.replaceChildren();
+        if (!roles.length) {
+            const empty = document.createElement("p");
+            empty.className = "muted";
+            empty.textContent = "No professional roles have been linked yet. Use the role registration form above to begin.";
+            register.appendChild(empty);
+        }
+        const statusLabel = value => String(value || "draft").replace(/_/g, " ");
+        const makeGovernanceAction = (label, action, id) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = action.startsWith("approve") ? "primary-button" : "secondary-button";
+            button.textContent = label;
+            button.addEventListener("click", async () => {
+                button.disabled = true;
+                const prior = message.textContent;
+                message.textContent = label + "...";
+                message.className = "message";
+                try {
+                    const result = await supabaseClient.rpc("manage_department_role_catalog", {
+                        p_clinic_id: clinic.id, p_action: action, p_payload: { id }
+                    });
+                    if (result.error) throw result.error;
+                    message.textContent = label + " completed and recorded in the governance audit trail.";
+                    message.className = "message success";
+                    await loadDepartmentRoleGovernance(clinic);
+                } catch (error) {
+                    message.textContent = friendlyError(error);
+                    message.className = "message error";
+                    button.disabled = false;
+                }
+            });
+            return button;
+        };
+        roles.forEach(role => {
+            const card = document.createElement("article");
+            card.className = "department-governance-card";
+            const heading = document.createElement("h4");
+            heading.textContent = role.department_name + " — " + role.role_name;
+            const meta = document.createElement("p");
+            meta.className = "muted";
+            meta.textContent = role.role_code + (role.clinical_role ? " · Clinical" : " · Non-clinical") +
+                (role.registration_required ? " · Registration required" + (role.registration_body ? " (" + role.registration_body + ")" : "") : "");
+            card.append(heading, meta);
+            (role.job_profiles || []).forEach(profile => {
+                const profileBox = document.createElement("div");
+                profileBox.className = "department-governance-item";
+                const title = document.createElement("h5");
+                title.textContent = profile.job_title + " — " + statusLabel(profile.validation_status);
+                profileBox.appendChild(title);
+                if (profile.qualification_requirements) {
+                    const qualifications = document.createElement("p");
+                    qualifications.textContent = "Qualifications: " + profile.qualification_requirements;
+                    profileBox.appendChild(qualifications);
+                }
+                if (profile.scope_notes) {
+                    const scope = document.createElement("p");
+                    scope.textContent = "Scope: " + profile.scope_notes;
+                    profileBox.appendChild(scope);
+                }
+                const profileActions = document.createElement("div");
+                profileActions.className = "button-row";
+                if (profile.validation_status === "draft") profileActions.appendChild(makeGovernanceAction("Submit profile for review", "submit_profile", profile.id));
+                if (profile.validation_status === "under_review") profileActions.appendChild(makeGovernanceAction("Approve profile", "approve_profile", profile.id));
+                if (profileActions.childElementCount) profileBox.appendChild(profileActions);
+                (profile.duties || []).forEach(duty => {
+                    const dutyLine = document.createElement("div");
+                    dutyLine.className = "department-governance-duty";
+                    const dutyText = document.createElement("p");
+                    dutyText.textContent = duty.duty_title + " — " + statusLabel(duty.validation_status) +
+                        (duty.evidence_required ? " · Evidence" : "") +
+                        (duty.supervisor_review_required ? " · Supervisor review" : "") +
+                        (duty.separate_approval_required ? " · Separate approval" : "") +
+                        (duty.clinical_or_regulated_scope ? " · Regulated scope" : "");
+                    dutyLine.appendChild(dutyText);
+                    const dutyActions = document.createElement("div");
+                    dutyActions.className = "button-row";
+                    if (duty.validation_status === "draft") dutyActions.appendChild(makeGovernanceAction("Submit duty", "submit_duty", duty.id));
+                    if (duty.validation_status === "under_review") dutyActions.appendChild(makeGovernanceAction("Approve duty", "approve_duty", duty.id));
+                    if (dutyActions.childElementCount) dutyLine.appendChild(dutyActions);
+                    profileBox.appendChild(dutyLine);
+                });
+                card.appendChild(profileBox);
+            });
+            register.appendChild(card);
+        });
+        message.textContent = roles.length + " linked role(s), " + profiles.length + " job profile(s), " +
+            approvedDuties + " approved duty item(s). Draft and under-review content remains excluded from authorised staff duties.";
+        message.className = "message success";
+    } catch (error) {
+        console.error("Department role governance register failed:", error);
+        message.textContent = friendlyError(error);
+        message.className = "message error";
+        register.replaceChildren();
+    }
+}
+
+async function submitDepartmentGovernanceAction(form, action, payload, successText) {
+    if (!form || !currentClinic) return;
+    const message = document.getElementById("departmentRoleGovernanceMessage");
+    const submit = form.querySelector('button[type="submit"]');
+    if (submit) submit.disabled = true;
+    if (message) { message.textContent = "Saving governance record..."; message.className = "message"; }
+    try {
+        const { error } = await supabaseClient.rpc("manage_department_role_catalog", {
+            p_clinic_id: currentClinic.id, p_action: action, p_payload: payload
+        });
+        if (error) throw error;
+        form.reset();
+        if (message) { message.textContent = successText + " It is saved as a draft and is not an authorised instruction."; message.className = "message success"; }
+        await loadDepartmentRoleGovernance(currentClinic);
+    } catch (error) {
+        if (message) { message.textContent = friendlyError(error); message.className = "message error"; }
+    } finally {
+        if (submit) submit.disabled = false;
+    }
+}
+
+const departmentRoleCreateForm = document.getElementById("departmentRoleCreateForm");
+if (departmentRoleCreateForm) departmentRoleCreateForm.addEventListener("submit", event => {
+    event.preventDefault();
+    const registrationRequired = document.getElementById("governanceRoleRegistration").checked;
+    const registrationBody = document.getElementById("governanceRoleRegistrationBody").value.trim();
+    if (registrationRequired && !registrationBody) {
+        document.getElementById("departmentRoleGovernanceMessage").textContent = "Enter the professional registration body when registration is required.";
+        document.getElementById("departmentRoleGovernanceMessage").className = "message error";
+        return;
+    }
+    void submitDepartmentGovernanceAction(departmentRoleCreateForm, "create_role", {
+        department_id: document.getElementById("governanceRoleDepartment").value,
+        role_code: document.getElementById("governanceRoleCode").value.trim(),
+        role_name: document.getElementById("governanceRoleName").value.trim(),
+        role_group: document.getElementById("governanceRoleGroup").value.trim(),
+        description: document.getElementById("governanceRoleDescription").value.trim(),
+        clinical_role: document.getElementById("governanceRoleClinical").checked,
+        registration_required: registrationRequired,
+        registration_body: registrationBody
+    }, "Professional role created and linked");
+});
+const departmentProfileCreateForm = document.getElementById("departmentProfileCreateForm");
+if (departmentProfileCreateForm) departmentProfileCreateForm.addEventListener("submit", event => {
+    event.preventDefault();
+    void submitDepartmentGovernanceAction(departmentProfileCreateForm, "create_profile", {
+        department_role_id: document.getElementById("governanceProfileRole").value,
+        job_title: document.getElementById("governanceProfileTitle").value.trim(),
+        job_purpose: document.getElementById("governanceProfilePurpose").value.trim(),
+        job_summary: document.getElementById("governanceProfileSummary").value.trim(),
+        qualification_requirements: document.getElementById("governanceProfileQualifications").value.trim(),
+        scope_notes: document.getElementById("governanceProfileScope").value.trim()
+    }, "Job profile created");
+});
+const departmentDutyCreateForm = document.getElementById("departmentDutyCreateForm");
+if (departmentDutyCreateForm) departmentDutyCreateForm.addEventListener("submit", event => {
+    event.preventDefault();
+    void submitDepartmentGovernanceAction(departmentDutyCreateForm, "create_duty", {
+        job_profile_id: document.getElementById("governanceDutyProfile").value,
+        duty_code: document.getElementById("governanceDutyCode").value.trim(),
+        duty_title: document.getElementById("governanceDutyTitle").value.trim(),
+        duty_description: document.getElementById("governanceDutyDescription").value.trim(),
+        duty_category: document.getElementById("governanceDutyCategory").value,
+        expected_frequency: document.getElementById("governanceDutyFrequency").value.trim(),
+        evidence_required: document.getElementById("governanceDutyEvidence").checked,
+        supervisor_review_required: document.getElementById("governanceDutyReview").checked,
+        separate_approval_required: document.getElementById("governanceDutySeparateApproval").checked,
+        clinical_or_regulated_scope: document.getElementById("governanceDutyRegulated").checked
+    }, "Job duty created");
+});
+const refreshDepartmentRoleGovernanceButton = document.getElementById("refreshDepartmentRoleGovernance");
+if (refreshDepartmentRoleGovernanceButton) refreshDepartmentRoleGovernanceButton.addEventListener("click", () => {
+    if (currentClinic) void loadDepartmentRoleGovernance(currentClinic);
+});
+// END DEPARTMENT ROLE & DUTY GOVERNANCE
+
 // END DEPARTMENT WORKSPACE DIRECTORY
 
 // HEALTHOS AI: DEPARTMENT TASK ESCALATION REPORT
