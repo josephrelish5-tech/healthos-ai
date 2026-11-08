@@ -2120,6 +2120,32 @@
                                 <tbody id="hospitalEscalationMonitorRows"><tr><td colspan="6">No monitoring data loaded.</td></tr></tbody></table>
                             </div>
                         </section>
+                        <section class="panel" id="departmentEscalationPerformancePanel">
+                            <div class="panel-heading">
+                                <div><h3>Escalation Response Performance</h3><p class="muted">Measure acknowledgement and resolution times, identify repeat failures and surface unresolved critical issues.</p></div>
+                                <button type="button" class="secondary-button" id="refreshEscalationPerformance">Refresh performance</button>
+                            </div>
+                            <label>Reporting period
+                                <select id="escalationPerformanceDays">
+                                    <option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option><option value="365">Last 12 months</option>
+                                </select>
+                            </label>
+                            <div class="stats-grid" style="margin-top:1rem">
+                                <article class="stat-card"><p>Average acknowledgement</p><h3 id="escalationAvgAck">—</h3><span class="stat-note">Minutes from escalation to acknowledgement</span></article>
+                                <article class="stat-card"><p>Average resolution</p><h3 id="escalationAvgResolution">—</h3><span class="stat-note">Minutes from escalation to resolution</span></article>
+                                <article class="stat-card"><p>Acknowledged within 30 min</p><h3 id="escalationAckTarget">—</h3></article>
+                                <article class="stat-card"><p>Resolved within 4 hours</p><h3 id="escalationResolutionTarget">—</h3></article>
+                                <article class="stat-card"><p>Unresolved critical</p><h3 id="escalationCriticalOpen">—</h3></article>
+                            </div>
+                            <p id="escalationPerformanceMessage" class="message" role="status">Select a reporting period and refresh to load response performance.</p>
+                            <h4>Department response performance</h4>
+                            <div style="overflow-x:auto"><table><thead><tr><th>Department</th><th>Total</th><th>Open</th><th>Acknowledged</th><th>Resolved</th><th>Avg acknowledgement (min)</th><th>Avg resolution (min)</th><th>Critical open</th></tr></thead><tbody id="escalationDepartmentPerformanceRows"><tr><td colspan="8">No performance data loaded.</td></tr></tbody></table></div>
+                            <h4>Repeated task escalations</h4>
+                            <div style="overflow-x:auto"><table><thead><tr><th>Task</th><th>Department / Unit</th><th>Escalations</th><th>Still open</th><th>Last raised</th></tr></thead><tbody id="escalationRepeatedTaskRows"><tr><td colspan="5">No repeated escalation data loaded.</td></tr></tbody></table></div>
+                            <h4>Unresolved critical escalations</h4>
+                            <div style="overflow-x:auto"><table><thead><tr><th>Task</th><th>Department / Unit</th><th>Status</th><th>Minutes outstanding</th><th>Reason</th></tr></thead><tbody id="escalationCriticalRows"><tr><td colspan="5">No critical escalation data loaded.</td></tr></tbody></table></div>
+                            <p class="stat-note">Response targets shown here are operational reporting thresholds, not clinical response standards. Hospitals must configure and follow their own emergency and clinical escalation protocols.</p>
+                        </section>
                         <!-- END HEALTHOS MEDICAL SYSTEMS: DEPARTMENT PERFORMANCE -->
 </div>
 </section>
