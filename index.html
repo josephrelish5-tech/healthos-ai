@@ -1493,7 +1493,7 @@
                                 <p>Manage staff, department leadership and operational responsibilities.</p>
                                 <div class="workspace-launch-actions">
                                     <button type="button" class="workspace-launch-button" onclick="showHealthOSView('staffManagement')">Staff management</button>
-                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('multiFacilityManagement')">Facilities</button>
+                                    <button type="button" class="workspace-launch-button" data-owner-only="true" onclick="showHealthOSView('multiFacilityManagement')">Facilities</button>
                                 </div>
                             </article>
                             <article class="workspace-launch-card">
@@ -1527,7 +1527,7 @@
                                 <h3>Governance &amp; administration</h3>
                                 <p>Open hospital documentation, approved registration and administrative tools.</p>
                                 <div class="workspace-launch-actions">
-                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('hospitalOwnerRegistration')">Hospital registration</button>
+                                    <button type="button" class="workspace-launch-button" data-owner-only="true" onclick="showHealthOSView('hospitalOwnerRegistration')">Hospital registration</button>
                                     <button type="button" class="workspace-launch-button" onclick="showHealthOSView('ussdDiagnostics')">USSD diagnostics</button>
                                     <button type="button" class="workspace-launch-button" onclick="showHealthOSView('adminVoiceTranslator')">Administrative voice tools</button>
                                     <button type="button" class="workspace-launch-button" onclick="showHealthOSView('patientRecordSharing')">Patient record sharing</button>
