@@ -1850,3 +1850,39 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
     font-weight: 700;
     letter-spacing: 0.025em;
 }
+
+
+/* HealthOS department workspace directory */
+.department-workspace-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin: 16px 0;
+}
+.department-workspace-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid #d8e2ed;
+    border-radius: 14px;
+    background: #ffffff;
+}
+.department-workspace-card h4 { margin: 0; color: #12365a; }
+.department-workspace-card p { margin: 0; }
+.department-workspace-card button { align-self: flex-start; margin-top: auto; }
+.department-workspace-detail {
+    margin-top: 18px;
+    padding: 18px;
+    border: 1px solid #cbd9e8;
+    border-radius: 14px;
+    background: #f7faff;
+}
+.department-workspace-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 12px;
+    margin: 14px 0;
+}
+.department-workspace-stats .stat-card { min-width: 0; }
