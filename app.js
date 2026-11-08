@@ -15728,3 +15728,138 @@ window.loadHealthOSLaboratoryWorkspace=load;
     window.loadHospitalEscalationMonitor = load;
 })();
 // END STAGE 3I-E HOSPITAL ESCALATION MONITORING
+
+
+// STAGE 3I-F: ESCALATION RESPONSE PERFORMANCE AND ACCOUNTABILITY
+(function initEscalationResponsePerformance() {
+    const $ = (id) => document.getElementById(id);
+    const refresh = $("refreshEscalationPerformance");
+    const message = $("escalationPerformanceMessage");
+    if (!refresh || !message || refresh.dataset.bound === "1") return;
+    refresh.dataset.bound = "1";
+    const departmentRows = $("escalationDepartmentPerformanceRows");
+    const repeatedRows = $("escalationRepeatedTaskRows");
+    const criticalRows = $("escalationCriticalRows");
+
+    function status(text, isError) {
+        message.textContent = text;
+        message.className = isError ? "message error" : "message";
+    }
+    function cell(row, value) {
+        const td = document.createElement("td");
+        td.textContent = value === null || value === undefined || value === "" ? "—" : String(value);
+        row.appendChild(td);
+    }
+    function emptyRow(body, columns, text) {
+        body.replaceChildren();
+        const row = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = columns;
+        td.textContent = text;
+        row.appendChild(td);
+        body.appendChild(row);
+    }
+    function minutes(value) {
+        if (value === null || value === undefined || value === "") return "—";
+        const number = Number(value);
+        if (!Number.isFinite(number)) return "—";
+        if (number >= 1440) return (number / 1440).toFixed(1) + " days";
+        if (number >= 60) return (number / 60).toFixed(1) + " hours";
+        return number.toFixed(1) + " min";
+    }
+    function percentage(numerator, denominator) {
+        const n = Number(numerator || 0), d = Number(denominator || 0);
+        return d > 0 ? ((n / d) * 100).toFixed(1) + "%" : "—";
+    }
+    function set(id, value) {
+        const node = $(id);
+        if (node) node.textContent = value === null || value === undefined ? "—" : String(value);
+    }
+    function date(value) {
+        if (!value) return "—";
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? "—" : parsed.toLocaleString();
+    }
+
+    async function load() {
+        if (!currentClinic || !currentClinic.id) {
+            status("Select an active hospital before loading performance reports.", true);
+            return;
+        }
+        refresh.disabled = true;
+        status("Calculating department response performance and repeat escalation patterns...", false);
+        try {
+            const days = Number($("escalationPerformanceDays")?.value || 30);
+            const { data, error } = await supabaseClient.rpc("get_department_escalation_performance", {
+                p_clinic_id: currentClinic.id,
+                p_days: days,
+                p_limit: 100
+            });
+            if (error) throw error;
+            const totals = data?.totals || {};
+            set("escalationAvgAck", minutes(totals.avg_ack_minutes));
+            set("escalationAvgResolution", minutes(totals.avg_resolution_minutes));
+            set("escalationAckTarget", percentage(totals.acknowledged_within_30m, totals.total));
+            set("escalationResolutionTarget", percentage(totals.resolved_within_4h, totals.total));
+            set("escalationCriticalOpen", totals.unresolved_critical || 0);
+
+            const departments = Array.isArray(data?.departments) ? data.departments : [];
+            departmentRows.replaceChildren();
+            if (!departments.length) emptyRow(departmentRows, 8, "No department escalation records found for this period.");
+            departments.forEach((item) => {
+                const row = document.createElement("tr");
+                cell(row, item.department_name);
+                cell(row, item.total);
+                cell(row, item.open);
+                cell(row, item.acknowledged);
+                cell(row, item.resolved);
+                cell(row, minutes(item.avg_ack_minutes));
+                cell(row, minutes(item.avg_resolution_minutes));
+                cell(row, item.unresolved_critical);
+                departmentRows.appendChild(row);
+            });
+
+            const repeated = Array.isArray(data?.repeated_tasks) ? data.repeated_tasks : [];
+            repeatedRows.replaceChildren();
+            if (!repeated.length) emptyRow(repeatedRows, 5, "No task has been escalated more than once during this period.");
+            repeated.forEach((item) => {
+                const row = document.createElement("tr");
+                cell(row, item.task_title);
+                cell(row, (item.department_name || "—") + (item.unit_name ? " / " + item.unit_name : ""));
+                cell(row, item.escalation_count);
+                cell(row, item.open_count);
+                cell(row, date(item.last_raised_at));
+                repeatedRows.appendChild(row);
+            });
+
+            const critical = Array.isArray(data?.unresolved_critical) ? data.unresolved_critical : [];
+            criticalRows.replaceChildren();
+            if (!critical.length) emptyRow(criticalRows, 5, "No unresolved critical escalations are currently recorded.");
+            critical.forEach((item) => {
+                const row = document.createElement("tr");
+                cell(row, item.task_title);
+                cell(row, (item.department_name || "—") + (item.unit_name ? " / " + item.unit_name : ""));
+                cell(row, item.status);
+                cell(row, minutes(item.minutes_open));
+                cell(row, item.reason || item.source);
+                criticalRows.appendChild(row);
+            });
+
+            status("Performance report loaded for the last " + days + " days. " +
+                (totals.total || 0) + " escalation record(s) analysed. Acknowledgement and resolution percentages use all escalations in the reporting period as the denominator. Generated: " + date(data?.generated_at) + ".", false);
+        } catch (error) {
+            console.error("Escalation response performance report failed", error);
+            status(error.message || "Performance report could not be loaded. Confirm administrator access and try again.", true);
+            emptyRow(departmentRows, 8, "Performance data unavailable.");
+            emptyRow(repeatedRows, 5, "Repeated escalation data unavailable.");
+            emptyRow(criticalRows, 5, "Critical escalation data unavailable.");
+        } finally {
+            refresh.disabled = false;
+        }
+    }
+
+    refresh.addEventListener("click", () => void load());
+    $("escalationPerformanceDays")?.addEventListener("change", () => void load());
+    window.loadEscalationResponsePerformance = load;
+})();
+// END STAGE 3I-F ESCALATION RESPONSE PERFORMANCE
