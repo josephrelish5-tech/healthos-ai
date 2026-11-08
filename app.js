@@ -5593,6 +5593,76 @@ const refreshDepartmentRoleGovernanceButton = document.getElementById("refreshDe
 if (refreshDepartmentRoleGovernanceButton) refreshDepartmentRoleGovernanceButton.addEventListener("click", () => {
     if (currentClinic) void loadDepartmentRoleGovernance(currentClinic);
 });
+// STAGE 3H: HOSPITAL STAFFING REQUIREMENT GOVERNANCE
+async function loadDepartmentStaffingRequirementCatalog(clinic) {
+ const message=document.getElementById("staffingRequirementMessage");
+ const register=document.getElementById("staffingRequirementRegister");
+ if(!message||!register||!clinic||!currentUser||!managementVerified||clinic.id!==currentClinic?.id)return;
+ message.textContent="Loading hospital-approved staffing requirement register...";
+ message.className="message";
+ try {
+  const {data,error}=await supabaseClient.rpc("get_department_staffing_requirement_catalog",{p_clinic_id:clinic.id});
+  if(error)throw error;
+  const departments=Array.isArray(data?.departments)?data.departments:[];
+  const roles=Array.isArray(data?.roles)?data.roles:[];
+  const requirements=Array.isArray(data?.requirements)?data.requirements:[];
+  const deptSelect=document.getElementById("staffingRequirementDepartment");
+  const roleSelect=document.getElementById("staffingRequirementRole");
+  const selectedDept=deptSelect?.value||"";
+  if(deptSelect){deptSelect.replaceChildren(new Option("Select department",""));departments.forEach(d=>deptSelect.add(new Option(d.name,d.id)));if(departments.some(d=>d.id===selectedDept))deptSelect.value=selectedDept;}
+  const fillRoles=()=>{if(!roleSelect)return;const dep=deptSelect?.value;const old=roleSelect.value;roleSelect.replaceChildren(new Option("Select professional role",""));roles.filter(r=>r.department_id===dep).forEach(r=>roleSelect.add(new Option(r.role_name,r.id)));if([...roleSelect.options].some(o=>o.value===old))roleSelect.value=old;};
+  fillRoles();
+  if(deptSelect&&!deptSelect.dataset.staffingBound){deptSelect.addEventListener("change",fillRoles);deptSelect.dataset.staffingBound="1";}
+  register.replaceChildren();
+  if(!requirements.length){const p=document.createElement("p");p.className="muted";p.textContent="No staffing requirements have been configured yet.";register.append(p);}
+  requirements.forEach(item=>{
+   const card=document.createElement("article");card.className="department-governance-card";
+   const title=document.createElement("h4");title.textContent=item.department_name+" — "+item.role_name+" — "+item.shift_type;
+   const meta=document.createElement("p");meta.className="muted";meta.textContent="Minimum: "+item.minimum_headcount+" · Effective "+item.effective_from+(item.effective_to?" to "+item.effective_to:" onward")+" · "+String(item.validation_status).replace(/_/g," ");
+   card.append(title,meta);
+   if(item.policy_reference){const policy=document.createElement("p");policy.textContent="Policy: "+item.policy_reference;card.append(policy);}
+   if(item.requirement_notes){const notes=document.createElement("p");notes.textContent=item.requirement_notes;card.append(notes);}
+   const actions=document.createElement("div");actions.className="button-row";
+   const actionButton=(label,action,primary)=>{const b=document.createElement("button");b.type="button";b.className=primary?"primary-button":"secondary-button";b.textContent=label;b.addEventListener("click",async()=>{b.disabled=true;try{const {error}=await supabaseClient.rpc("manage_department_staffing_requirement",{p_clinic_id:clinic.id,p_action:action,p_payload:{requirement_id:item.id}});if(error)throw error;message.textContent=label+" recorded in the staffing governance audit.";message.className="message success";await loadDepartmentStaffingRequirementCatalog(clinic);}catch(e){message.textContent=friendlyError(e);message.className="message error";b.disabled=false;}});return b;};
+   if(item.validation_status==="draft")actions.append(actionButton("Submit for independent review","submit",false));
+   if(item.validation_status==="under_review")actions.append(actionButton("Approve requirement","approve",true));
+   if(actions.childElementCount)card.append(actions);
+   register.append(card);
+  });
+  message.textContent=requirements.length+" staffing requirement record(s) loaded. Only hospital-approved requirements are used in department coverage comparisons.";
+  message.className="message success";
+ }catch(error){console.error("Staffing requirement register failed:",error);message.textContent=friendlyError(error);message.className="message error";register.replaceChildren();}
+}
+const staffingRequirementForm=document.getElementById("staffingRequirementCreateForm");
+if(staffingRequirementForm)staffingRequirementForm.addEventListener("submit",async event=>{
+ event.preventDefault();
+ const message=document.getElementById("staffingRequirementMessage");
+ const button=staffingRequirementForm.querySelector('button[type="submit"]');button.disabled=true;
+ const from=document.getElementById("staffingRequirementFrom").value;
+ const to=document.getElementById("staffingRequirementTo").value;
+ if(to&&to<from){message.textContent="Effective-to date cannot be earlier than effective-from date.";message.className="message error";button.disabled=false;return;}
+ try{
+  const {error}=await supabaseClient.rpc("manage_department_staffing_requirement",{p_clinic_id:currentClinic.id,p_action:"create",p_payload:{
+   department_id:document.getElementById("staffingRequirementDepartment").value,
+   department_role_id:document.getElementById("staffingRequirementRole").value,
+   shift_type:document.getElementById("staffingRequirementShift").value.trim(),
+   minimum_headcount:Number(document.getElementById("staffingRequirementHeadcount").value),
+   effective_from:from,effective_to:to||null,
+   policy_reference:document.getElementById("staffingRequirementPolicy").value.trim(),
+   requirement_notes:document.getElementById("staffingRequirementNotes").value.trim()
+  }});
+  if(error)throw error;
+  staffingRequirementForm.reset();
+  message.textContent="Staffing requirement saved as a draft. It will not affect coverage until independently approved.";
+  message.className="message success";
+  await loadDepartmentStaffingRequirementCatalog(currentClinic);
+ }catch(error){message.textContent=friendlyError(error);message.className="message error";}
+ finally{button.disabled=false;}
+});
+const refreshStaffingRequirementButton=document.getElementById("refreshDepartmentRoleGovernance");
+if(refreshStaffingRequirementButton&&!refreshStaffingRequirementButton.dataset.staffingBound){refreshStaffingRequirementButton.addEventListener("click",()=>{if(currentClinic)void loadDepartmentStaffingRequirementCatalog(currentClinic);});refreshStaffingRequirementButton.dataset.staffingBound="1";}
+// END STAGE 3H STAFFING REQUIREMENT GOVERNANCE
+
 // END DEPARTMENT ROLE & DUTY GOVERNANCE
 
 // END DEPARTMENT WORKSPACE DIRECTORY
