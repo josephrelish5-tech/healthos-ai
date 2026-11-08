@@ -97,13 +97,13 @@ function showHealthOSView(viewId) {
     }
 
     const pageElements = mainContent.querySelectorAll(
-        ":scope > .welcome, :scope > #dashboardMessage, :scope > .stats-grid, " +
+        ":scope > .welcome, :scope > #dashboardMessage, :scope > #workspaceLaunchpad, :scope > .stats-grid, " +
         ":scope > #adminStaffDashboard, :scope > #hospitalOwnerRegistration, :scope > #hospitalMap, :scope > #patients, :scope > #appointments, " +
         ":scope > #whatsappIntake, :scope > #adminVoiceTranslator, :scope > #patientRecordSharing, :scope > #ussdDiagnostics, :scope > #multiFacilityManagement, :scope > #patientConnectionRequests, :scope > #globalReferrals, :scope > #telemedicineDashboard, :scope > #aiAnalytics, :scope > #patientFlow, :scope > #clinicalRecords, :scope > #serviceCapture, :scope > #billing, :scope > #posReconciliation, " +
         ":scope > #pharmacy, :scope > #reports"
     );
     pageElements.forEach(element => {
-        const isOverview = element.matches(".welcome, #dashboardMessage, .stats-grid");
+        const isOverview = element.matches(".welcome, #dashboardMessage, #workspaceLaunchpad, .stats-grid");
         element.hidden = viewId === "dashboard" ? !isOverview : element !== requestedPanel;
     });
 
