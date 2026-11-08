@@ -4081,6 +4081,7 @@ async function loadDepartmentPerformanceDashboard(clinic) {
                 : "authorised departments only") +
             ". Task figures are based on tasks created within the last 30 days.";
         message.className = "message success";
+        await loadDepartmentWorkspaceDirectory(clinic, departments);
         await loadDepartmentTaskEscalations(clinic);
     } catch (error) {
         console.error("Department performance report failed:", error);
@@ -4092,6 +4093,132 @@ async function loadDepartmentPerformanceDashboard(clinic) {
 }
 
  
+
+// HEALTHOS MEDICAL SYSTEMS: DEPARTMENT WORKSPACE DIRECTORY
+// Uses existing clinic department records and the authorised performance RPC.
+// It does not create data or bypass department-level permissions.
+async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
+    const list = document.getElementById("departmentWorkspaceCards");
+    const search = document.getElementById("departmentWorkspaceSearch");
+    const message = document.getElementById("departmentWorkspaceMessage");
+    const detail = document.getElementById("departmentWorkspaceDetail");
+    if (!list || !message || !clinic || !currentUser || !managementVerified || clinic.id !== currentClinic?.id) return;
+
+    message.textContent = "Loading departments in your authorised hospital scope...";
+    message.className = "message";
+    list.replaceChildren();
+
+    try {
+        const { data: departments, error } = await supabaseClient
+            .from("clinic_departments")
+            .select("id, department_code, department_name, department_group, description, is_custom")
+            .eq("clinic_id", clinic.id)
+            .eq("is_active", true)
+            .order("department_name", { ascending: true });
+        if (error) throw error;
+
+        const rows = Array.isArray(performanceRows) ? performanceRows : [];
+        const metricsByName = new Map();
+        rows.forEach(item => {
+            const key = String(item.department_name || "").trim().toLowerCase();
+            if (!key) return;
+            const current = metricsByName.get(key) || { staff: 0, assigned: 0, pending: 0, completed: 0, overdue: 0 };
+            current.staff = Math.max(current.staff, Number(item.active_staff || 0));
+            current.assigned += Number(item.tasks_assigned || 0);
+            current.pending += Number(item.tasks_pending || 0);
+            current.completed += Number(item.tasks_completed || 0);
+            current.overdue += Number(item.tasks_overdue || 0);
+            metricsByName.set(key, current);
+        });
+
+        const render = () => {
+            const term = String(search?.value || "").trim().toLowerCase();
+            const filtered = (departments || []).filter(department =>
+                [department.department_name, department.department_code, department.department_group, department.description]
+                    .some(value => String(value || "").toLowerCase().includes(term))
+            );
+            list.replaceChildren();
+            if (!filtered.length) {
+                const empty = document.createElement("p");
+                empty.className = "muted";
+                empty.textContent = "No departments match this search.";
+                list.appendChild(empty);
+                return;
+            }
+            filtered.forEach(department => {
+                const metric = metricsByName.get(String(department.department_name || "").trim().toLowerCase()) ||
+                    { staff: 0, assigned: 0, pending: 0, completed: 0, overdue: 0 };
+                const card = document.createElement("article");
+                card.className = "department-workspace-card";
+                const title = document.createElement("h4");
+                title.textContent = department.department_name;
+                const group = document.createElement("p");
+                group.className = "muted";
+                group.textContent = (department.department_group || "Hospital department") + (department.is_custom ? " · Hospital-created" : " · Standard");
+                const summary = document.createElement("p");
+                summary.textContent = metric.staff + " active staff · " + metric.pending + " pending tasks · " + metric.overdue + " overdue";
+                const open = document.createElement("button");
+                open.type = "button";
+                open.className = "secondary-button";
+                open.textContent = "Open department overview";
+                open.addEventListener("click", () => {
+                    if (!detail) return;
+                    detail.hidden = false;
+                    detail.replaceChildren();
+                    const heading = document.createElement("h3");
+                    heading.textContent = department.department_name;
+                    const description = document.createElement("p");
+                    description.className = "muted";
+                    description.textContent = department.description || "No department description has been configured.";
+                    const stats = document.createElement("div");
+                    stats.className = "department-workspace-stats";
+                    [
+                        ["Active staff", metric.staff],
+                        ["Tasks assigned (30 days)", metric.assigned],
+                        ["Pending tasks", metric.pending],
+                        ["Completed tasks", metric.completed],
+                        ["Overdue tasks", metric.overdue]
+                    ].forEach(([label, value]) => {
+                        const item = document.createElement("div");
+                        item.className = "stat-card";
+                        const name = document.createElement("p");
+                        name.textContent = label;
+                        const number = document.createElement("h3");
+                        number.textContent = String(value);
+                        item.append(name, number);
+                        stats.appendChild(item);
+                    });
+                    const note = document.createElement("p");
+                    note.className = "stat-note";
+                    note.textContent = "Figures are from the existing authorised department performance report. A zero means no matching activity was returned in this report; it is not an estimate.";
+                    const close = document.createElement("button");
+                    close.type = "button";
+                    close.className = "secondary-button";
+                    close.textContent = "Close overview";
+                    close.addEventListener("click", () => { detail.hidden = true; });
+                    detail.append(heading, description, stats, note, close);
+                    detail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                });
+                card.append(title, group, summary, open);
+                list.appendChild(card);
+            });
+        };
+
+        if (search && search.dataset.bound !== "true") {
+            search.dataset.bound = "true";
+            search.addEventListener("input", render);
+        }
+        render();
+        message.textContent = (departments || []).length + " active departments loaded from this hospital's records. Department access and task figures remain limited by database permissions.";
+        message.className = "message success";
+    } catch (error) {
+        console.error("Department workspace directory failed:", error);
+        message.textContent = friendlyError(error);
+        message.className = "message error";
+    }
+}
+// END DEPARTMENT WORKSPACE DIRECTORY
+
 // HEALTHOS AI: DEPARTMENT TASK ESCALATION REPORT
 async function loadDepartmentTaskEscalations(clinic) {
     const body = document.getElementById("departmentTaskEscalationsBody");
