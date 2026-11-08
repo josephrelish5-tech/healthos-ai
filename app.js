@@ -183,6 +183,7 @@ let currentUser = null;
 let currentClinic = null;
 // Management access remains locked until verification succeeds.
 let managementVerified = false;
+let currentManagementRole = null;
 // Show a message in the authentication area.
 function showAuthMessage(message, type = "") {
     authMessage.textContent = message;
@@ -359,7 +360,7 @@ async function verifyManagementAccess(password) {
         );
     }
 
-    return true;
+    return String(membership.role || "").toLowerCase();
 }
 // HEALTHOS AI: CONNECT ADMIN VERIFICATION FORM
 adminVerificationForm.addEventListener("submit", async function (event) {
@@ -385,8 +386,7 @@ adminVerificationForm.addEventListener("submit", async function (event) {
     adminVerificationMessage.className = "message";
 
     try {
-        await verifyManagementAccess(password);
-        
+        currentManagementRole = await verifyManagementAccess(password);
         managementVerified = true;
         adminVerificationMessage.textContent =
             "Verification successful. Opening your dashboard...";
@@ -2269,6 +2269,7 @@ async function openWorkspace(user) {
 
     logoutButton.hidden = false;
     managementVerified = false;
+    currentManagementRole = null;
     currentClinic = null;
 
     showOnly("clinic");
