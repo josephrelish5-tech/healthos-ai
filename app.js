@@ -2729,7 +2729,10 @@ await startStaffPresenceTracking(
                         return assignment.assignment_id === contextSelect.value;
                     });
                     displayStaffAssignmentContext(selectedAssignment);
-                    if (selectedAssignment) void loadDepartmentAppointmentInbox(selectedAssignment.department_id);
+                    if (selectedAssignment) {
+                        void loadDepartmentAppointmentInbox(selectedAssignment.department_id);
+                        void refreshDepartmentHandovers(selectedAssignment);
+                    }
                 });
 
                 const initialAssignment =
@@ -2737,7 +2740,10 @@ await startStaffPresenceTracking(
                         return assignment.assignment_id === contextSelect.value;
                     }) || assignments[0];
                 displayStaffAssignmentContext(initialAssignment);
-                if (initialAssignment) void loadDepartmentAppointmentInbox(initialAssignment.department_id);
+                if (initialAssignment) {
+                    void loadDepartmentAppointmentInbox(initialAssignment.department_id);
+                    void refreshDepartmentHandovers(initialAssignment);
+                }
                 // END HEALTHOS AI: STAFF DEPARTMENT CONTEXT SELECTOR
 
                 assignments.forEach(function (assignment) {
