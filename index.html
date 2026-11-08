@@ -1467,6 +1467,73 @@
                         role="status"
                         aria-live="polite"
                     ></p>
+                    <section id="workspaceLaunchpad" class="workspace-launchpad" aria-labelledby="workspaceLaunchpadHeading">
+                        <div class="panel-heading workspace-launchpad-heading">
+                            <div>
+                                <p class="eyebrow">HOSPITAL MANAGEMENT</p>
+                                <h2 id="workspaceLaunchpadHeading">Management Workspace</h2>
+                                <p class="muted">Choose a work area to open its dedicated page. Return here whenever you need the hospital overview.</p>
+                            </div>
+                        </div>
+                        <div class="workspace-launchpad-grid">
+                            <article class="workspace-launch-card">
+                                <h3>Hospital operations</h3>
+                                <p>Patient flow, appointments and clinical services.</p>
+                                <div class="workspace-launch-actions">
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('patients')">Patients</button>
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('appointments')">Appointments</button>
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('patientFlow')">Queue &amp; beds</button>
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('clinicalRecords')">Clinical records</button>
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('serviceCapture')">Service capture</button>
+                                </div>
+                            </article>
+                            <article class="workspace-launch-card">
+                                <h3>People &amp; departments</h3>
+                                <p>Manage staff, department leadership and operational responsibilities.</p>
+                                <div class="workspace-launch-actions">
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('staffManagement')">Staff management</button>
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('multiFacilityManagement')">Facilities</button>
+                                </div>
+                            </article>
+                            <article class="workspace-launch-card">
+                                <h3>Finance &amp; pharmacy</h3>
+                                <p>Open dedicated revenue, reconciliation and medicine-management pages.</p>
+                                <div class="workspace-launch-actions">
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('billing')">Billing &amp; revenue</button>
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('posReconciliation')">POS reconciliation</button>
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('pharmacy')">Pharmacy</button>
+                                </div>
+                            </article>
+                            <article class="workspace-launch-card">
+                                <h3>Intelligence &amp; reporting</h3>
+                                <p>Review hospital performance, analytics and authorised reports.</p>
+                                <div class="workspace-launch-actions">
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('aiAnalytics')">Hospital analytics</button>
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('reports')">Reports</button>
+                                </div>
+                            </article>
+                            <article class="workspace-launch-card">
+                                <h3>Patient access &amp; communication</h3>
+                                <p>Manage patient-facing connections and supported communication workflows.</p>
+                                <div class="workspace-launch-actions">
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('whatsappIntake')">WhatsApp intake</button>
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('patientConnectionRequests')">Patient connections</button>
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('globalReferrals')">Specialist referrals</button>
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('telemedicineDashboard')">Telemedicine</button>
+                                </div>
+                            </article>
+                            <article class="workspace-launch-card">
+                                <h3>Governance &amp; administration</h3>
+                                <p>Open hospital documentation, approved registration and administrative tools.</p>
+                                <div class="workspace-launch-actions">
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('hospitalOwnerRegistration')">Hospital registration</button>
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('ussdDiagnostics')">USSD diagnostics</button>
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('adminVoiceTranslator')">Administrative voice tools</button>
+                                    <button type="button" class="workspace-launch-button" onclick="showHealthOSView('patientRecordSharing')">Patient record sharing</button>
+                                </div>
+                            </article>
+                        </div>
+                    </section>
                     <!-- HEALTHOS MEDICAL SYSTEMS: ADMIN STAFF DASHBOARD -->
                     <section
                         id="adminStaffDashboard"
