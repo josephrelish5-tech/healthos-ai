@@ -4094,6 +4094,143 @@ async function loadDepartmentPerformanceDashboard(clinic) {
 
  
 
+// HEALTHOS MEDICAL SYSTEMS: DEPARTMENT TASK BOARD
+async function loadDepartmentWorkspaceTaskBoard(clinic, departmentId, root) {
+    if (!root || !clinic || !departmentId) return;
+    const status = root.querySelector("[data-task-board-status]");
+    const list = root.querySelector("[data-task-board-list]");
+    const filter = root.querySelector("[data-task-board-filter]");
+    if (!status || !list || !filter) return;
+
+    status.textContent = "Loading department task records...";
+    status.className = "message";
+    list.replaceChildren();
+
+    try {
+        const { data, error } = await supabaseClient.rpc("get_department_task_board", {
+            p_clinic_id: clinic.id,
+            p_department_id: departmentId,
+            p_status: filter.value || null,
+            p_limit: 200
+        });
+        if (error) throw error;
+        const tasks = Array.isArray(data?.tasks) ? data.tasks : [];
+        const counts = tasks.reduce((result, task) => {
+            const key = String(task.task_status || "unknown");
+            result[key] = (result[key] || 0) + 1;
+            return result;
+        }, {});
+        status.textContent = tasks.length + " task record(s) loaded · " +
+            Object.entries(counts).map(([key, value]) => value + " " + key.replace(/_/g, " ")).join(" · ") +
+            (tasks.length === 200 ? " · Showing the latest 200 matching records." : "");
+        status.className = "message success";
+
+        if (!tasks.length) {
+            const empty = document.createElement("p");
+            empty.className = "muted";
+            empty.textContent = "No tasks match this department and status filter.";
+            list.appendChild(empty);
+            return;
+        }
+
+        const formatDate = value => value ? new Date(value).toLocaleString() : "Not recorded";
+        tasks.forEach(task => {
+            const card = document.createElement("article");
+            card.className = "department-workspace-role";
+            const title = document.createElement("h5");
+            title.textContent = task.task_title || "Untitled task";
+            const state = document.createElement("p");
+            state.className = "stat-note";
+            state.textContent = "Status: " + String(task.task_status || "unknown").replace(/_/g, " ") +
+                " · Priority: " + String(task.priority || "normal").toUpperCase();
+            const assignment = document.createElement("p");
+            assignment.textContent = "Assigned to: " + (task.assignee_name || "Unknown staff") +
+                (task.assignee_staff_id ? " (" + task.assignee_staff_id + ")" : "") +
+                (task.unit_name ? " · Unit: " + task.unit_name : "");
+            const due = document.createElement("p");
+            due.textContent = "Deadline: " + formatDate(task.due_at) +
+                " · Assigned: " + formatDate(task.created_at);
+            card.append(title, state, assignment, due);
+
+            if (task.task_description) {
+                const description = document.createElement("p");
+                description.textContent = "Instructions: " + task.task_description;
+                card.appendChild(description);
+            }
+            const lifecycle = document.createElement("p");
+            lifecycle.className = "muted";
+            lifecycle.textContent = [
+                task.accepted_at ? "Accepted " + formatDate(task.accepted_at) : "",
+                task.started_at ? "Started " + formatDate(task.started_at) : "",
+                task.submitted_at ? "Submitted " + formatDate(task.submitted_at) : "",
+                task.completed_at ? "Completed " + formatDate(task.completed_at) : "",
+                task.reviewed_at ? "Reviewed " + formatDate(task.reviewed_at) : ""
+            ].filter(Boolean).join(" · ") || "No execution timestamps recorded yet.";
+            card.appendChild(lifecycle);
+
+            const requirements = document.createElement("p");
+            requirements.className = "stat-note";
+            requirements.textContent = "Controls: " +
+                (task.requires_evidence ? "evidence required" : "evidence not required") + " · " +
+                (task.requires_supervisor_review ? "supervisor review required" : "supervisor review not required") + " · " +
+                (task.requires_separate_approval ? "separate approval required" : "separate approval not required");
+            card.appendChild(requirements);
+
+            if (task.review_status || task.review_notes || task.reviewed_by_name) {
+                const review = document.createElement("p");
+                review.textContent = "Review: " + String(task.review_status || "pending").replace(/_/g, " ") +
+                    (task.reviewed_by_name ? " by " + task.reviewed_by_name : "") +
+                    (task.review_notes ? " · " + task.review_notes : "");
+                card.appendChild(review);
+            }
+
+            const evidenceItems = Array.isArray(task.evidence) ? task.evidence : [];
+            const evidenceDetails = document.createElement("details");
+            const evidenceSummary = document.createElement("summary");
+            evidenceSummary.textContent = "Completion evidence (" + evidenceItems.length + ")";
+            evidenceDetails.appendChild(evidenceSummary);
+            if (!evidenceItems.length) {
+                const none = document.createElement("p");
+                none.className = "muted";
+                none.textContent = "No evidence has been recorded.";
+                evidenceDetails.appendChild(none);
+            } else evidenceItems.forEach(item => {
+                const line = document.createElement("p");
+                line.textContent = [item.evidence_type || "Evidence", item.evidence_text || "", item.source_reference || "", item.submitted_by ? "Submitted by " + item.submitted_by : "", formatDate(item.captured_at || item.created_at)].filter(Boolean).join(" · ");
+                evidenceDetails.appendChild(line);
+            });
+            card.appendChild(evidenceDetails);
+
+            const events = Array.isArray(task.events) ? task.events : [];
+            const eventDetails = document.createElement("details");
+            const eventSummary = document.createElement("summary");
+            eventSummary.textContent = "Accountability history (" + events.length + ")";
+            eventDetails.appendChild(eventSummary);
+            if (!events.length) {
+                const none = document.createElement("p");
+                none.className = "muted";
+                none.textContent = "No task events have been recorded.";
+                eventDetails.appendChild(none);
+            } else events.forEach(item => {
+                const line = document.createElement("p");
+                line.textContent = formatDate(item.created_at) + " · " +
+                    String(item.event_type || "event").replace(/_/g, " ") +
+                    (item.actor_name ? " · " + item.actor_name : "") +
+                    (item.from_status || item.to_status ? " · " + String(item.from_status || "new").replace(/_/g, " ") + " → " + String(item.to_status || "").replace(/_/g, " ") : "") +
+                    (item.event_notes ? " · " + item.event_notes : "");
+                eventDetails.appendChild(line);
+            });
+            card.appendChild(eventDetails);
+            list.appendChild(card);
+        });
+    } catch (error) {
+        console.error("Department task board failed:", error);
+        status.textContent = friendlyError(error);
+        status.className = "message error";
+    }
+}
+// END DEPARTMENT TASK BOARD
+
 // HEALTHOS MEDICAL SYSTEMS: DEPARTMENT WORKSPACE DIRECTORY
 // Uses existing clinic department records and the authorised performance RPC.
 // It does not create data or bypass department-level permissions.
@@ -4209,6 +4346,44 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                             stats.appendChild(item);
                         });
                         detail.appendChild(stats);
+
+                        const taskBoardHeading = document.createElement("h4");
+                        taskBoardHeading.textContent = "Department task management & execution";
+                        const taskBoard = document.createElement("section");
+                        taskBoard.className = "panel";
+                        taskBoard.style.margin = "18px 0";
+                        const taskBoardControls = document.createElement("div");
+                        taskBoardControls.className = "form-grid";
+                        const taskBoardFilterLabel = document.createElement("label");
+                        taskBoardFilterLabel.textContent = "Filter tasks by status";
+                        const taskBoardFilter = document.createElement("select");
+                        taskBoardFilter.setAttribute("data-task-board-filter", "");
+                        [
+                            ["", "All task statuses"], ["assigned", "Assigned"], ["accepted", "Accepted"],
+                            ["in_progress", "In progress"], ["blocked", "Blocked"], ["submitted", "Submitted for review"],
+                            ["completed", "Completed"], ["cancelled", "Cancelled"]
+                        ].forEach(([value, label]) => taskBoardFilter.add(new Option(label, value)));
+                        taskBoardFilterLabel.appendChild(taskBoardFilter);
+                        const taskBoardRefresh = document.createElement("button");
+                        taskBoardRefresh.type = "button";
+                        taskBoardRefresh.className = "secondary-button";
+                        taskBoardRefresh.textContent = "Refresh task board";
+                        taskBoardControls.append(taskBoardFilterLabel, taskBoardRefresh);
+                        const taskBoardStatus = document.createElement("p");
+                        taskBoardStatus.className = "message";
+                        taskBoardStatus.setAttribute("role", "status");
+                        taskBoardStatus.setAttribute("data-task-board-status", "");
+                        const taskBoardList = document.createElement("div");
+                        taskBoardList.setAttribute("data-task-board-list", "");
+                        taskBoard.append(taskBoardControls, taskBoardStatus, taskBoardList);
+                        detail.append(taskBoardHeading, taskBoard);
+                        taskBoardFilter.addEventListener("change", () => {
+                            void loadDepartmentWorkspaceTaskBoard(clinic, department.id, taskBoard);
+                        });
+                        taskBoardRefresh.addEventListener("click", () => {
+                            void loadDepartmentWorkspaceTaskBoard(clinic, department.id, taskBoard);
+                        });
+                        void loadDepartmentWorkspaceTaskBoard(clinic, department.id, taskBoard);
 
                         const roleHeading = document.createElement("h4");
                         roleHeading.textContent = "Professional roles and approved job duties";
