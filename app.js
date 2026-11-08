@@ -4385,6 +4385,156 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                         });
                         void loadDepartmentWorkspaceTaskBoard(clinic, department.id, taskBoard);
 
+                        // Stage 3B: department-scoped task assignment. Reuses the existing
+                        // authorised options RPC and server-side task creation RPC.
+                        const assignmentHeading = document.createElement("h4");
+                        assignmentHeading.textContent = "Assign work within this department";
+                        const assignmentPanel = document.createElement("section");
+                        assignmentPanel.className = "panel";
+                        assignmentPanel.style.margin = "18px 0";
+                        const assignmentForm = document.createElement("form");
+                        assignmentForm.className = "form-grid";
+                        const assignmentMessage = document.createElement("p");
+                        assignmentMessage.className = "message";
+                        assignmentMessage.setAttribute("role", "status");
+                        assignmentMessage.textContent = "Loading authorised department staff and approved duties...";
+                        const assigneeLabel = document.createElement("label");
+                        assigneeLabel.textContent = "Assigned staff member";
+                        const assigneeSelect = document.createElement("select");
+                        assigneeSelect.required = true;
+                        assigneeSelect.add(new Option("Loading authorised team...", ""));
+                        assigneeLabel.appendChild(assigneeSelect);
+                        const dutyLabel = document.createElement("label");
+                        dutyLabel.textContent = "Approved job duty (optional)";
+                        const dutySelect = document.createElement("select");
+                        dutySelect.add(new Option("No approved duty linked", ""));
+                        dutyLabel.appendChild(dutySelect);
+                        const titleLabel = document.createElement("label");
+                        titleLabel.textContent = "Task title";
+                        const titleInput = document.createElement("input");
+                        titleInput.type = "text";
+                        titleInput.required = true;
+                        titleInput.minLength = 3;
+                        titleInput.maxLength = 200;
+                        titleInput.placeholder = "Describe the work to be completed";
+                        titleLabel.appendChild(titleInput);
+                        const descriptionLabel = document.createElement("label");
+                        descriptionLabel.textContent = "Task instructions";
+                        const descriptionInput = document.createElement("textarea");
+                        descriptionInput.rows = 3;
+                        descriptionInput.maxLength = 3000;
+                        descriptionInput.placeholder = "Provide clear instructions and expected evidence";
+                        descriptionLabel.appendChild(descriptionInput);
+                        const priorityLabel = document.createElement("label");
+                        priorityLabel.textContent = "Priority";
+                        const prioritySelect = document.createElement("select");
+                        [["low","Low"],["normal","Normal"],["high","High"],["urgent","Urgent"]].forEach(([value,label]) => prioritySelect.add(new Option(label,value)));
+                        priorityLabel.appendChild(prioritySelect);
+                        const dueLabel = document.createElement("label");
+                        dueLabel.textContent = "Deadline (optional)";
+                        const dueInput = document.createElement("input");
+                        dueInput.type = "datetime-local";
+                        dueLabel.appendChild(dueInput);
+                        const assignButton = document.createElement("button");
+                        assignButton.type = "submit";
+                        assignButton.className = "primary-button";
+                        assignButton.textContent = "Assign department task";
+                        assignmentForm.append(assigneeLabel, dutyLabel, titleLabel, descriptionLabel, priorityLabel, dueLabel, assignButton);
+                        assignmentPanel.append(assignmentMessage, assignmentForm);
+                        detail.append(assignmentHeading, assignmentPanel);
+
+                        let departmentAssignments = [];
+                        let departmentDuties = [];
+                        try {
+                            const { data: options, error: optionsError } = await supabaseClient.rpc(
+                                "get_task_assignment_options", { p_clinic_id: clinic.id }
+                            );
+                            if (optionsError) throw optionsError;
+                            departmentAssignments = (Array.isArray(options?.staff_assignments) ? options.staff_assignments : [])
+                                .filter(item => item.department_id === department.id);
+                            departmentDuties = (Array.isArray(options?.approved_duties) ? options.approved_duties : [])
+                                .filter(item => item.department_id === department.id);
+                            assigneeSelect.replaceChildren(new Option("Select department staff member", ""));
+                            departmentAssignments.forEach(item => {
+                                assigneeSelect.add(new Option(
+                                    item.name + " (" + (item.staff_id || "No staff ID") + ")" +
+                                    (item.unit_name ? " — " + item.unit_name : ""),
+                                    item.assignment_id
+                                ));
+                            });
+                            dutySelect.replaceChildren(new Option("No approved duty linked", ""));
+                            departmentDuties.forEach(item => dutySelect.add(new Option(item.title, item.id)));
+                            if (!departmentAssignments.length) {
+                                assignmentMessage.textContent = "No active staff assignments are currently available in this department within your authorised scope.";
+                                assignmentMessage.className = "message";
+                                assignButton.disabled = true;
+                            } else {
+                                assignmentMessage.textContent = departmentAssignments.length + " authorised staff assignment(s) and " +
+                                    departmentDuties.length + " approved duty option(s) loaded for " + department.department_name +
+                                    ". The server will validate department and manager scope again when you assign.";
+                                assignmentMessage.className = "message success";
+                            }
+                        } catch (optionsError) {
+                            console.error("Department-specific task options failed:", optionsError);
+                            assignmentMessage.textContent = friendlyError(optionsError);
+                            assignmentMessage.className = "message error";
+                            assignButton.disabled = true;
+                        }
+
+                        assignmentForm.addEventListener("submit", async event => {
+                            event.preventDefault();
+                            if (assignButton.disabled) return;
+                            const selectedAssignment = departmentAssignments.find(item => item.assignment_id === assigneeSelect.value);
+                            const selectedDuty = departmentDuties.find(item => item.id === dutySelect.value);
+                            if (!selectedAssignment || selectedAssignment.department_id !== department.id) {
+                                assignmentMessage.textContent = "Choose an active staff assignment belonging to this department.";
+                                assignmentMessage.className = "message error";
+                                return;
+                            }
+                            if (dutySelect.value && (!selectedDuty || selectedDuty.department_id !== department.id)) {
+                                assignmentMessage.textContent = "The selected approved duty does not belong to this department.";
+                                assignmentMessage.className = "message error";
+                                return;
+                            }
+                            assignButton.disabled = true;
+                            assignmentMessage.textContent = "Creating task and recording its assignment event...";
+                            assignmentMessage.className = "message";
+                            const dueValue = dueInput.value;
+                            try {
+                                const { data: created, error: createError } = await supabaseClient.rpc(
+                                    "create_supervised_staff_task",
+                                    {
+                                        p_clinic_id: clinic.id,
+                                        p_assignment_id: selectedAssignment.assignment_id,
+                                        p_title: titleInput.value.trim(),
+                                        p_description: descriptionInput.value.trim() || null,
+                                        p_priority: prioritySelect.value,
+                                        p_due_at: dueValue ? new Date(dueValue).toISOString() : null,
+                                        p_duty_id: dutySelect.value || null
+                                    }
+                                );
+                                if (createError) throw createError;
+                                assignmentForm.reset();
+                                prioritySelect.value = "normal";
+                                assignmentMessage.textContent = "Task assigned successfully. The system recorded the task ID " +
+                                    (created?.task_id || "and its assignment event") + ". Refreshing the department task board...";
+                                assignmentMessage.className = "message success";
+                                await loadDepartmentWorkspaceTaskBoard(clinic, department.id, taskBoard);
+                                if (typeof loadDepartmentPerformanceDashboard === "function") {
+                                    void loadDepartmentPerformanceDashboard(clinic);
+                                }
+                                if (typeof loadHospitalDepartmentCommand === "function") {
+                                    void loadHospitalDepartmentCommand(clinic);
+                                }
+                            } catch (createError) {
+                                console.error("Department task creation failed:", createError);
+                                assignmentMessage.textContent = friendlyError(createError);
+                                assignmentMessage.className = "message error";
+                            } finally {
+                                assignButton.disabled = departmentAssignments.length === 0;
+                            }
+                        });
+
                         const roleHeading = document.createElement("h4");
                         roleHeading.textContent = "Professional roles and approved job duties";
                         detail.appendChild(roleHeading);
