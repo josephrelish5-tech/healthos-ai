@@ -4807,6 +4807,115 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                         accountabilityRefresh.addEventListener("click", () => void refreshDepartmentStaffAccountability());
                         void refreshDepartmentStaffAccountability();
 
+                        // Stage 3F: shift coverage and operational risk monitoring.
+                        // Uses the same server-authorised department roster; never invents staffing ratios.
+                        const shiftRiskHeading = document.createElement("h4");
+                        shiftRiskHeading.textContent = "Shift coverage & operational risks";
+                        const shiftRiskPanel = document.createElement("section");
+                        shiftRiskPanel.className = "panel";
+                        shiftRiskPanel.style.margin = "18px 0";
+                        const shiftRiskIntro = document.createElement("p");
+                        shiftRiskIntro.className = "muted";
+                        shiftRiskIntro.textContent = "Flags scheduled shifts with no recorded clock-in after a 15-minute grace period, shifts that elapsed without clock-in, missing clock-out records and unresolved tasks at shift end. This is an operational exception list, not a clinical staffing-ratio assessment.";
+                        const shiftRiskRefresh = document.createElement("button");
+                        shiftRiskRefresh.type = "button";
+                        shiftRiskRefresh.className = "secondary-button";
+                        shiftRiskRefresh.textContent = "Refresh shift risk monitor";
+                        const shiftRiskStatus = document.createElement("p");
+                        shiftRiskStatus.className = "message";
+                        shiftRiskStatus.setAttribute("role", "status");
+                        shiftRiskStatus.setAttribute("aria-live", "polite");
+                        const shiftRiskStats = document.createElement("div");
+                        shiftRiskStats.className = "department-workspace-stats";
+                        const shiftRiskList = document.createElement("div");
+                        shiftRiskPanel.append(shiftRiskIntro, shiftRiskRefresh, shiftRiskStatus, shiftRiskStats, shiftRiskList);
+                        detail.append(shiftRiskHeading, shiftRiskPanel);
+
+                        async function refreshDepartmentShiftCoverageRisks() {
+                            shiftRiskRefresh.disabled = true;
+                            shiftRiskStatus.textContent = "Checking authorised shift records and outstanding work...";
+                            shiftRiskStatus.className = "message";
+                            shiftRiskStats.replaceChildren();
+                            shiftRiskList.replaceChildren();
+                            try {
+                                const { data: riskData, error: riskError } = await supabaseClient.rpc(
+                                    "get_department_shift_coverage_risks",
+                                    { p_clinic_id: clinic.id, p_department_id: department.id, p_days: 2 }
+                                );
+                                if (riskError) throw riskError;
+                                const risks = Array.isArray(riskData?.risks) ? riskData.risks : [];
+                                const counts = [
+                                    ["Late clock-in / no clock-in", risks.filter(r => ["late_clock_in","shift_elapsed_without_clock_in"].includes(r.risk_code)).length],
+                                    ["Open tasks after shift end", risks.filter(r => r.risk_code === "open_tasks_after_shift_end").length],
+                                    ["Missing clock-out", risks.filter(r => r.risk_code === "shift_ended_without_clock_out").length],
+                                    ["Shift ending soon with open tasks", risks.filter(r => r.risk_code === "upcoming_shift_end_with_open_tasks").length]
+                                ];
+                                counts.forEach(([label,value]) => {
+                                    const card = document.createElement("div");
+                                    card.className = "stat-card";
+                                    const title = document.createElement("p");
+                                    title.textContent = label;
+                                    const number = document.createElement("h3");
+                                    number.textContent = String(value);
+                                    card.append(title,number);
+                                    shiftRiskStats.appendChild(card);
+                                });
+                                if (!risks.length) {
+                                    const empty = document.createElement("p");
+                                    empty.className = "message success";
+                                    empty.textContent = "No shift coverage exceptions were identified in the current authorised roster for the next two days.";
+                                    shiftRiskList.appendChild(empty);
+                                } else {
+                                    risks.forEach(risk => {
+                                        const item = document.createElement("article");
+                                        item.className = "panel";
+                                        item.style.margin = "10px 0";
+                                        const title = document.createElement("h5");
+                                        const labels = {
+                                            late_clock_in: "Late clock-in — grace period exceeded",
+                                            shift_elapsed_without_clock_in: "Shift elapsed without recorded clock-in",
+                                            open_tasks_after_shift_end: "Unresolved tasks remain after shift end",
+                                            shift_ended_without_clock_out: "Shift ended without recorded clock-out",
+                                            upcoming_shift_end_with_open_tasks: "Shift ending within 60 minutes with open tasks"
+                                        };
+                                        title.textContent = labels[risk.risk_code] || "Shift exception";
+                                        const details = document.createElement("p");
+                                        details.className = "muted";
+                                        const when = value => value ? new Date(value).toLocaleString() : "—";
+                                        details.textContent = (risk.full_name || "Unassigned staff") +
+                                            (risk.staff_id ? " · " + risk.staff_id : "") +
+                                            " · " + String(risk.shift_type || "Shift").replace(/_/g," ") +
+                                            " · " + when(risk.starts_at) + " – " + when(risk.ends_at) +
+                                            " · Attendance: " + String(risk.attendance_status || "not recorded").replace(/_/g," ");
+                                        item.append(title,details);
+                                        const tasks = Array.isArray(risk.open_tasks) ? risk.open_tasks : [];
+                                        if (tasks.length) {
+                                            const taskList = document.createElement("ul");
+                                            tasks.forEach(task => {
+                                                const li = document.createElement("li");
+                                                li.textContent = (task.title || "Untitled task") + " · " +
+                                                    String(task.status || "open").replace(/_/g," ") +
+                                                    (task.priority ? " · " + task.priority : "");
+                                                taskList.appendChild(li);
+                                            });
+                                            item.appendChild(taskList);
+                                        }
+                                        shiftRiskList.appendChild(item);
+                                    });
+                                }
+                                shiftRiskStatus.textContent = risks.length + " shift exception(s) found. A 15-minute late clock-in threshold is used for this monitor; it does not change attendance status or mark staff absent. Results cover today and the next two calendar days.";
+                                shiftRiskStatus.className = "message success";
+                            } catch (riskLoadError) {
+                                console.error("Department shift risk monitor failed:", riskLoadError);
+                                shiftRiskStatus.textContent = friendlyError(riskLoadError);
+                                shiftRiskStatus.className = "message error";
+                            } finally {
+                                shiftRiskRefresh.disabled = false;
+                            }
+                        }
+                        shiftRiskRefresh.addEventListener("click", () => void refreshDepartmentShiftCoverageRisks());
+                        void refreshDepartmentShiftCoverageRisks();
+
                         // Stage 3B: department-scoped task assignment. Reuses the existing
                         // authorised options RPC and server-side task creation RPC.
                         const assignmentHeading = document.createElement("h4");
