@@ -1773,3 +1773,63 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
   .healthos-care-icon { width: 40px; height: 40px; }
   .healthos-care-visual img { height: 240px; }
 }
+
+
+/* HealthOS sectional management workspace launchpad */
+.workspace-launchpad {
+    margin: 0 0 28px;
+}
+.workspace-launchpad-heading {
+    margin-bottom: 16px;
+}
+.workspace-launchpad-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+.workspace-launch-card {
+    min-width: 0;
+    padding: 20px;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgba(16, 42, 67, 0.035);
+}
+.workspace-launch-card h3 {
+    margin: 0 0 6px;
+    color: var(--navy);
+    font-size: 17px;
+}
+.workspace-launch-card > p {
+    margin: 0 0 14px;
+    color: var(--muted);
+    line-height: 1.55;
+}
+.workspace-launch-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.workspace-launch-button {
+    min-height: 40px;
+    padding: 9px 12px;
+    border: 1px solid #c9d9e8;
+    border-radius: 8px;
+    background: #f7faff;
+    color: var(--navy);
+    font-weight: 650;
+    cursor: pointer;
+    text-align: left;
+}
+.workspace-launch-button:hover {
+    border-color: var(--medical-blue);
+    background: var(--blue-soft);
+}
+@media (max-width: 760px) {
+    .workspace-launchpad-grid {
+        grid-template-columns: 1fr;
+    }
+    .workspace-launch-card {
+        padding: 16px;
+    }
+}
