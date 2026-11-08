@@ -4217,6 +4217,12 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
         message.className = "message error";
     }
 }
+const refreshDepartmentWorkspaceDirectoryButton = document.getElementById("refreshDepartmentWorkspaceDirectory");
+if (refreshDepartmentWorkspaceDirectoryButton) {
+    refreshDepartmentWorkspaceDirectoryButton.addEventListener("click", () => {
+        if (currentClinic) void loadDepartmentWorkspaceDirectory(currentClinic);
+    });
+}
 // END DEPARTMENT WORKSPACE DIRECTORY
 
 // HEALTHOS AI: DEPARTMENT TASK ESCALATION REPORT
