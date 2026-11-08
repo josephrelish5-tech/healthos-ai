@@ -4691,6 +4691,122 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                         escalationRefresh.addEventListener("click", () => void refreshDepartmentPerformanceEscalations());
                         void refreshDepartmentPerformanceEscalations();
 
+                        // Stage 3E: department staff attendance, shift and task accountability.
+                        // Presence (online) is deliberately displayed separately from duty (clocked in).
+                        const accountabilityHeading = document.createElement("h4");
+                        accountabilityHeading.textContent = "Staff attendance & accountability";
+                        const accountabilityPanel = document.createElement("section");
+                        accountabilityPanel.className = "panel";
+                        accountabilityPanel.style.margin = "18px 0";
+                        const accountabilityIntro = document.createElement("p");
+                        accountabilityIntro.className = "muted";
+                        accountabilityIntro.textContent = "Compare today's assigned shift, attendance clock-ins, online presence and recent task completion. Online status does not mean a staff member is on duty.";
+                        const accountabilityRefresh = document.createElement("button");
+                        accountabilityRefresh.type = "button";
+                        accountabilityRefresh.className = "secondary-button";
+                        accountabilityRefresh.textContent = "Refresh staff accountability";
+                        const accountabilityStatus = document.createElement("p");
+                        accountabilityStatus.className = "message";
+                        accountabilityStatus.setAttribute("role", "status");
+                        accountabilityStatus.setAttribute("aria-live", "polite");
+                        const accountabilityStats = document.createElement("div");
+                        accountabilityStats.className = "department-workspace-stats";
+                        const accountabilityTableWrap = document.createElement("div");
+                        accountabilityTableWrap.style.overflowX = "auto";
+                        const accountabilityTable = document.createElement("table");
+                        accountabilityTable.className = "data-table";
+                        const accountabilityHead = document.createElement("thead");
+                        const accountabilityHeaderRow = document.createElement("tr");
+                        ["Staff member","Role / unit","Online presence","Today's shift","Attendance","Last clock-in","Last clock-out","Tasks completed (30d)","Overdue tasks"].forEach(label => {
+                            const th = document.createElement("th");
+                            th.textContent = label;
+                            accountabilityHeaderRow.appendChild(th);
+                        });
+                        accountabilityHead.appendChild(accountabilityHeaderRow);
+                        const accountabilityBody = document.createElement("tbody");
+                        accountabilityTable.append(accountabilityHead, accountabilityBody);
+                        accountabilityTableWrap.appendChild(accountabilityTable);
+                        accountabilityPanel.append(accountabilityIntro, accountabilityRefresh, accountabilityStatus, accountabilityStats, accountabilityTableWrap);
+                        detail.append(accountabilityHeading, accountabilityPanel);
+
+                        async function refreshDepartmentStaffAccountability() {
+                            accountabilityRefresh.disabled = true;
+                            accountabilityStatus.textContent = "Loading authorised department staff, shift and attendance records...";
+                            accountabilityStatus.className = "message";
+                            accountabilityStats.replaceChildren();
+                            accountabilityBody.replaceChildren();
+                            try {
+                                const { data: accountabilityData, error: accountabilityError } = await supabaseClient.rpc(
+                                    "get_department_staff_accountability",
+                                    { p_clinic_id: clinic.id, p_department_id: department.id }
+                                );
+                                if (accountabilityError) throw accountabilityError;
+                                const staffRows = Array.isArray(accountabilityData?.staff) ? accountabilityData.staff : [];
+                                const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+                                const isOnline = row => row.presence_status === "online" && row.last_seen_at &&
+                                    new Date(row.last_seen_at).getTime() >= fiveMinutesAgo;
+                                const isOnDuty = row => row.today_shift_attendance_status === "on_duty" ||
+                                    Boolean(row.open_attendance_clock_in_at);
+                                const stats = [
+                                    ["Active department assignments", staffRows.length],
+                                    ["Online now", staffRows.filter(isOnline).length],
+                                    ["Clocked in / on duty", staffRows.filter(isOnDuty).length],
+                                    ["Not clocked in", staffRows.filter(row => !isOnDuty(row)).length],
+                                    ["Completed tasks (30d)", staffRows.reduce((sum,row) => sum + Number(row.tasks_completed_30d || 0),0)],
+                                    ["Overdue open tasks", staffRows.reduce((sum,row) => sum + Number(row.overdue_open_tasks || 0),0)]
+                                ];
+                                stats.forEach(([label,value]) => {
+                                    const card = document.createElement("div");
+                                    card.className = "stat-card";
+                                    const title = document.createElement("p");
+                                    title.textContent = label;
+                                    const number = document.createElement("h3");
+                                    number.textContent = String(value);
+                                    card.append(title,number);
+                                    accountabilityStats.appendChild(card);
+                                });
+                                const time = value => value ? new Date(value).toLocaleString() : "—";
+                                if (!staffRows.length) {
+                                    const row = accountabilityBody.insertRow();
+                                    const cell = row.insertCell();
+                                    cell.colSpan = 9;
+                                    cell.textContent = "No active staff assignments are recorded for this department and your authorised scope.";
+                                } else staffRows.forEach(person => {
+                                    const row = accountabilityBody.insertRow();
+                                    const values = [
+                                        (person.full_name || "Unnamed staff") + (person.staff_id ? " · " + person.staff_id : ""),
+                                        (person.professional_role || "Role not recorded") + (person.unit_name ? " · " + person.unit_name : ""),
+                                        isOnline(person) ? "Online" : "Offline / stale",
+                                        person.today_shift_type
+                                            ? String(person.today_shift_type).replace(/_/g," ") + " · " +
+                                              time(person.today_shift_starts_at) + " – " + time(person.today_shift_ends_at)
+                                            : "No shift assigned today",
+                                        person.today_shift_attendance_status
+                                            ? String(person.today_shift_attendance_status).replace(/_/g," ")
+                                            : person.open_attendance_clock_in_at ? "Clocked in (no shift)" : "Not clocked in",
+                                        time(person.today_shift_clocked_in_at || person.open_attendance_clock_in_at || person.last_clock_in_at),
+                                        time(person.today_shift_clocked_out_at || person.latest_session_clock_out_at || person.last_clock_out_at),
+                                        Number(person.tasks_completed_30d || 0),
+                                        Number(person.overdue_open_tasks || 0)
+                                    ];
+                                    values.forEach(value => {
+                                        const cell = row.insertCell();
+                                        cell.textContent = String(value);
+                                    });
+                                });
+                                accountabilityStatus.textContent = staffRows.length + " active staff assignment(s) loaded. Online means a presence heartbeat within five minutes; on-duty is based on attendance records. Attendance and task records are read-only in this panel.";
+                                accountabilityStatus.className = "message success";
+                            } catch (accountabilityLoadError) {
+                                console.error("Department staff accountability load failed:", accountabilityLoadError);
+                                accountabilityStatus.textContent = friendlyError(accountabilityLoadError);
+                                accountabilityStatus.className = "message error";
+                            } finally {
+                                accountabilityRefresh.disabled = false;
+                            }
+                        }
+                        accountabilityRefresh.addEventListener("click", () => void refreshDepartmentStaffAccountability());
+                        void refreshDepartmentStaffAccountability();
+
                         // Stage 3B: department-scoped task assignment. Reuses the existing
                         // authorised options RPC and server-side task creation RPC.
                         const assignmentHeading = document.createElement("h4");
