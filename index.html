@@ -2090,6 +2090,36 @@
                             <p id="departmentTaskEscalationsMessage" class="message" role="status">Escalation report will appear here.</p>
                             <div style="overflow-x:auto"><table><thead><tr><th>Issue</th><th>Task</th><th>Department / Unit</th><th>Assigned Staff</th><th>Priority</th><th>Deadline</th><th>Current Status</th></tr></thead><tbody id="departmentTaskEscalationsBody"><tr><td colspan="7">Loading...</td></tr></tbody></table></div>
                         </section>
+                        <section class="panel" id="hospitalEscalationMonitoringPanel">
+                            <div class="panel-heading">
+                                <div><h3>Hospital Escalation Monitoring</h3><p class="muted">Administrator-only view across departments. Managers continue to use their authorised department queues.</p></div>
+                                <button type="button" class="secondary-button" id="refreshHospitalEscalationMonitor">Refresh monitor</button>
+                            </div>
+                            <div class="form-grid" style="margin-bottom:1rem">
+                                <label>Escalation status
+                                    <select id="hospitalEscalationStatus">
+                                        <option value="">All statuses</option><option value="open">Open</option><option value="acknowledged">Acknowledged</option><option value="resolved">Resolved</option><option value="dismissed">Dismissed</option>
+                                    </select>
+                                </label>
+                                <label>Severity
+                                    <select id="hospitalEscalationSeverity">
+                                        <option value="">All severity levels</option><option value="critical">Critical</option><option value="urgent">Urgent</option><option value="high">High</option><option value="normal">Normal</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="stats-grid" id="hospitalEscalationSummary">
+                                <article class="stat-card"><p>Open</p><h3 id="hospitalEscOpen">—</h3></article>
+                                <article class="stat-card"><p>Acknowledged</p><h3 id="hospitalEscAcknowledged">—</h3></article>
+                                <article class="stat-card"><p>Critical</p><h3 id="hospitalEscCritical">—</h3></article>
+                                <article class="stat-card"><p>Urgent</p><h3 id="hospitalEscUrgent">—</h3></article>
+                                <article class="stat-card"><p>Resolved</p><h3 id="hospitalEscResolved">—</h3></article>
+                            </div>
+                            <p id="hospitalEscalationMonitorMessage" class="message" role="status">Refresh to load hospital-wide escalations. Access is verified by the server.</p>
+                            <div style="overflow-x:auto">
+                                <table><thead><tr><th>Severity / Status</th><th>Department / Unit</th><th>Task</th><th>Reason</th><th>Raised</th><th>Accountability / Actions</th></tr></thead>
+                                <tbody id="hospitalEscalationMonitorRows"><tr><td colspan="6">No monitoring data loaded.</td></tr></tbody></table>
+                            </div>
+                        </section>
                         <!-- END HEALTHOS MEDICAL SYSTEMS: DEPARTMENT PERFORMANCE -->
 </div>
 </section>
