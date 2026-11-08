@@ -4999,6 +4999,71 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                         accountabilityRefresh.addEventListener("click", () => void refreshDepartmentStaffAccountability());
                         void refreshDepartmentStaffAccountability();
 
+                        // Stage 3H: compare recorded roster and clock-ins against approved hospital requirements.
+                        const staffingCoverageHeading=document.createElement("h4");
+                        staffingCoverageHeading.textContent="Minimum staffing requirement coverage";
+                        const staffingCoveragePanel=document.createElement("section");
+                        staffingCoveragePanel.className="panel";
+                        staffingCoveragePanel.style.margin="18px 0";
+                        const staffingCoverageIntro=document.createElement("p");
+                        staffingCoverageIntro.className="muted";
+                        staffingCoverageIntro.textContent="This compares approved hospital staffing requirements with recorded staff shifts and active clock-ins. It does not create clinical staffing ratios or treat missing roster entries as staff absence.";
+                        const staffingCoverageControls=document.createElement("div");
+                        staffingCoverageControls.className="button-row";
+                        const staffingCoverageDate=document.createElement("input");
+                        staffingCoverageDate.type="date";
+                        staffingCoverageDate.setAttribute("aria-label","Coverage date");
+                        staffingCoverageDate.value=new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Lagos",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+                        const staffingCoverageRefresh=document.createElement("button");
+                        staffingCoverageRefresh.type="button";
+                        staffingCoverageRefresh.className="secondary-button";
+                        staffingCoverageRefresh.textContent="Refresh coverage";
+                        staffingCoverageControls.append(staffingCoverageDate,staffingCoverageRefresh);
+                        const staffingCoverageStatus=document.createElement("p");
+                        staffingCoverageStatus.className="message";
+                        staffingCoverageStatus.setAttribute("role","status");
+                        staffingCoverageStatus.setAttribute("aria-live","polite");
+                        const staffingCoverageTableWrap=document.createElement("div");
+                        staffingCoverageTableWrap.style.overflowX="auto";
+                        const staffingCoverageTable=document.createElement("table");
+                        staffingCoverageTable.className="data-table";
+                        const staffingCoverageHead=document.createElement("thead");
+                        const staffingCoverageHeader=document.createElement("tr");
+                        ["Professional role","Shift","Approved minimum","Scheduled","Clocked in","Recorded comparison","Policy reference"].forEach(label=>{const th=document.createElement("th");th.textContent=label;staffingCoverageHeader.appendChild(th);});
+                        staffingCoverageHead.appendChild(staffingCoverageHeader);
+                        const staffingCoverageBody=document.createElement("tbody");
+                        staffingCoverageTable.append(staffingCoverageHead,staffingCoverageBody);
+                        staffingCoverageTableWrap.appendChild(staffingCoverageTable);
+                        staffingCoveragePanel.append(staffingCoverageIntro,staffingCoverageControls,staffingCoverageStatus,staffingCoverageTableWrap);
+                        detail.append(staffingCoverageHeading,staffingCoveragePanel);
+                        async function refreshDepartmentStaffingCoverage(){
+                            staffingCoverageRefresh.disabled=true;
+                            staffingCoverageStatus.textContent="Comparing approved staffing requirements with recorded shift data...";
+                            staffingCoverageStatus.className="message";
+                            staffingCoverageBody.replaceChildren();
+                            try{
+                                const {data,error}=await supabaseClient.rpc("get_department_staffing_coverage",{
+                                    p_clinic_id:clinic.id,p_department_id:department.id,p_shift_date:staffingCoverageDate.value||null
+                                });
+                                if(error)throw error;
+                                const requirements=Array.isArray(data?.requirements)?data.requirements:[];
+                                if(!requirements.length){
+                                    const row=staffingCoverageBody.insertRow();const cell=row.insertCell();cell.colSpan=7;
+                                    cell.textContent="No hospital-approved staffing requirements apply to this department on the selected date. Configure and independently approve requirements in the administrator governance area.";
+                                }else requirements.forEach(item=>{
+                                    const row=staffingCoverageBody.insertRow();
+                                    const labels={no_roster_entries:"No roster entries",roster_below_requirement:"Roster below approved minimum",scheduled_but_not_yet_covered:"Scheduled, but clock-ins below minimum",recorded_minimum_met:"Recorded minimum met"};
+                                    [item.role_name,item.shift_type,item.minimum_headcount,item.scheduled_count,item.clocked_in_count,labels[item.roster_state]||item.roster_state,item.policy_reference||"Not recorded"].forEach(value=>{const cell=row.insertCell();cell.textContent=String(value??"—");});
+                                });
+                                staffingCoverageStatus.textContent=requirements.length+" approved role/shift requirement(s) checked for "+(data?.shift_date||staffingCoverageDate.value)+". Scheduled headcount and clocked-in headcount are shown separately; only recorded evidence is compared.";
+                                staffingCoverageStatus.className="message success";
+                            }catch(error){console.error("Department staffing coverage failed:",error);staffingCoverageStatus.textContent=friendlyError(error);staffingCoverageStatus.className="message error";}
+                            finally{staffingCoverageRefresh.disabled=false;}
+                        }
+                        staffingCoverageRefresh.addEventListener("click",()=>void refreshDepartmentStaffingCoverage());
+                        staffingCoverageDate.addEventListener("change",()=>void refreshDepartmentStaffingCoverage());
+                        void refreshDepartmentStaffingCoverage();
+
                         // Stage 3F: shift coverage and operational risk monitoring.
                         // Uses the same server-authorised department roster; never invents staffing ratios.
                         const shiftRiskHeading = document.createElement("h4");
