@@ -1657,6 +1657,59 @@
  <div id="departmentWorkspaceCards" class="department-workspace-grid"></div>
  <div id="departmentWorkspaceDetail" class="department-workspace-detail" hidden aria-live="polite"></div>
 </section>
+<section class="panel" id="departmentRoleGovernancePanel" style="margin-top:24px" aria-labelledby="departmentRoleGovernanceHeading">
+ <div class="panel-heading"><div><p class="eyebrow">DEPARTMENT ROLE & DUTY GOVERNANCE</p><h3 id="departmentRoleGovernanceHeading">Professional Roles, Job Profiles & Duties</h3>
+ <p class="muted">Configure role structures and submit job profiles and duties for independent hospital review. Draft instructions are never treated as authorised duties.</p></div>
+ <button type="button" class="secondary-button" id="refreshDepartmentRoleGovernance">Refresh register</button></div>
+ <p id="departmentRoleGovernanceMessage" class="message" role="status" aria-live="polite">Administrator verification required.</p>
+ <div class="stats-grid">
+  <article class="stat-card"><p>Linked professional roles</p><h3 id="roleGovernanceRoleCount">—</h3></article>
+  <article class="stat-card"><p>Job profiles</p><h3 id="roleGovernanceProfileCount">—</h3></article>
+  <article class="stat-card"><p>Approved duties</p><h3 id="roleGovernanceDutyCount">—</h3></article>
+  <article class="stat-card"><p>Awaiting review</p><h3 id="roleGovernanceReviewCount">—</h3></article>
+ </div>
+ <div class="department-governance-grid">
+  <form id="departmentRoleCreateForm" class="stat-card">
+   <h4>1. Register a professional role</h4>
+   <label>Department<select id="governanceRoleDepartment" required><option value="">Select department</option></select></label>
+   <label>Role code<input id="governanceRoleCode" maxlength="60" required placeholder="e.g. PHARMACIST"></label>
+   <label>Role name<input id="governanceRoleName" maxlength="120" required placeholder="e.g. Pharmacist"></label>
+   <label>Role group<input id="governanceRoleGroup" maxlength="100" placeholder="e.g. Clinical"></label>
+   <label>Description<textarea id="governanceRoleDescription" rows="2" maxlength="1000"></textarea></label>
+   <label class="checkbox-label"><input id="governanceRoleClinical" type="checkbox"> Clinical role</label>
+   <label class="checkbox-label"><input id="governanceRoleRegistration" type="checkbox"> Professional registration required</label>
+   <label>Registration body<input id="governanceRoleRegistrationBody" maxlength="160" placeholder="e.g. PCN"></label>
+   <button class="primary-button" type="submit">Create and link role</button>
+  </form>
+  <form id="departmentProfileCreateForm" class="stat-card">
+   <h4>2. Create a job profile</h4>
+   <label>Department / professional role<select id="governanceProfileRole" required><option value="">Create or load a role first</option></select></label>
+   <label>Job title<input id="governanceProfileTitle" maxlength="160" required placeholder="e.g. Hospital Pharmacist"></label>
+   <label>Job purpose<textarea id="governanceProfilePurpose" rows="2" maxlength="2000"></textarea></label>
+   <label>Job summary<textarea id="governanceProfileSummary" rows="2" maxlength="3000"></textarea></label>
+   <label>Qualification requirements<textarea id="governanceProfileQualifications" rows="2" maxlength="3000"></textarea></label>
+   <label>Scope / delegation limits<textarea id="governanceProfileScope" rows="2" maxlength="3000" placeholder="State boundaries; do not imply statutory authority."></textarea></label>
+   <button class="primary-button" type="submit">Save job profile as draft</button>
+  </form>
+  <form id="departmentDutyCreateForm" class="stat-card">
+   <h4>3. Define a duty</h4>
+   <label>Job profile<select id="governanceDutyProfile" required><option value="">Create or load a profile first</option></select></label>
+   <label>Duty code<input id="governanceDutyCode" maxlength="60" placeholder="Optional unique code"></label>
+   <label>Duty title<input id="governanceDutyTitle" maxlength="180" required></label>
+   <label>Duty description<textarea id="governanceDutyDescription" rows="2" maxlength="3000"></textarea></label>
+   <label>Duty category<select id="governanceDutyCategory"><option value="operational">Operational</option><option value="clinical">Clinical</option><option value="administrative">Administrative</option><option value="financial">Financial</option><option value="safety">Safety</option><option value="compliance">Compliance</option><option value="supervisory">Supervisory</option><option value="other">Other</option></select></label>
+   <label>Expected frequency<input id="governanceDutyFrequency" maxlength="120" placeholder="e.g. Each shift / daily"></label>
+   <label class="checkbox-label"><input id="governanceDutyEvidence" type="checkbox"> Evidence required</label>
+   <label class="checkbox-label"><input id="governanceDutyReview" type="checkbox"> Supervisor review required</label>
+   <label class="checkbox-label"><input id="governanceDutySeparateApproval" type="checkbox"> Separate approval required</label>
+   <label class="checkbox-label"><input id="governanceDutyRegulated" type="checkbox"> Clinical or regulated scope</label>
+   <button class="primary-button" type="submit">Save duty as draft</button>
+  </form>
+ </div>
+ <h4 style="margin-top:22px">Governance register & review queue</h4>
+ <div id="departmentRoleGovernanceRegister" class="department-governance-register"><p class="muted">Load the register to review role structures and draft submissions.</p></div>
+ <p class="disclaimer">Only an active hospital owner or administrator can manage this register. Approval is restricted to a different administrator from the original author. A job profile must be approved before its duties can be approved. Clinical and regulated duties still require credential verification, hospital policy and applicable professional/statutory scope.</p>
+</section>
 <section class="panel" id="departmentKnowledgeReviewPanel" style="margin-top:24px" aria-labelledby="departmentKnowledgeReviewHeading">
  <div class="panel-heading">
   <div><p class="eyebrow">HEALTHOS MEDICAL SYSTEMS KNOWLEDGE GOVERNANCE</p><h3 id="departmentKnowledgeReviewHeading">Department Knowledge Review</h3>
