@@ -190,7 +190,23 @@
             .grid3-actions { display: grid; grid-template-columns: 1fr; }
             .grid3-actions label, .grid3-actions select, .grid3-actions button { width: 100%; box-sizing: border-box; }
         }
-    </style>
+    
+        .department-governance-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:18px}
+        .department-governance-grid .stat-card{display:grid;gap:10px;align-content:start;padding:18px;border:1px solid #dce5f0;border-radius:12px;background:#fff}
+        .department-governance-grid h4{margin:0 0 4px;color:#102b46}
+        .department-governance-grid label{display:grid;gap:6px;font-weight:600;color:#334155}
+        .department-governance-grid input:not([type=checkbox]),.department-governance-grid select,.department-governance-grid textarea{width:100%;min-height:40px;padding:9px 10px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#102b46;font:inherit}
+        .department-governance-grid .checkbox-label{display:flex;align-items:center;gap:9px;font-weight:500}
+        .department-governance-grid .checkbox-label input{width:17px;height:17px}
+        .department-governance-register{display:grid;gap:14px;margin-top:12px}
+        .department-governance-card{padding:18px;border:1px solid #dce5f0;border-radius:12px;background:#fff}
+        .department-governance-card h4,.department-governance-card h5{color:#102b46;margin:0 0 8px}
+        .department-governance-item{margin-top:12px;padding:14px;border-left:3px solid #1b4f91;background:#f5f8fc;border-radius:6px}
+        .department-governance-duty{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid #e1e8f0}
+        .department-governance-duty p{margin:0}
+        .department-governance-register .button-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+        @media(max-width:640px){.department-governance-duty{align-items:flex-start;flex-direction:column}}
+</style>
 </head>
 <body>
     <header class="topbar">
