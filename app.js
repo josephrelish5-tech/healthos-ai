@@ -362,6 +362,38 @@ async function verifyManagementAccess(password) {
 
     return String(membership.role || "").toLowerCase();
 }
+
+// Update the management landing identity from the verified clinic membership role.
+// This changes presentation only; database policies and server-side permissions remain authoritative.
+function updateManagementWorkspaceIdentity(role) {
+    const banner = document.getElementById("managementRoleBanner");
+    const heading = document.getElementById("workspaceLaunchpadHeading");
+    const description = document.querySelector("#workspaceLaunchpad .workspace-launchpad-heading .muted");
+    const normalizedRole = String(role || "").toLowerCase();
+
+    if (!["owner", "admin"].includes(normalizedRole)) {
+        if (banner) banner.textContent = "Management access is not verified.";
+        return;
+    }
+
+    document.documentElement.dataset.managementRole = normalizedRole;
+    if (heading) {
+        heading.textContent = normalizedRole === "owner"
+            ? "Hospital Owner Workspace"
+            : "Hospital Administrator Workspace";
+    }
+    if (description) {
+        description.textContent = normalizedRole === "owner"
+            ? "Hospital-wide leadership, oversight and authorised management work areas."
+            : "Daily hospital operations, staff coordination and authorised administrative work areas.";
+    }
+    if (banner) {
+        banner.textContent = normalizedRole === "owner"
+            ? "OWNER ACCESS · Strategic oversight and hospital-wide management"
+            : "ADMINISTRATOR ACCESS · Operational management within assigned authority";
+    }
+}
+
 // HEALTHOS AI: CONNECT ADMIN VERIFICATION FORM
 adminVerificationForm.addEventListener("submit", async function (event) {
     event.preventDefault();
@@ -388,6 +420,7 @@ adminVerificationForm.addEventListener("submit", async function (event) {
     try {
         currentManagementRole = await verifyManagementAccess(password);
         managementVerified = true;
+        updateManagementWorkspaceIdentity(currentManagementRole);
         adminVerificationMessage.textContent =
             "Verification successful. Opening your dashboard...";
 
