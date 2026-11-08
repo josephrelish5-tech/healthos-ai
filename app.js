@@ -2514,6 +2514,192 @@ await startStaffPresenceTracking(
                     "Access to records and actions remains controlled by server-side permissions.";
                 assignmentPanel.appendChild(contextNotice);
 
+                // Stage 3G: universal department handover for all assigned staff.
+                const handoverSection = document.createElement("section");
+                handoverSection.className = "panel";
+                handoverSection.style.margin = "18px 0";
+                const handoverTitle = document.createElement("h3");
+                handoverTitle.textContent = "Department shift handover";
+                const handoverIntro = document.createElement("p");
+                handoverIntro.className = "muted";
+                handoverIntro.textContent = "Record outstanding work, operational risks and instructions for the incoming colleague. The designated incoming staff member must explicitly accept the handover.";
+                const handoverMessage = document.createElement("p");
+                handoverMessage.className = "message";
+                handoverMessage.setAttribute("role","status");
+                handoverMessage.setAttribute("aria-live","polite");
+                const handoverForm = document.createElement("form");
+                handoverForm.className = "form-grid";
+                const incomingLabel = document.createElement("label");
+                incomingLabel.textContent = "Incoming staff member";
+                const incomingSelect = document.createElement("select");
+                incomingSelect.required = true;
+                incomingSelect.className = "form-control";
+                incomingLabel.appendChild(incomingSelect);
+                const summaryLabel = document.createElement("label");
+                summaryLabel.textContent = "Handover summary (required)";
+                const summaryInput = document.createElement("textarea");
+                summaryInput.required = true;
+                summaryInput.minLength = 10;
+                summaryInput.maxLength = 5000;
+                summaryInput.rows = 4;
+                summaryInput.className = "form-control";
+                summaryInput.placeholder = "Summarise the work completed, current operational position and what the incoming colleague needs to know.";
+                summaryLabel.appendChild(summaryInput);
+                const pendingLabel = document.createElement("label");
+                pendingLabel.textContent = "Outstanding tasks / follow-up";
+                const pendingInput = document.createElement("textarea");
+                pendingInput.maxLength = 5000;
+                pendingInput.rows = 3;
+                pendingInput.className = "form-control";
+                pendingInput.placeholder = "List pending tasks and their current status. Do not include unnecessary patient-identifying information.";
+                pendingLabel.appendChild(pendingInput);
+                const riskLabel = document.createElement("label");
+                riskLabel.textContent = "Operational risks / blockers";
+                const riskInput = document.createElement("textarea");
+                riskInput.maxLength = 3000;
+                riskInput.rows = 2;
+                riskInput.className = "form-control";
+                riskInput.placeholder = "Record equipment, supply, staffing or safety issues requiring attention.";
+                riskLabel.appendChild(riskInput);
+                const handoverSubmit = document.createElement("button");
+                handoverSubmit.type = "submit";
+                handoverSubmit.className = "primary-button";
+                handoverSubmit.textContent = "Record handover";
+                handoverForm.append(incomingLabel,summaryLabel,pendingLabel,riskLabel,handoverSubmit);
+                const handoverListTitle = document.createElement("h4");
+                handoverListTitle.textContent = "Recent department handovers";
+                const handoverList = document.createElement("div");
+                handoverSection.append(handoverTitle,handoverIntro,handoverMessage,handoverForm,handoverListTitle,handoverList);
+                assignmentPanel.appendChild(handoverSection);
+
+                async function refreshDepartmentHandovers(assignment) {
+                    if (!assignment || !assignment.department_id) return;
+                    handoverMessage.textContent = "Loading department handovers...";
+                    handoverMessage.className = "message";
+                    handoverList.replaceChildren();
+                    incomingSelect.replaceChildren();
+                    try {
+                        const [recipientsResult, handoversResult] = await Promise.all([
+                            supabaseClient.rpc("get_department_handover_recipients", {
+                                p_clinic_id: clinic.id,p_department_id: assignment.department_id
+                            }),
+                            supabaseClient.rpc("get_department_shift_handovers", {
+                                p_clinic_id: clinic.id,p_department_id: assignment.department_id,p_limit: 30
+                            })
+                        ]);
+                        if (recipientsResult.error) throw recipientsResult.error;
+                        if (handoversResult.error) throw handoversResult.error;
+                        const recipients = Array.isArray(recipientsResult.data?.staff) ? recipientsResult.data.staff : [];
+                        const eligible = recipients.filter(person => person.assignment_id !== assignment.assignment_id);
+                        const placeholder = document.createElement("option");
+                        placeholder.value = "";
+                        placeholder.textContent = eligible.length ? "Select incoming colleague" : "No other active colleague is assigned";
+                        incomingSelect.appendChild(placeholder);
+                        eligible.forEach(person => {
+                            const option = document.createElement("option");
+                            option.value = person.assignment_id;
+                            option.textContent = (person.full_name || "Staff member") + (person.staff_id ? " · " + person.staff_id : "");
+                            incomingSelect.appendChild(option);
+                        });
+                        handoverSubmit.disabled = eligible.length === 0;
+                        const handovers = Array.isArray(handoversResult.data?.handovers) ? handoversResult.data.handovers : [];
+                        if (!handovers.length) {
+                            const empty = document.createElement("p");
+                            empty.className = "muted";
+                            empty.textContent = "No handovers have been recorded for this department.";
+                            handoverList.appendChild(empty);
+                        } else handovers.forEach(record => {
+                            const card = document.createElement("article");
+                            card.className = "panel";
+                            card.style.margin = "10px 0";
+                            const heading = document.createElement("h4");
+                            heading.textContent = (record.outgoing_name || "Outgoing staff") + " → " + (record.incoming_name || "Incoming staff not designated");
+                            const status = document.createElement("p");
+                            status.className = "message" + (record.handover_status === "accepted" ? " success" : "");
+                            status.textContent = String(record.handover_status || "unknown").replace(/_/g," ") + " · " + new Date(record.recorded_at).toLocaleString();
+                            const summary = document.createElement("p");
+                            summary.textContent = record.handover_summary || "";
+                            card.append(heading,status,summary);
+                            [["Outstanding items",record.pending_items],["Operational risks",record.risk_notes]].forEach(([label,value]) => {
+                                if (!value) return;
+                                const detail = document.createElement("p");
+                                detail.textContent = label + ": " + value;
+                                card.appendChild(detail);
+                            });
+                            const ownIncoming = assignments.some(item => item.assignment_id === record.incoming_assignment_id);
+                            if (record.handover_status === "awaiting_acceptance" && ownIncoming) {
+                                const accept = document.createElement("button");
+                                accept.type = "button";
+                                accept.className = "secondary-button";
+                                accept.textContent = "Accept handover";
+                                accept.addEventListener("click", async () => {
+                                    accept.disabled = true;
+                                    try {
+                                        const {error} = await supabaseClient.rpc("accept_department_shift_handover", {
+                                            p_clinic_id: clinic.id,p_handover_id: record.id
+                                        });
+                                        if (error) throw error;
+                                        handoverMessage.textContent = "Handover accepted and acceptance time recorded.";
+                                        handoverMessage.className = "message success";
+                                        await refreshDepartmentHandovers(assignment);
+                                    } catch (error) {
+                                        handoverMessage.textContent = friendlyError(error);
+                                        handoverMessage.className = "message error";
+                                        accept.disabled = false;
+                                    }
+                                });
+                                card.appendChild(accept);
+                            }
+                            handoverList.appendChild(card);
+                        });
+                        handoverMessage.textContent = "Department handovers loaded. Only the designated incoming staff member can accept a handover; the database verifies this independently.";
+                        handoverMessage.className = "message success";
+                    } catch (error) {
+                        console.error("Department handover loading failed:",error);
+                        handoverMessage.textContent = friendlyError(error);
+                        handoverMessage.className = "message error";
+                    }
+                }
+
+                handoverForm.addEventListener("submit", async event => {
+                    event.preventDefault();
+                    const selected = assignments.find(item => item.assignment_id === contextSelect.value);
+                    if (!selected) {
+                        handoverMessage.textContent = "Select a valid active department assignment first.";
+                        handoverMessage.className = "message error";
+                        return;
+                    }
+                    if (!incomingSelect.value) {
+                        handoverMessage.textContent = "Select the incoming staff member.";
+                        handoverMessage.className = "message error";
+                        return;
+                    }
+                    handoverSubmit.disabled = true;
+                    try {
+                        const {error} = await supabaseClient.rpc("record_department_shift_handover", {
+                            p_clinic_id: clinic.id,
+                            p_department_id: selected.department_id,
+                            p_outgoing_assignment_id: selected.assignment_id,
+                            p_incoming_assignment_id: incomingSelect.value,
+                            p_shift_id: null,
+                            p_handover_summary: summaryInput.value.trim(),
+                            p_pending_items: pendingInput.value.trim() || null,
+                            p_risk_notes: riskInput.value.trim() || null
+                        });
+                        if (error) throw error;
+                        handoverForm.reset();
+                        handoverMessage.textContent = "Handover recorded and sent to the designated incoming colleague for acceptance.";
+                        handoverMessage.className = "message success";
+                        await refreshDepartmentHandovers(selected);
+                    } catch (error) {
+                        console.error("Department handover submission failed:",error);
+                        handoverMessage.textContent = friendlyError(error);
+                        handoverMessage.className = "message error";
+                    } finally {
+                        handoverSubmit.disabled = false;
+                    }
+                });
+
                 function displayStaffAssignmentContext(assignment) {
                     if (!assignment) return;
                     const departmentDisplay =
