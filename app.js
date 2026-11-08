@@ -4242,6 +4242,17 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                                 const profileTitle = document.createElement("h6");
                                 profileTitle.textContent = profile.job_title || "Job profile";
                                 roleCard.appendChild(profileTitle);
+
+                                // Stage 2: make job-profile governance state explicit.
+                                const profileStatus = document.createElement("p");
+                                profileStatus.className = "stat-note";
+                                const isApprovedProfile = profile.validation_status === "hospital_approved";
+                                profileStatus.textContent = isApprovedProfile
+                                    ? "Governance status: Hospital approved"
+                                    : "Governance status: " + String(profile.validation_status || "draft").replace(/_/g, " ") + " — not an authorised duty instruction";
+                                profileStatus.setAttribute("role", "status");
+                                roleCard.appendChild(profileStatus);
+
                                 if (profile.job_purpose || profile.job_summary || profile.scope_notes) {
                                     const purpose = document.createElement("p");
                                     purpose.textContent = [profile.job_purpose, profile.job_summary, profile.scope_notes].filter(Boolean).join(" ");
