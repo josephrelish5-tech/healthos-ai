@@ -4161,43 +4161,134 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                 open.type = "button";
                 open.className = "secondary-button";
                 open.textContent = "Open department overview";
-                open.addEventListener("click", () => {
+                open.textContent = "Open department workspace";
+                open.addEventListener("click", async () => {
                     if (!detail) return;
                     detail.hidden = false;
                     detail.replaceChildren();
                     const heading = document.createElement("h3");
-                    heading.textContent = department.department_name;
-                    const description = document.createElement("p");
-                    description.className = "muted";
-                    description.textContent = department.description || "No department description has been configured.";
-                    const stats = document.createElement("div");
-                    stats.className = "department-workspace-stats";
-                    [
-                        ["Active staff", metric.staff],
-                        ["Tasks assigned (30 days)", metric.assigned],
-                        ["Pending tasks", metric.pending],
-                        ["Completed tasks", metric.completed],
-                        ["Overdue tasks", metric.overdue]
-                    ].forEach(([label, value]) => {
-                        const item = document.createElement("div");
-                        item.className = "stat-card";
-                        const name = document.createElement("p");
-                        name.textContent = label;
-                        const number = document.createElement("h3");
-                        number.textContent = String(value);
-                        item.append(name, number);
-                        stats.appendChild(item);
-                    });
-                    const note = document.createElement("p");
-                    note.className = "stat-note";
-                    note.textContent = "Figures are from the existing authorised department performance report. A zero means no matching activity was returned in this report; it is not an estimate.";
+                    heading.textContent = department.department_name + " — Department Workspace";
+                    const loading = document.createElement("p");
+                    loading.className = "message";
+                    loading.textContent = "Loading authorised department workspace...";
+                    detail.append(heading, loading);
+                    detail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    try {
+                        const { data, error } = await supabaseClient.rpc("get_department_workspace_foundation", {
+                            p_clinic_id: clinic.id,
+                            p_department_id: department.id
+                        });
+                        if (error) throw error;
+                        const workspace = data || {};
+                        const summaryData = workspace.summary || {};
+                        const taskData = summaryData.tasks_30_days || {};
+                        detail.replaceChildren();
+                        detail.appendChild(heading);
+
+                        const description = document.createElement("p");
+                        description.className = "muted";
+                        description.textContent = workspace.department?.description || department.description || "No department description has been configured.";
+                        detail.appendChild(description);
+
+                        const stats = document.createElement("div");
+                        stats.className = "department-workspace-stats";
+                        [
+                            ["Active staff", summaryData.active_staff ?? metric.staff],
+                            ["Tasks (30 days)", taskData.total ?? metric.assigned],
+                            ["Pending tasks", taskData.pending ?? metric.pending],
+                            ["Completed tasks", taskData.completed ?? metric.completed],
+                            ["Overdue tasks", taskData.overdue ?? metric.overdue],
+                            ["Awaiting review", taskData.awaiting_review ?? 0]
+                        ].forEach(([label, value]) => {
+                            const item = document.createElement("div");
+                            item.className = "stat-card";
+                            const name = document.createElement("p");
+                            name.textContent = label;
+                            const number = document.createElement("h3");
+                            number.textContent = String(value);
+                            item.append(name, number);
+                            stats.appendChild(item);
+                        });
+                        detail.appendChild(stats);
+
+                        const roleHeading = document.createElement("h4");
+                        roleHeading.textContent = "Professional roles and approved job duties";
+                        detail.appendChild(roleHeading);
+                        const roles = Array.isArray(workspace.professional_roles) ? workspace.professional_roles : [];
+                        if (!roles.length) {
+                            const emptyRoles = document.createElement("p");
+                            emptyRoles.className = "muted";
+                            emptyRoles.textContent = "No active professional roles are linked to this department yet. An authorised administrator can configure them in Department Role Management.";
+                            detail.appendChild(emptyRoles);
+                        }
+                        roles.forEach(role => {
+                            const roleCard = document.createElement("article");
+                            roleCard.className = "department-workspace-role";
+                            const roleTitle = document.createElement("h5");
+                            roleTitle.textContent = role.role_name || "Professional role";
+                            roleCard.appendChild(roleTitle);
+                            const roleMeta = document.createElement("p");
+                            roleMeta.className = "muted";
+                            roleMeta.textContent = (role.role_code || "No role code") +
+                                (role.clinical_role ? " · Clinical role" : " · Non-clinical role") +
+                                (role.registration_required ? " · Registration required" + (role.registration_body ? " (" + role.registration_body + ")" : "") : "");
+                            roleCard.appendChild(roleMeta);
+                            const profiles = Array.isArray(role.job_profiles) ? role.job_profiles : [];
+                            if (!profiles.length) {
+                                const noProfile = document.createElement("p");
+                                noProfile.textContent = "No active job profile has been configured for this role.";
+                                roleCard.appendChild(noProfile);
+                            }
+                            profiles.forEach(profile => {
+                                const profileTitle = document.createElement("h6");
+                                profileTitle.textContent = profile.job_title || "Job profile";
+                                roleCard.appendChild(profileTitle);
+                                if (profile.job_purpose || profile.job_summary || profile.scope_notes) {
+                                    const purpose = document.createElement("p");
+                                    purpose.textContent = [profile.job_purpose, profile.job_summary, profile.scope_notes].filter(Boolean).join(" ");
+                                    roleCard.appendChild(purpose);
+                                }
+                                const duties = Array.isArray(profile.duties) ? profile.duties : [];
+                                const dutyList = document.createElement("ul");
+                                if (!duties.length) {
+                                    const noDuties = document.createElement("li");
+                                    noDuties.textContent = "No hospital-approved duties are published for this job profile.";
+                                    dutyList.appendChild(noDuties);
+                                } else {
+                                    duties.forEach(duty => {
+                                        const item = document.createElement("li");
+                                        item.textContent = (duty.duty_title || "Duty") +
+                                            (duty.expected_frequency ? " — " + duty.expected_frequency : "") +
+                                            (duty.evidence_required ? " · Evidence required" : "") +
+                                            (duty.supervisor_review_required ? " · Supervisor review" : "") +
+                                            (duty.separate_approval_required ? " · Separate approval" : "");
+                                        dutyList.appendChild(item);
+                                    });
+                                }
+                                roleCard.appendChild(dutyList);
+                            });
+                            detail.appendChild(roleCard);
+                        });
+
+                        const scopeNote = document.createElement("p");
+                        scopeNote.className = "stat-note";
+                        scopeNote.textContent = "Access scope: " +
+                            (workspace.access_scope === "hospital_wide_admin" ? "hospital administrator" : "appointed department manager") +
+                            ". Only hospital-approved duties are shown. Clinical and regulated duties remain subject to verified credentials, hospital policy and statutory scope of practice.";
+                        detail.appendChild(scopeNote);
+                    } catch (workspaceError) {
+                        console.error("Department workspace foundation failed:", workspaceError);
+                        const errorMessage = document.createElement("p");
+                        errorMessage.className = "message error";
+                        errorMessage.textContent = friendlyError(workspaceError);
+                        detail.appendChild(errorMessage);
+                    }
                     const close = document.createElement("button");
                     close.type = "button";
                     close.className = "secondary-button";
-                    close.textContent = "Close overview";
+                    close.textContent = "Close workspace";
                     close.addEventListener("click", () => { detail.hidden = true; });
-                    detail.append(heading, description, stats, note, close);
-                    detail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    detail.appendChild(close);
                 });
                 card.append(title, group, summary, open);
                 list.appendChild(card);
