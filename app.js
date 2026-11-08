@@ -4551,6 +4551,146 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                         reviewRefresh.addEventListener("click", () => void refreshDepartmentSupervisorReviews());
                         void refreshDepartmentSupervisorReviews();
 
+                        // Stage 3D: department performance, accountability and escalation centre.
+                        // Uses the existing department-scoped task board; no parallel task engine or
+                        // client-side permission bypass is introduced.
+                        const escalationHeading = document.createElement("h4");
+                        escalationHeading.textContent = "Department performance & escalation centre";
+                        const escalationPanel = document.createElement("section");
+                        escalationPanel.className = "panel";
+                        escalationPanel.style.margin = "18px 0";
+                        const escalationIntro = document.createElement("p");
+                        escalationIntro.className = "muted";
+                        escalationIntro.textContent = "Live view of overdue work, blockers, delayed reviews and recorded staff completions. Escalation visibility follows the same department and unit permissions as the task board.";
+                        const escalationRefresh = document.createElement("button");
+                        escalationRefresh.type = "button";
+                        escalationRefresh.className = "secondary-button";
+                        escalationRefresh.textContent = "Refresh performance & escalations";
+                        const escalationStatus = document.createElement("p");
+                        escalationStatus.className = "message";
+                        escalationStatus.setAttribute("role", "status");
+                        escalationStatus.setAttribute("aria-live", "polite");
+                        const escalationStats = document.createElement("div");
+                        escalationStats.className = "department-workspace-stats";
+                        const escalationList = document.createElement("div");
+                        escalationPanel.append(escalationIntro, escalationRefresh, escalationStatus, escalationStats, escalationList);
+                        detail.append(escalationHeading, escalationPanel);
+
+                        async function refreshDepartmentPerformanceEscalations() {
+                            escalationRefresh.disabled = true;
+                            escalationStatus.textContent = "Loading department accountability and escalation records...";
+                            escalationStatus.className = "message";
+                            escalationStats.replaceChildren();
+                            escalationList.replaceChildren();
+                            try {
+                                const { data: boardData, error: boardError } = await supabaseClient.rpc(
+                                    "get_department_task_board",
+                                    { p_clinic_id: clinic.id, p_department_id: department.id, p_status: null, p_limit: 200 }
+                                );
+                                if (boardError) throw boardError;
+                                const tasks = Array.isArray(boardData?.tasks) ? boardData.tasks : [];
+                                const now = Date.now();
+                                const active = tasks.filter(task => !["completed", "cancelled"].includes(task.task_status));
+                                const overdue = active.filter(task => task.due_at && new Date(task.due_at).getTime() < now);
+                                const blocked = active.filter(task => task.task_status === "blocked");
+                                const awaitingReview = active.filter(task => task.task_status === "submitted" &&
+                                    (task.requires_supervisor_review || task.requires_separate_approval));
+                                const delayedReviews = awaitingReview.filter(task => {
+                                    const submitted = task.submitted_at || task.updated_at;
+                                    return submitted && now - new Date(submitted).getTime() >= 24 * 60 * 60 * 1000;
+                                });
+                                const completed = tasks.filter(task => task.task_status === "completed");
+                                const staffCompletions = new Map();
+                                completed.forEach(task => {
+                                    const name = task.assignee_name || "Unidentified staff";
+                                    const item = staffCompletions.get(name) || { count: 0, staffId: task.assignee_staff_id || "" };
+                                    item.count += 1;
+                                    staffCompletions.set(name, item);
+                                });
+                                const metrics = [
+                                    ["Overdue tasks", overdue.length],
+                                    ["Blocked tasks", blocked.length],
+                                    ["Awaiting review", awaitingReview.length],
+                                    ["Reviews delayed ≥24h", delayedReviews.length],
+                                    ["Completed in loaded records", completed.length],
+                                    ["Staff with completions", staffCompletions.size]
+                                ];
+                                metrics.forEach(([label, value]) => {
+                                    const card = document.createElement("div");
+                                    card.className = "stat-card";
+                                    const name = document.createElement("p");
+                                    name.textContent = label;
+                                    const number = document.createElement("h3");
+                                    number.textContent = String(value);
+                                    card.append(name, number);
+                                    escalationStats.appendChild(card);
+                                });
+                                escalationStatus.textContent = tasks.length + " task record(s) assessed in this authorised department scope." +
+                                    (tasks.length === 200 ? " The board reached its 200-record limit; older records may not be represented." : "") +
+                                    " A review is flagged delayed after 24 hours from its latest submitted timestamp.";
+                                escalationStatus.className = "message success";
+
+                                const formatWhen = value => value ? new Date(value).toLocaleString() : "Not recorded";
+                                const appendGroup = (titleText, records, detailText) => {
+                                    const group = document.createElement("section");
+                                    group.className = "department-workspace-role";
+                                    const title = document.createElement("h5");
+                                    title.textContent = titleText + " (" + records.length + ")";
+                                    group.appendChild(title);
+                                    if (!records.length) {
+                                        const empty = document.createElement("p");
+                                        empty.className = "muted";
+                                        empty.textContent = "No records in this category.";
+                                        group.appendChild(empty);
+                                    } else records.forEach(task => {
+                                        const row = document.createElement("p");
+                                        row.textContent = (task.task_title || "Untitled task") +
+                                            " · " + (task.assignee_name || "Unassigned / unknown staff") +
+                                            (task.assignee_staff_id ? " (" + task.assignee_staff_id + ")" : "") +
+                                            " · " + String(task.task_status || "unknown").replace(/_/g, " ") +
+                                            (task.due_at ? " · Due " + formatWhen(task.due_at) : "") +
+                                            (detailText(task) ? " · " + detailText(task) : "");
+                                        group.appendChild(row);
+                                    });
+                                    escalationList.appendChild(group);
+                                };
+                                appendGroup("Overdue work", overdue, task => {
+                                    const hours = Math.max(0, Math.floor((now - new Date(task.due_at).getTime()) / 3600000));
+                                    return hours + " hour(s) overdue";
+                                });
+                                appendGroup("Unresolved blockers", blocked, task => task.unit_name ? "Unit: " + task.unit_name : "");
+                                appendGroup("Supervisor reviews awaiting decision", awaitingReview, task =>
+                                    "Submitted " + formatWhen(task.submitted_at || task.updated_at) +
+                                    (delayedReviews.includes(task) ? " · DELAYED ≥24 HOURS" : ""));
+                                const completionGroup = document.createElement("section");
+                                completionGroup.className = "department-workspace-role";
+                                const completionTitle = document.createElement("h5");
+                                completionTitle.textContent = "Staff completion records (" + completed.length + ")";
+                                completionGroup.appendChild(completionTitle);
+                                if (!staffCompletions.size) {
+                                    const empty = document.createElement("p");
+                                    empty.className = "muted";
+                                    empty.textContent = "No completed task records in the loaded period.";
+                                    completionGroup.appendChild(empty);
+                                } else {
+                                    [...staffCompletions.entries()].sort((a,b) => b[1].count - a[1].count).forEach(([name, item]) => {
+                                        const row = document.createElement("p");
+                                        row.textContent = name + (item.staffId ? " (" + item.staffId + ")" : "") + " · " + item.count + " completed task(s)";
+                                        completionGroup.appendChild(row);
+                                    });
+                                }
+                                escalationList.appendChild(completionGroup);
+                            } catch (escalationError) {
+                                console.error("Department performance and escalation centre failed:", escalationError);
+                                escalationStatus.textContent = friendlyError(escalationError);
+                                escalationStatus.className = "message error";
+                            } finally {
+                                escalationRefresh.disabled = false;
+                            }
+                        }
+                        escalationRefresh.addEventListener("click", () => void refreshDepartmentPerformanceEscalations());
+                        void refreshDepartmentPerformanceEscalations();
+
                         // Stage 3B: department-scoped task assignment. Reuses the existing
                         // authorised options RPC and server-side task creation RPC.
                         const assignmentHeading = document.createElement("h4");
