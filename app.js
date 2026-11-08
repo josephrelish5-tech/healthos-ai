@@ -5576,6 +5576,7 @@ async function loadDepartmentRoleGovernance(clinic) {
         message.textContent = roles.length + " linked role(s), " + profiles.length + " job profile(s), " +
             approvedDuties + " approved duty item(s). Draft and under-review content remains excluded from authorised staff duties.";
         message.className = "message success";
+        await loadDepartmentStaffingRequirementCatalog(clinic);
     } catch (error) {
         console.error("Department role governance register failed:", error);
         message.textContent = friendlyError(error);
