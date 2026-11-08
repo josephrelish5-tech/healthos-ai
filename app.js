@@ -4160,7 +4160,6 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                 const open = document.createElement("button");
                 open.type = "button";
                 open.className = "secondary-button";
-                open.textContent = "Open department overview";
                 open.textContent = "Open department workspace";
                 open.addEventListener("click", async () => {
                     if (!detail) return;
