@@ -1912,10 +1912,22 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
   background: #111828 !important;
 }
 #hospitalMap #hospitalDiscoveryMap .leaflet-tile-pane {
-  background: #111828 !important;
-  /* Convert the key-free light street tiles into a dark navy map.
-     This affects map tiles only, not hospital pins, clusters or controls. */
-  filter: invert(1) hue-rotate(180deg) brightness(0.72) saturate(0.72) contrast(1.05);
+  background: #1B2D49 !important;
+  /* Tint only the basemap tiles toward the reference's deep blue.
+     Labels/reference overlays, hospital pins and controls remain crisp. */
+  filter: none !important;
+}
+#hospitalMap #hospitalDiscoveryMap .leaflet-tile-pane::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+  background: rgba(27, 48, 78, 0.78);
+  mix-blend-mode: color;
+}
+#hospitalMap #hospitalDiscoveryMap .leaflet-pane.healthos-dark-reference-pane {
+  filter: none !important;
 }
 #hospitalMap .healthos-map-stage {
   background: #111828 !important;
