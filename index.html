@@ -1838,6 +1838,16 @@
 <div class="workspace-subpage" data-workspace-page="adminInvestigationAlerts" id="adminInvestigationAlertsPage" hidden>
  <div class="panel-heading"><div><p class="eyebrow">STAGE 5D · INVESTIGATION ALERTS</p><h3>Evidence Tamper Alert Inbox</h3><p class="muted">Administrator-only inbox for missing or modified investigation evidence. Every acknowledgement, assignment, escalation and resolution is recorded in an append-only action history.</p></div><button type="button" class="primary-button" id="refreshInvestigationAlertInbox">Refresh alerts</button></div>
  <p id="investigationAlertInboxMessage" class="message" role="status" aria-live="polite">The investigation alert inbox loads after administrator verification.</p>
+ <section class="panel" aria-labelledby="investigationPatternHeading" style="margin:14px 0">
+  <div class="panel-heading"><div><p class="eyebrow">STAGE 5D · PART 2U</p><h3 id="investigationPatternHeading">Investigation Intelligence &amp; Pattern Signals</h3><p class="muted">Explainable review indicators for repeated evidence-integrity alerts. Signals are not findings of misconduct and must never trigger automatic disciplinary decisions.</p></div></div>
+  <div class="form-grid" style="align-items:end">
+   <label for="investigationPatternWindow">Analysis window<select id="investigationPatternWindow"><option value="90" selected>Last 90 days</option><option value="30">Last 30 days</option></select></label>
+   <button type="button" class="btn btn-secondary" id="runInvestigationPatternAnalysis">Run pattern analysis</button>
+  </div>
+  <p id="investigationPatternMessage" class="message" role="status" aria-live="polite">Run an administrator-authorised analysis to review recurring patterns.</p>
+  <div id="investigationPatternResults" aria-live="polite"></div>
+  <p class="muted">Analysis uses recorded evidence-integrity alerts only. Every run is logged. A qualified human investigator must inspect source records and operational context.</p>
+ </section>
  <div class="stats-grid">
   <article class="stat-card"><p>Total alerts</p><h3 id="investigationAlertTotal">—</h3></article>
   <article class="stat-card"><p>Open</p><h3 id="investigationAlertOpen">—</h3></article>
