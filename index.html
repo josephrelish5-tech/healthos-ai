@@ -28,6 +28,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js?v=20261108-department-staffing-coverage-v1" defer></script>
     <script src="investigation-effectiveness.js?v=20261109-part-2x" defer></script>
+    <script src="investigation-governance.js?v=20261109-part-2y" defer></script>
     <script src="icu-supervisor-management.js?v=20261108-supervisor-access-v1" defer></script>
     <script src="healthos-directory-admin.js?v=20261106-national-lga-registry-ui-v1" defer></script>
     <script src="healthos-hospital-registration-review.js?v=20261107-risk-flags-ui" defer></script>
@@ -1860,6 +1861,19 @@
   <p id="investigationEffectivenessMessage" class="message" role="status" aria-live="polite">The effectiveness register loads after administrator verification and migration deployment.</p>
   <div id="investigationRecurrenceClusters"></div>
   <div id="investigationEffectivenessFindings"></div>
+ </section>
+ <section class="panel" aria-labelledby="investigationGovernanceHeading" style="margin:14px 0">
+  <div class="panel-heading"><div><p class="eyebrow">STAGE 5D · PART 2Y</p><h3 id="investigationGovernanceHeading">Hospital Investigation Governance &amp; Institutional Lessons</h3><p class="muted">Human-confirmed findings inform department histories, management accountability, lessons learned and institutional recommendations. Historical indicators are not individual staff scores.</p></div><button type="button" class="btn btn-secondary" id="refreshInvestigationGovernance">Refresh governance register</button></div>
+  <p id="investigationGovernanceMessage" class="message" role="status" aria-live="polite">The governance register loads after administrator verification and migration deployment.</p>
+  <div class="form-grid" style="margin:12px 0">
+   <button type="button" class="btn btn-secondary" id="recordInvestigationLesson">Record institutional lesson</button>
+   <button type="button" class="btn btn-secondary" id="recordInvestigationGovernance">Record management accountability</button>
+   <button type="button" class="btn btn-secondary" id="recordInstitutionalRecommendation">Add institutional recommendation</button>
+  </div>
+  <h4>Department risk history</h4><div id="investigationGovernanceDepartments"></div>
+  <h4>Lessons learned</h4><div id="investigationGovernanceLessons"></div>
+  <h4>Management accountability</h4><div id="investigationGovernanceOversight"></div>
+  <h4>Institutional recommendations</h4><div id="investigationGovernanceRecommendations"></div>
  </section>
  <div class="stats-grid">
   <article class="stat-card"><p>Total alerts</p><h3 id="investigationAlertTotal">—</h3></article>
