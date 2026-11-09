@@ -1913,21 +1913,9 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
 }
 #hospitalMap #hospitalDiscoveryMap .leaflet-tile-pane {
   background: #1B2D49 !important;
-  /* Tint only the basemap tiles toward the reference's deep blue.
-     Labels/reference overlays, hospital pins and controls remain crisp. */
-  filter: none !important;
-}
-#hospitalMap #hospitalDiscoveryMap .leaflet-tile-pane::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1000;
-  pointer-events: none;
-  background: rgba(27, 48, 78, 0.78);
-  mix-blend-mode: color;
-}
-#hospitalMap #hospitalDiscoveryMap .leaflet-pane.healthos-dark-reference-pane {
-  filter: none !important;
+  /* Balanced night-map conversion: navy land, blue-grey minor roads,
+     bright readable labels and naturally prominent major-road colours. */
+  filter: invert(1) hue-rotate(180deg) brightness(1.12) saturate(1.28) contrast(0.88) !important;
 }
 #hospitalMap .healthos-map-stage {
   background: #111828 !important;
