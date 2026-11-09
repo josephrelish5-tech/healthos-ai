@@ -70,6 +70,9 @@ declare
   v_cycle integer;
   v_last_action text;
   v_inserted_id uuid;
+  v_assignee_user_id uuid;
+  v_assigner_user_id uuid;
+  v_investigator_user_id uuid;
 begin
   if v_uid is null then
     raise exception 'Authentication required' using errcode = '28000';
@@ -77,7 +80,7 @@ begin
   if p_clinic_id is null or p_department_id is null or p_task_id is null then
     raise exception 'Clinic, department and task are required' using errcode = '22023';
   end if;
-  if p_action_type not in (
+  if p_action_type is null or p_action_type not in (
     'acknowledged','investigation_started','corrective_action_authorized',
     'resolution_submitted','resolution_verified','reopened'
   ) then
@@ -139,6 +142,19 @@ begin
     raise exception 'Task not found in the authorised department' using errcode = 'P0002';
   end if;
 
+  select assignee.user_id into v_assignee_user_id
+  from public.staff_department_assignments assignment
+  join public.staff_profiles assignee
+    on assignee.id = assignment.staff_profile_id
+   and assignee.clinic_id = assignment.clinic_id
+  where assignment.id = v_task.assigned_to_assignment_id
+    and assignment.clinic_id = p_clinic_id;
+
+  select assigner.user_id into v_assigner_user_id
+  from public.staff_profiles assigner
+  where assigner.id = v_task.assigned_by_staff_profile_id
+    and assigner.clinic_id = p_clinic_id;
+
   select coalesce(max(a.cycle_no),1), (array_agg(a.action_type order by a.cycle_no desc, a.created_at desc))[1]
     into v_cycle, v_last_action
   from public.staff_task_escalation_actions a
@@ -147,6 +163,9 @@ begin
     and a.task_id = p_task_id;
 
   if p_action_type = 'reopened' then
+    if v_last_action = 'reopened' then
+      raise exception 'This escalation cycle has already been reopened' using errcode = '23505';
+    end if;
     if not exists (
       select 1 from public.staff_task_escalation_actions a
       where a.clinic_id = p_clinic_id and a.department_id = p_department_id
@@ -184,13 +203,22 @@ begin
       raise exception 'Corrective action must be authorised before resolution is submitted' using errcode = '23514';
     end if;
   elsif p_action_type = 'resolution_verified' then
-    if not exists (
-      select 1 from public.staff_task_escalation_actions a
-      where a.clinic_id=p_clinic_id and a.task_id=p_task_id and a.cycle_no=v_cycle
-        and a.action_type='resolution_submitted'
-        and a.actor_user_id <> v_uid
-    ) then
-      raise exception 'An independent reviewer must verify a resolution submitted by another person' using errcode = '23514';
+    select a.actor_user_id into v_investigator_user_id
+    from public.staff_task_escalation_actions a
+    where a.clinic_id=p_clinic_id and a.task_id=p_task_id and a.cycle_no=v_cycle
+      and a.action_type='investigation_started'
+    order by a.created_at desc limit 1;
+
+    if v_uid = v_assignee_user_id
+       or v_uid = v_assigner_user_id
+       or v_uid = v_investigator_user_id
+       or not exists (
+         select 1 from public.staff_task_escalation_actions a
+         where a.clinic_id=p_clinic_id and a.task_id=p_task_id and a.cycle_no=v_cycle
+           and a.action_type='resolution_submitted'
+           and a.actor_user_id <> v_uid
+       ) then
+      raise exception 'Independent verification must be performed by someone other than the assignee, assigning supervisor, investigator and resolution submitter' using errcode = '23514';
     end if;
   end if;
 
