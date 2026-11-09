@@ -96,6 +96,12 @@ create table if not exists public.staff_task_evidence_file_tamper_alerts (
 create index if not exists staff_task_evidence_file_tamper_alerts_scope_idx
   on public.staff_task_evidence_file_tamper_alerts(clinic_id, task_id, created_at desc);
 
+-- At most one unresolved alert per evidence file; repeated failed checks are still
+-- preserved in the verification history without flooding the admin alert queue.
+create unique index if not exists staff_task_evidence_file_one_open_alert_uq
+  on public.staff_task_evidence_file_tamper_alerts(clinic_id, evidence_id)
+  where alert_status = 'open';
+
 alter table public.staff_task_evidence_file_integrity enable row level security;
 alter table public.staff_task_evidence_file_verifications enable row level security;
 alter table public.staff_task_evidence_file_access_log enable row level security;
