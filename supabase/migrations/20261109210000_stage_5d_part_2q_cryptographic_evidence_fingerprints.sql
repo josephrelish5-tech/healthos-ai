@@ -40,7 +40,6 @@ create or replace function public.staff_task_evidence_fingerprint(
 returns text
 language sql
 immutable
-strict
 set search_path = ''
 as $function$
   select encode(
