@@ -16888,3 +16888,141 @@ window.loadHealthOSLaboratoryWorkspace=load;
     window.loadEscalationResponsePerformance = load;
 })();
 // END STAGE 3I-F ESCALATION RESPONSE PERFORMANCE
+
+
+// STAGE 5D PART 2N: HOSPITAL ACCOUNTABILITY COMMAND CENTRE
+(function initHospitalAccountabilityCommandCentre() {
+    const $ = (id) => document.getElementById(id);
+    const panel = $("hospitalAccountabilityCommandCentre");
+    const refresh = $("refreshHospitalAccountabilityCommand");
+    const message = $("hospitalAccountabilityCommandMessage");
+    const rows = $("hospitalCommandPriorityRows");
+    if (!panel || !refresh || !message || !rows || refresh.dataset.bound === "1") return;
+    refresh.dataset.bound = "1";
+
+    function status(text, isError) {
+        message.textContent = text;
+        message.className = isError ? "message error" : "message";
+    }
+    function set(id, value) {
+        const node = $(id);
+        if (node) node.textContent = value === null || value === undefined ? "—" : String(value);
+    }
+    function cell(row, value) {
+        const td = document.createElement("td");
+        td.textContent = value === null || value === undefined || value === "" ? "—" : String(value);
+        row.appendChild(td);
+    }
+    function empty(text) {
+        rows.replaceChildren();
+        const row = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 5;
+        td.textContent = text;
+        row.appendChild(td);
+        rows.appendChild(row);
+    }
+    function formatDate(value) {
+        if (!value) return "—";
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+    }
+    function duration(value) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return "—";
+        if (number >= 1440) return (number / 1440).toFixed(1) + " days";
+        if (number >= 60) return (number / 60).toFixed(1) + " hours";
+        return number.toFixed(1) + " min";
+    }
+
+    async function load() {
+        if (!currentUser || !currentClinic || !currentClinic.id) {
+            status("Sign in and select an active hospital before loading command-centre indicators.", true);
+            return;
+        }
+        refresh.disabled = true;
+        empty("Loading administrator-scoped escalation records...");
+        status("Retrieving hospital-wide escalation and response-performance summaries. The database verifies owner/admin permissions.", false);
+        try {
+            const [monitorResult, performanceResult] = await Promise.all([
+                supabaseClient.rpc("get_department_task_escalation_monitoring", {
+                    p_clinic_id: currentClinic.id,
+                    p_status: null,
+                    p_severity: null,
+                    p_limit: 200
+                }),
+                supabaseClient.rpc("get_department_escalation_performance", {
+                    p_clinic_id: currentClinic.id,
+                    p_days: 30,
+                    p_limit: 100
+                })
+            ]);
+            if (monitorResult.error) throw monitorResult.error;
+            if (performanceResult.error) throw performanceResult.error;
+            const monitor = monitorResult.data;
+            const performance = performanceResult.data;
+            if (!monitor || monitor.clinic_id !== currentClinic.id ||
+                monitor.scope !== "hospital_wide_admin" ||
+                !performance || performance.clinic_id !== currentClinic.id) {
+                throw new Error("The command-centre response did not pass hospital scope validation.");
+            }
+            const counts = monitor.counts || {};
+            const totals = performance.totals || {};
+            set("commandOpenEscalations", counts.open ?? 0);
+            set("commandAcknowledgedEscalations", counts.acknowledged ?? 0);
+            set("commandCriticalEscalations", counts.critical ?? 0);
+            set("commandUrgentEscalations", counts.urgent ?? 0);
+            set("commandPeriodEscalations", totals.total ?? 0);
+            set("commandAverageResolution", duration(totals.avg_resolution_minutes));
+
+            const priority = (Array.isArray(monitor.items) ? monitor.items : [])
+                .filter(item => item.status === "open" || item.status === "acknowledged")
+                .sort((a, b) => {
+                    const rank = { critical: 0, urgent: 1, high: 2, normal: 3 };
+                    return (rank[a.severity] ?? 4) - (rank[b.severity] ?? 4) ||
+                        new Date(a.created_at || 0) - new Date(b.created_at || 0);
+                }).slice(0, 12);
+            rows.replaceChildren();
+            if (!priority.length) {
+                empty("No unresolved escalation incidents were returned by the administrator monitor.");
+            } else {
+                priority.forEach(item => {
+                    const row = document.createElement("tr");
+                    cell(row, String(item.severity || "normal").toUpperCase());
+                    cell(row, (item.department_name || "Unassigned department") +
+                        (item.unit_name ? " / " + item.unit_name : ""));
+                    cell(row, item.task_title || "Untitled task");
+                    cell(row, String(item.status || "—").replaceAll("_", " ").toUpperCase());
+                    cell(row, formatDate(item.created_at));
+                    rows.appendChild(row);
+                });
+            }
+            status("Command centre refreshed. " + priority.length +
+                " unresolved priority incident(s) shown; response performance covers the last 30 days. " +
+                "Generated " + formatDate(monitor.generated_at) + ".", false);
+        } catch (error) {
+            console.error("Hospital accountability command centre failed:", error);
+            empty("Command-centre data is unavailable. Existing department workspaces remain available.");
+            ["commandOpenEscalations","commandAcknowledgedEscalations","commandCriticalEscalations",
+             "commandUrgentEscalations","commandPeriodEscalations","commandAverageResolution"]
+                .forEach(id => set(id, "—"));
+            status(error.message || "Could not load command-centre indicators. Confirm administrator access and try again.", true);
+        } finally {
+            refresh.disabled = false;
+        }
+    }
+
+    refresh.addEventListener("click", () => void load());
+    panel.querySelectorAll("[data-command-jump]").forEach(button => {
+        button.addEventListener("click", () => {
+            const target = document.getElementById(button.dataset.commandJump);
+            if (target) {
+                target.scrollIntoView({ behavior: "smooth", block: "start" });
+                target.setAttribute("tabindex", "-1");
+                target.focus({ preventScroll: true });
+            }
+        });
+    });
+    window.loadHospitalAccountabilityCommandCentre = load;
+})();
+// END STAGE 5D PART 2N
