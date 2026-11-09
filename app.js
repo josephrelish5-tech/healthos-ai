@@ -2782,6 +2782,101 @@ await startStaffPresenceTracking(
                     assignmentPanel.appendChild(card);
                 });
 
+                // Stage 5D Part 2F Step 2: appointed-manager accountability dashboard.
+                // Department IDs come only from the server-authorised manager discovery RPC.
+                const managerAuditSection = document.createElement("section");
+                managerAuditSection.className = "panel";
+                managerAuditSection.style.margin = "20px 0";
+                const managerAuditHeading = document.createElement("h3");
+                managerAuditHeading.textContent = "My appointed department accountability";
+                const managerAuditIntro = document.createElement("p");
+                managerAuditIntro.className = "muted";
+                managerAuditIntro.textContent = "Read-only accountability for departments where the hospital has recorded your active management appointment. The database independently verifies every department audit request.";
+                const managerAuditStatus = document.createElement("p");
+                managerAuditStatus.className = "message";
+                managerAuditStatus.setAttribute("role", "status");
+                managerAuditStatus.setAttribute("aria-live", "polite");
+                const managerAuditList = document.createElement("div");
+                const managerAuditRefresh = document.createElement("button");
+                managerAuditRefresh.type = "button";
+                managerAuditRefresh.className = "secondary-button";
+                managerAuditRefresh.textContent = "Refresh my department accountability";
+                managerAuditSection.append(managerAuditHeading, managerAuditIntro, managerAuditRefresh, managerAuditStatus, managerAuditList);
+                assignmentPanel.appendChild(managerAuditSection);
+
+                async function refreshMyManagedDepartmentAudits() {
+                    managerAuditRefresh.disabled = true;
+                    managerAuditList.replaceChildren();
+                    managerAuditStatus.textContent = "Checking your active department management appointments...";
+                    managerAuditStatus.className = "message";
+                    try {
+                        const { data: managerData, error: managerError } = await supabaseClient.rpc(
+                            "get_my_managed_departments",
+                            { p_clinic_id: clinic.id }
+                        );
+                        if (managerError) throw managerError;
+                        if (!managerData || managerData.read_only !== true ||
+                            managerData.scope !== "appointed_departments_only" ||
+                            managerData.clinic_id !== clinic.id) {
+                            throw new Error("The manager department response failed its clinic and scope checks.");
+                        }
+                        const managedDepartments = Array.isArray(managerData.departments)
+                            ? managerData.departments : [];
+                        if (!managedDepartments.length) {
+                            managerAuditStatus.textContent = "No active department management appointments were found for this account. Your ordinary staff workspace remains available.";
+                            managerAuditStatus.className = "message";
+                            return;
+                        }
+                        managedDepartments.forEach(department => {
+                            if (!department.department_id || !department.department_name) return;
+                            const departmentPanel = document.createElement("section");
+                            departmentPanel.className = "panel";
+                            departmentPanel.style.margin = "14px 0";
+                            const departmentHeading = document.createElement("h4");
+                            departmentHeading.textContent = department.department_name + " — Accountability";
+                            const roles = document.createElement("p");
+                            roles.className = "muted";
+                            roles.textContent = "Appointment role(s): " +
+                                (Array.isArray(department.leadership_roles) && department.leadership_roles.length
+                                    ? department.leadership_roles.map(role => String(role).replace(/_/g, " ")).join(", ")
+                                    : "Active management appointment");
+                            const auditRefresh = document.createElement("button");
+                            auditRefresh.type = "button";
+                            auditRefresh.className = "secondary-button";
+                            auditRefresh.textContent = "Refresh department audit";
+                            auditRefresh.setAttribute("data-integrity-refresh", "");
+                            const auditStatus = document.createElement("p");
+                            auditStatus.className = "message";
+                            auditStatus.setAttribute("role", "status");
+                            auditStatus.setAttribute("aria-live", "polite");
+                            auditStatus.setAttribute("data-integrity-status", "");
+                            const auditStats = document.createElement("div");
+                            auditStats.className = "department-workspace-stats";
+                            auditStats.setAttribute("data-integrity-stats", "");
+                            const auditFindings = document.createElement("div");
+                            auditFindings.setAttribute("data-integrity-findings", "");
+                            departmentPanel.append(departmentHeading, roles, auditRefresh, auditStatus, auditStats, auditFindings);
+                            managerAuditList.appendChild(departmentPanel);
+                            auditRefresh.addEventListener("click", () =>
+                                void loadDepartmentTaskIntegrityAudit(clinic, department.department_id, departmentPanel));
+                            void loadDepartmentTaskIntegrityAudit(clinic, department.department_id, departmentPanel);
+                        });
+                        managerAuditStatus.textContent = managedDepartments.length +
+                            " appointed department(s) found. Only these department IDs were requested; audit access is revalidated by Supabase.";
+                        managerAuditStatus.className = "message success";
+                    } catch (managerAuditError) {
+                        console.error("Appointed manager accountability view failed:", managerAuditError);
+                        managerAuditStatus.textContent = /function .*get_my_managed_departments.* does not exist|could not find the function/i.test(managerAuditError.message || "")
+                            ? "Manager accountability discovery is committed to GitHub but its Supabase migration has not been applied. No department audit data is displayed."
+                            : friendlyError(managerAuditError);
+                        managerAuditStatus.className = "message error";
+                    } finally {
+                        managerAuditRefresh.disabled = false;
+                    }
+                }
+                managerAuditRefresh.addEventListener("click", () => void refreshMyManagedDepartmentAudits());
+                void refreshMyManagedDepartmentAudits();
+
                 if (!assignments.length) {
                     const empty = document.createElement("p");
                     empty.className = "message";
@@ -4445,8 +4540,10 @@ async function loadDepartmentTaskIntegrityAudit(clinic, departmentId, panel) {
     const findings = panel.querySelector("[data-integrity-findings]");
     const refresh = panel.querySelector("[data-integrity-refresh]");
     if (!status || !stats || !findings) return;
-    if (!currentUser || !currentClinic || !managementVerified || clinic.id !== currentClinic.id) {
-        status.textContent = "Verified management access is required.";
+    // The audit RPC is the authority for both administrators and appointed managers.
+    // Manager-facing callers must supply department IDs returned by get_my_managed_departments.
+    if (!currentUser || !currentClinic || clinic.id !== currentClinic.id) {
+        status.textContent = "An authenticated session for this clinic is required. Department permissions are verified by the database.";
         status.className = "message error";
         return;
     }
