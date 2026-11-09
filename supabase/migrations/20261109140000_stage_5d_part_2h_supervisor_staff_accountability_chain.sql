@@ -162,6 +162,9 @@ begin
   left join lateral (
     select jsonb_agg(jsonb_build_object(
       'appointment_id', ma.id,
+      'manager_staff_profile_id', manager_staff.id,
+      'manager_name', manager_staff.full_name,
+      'manager_staff_id', manager_staff.staff_id,
       'leadership_role', ma.leadership_role,
       'assignment_status', ma.assignment_status,
       'effective_from', ma.effective_from,
@@ -173,6 +176,9 @@ begin
     join public.staff_department_assignments manager_assignment
       on manager_assignment.id = ma.manager_assignment_id
      and manager_assignment.clinic_id = ma.clinic_id
+    join public.staff_profiles manager_staff
+      on manager_staff.id = manager_assignment.staff_profile_id
+     and manager_staff.clinic_id = ma.clinic_id
     left join public.staff_profiles appointing_staff
       on appointing_staff.user_id = ma.appointed_by
      and appointing_staff.clinic_id = ma.clinic_id
