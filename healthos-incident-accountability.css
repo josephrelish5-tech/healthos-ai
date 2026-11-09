@@ -12,3 +12,10 @@
 .incident-workflow-actions{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
 .incident-workflow-actions button:disabled{opacity:.5;cursor:not-allowed}
 @media(max-width:600px){.healthos-incident-workflow .healthos-safety-toolbar{display:grid;grid-template-columns:1fr}.healthos-incident-workflow .healthos-safety-toolbar>*{width:100%;box-sizing:border-box}.incident-workflow-actions{display:grid;grid-template-columns:1fr}.incident-workflow-actions button{width:100%}}
+
+.healthos-incident-workflow .incident-workflow-timeline{list-style:none;margin:12px 0;padding:0 0 0 18px;border-left:3px solid #C7D7E8}
+.healthos-incident-workflow .incident-workflow-timeline li{position:relative;margin:0 0 16px;padding:12px 14px;background:#fff;border:1px solid #DCE5EE;border-radius:10px;overflow-wrap:anywhere}
+.healthos-incident-workflow .incident-workflow-timeline li:before{content:"";position:absolute;left:-25px;top:18px;width:11px;height:11px;border-radius:50%;background:#173B68;border:2px solid #fff}
+.healthos-incident-workflow .incident-workflow-timeline strong{display:block;color:#173B68}
+.healthos-incident-workflow .incident-workflow-timeline p{margin:6px 0;color:#243449;white-space:pre-wrap}
+.healthos-incident-workflow .incident-workflow-timeline small{color:#526579}
