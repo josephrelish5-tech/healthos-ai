@@ -3144,6 +3144,56 @@ await startStaffPresenceTracking(
                         await refreshMyStaffTasks();
                     });
                     evidenceBox.appendChild(saveEvidence);
+
+                    // Part 2R: upload actual file bytes through the trusted server-side verifier.
+                    const fileLabel = document.createElement("label");
+                    fileLabel.textContent = "Upload original evidence file (PDF, JPEG, PNG or WEBP; maximum 15 MB)";
+                    fileLabel.style.display = "block";
+                    fileLabel.style.marginTop = "10px";
+                    evidenceBox.appendChild(fileLabel);
+
+                    const evidenceFile = document.createElement("input");
+                    evidenceFile.type = "file";
+                    evidenceFile.accept = ".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp";
+                    evidenceFile.style.display = "block";
+                    evidenceFile.style.margin = "6px 0";
+                    evidenceBox.appendChild(evidenceFile);
+
+                    const uploadEvidenceFile = document.createElement("button");
+                    uploadEvidenceFile.type = "button";
+                    uploadEvidenceFile.className = "btn btn-secondary";
+                    uploadEvidenceFile.textContent = "Upload & fingerprint file";
+                    uploadEvidenceFile.addEventListener("click", async function () {
+                        const selectedFile = evidenceFile.files && evidenceFile.files[0];
+                        if (!selectedFile) {
+                            alert("Choose an evidence file first.");
+                            return;
+                        }
+                        if (selectedFile.size < 1 || selectedFile.size > 15 * 1024 * 1024) {
+                            alert("Evidence files must be between 1 byte and 15 MB.");
+                            return;
+                        }
+                        uploadEvidenceFile.disabled = true;
+                        const form = new FormData();
+                        form.append("action", "upload");
+                        form.append("clinic_id", clinic.id);
+                        form.append("task_id", task.id);
+                        form.append("file", selectedFile, selectedFile.name);
+                        const { data: uploadResult, error: uploadError } = await supabaseClient.functions.invoke(
+                            "healthos-investigation-evidence",
+                            { body: form }
+                        );
+                        if (uploadError || !uploadResult?.success) {
+                            alert(uploadError ? friendlyError(uploadError) :
+                                (uploadResult?.error || "The evidence file could not be registered."));
+                            uploadEvidenceFile.disabled = false;
+                            return;
+                        }
+                        alert("Evidence file uploaded. Its original SHA-256 fingerprint has been recorded.");
+                        await refreshMyStaffTasks();
+                    });
+                    evidenceBox.appendChild(uploadEvidenceFile);
+
                     card.appendChild(evidenceBox);
                 }
 
