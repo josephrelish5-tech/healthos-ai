@@ -40,7 +40,7 @@ const adminVerificationSubmit = document.getElementById("adminVerificationSubmit
 const adminVerificationCancel = document.getElementById("adminVerificationCancel");
 // HEALTHOS AI: SEPARATE WORKSPACE PAGE NAVIGATION
 function showAdminWorkspacePage(pageId) {
-    const allowed = ["adminOverview", "adminStaffActivity", "adminShifts", "adminTasks", "adminLeadership", "adminPerformance"];
+    const allowed = ["adminOverview", "adminStaffActivity", "adminShifts", "adminTasks", "adminLeadership", "adminPerformance", "adminInvestigationAlerts"];
     if (!allowed.includes(pageId)) pageId = "adminOverview";
 
     document.querySelectorAll("#adminStaffDashboard [data-workspace-page]").forEach(page => {
@@ -66,6 +66,9 @@ document.querySelectorAll("#adminStaffDashboard [data-workspace-target]").forEac
         button.classList.toggle("active", active);
         button.setAttribute("aria-pressed", active ? "true" : "false");
     });
+    if (pageId === "adminInvestigationAlerts" && typeof window.loadInvestigationAlertInbox === "function") {
+        window.loadInvestigationAlertInbox().catch(error => console.error("Investigation alert inbox refresh failed:", error));
+    }
     window.scrollTo({ top: 0, behavior: "auto" });
 }
 
@@ -17504,3 +17507,220 @@ window.loadHealthOSLaboratoryWorkspace=load;
     window.openHospitalInvestigationDossier = open;
 })();
 // END STAGE 5D PART 2O-B
+
+// STAGE 5D PART 2S: ADMINISTRATOR INVESTIGATION ALERT INBOX
+(function initInvestigationAlertInbox() {
+    const panel = document.getElementById("adminInvestigationAlertsPage");
+    const message = document.getElementById("investigationAlertInboxMessage");
+    const rows = document.getElementById("investigationAlertInboxRows");
+    const refresh = document.getElementById("refreshInvestigationAlertInbox");
+    const filter = document.getElementById("investigationAlertStatusFilter");
+    if (!panel || !message || !rows || !refresh || refresh.dataset.bound === "1") return;
+    refresh.dataset.bound = "1";
+
+    let cachedAlerts = [];
+    let activeStaff = [];
+    let refreshTimer = null;
+
+    const byId = id => document.getElementById(id);
+    const safeText = value => value === null || value === undefined || value === "" ? "—" : String(value);
+    const displayDate = value => {
+        if (!value) return "—";
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
+    };
+    const cell = (row, value) => {
+        const td = document.createElement("td");
+        td.textContent = safeText(value);
+        row.appendChild(td);
+        return td;
+    };
+    function setMessage(text, isError = false) {
+        message.textContent = text;
+        message.className = isError ? "message error" : "message";
+    }
+    function isAuthorisedAdmin() {
+        return Boolean(
+            managementVerified &&
+            currentClinic && currentClinic.id &&
+            ["owner", "admin"].includes(String(currentManagementRole || "").toLowerCase())
+        );
+    }
+    function updateSummary(summary = {}) {
+        byId("investigationAlertTotal").textContent = safeText(summary.total_alerts);
+        byId("investigationAlertOpen").textContent = safeText(summary.open_alerts);
+        byId("investigationAlertAcknowledged").textContent = safeText(summary.acknowledged_alerts);
+        byId("investigationAlertResolved").textContent = safeText(summary.resolved_alerts);
+    }
+    function actionButton(label, action, alertRow, extra = {}) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "btn btn-secondary";
+        button.textContent = label;
+        button.style.margin = "3px";
+        button.addEventListener("click", async () => {
+            if (!isAuthorisedAdmin()) {
+                setMessage("Administrator verification is required before managing alerts.", true);
+                return;
+            }
+            const note = extra.noteInput ? extra.noteInput.value.trim() : "";
+            if (["escalated", "resolved", "reopened", "note_added"].includes(action) && !note) {
+                setMessage("Enter a reason or investigation note before this action.", true);
+                if (extra.noteInput) extra.noteInput.focus();
+                return;
+            }
+            const assignedId = action === "assigned" && extra.assigneeSelect ? extra.assigneeSelect.value : null;
+            if (action === "assigned" && !assignedId) {
+                setMessage("Select an active hospital staff member to assign this alert.", true);
+                return;
+            }
+            button.disabled = true;
+            try {
+                const { data, error } = await supabaseClient.rpc("manage_hospital_investigation_tamper_alert", {
+                    p_clinic_id: currentClinic.id,
+                    p_alert_id: alertRow.alert_id,
+                    p_action: action,
+                    p_assigned_to_staff_profile_id: assignedId,
+                    p_note: note || null
+                });
+                if (error) throw error;
+                if (!data || data.success !== true || data.alert_id !== alertRow.alert_id) {
+                    throw new Error("The server did not confirm this alert action.");
+                }
+                setMessage("Alert action recorded. The action history is append-only.");
+                await load();
+            } catch (error) {
+                console.error("Investigation alert action failed", error);
+                setMessage(error?.message || "The alert action could not be recorded.", true);
+                button.disabled = false;
+            }
+        });
+        return button;
+    }
+    function render() {
+        rows.replaceChildren();
+        const selectedStatus = filter.value || "all";
+        const visible = cachedAlerts.filter(alertRow => selectedStatus === "all" || alertRow.alert_status === selectedStatus);
+        if (!visible.length) {
+            const tr = document.createElement("tr");
+            const td = cell(tr, cachedAlerts.length ? "No alerts match this status filter." : "No investigation tamper alerts have been recorded for this hospital.");
+            td.colSpan = 8;
+            rows.appendChild(tr);
+            return;
+        }
+        visible.forEach(alertRow => {
+            const tr = document.createElement("tr");
+            const severity = document.createElement("td");
+            const severityStrong = document.createElement("strong");
+            severityStrong.textContent = safeText(alertRow.severity).toUpperCase();
+            severity.appendChild(severityStrong);
+            const type = document.createElement("div");
+            type.textContent = safeText(alertRow.alert_type).replaceAll("_", " ");
+            severity.appendChild(type);
+            tr.appendChild(severity);
+
+            cell(tr, alertRow.file_name);
+            cell(tr, alertRow.task_id);
+            cell(tr, alertRow.alert_status);
+            cell(tr, alertRow.assigned_to_name);
+            cell(tr, displayDate(alertRow.created_at));
+
+            const latest = document.createElement("td");
+            latest.textContent = safeText(alertRow.latest_action) + " · " + displayDate(alertRow.latest_action_at);
+            if (alertRow.latest_action_note) {
+                const note = document.createElement("div");
+                note.className = "muted";
+                note.textContent = String(alertRow.latest_action_note);
+                latest.appendChild(note);
+            }
+            tr.appendChild(latest);
+
+            const controls = document.createElement("td");
+            controls.style.minWidth = "260px";
+            const noteInput = document.createElement("textarea");
+            noteInput.rows = 2;
+            noteInput.maxLength = 2000;
+            noteInput.placeholder = "Reason for escalation/resolution or investigation note";
+            noteInput.setAttribute("aria-label", "Investigation note for alert " + safeText(alertRow.alert_id));
+            noteInput.style.width = "100%";
+            controls.appendChild(noteInput);
+
+            if (alertRow.alert_status !== "resolved") {
+                const assigneeSelect = document.createElement("select");
+                assigneeSelect.setAttribute("aria-label", "Assign investigation officer");
+                const placeholder = document.createElement("option");
+                placeholder.value = "";
+                placeholder.textContent = "Assign to active staff…";
+                assigneeSelect.appendChild(placeholder);
+                activeStaff.forEach(staff => {
+                    const option = document.createElement("option");
+                    option.value = staff.id;
+                    option.textContent = safeText(staff.full_name) + (staff.professional_role ? " · " + staff.professional_role : "");
+                    assigneeSelect.appendChild(option);
+                });
+                if (alertRow.assigned_to_staff_profile_id) assigneeSelect.value = alertRow.assigned_to_staff_profile_id;
+                assigneeSelect.style.width = "100%";
+                controls.appendChild(assigneeSelect);
+                controls.appendChild(actionButton("Assign", "assigned", alertRow, { assigneeSelect }));
+                if (alertRow.alert_status === "open") controls.appendChild(actionButton("Acknowledge", "acknowledged", alertRow));
+                controls.appendChild(actionButton("Escalate", "escalated", alertRow, { noteInput }));
+                controls.appendChild(actionButton("Resolve", "resolved", alertRow, { noteInput }));
+            } else {
+                controls.appendChild(actionButton("Reopen", "reopened", alertRow, { noteInput }));
+            }
+            controls.appendChild(actionButton("Add note", "note_added", alertRow, { noteInput }));
+            tr.appendChild(controls);
+            rows.appendChild(tr);
+        });
+    }
+    async function load() {
+        if (!isAuthorisedAdmin()) {
+            setMessage("Only a verified hospital owner or administrator can open this inbox.", true);
+            rows.replaceChildren();
+            const tr = document.createElement("tr");
+            const td = cell(tr, "Administrator access is required.");
+            td.colSpan = 8;
+            rows.appendChild(tr);
+            return;
+        }
+        refresh.disabled = true;
+        setMessage("Loading hospital investigation alerts…");
+        try {
+            const [inboxResult, staffResult] = await Promise.all([
+                supabaseClient.rpc("get_hospital_investigation_tamper_alert_inbox", {
+                    p_clinic_id: currentClinic.id,
+                    p_limit: 150
+                }),
+                supabaseClient.from("staff_profiles")
+                    .select("id,full_name,professional_role")
+                    .eq("clinic_id", currentClinic.id)
+                    .eq("employment_status", "active")
+                    .order("full_name", { ascending: true })
+            ]);
+            if (inboxResult.error) throw inboxResult.error;
+            const inbox = inboxResult.data;
+            if (!inbox || inbox.read_only !== true || inbox.clinic_id !== currentClinic.id || !Array.isArray(inbox.alerts)) {
+                throw new Error("The investigation alert inbox failed hospital-scope verification.");
+            }
+            activeStaff = staffResult.error ? [] : (staffResult.data || []);
+            cachedAlerts = inbox.alerts;
+            updateSummary(inbox.summary || {});
+            render();
+            setMessage("Loaded " + cachedAlerts.length + " investigation alert(s). This in-app inbox refreshes every 60 seconds while visible.");
+            if (staffResult.error) console.warn("Active staff list unavailable; alert assignment is temporarily unavailable.", staffResult.error);
+        } catch (error) {
+            console.error("Investigation alert inbox could not load", error);
+            setMessage(error?.message || "Investigation alert inbox could not be loaded.", true);
+        } finally {
+            refresh.disabled = false;
+        }
+    }
+
+    refresh.addEventListener("click", () => void load());
+    filter.addEventListener("change", render);
+    window.loadInvestigationAlertInbox = load;
+    refreshTimer = window.setInterval(() => {
+        if (!panel.hidden && document.visibilityState === "visible") void load();
+    }, 60000);
+})();
+
