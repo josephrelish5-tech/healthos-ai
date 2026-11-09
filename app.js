@@ -4423,6 +4423,200 @@ async function loadDepartmentWorkspaceTaskBoard(clinic, departmentId, root) {
 }
 // END DEPARTMENT TASK BOARD
 
+
+/* STAGE 5D PART 2E — READ-ONLY TASK ACCOUNTABILITY DASHBOARDS
+   The database RPC remains the authority for clinic and department access.
+   This UI only displays audit results; it never changes tasks, evidence or approvals. */
+function healthOSAppendAuditStat(container, label, value) {
+    const card = document.createElement("article");
+    card.className = "stat-card";
+    const caption = document.createElement("p");
+    caption.textContent = label;
+    const number = document.createElement("h3");
+    number.textContent = String(value ?? 0);
+    card.append(caption, number);
+    container.appendChild(card);
+}
+
+async function loadDepartmentTaskIntegrityAudit(clinic, departmentId, panel) {
+    if (!panel || !clinic || !departmentId) return;
+    const status = panel.querySelector("[data-integrity-status]");
+    const stats = panel.querySelector("[data-integrity-stats]");
+    const findings = panel.querySelector("[data-integrity-findings]");
+    const refresh = panel.querySelector("[data-integrity-refresh]");
+    if (!status || !stats || !findings) return;
+    if (!currentUser || !currentClinic || !managementVerified || clinic.id !== currentClinic.id) {
+        status.textContent = "Verified management access is required.";
+        status.className = "message error";
+        return;
+    }
+    status.textContent = "Checking task accountability records...";
+    status.className = "message";
+    stats.replaceChildren();
+    findings.replaceChildren();
+    if (refresh) refresh.disabled = true;
+    try {
+        const { data, error } = await supabaseClient.rpc("get_department_task_integrity_audit", {
+            p_clinic_id: clinic.id,
+            p_department_id: departmentId,
+            p_limit: 100
+        });
+        if (error) throw error;
+        if (!data || data.read_only !== true || data.department_id !== departmentId) {
+            throw new Error("The audit response did not match the requested department or read-only contract.");
+        }
+        const summary = data.summary || {};
+        [
+            ["Tasks reviewed", summary.records_reviewed],
+            ["With findings", summary.records_with_findings],
+            ["Clear records", summary.records_clear],
+            ["Missing assignments", summary.missing_assignment],
+            ["Missing duty snapshots", summary.missing_duty_snapshot],
+            ["Missing evidence", summary.missing_required_evidence],
+            ["Missing assignment events", summary.missing_assignment_event],
+            ["Completion approval exceptions", summary.completion_without_valid_approval],
+            ["Legacy snapshots", summary.legacy_backfilled_snapshots]
+        ].forEach(([label, value]) => healthOSAppendAuditStat(stats, label, value));
+        const rows = Array.isArray(data.findings) ? data.findings : [];
+        if (!rows.length) {
+            const empty = document.createElement("p");
+            empty.className = "muted";
+            empty.textContent = "No task records were returned for this audit. This is not a substitute for checking the records-reviewed total.";
+            findings.appendChild(empty);
+        } else {
+            rows.forEach(item => {
+                const card = document.createElement("article");
+                card.className = "department-workspace-role";
+                const title = document.createElement("h5");
+                title.textContent = item.task_title || "Untitled task";
+                const meta = document.createElement("p");
+                meta.className = "muted";
+                meta.textContent = (item.assignee_name || "Unassigned / unknown staff") +
+                    " · " + String(item.task_status || "unknown").replace(/_/g, " ") +
+                    " · " + String(item.integrity_status || "unknown").replace(/_/g, " ");
+                const flags = document.createElement("p");
+                flags.textContent = Array.isArray(item.findings) && item.findings.length
+                    ? "Items requiring review: " + item.findings.map(flag => String(flag).replace(/_/g, " ")).join("; ")
+                    : "No integrity exceptions detected in this task record.";
+                const provenance = document.createElement("p");
+                provenance.className = "stat-note";
+                provenance.textContent = "Evidence items: " + Number(item.evidence_count || 0) +
+                    " · Assignment events: " + Number(item.assignment_event_count || 0) +
+                    (item.duty_snapshot_source === "backfilled_current_state"
+                        ? " · Historical duty snapshot was backfilled and is not proof of the original assignment-time state."
+                        : item.duty_snapshot_source === "captured_at_assignment"
+                            ? " · Duty snapshot captured at assignment."
+                            : " · Duty snapshot source not recorded.");
+                card.append(title, meta, flags, provenance);
+                findings.appendChild(card);
+            });
+        }
+        status.textContent = "Read-only audit refreshed. Department-wide totals cover " +
+            Number(summary.records_reviewed || 0) + " task record(s); " +
+            Number(summary.findings_returned || rows.length) + " record(s) are shown below. " +
+            "Findings are control exceptions requiring human review, not proof of fraud.";
+        status.className = "message success";
+    } catch (error) {
+        console.error("Department task integrity audit unavailable:", error);
+        status.textContent = /function .*get_department_task_integrity_audit.* does not exist|could not find the function/i.test(error.message || "")
+            ? "Accountability audit is prepared in GitHub but its Supabase migration has not been applied yet. No audit totals are being presented."
+            : friendlyError(error);
+        status.className = "message error";
+    } finally {
+        if (refresh) refresh.disabled = false;
+    }
+}
+
+async function loadHospitalTaskIntegrityOverview(clinic, departments) {
+    const host = document.getElementById("departmentWorkspaceDirectoryPanel");
+    if (!host || !clinic || !Array.isArray(departments) || !currentUser ||
+        !managementVerified || clinic.id !== currentClinic?.id) return;
+    let panel = document.getElementById("hospitalTaskIntegrityOverview");
+    if (!panel) {
+        panel = document.createElement("section");
+        panel.id = "hospitalTaskIntegrityOverview";
+        panel.className = "panel";
+        panel.style.margin = "18px 0";
+        const heading = document.createElement("h4");
+        heading.textContent = "Hospital-wide task accountability";
+        const intro = document.createElement("p");
+        intro.className = "muted";
+        intro.textContent = "Administrator-only overview assembled from the authorised department audit. Findings are read-only and require human review.";
+        const status = document.createElement("p");
+        status.id = "hospitalTaskIntegrityStatus";
+        status.className = "message";
+        status.setAttribute("role", "status");
+        const stats = document.createElement("div");
+        stats.id = "hospitalTaskIntegrityStats";
+        stats.className = "department-workspace-stats";
+        const refresh = document.createElement("button");
+        refresh.type = "button";
+        refresh.className = "secondary-button";
+        refresh.textContent = "Refresh hospital accountability";
+        refresh.id = "hospitalTaskIntegrityRefresh";
+        panel.append(heading, intro, refresh, status, stats);
+        const directoryHeading = host.querySelector("#departmentWorkspaceSearch");
+        if (directoryHeading) directoryHeading.parentElement.insertBefore(panel, directoryHeading);
+        else host.insertBefore(panel, host.firstChild);
+        refresh.addEventListener("click", () => void loadHospitalTaskIntegrityOverview(clinic, departments));
+    }
+    const status = panel.querySelector("#hospitalTaskIntegrityStatus");
+    const stats = panel.querySelector("#hospitalTaskIntegrityStats");
+    const refresh = panel.querySelector("#hospitalTaskIntegrityRefresh");
+    status.textContent = "Loading department audit summaries...";
+    status.className = "message";
+    stats.replaceChildren();
+    refresh.disabled = true;
+    try {
+        const totals = { records_reviewed: 0, records_with_findings: 0, records_clear: 0,
+            missing_assignment: 0, missing_duty_snapshot: 0, missing_required_evidence: 0,
+            missing_assignment_event: 0, completion_without_valid_approval: 0, legacy_backfilled_snapshots: 0 };
+        let auditedDepartments = 0;
+        // Small batches prevent a large hospital directory from issuing dozens of simultaneous RPCs.
+        for (let index = 0; index < departments.length; index += 4) {
+            const batch = departments.slice(index, index + 4);
+            const results = await Promise.all(batch.map(async department => {
+                const response = await supabaseClient.rpc("get_department_task_integrity_audit", {
+                    p_clinic_id: clinic.id, p_department_id: department.id, p_limit: 1
+                });
+                if (response.error) throw response.error;
+                if (!response.data || response.data.read_only !== true || response.data.department_id !== department.id) {
+                    throw new Error("A department audit response failed its scope validation.");
+                }
+                return response.data.summary || {};
+            }));
+            results.forEach(summary => {
+                auditedDepartments += 1;
+                Object.keys(totals).forEach(key => { totals[key] += Number(summary[key] || 0); });
+            });
+        }
+        [
+            ["Departments audited", auditedDepartments],
+            ["Tasks reviewed", totals.records_reviewed],
+            ["Tasks with findings", totals.records_with_findings],
+            ["Clear task records", totals.records_clear],
+            ["Missing assignments", totals.missing_assignment],
+            ["Missing duty snapshots", totals.missing_duty_snapshot],
+            ["Missing required evidence", totals.missing_required_evidence],
+            ["Missing assignment events", totals.missing_assignment_event],
+            ["Completion approval exceptions", totals.completion_without_valid_approval],
+            ["Legacy snapshots", totals.legacy_backfilled_snapshots]
+        ].forEach(([label, value]) => healthOSAppendAuditStat(stats, label, value));
+        status.textContent = "Hospital-wide totals refreshed across " + auditedDepartments +
+            " active departments. Department findings remain available in each department workspace. Exceptions are not proof of fraud.";
+        status.className = "message success";
+    } catch (error) {
+        console.error("Hospital task integrity overview unavailable:", error);
+        stats.replaceChildren();
+        status.textContent = /function .*get_department_task_integrity_audit.* does not exist|could not find the function/i.test(error.message || "")
+            ? "The accountability audit is committed to GitHub but its Supabase migration has not been applied. No totals are being displayed."
+            : friendlyError(error);
+        status.className = "message error";
+    } finally {
+        refresh.disabled = false;
+    }
+}
+
 // HEALTHOS MEDICAL SYSTEMS: DEPARTMENT WORKSPACE DIRECTORY
 // Uses existing clinic department records and the authorised performance RPC.
 // It does not create data or bypass department-level permissions.
@@ -4569,6 +4763,37 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                         taskBoardList.setAttribute("data-task-board-list", "");
                         taskBoard.append(taskBoardControls, taskBoardStatus, taskBoardList);
                         detail.append(taskBoardHeading, taskBoard);
+
+                        // Stage 5D Part 2E: read-only duty-to-completion integrity audit.
+                        const integrityHeading = document.createElement("h4");
+                        integrityHeading.textContent = "Task accountability & integrity audit";
+                        const integrityPanel = document.createElement("section");
+                        integrityPanel.className = "panel";
+                        integrityPanel.style.margin = "18px 0";
+                        const integrityIntro = document.createElement("p");
+                        integrityIntro.className = "muted";
+                        integrityIntro.textContent = "Checks the assignment, approved-duty snapshot, execution evidence, assignment event and required independent approval. This panel cannot edit task records or evidence.";
+                        const integrityRefresh = document.createElement("button");
+                        integrityRefresh.type = "button";
+                        integrityRefresh.className = "secondary-button";
+                        integrityRefresh.textContent = "Refresh accountability audit";
+                        integrityRefresh.setAttribute("data-integrity-refresh", "");
+                        const integrityStatus = document.createElement("p");
+                        integrityStatus.className = "message";
+                        integrityStatus.setAttribute("role", "status");
+                        integrityStatus.setAttribute("aria-live", "polite");
+                        integrityStatus.setAttribute("data-integrity-status", "");
+                        const integrityStats = document.createElement("div");
+                        integrityStats.className = "department-workspace-stats";
+                        integrityStats.setAttribute("data-integrity-stats", "");
+                        const integrityFindings = document.createElement("div");
+                        integrityFindings.setAttribute("data-integrity-findings", "");
+                        integrityPanel.append(integrityIntro, integrityRefresh, integrityStatus, integrityStats, integrityFindings);
+                        detail.append(integrityHeading, integrityPanel);
+                        integrityRefresh.addEventListener("click", () =>
+                            void loadDepartmentTaskIntegrityAudit(clinic, department.id, integrityPanel));
+                        void loadDepartmentTaskIntegrityAudit(clinic, department.id, integrityPanel);
+
                         taskBoardFilter.addEventListener("change", () => {
                             void loadDepartmentWorkspaceTaskBoard(clinic, department.id, taskBoard);
                         });
@@ -5423,6 +5648,8 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
             search.addEventListener("input", render);
         }
         render();
+        // Owner/admin hospital-wide roll-up. Department RPC authorization remains authoritative.
+        void loadHospitalTaskIntegrityOverview(clinic, departments || []);
         message.textContent = (departments || []).length + " active departments loaded from this hospital's records. Department access and task figures remain limited by database permissions.";
         message.className = "message success";
         void loadDepartmentRoleGovernance(clinic);
