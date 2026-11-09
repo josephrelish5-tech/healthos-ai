@@ -151,6 +151,33 @@
           interactive:false
         }).addTo(map);
         const vectorMap=vectorBasemapLayer.getMaplibreMap();
+
+        // Fiord/OpenFreeMap geographic label layers (confirmed against its style).
+        // State names: white. Capital-city features: pink. Other settlements/regions: peach.
+        function styleGeographicLabel(layerId,colorExpression){
+          const layer=vectorMap.getStyle()?.layers?.find(item=>item.id===layerId);
+          if(!layer||layer.type!=="symbol"||!layer.layout?.["text-field"]) return;
+          vectorMap.setPaintProperty(layerId,"text-color",colorExpression);
+          vectorMap.setPaintProperty(layerId,"text-halo-color","#17243B");
+          vectorMap.setPaintProperty(layerId,"text-halo-width",1.8);
+          vectorMap.setPaintProperty(layerId,"text-halo-blur",0.35);
+        }
+        function applyHealthOSGeographicLabelPalette(){
+          if(!vectorMap.isStyleLoaded()) return;
+          styleGeographicLabel("place_state","#FFFFFF");
+          const capitalOrRegion=[
+            "match",["get","capital"],
+            [1,2,"yes","primary"],"#FF9BCB",
+            "#FFC6A5"
+          ];
+          ["place_city","place_city_large"].forEach(id=>
+            styleGeographicLabel(id,capitalOrRegion)
+          );
+          ["place_town","place_village","place_suburb","place_other"].forEach(id=>
+            styleGeographicLabel(id,"#FFC6A5")
+          );
+        }
+        vectorMap.once("load",applyHealthOSGeographicLabelPalette);
         vectorMap.once("load",()=>{
           vectorBasemapActive=true;
           setStatus("Navy vector street map loaded. Search an area or zoom in to explore.");
