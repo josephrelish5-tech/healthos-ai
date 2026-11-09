@@ -50,8 +50,8 @@ begin
     'unit_name', u.unit_name,
     'assigned_to_assignment_id', sda.id,
     'assigned_to_staff_profile_id', sda.staff_profile_id,
-    'approved_duty', case when jd.id is null then null else jsonb_build_object(
-      'id', jd.id,
+    'approved_duty', case when jd.id is null and t.duty_snapshot is null then null else jsonb_build_object(
+      'id', coalesce(jd.id, t.duty_id),
       'assignment_snapshot', t.duty_snapshot,
       'snapshot_captured_at', t.duty_snapshot_captured_at,
       'snapshot_source', t.duty_snapshot_source,
@@ -165,8 +165,8 @@ begin
     'reviewed_by_name', reviewer.full_name,
     'reviewed_at', t.reviewed_at,
     'review_notes', t.review_notes,
-    'approved_duty', case when jd.id is null then null else jsonb_build_object(
-      'id', jd.id,
+    'approved_duty', case when jd.id is null and t.duty_snapshot is null then null else jsonb_build_object(
+      'id', coalesce(jd.id, t.duty_id),
       'assignment_snapshot', t.duty_snapshot,
       'snapshot_captured_at', t.duty_snapshot_captured_at,
       'snapshot_source', t.duty_snapshot_source,
@@ -392,8 +392,8 @@ begin
     'assigned_by_name', assigner.full_name,
     'reviewed_by_staff_profile_id', t.reviewed_by_staff_profile_id,
     'reviewed_by_name', reviewer.full_name,
-    'approved_duty', case when jd.id is null then null else jsonb_build_object(
-      'id', jd.id,
+    'approved_duty', case when jd.id is null and t.duty_snapshot is null then null else jsonb_build_object(
+      'id', coalesce(jd.id, t.duty_id),
       'assignment_snapshot', t.duty_snapshot,
       'snapshot_captured_at', t.duty_snapshot_captured_at,
       'snapshot_source', t.duty_snapshot_source,
