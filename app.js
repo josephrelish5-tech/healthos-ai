@@ -866,6 +866,15 @@ async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
                 ).toLocaleString()
                 : "—";
 
+        if (currentClinic && currentClinic.id === clinicId) {
+            void loadStaffAttendanceReviewQueue(
+                currentClinic,
+                "staffSupervisorAttendanceReviewQueue",
+                "staffSupervisorAttendanceReviewMessage",
+                true
+            );
+        }
+
         // Attendance does not require a scheduled shift.
         shiftElement.textContent =
             "Optional — not required to clock in";
@@ -4167,12 +4176,12 @@ async function loadStaffAttendanceReport(clinic) {
     }
 })();
 
-async function loadStaffAttendanceReviewQueue(clinic) {
-    const host = document.getElementById("staffAttendanceReviewQueue");
-    const message = document.getElementById("staffAttendanceReviewQueueMessage");
+async function loadStaffAttendanceReviewQueue(clinic, hostId = "staffAttendanceReviewQueue", messageId = "staffAttendanceReviewQueueMessage", hideIfUnauthorised = false) {
+    const host = document.getElementById(hostId);
+    const message = document.getElementById(messageId);
     if (!host || !message) return;
-    if (!currentUser || !currentClinic || !managementVerified || !clinic || clinic.id !== currentClinic.id) {
-        message.textContent = "Verified clinic administrator access is required.";
+    if (!currentUser || !currentClinic || !clinic || clinic.id !== currentClinic.id) {
+        message.textContent = "A signed-in clinic session is required.";
         message.className = "message error";
         return;
     }
@@ -4186,6 +4195,10 @@ async function loadStaffAttendanceReviewQueue(clinic) {
         );
         if (error) throw error;
         const reports = Array.isArray(data) ? data : [];
+        if (hideIfUnauthorised) {
+            const section = host.closest(".staff-supervisor-attendance-review");
+            if (section) section.hidden = false;
+        }
         if (!reports.length) {
             message.textContent = "No attendance explanations have been submitted for review.";
             message.className = "message success";
@@ -4273,6 +4286,11 @@ async function loadStaffAttendanceReviewQueue(clinic) {
         message.className = "message success";
     } catch (error) {
         console.error("Attendance review queue failed:", error);
+        if (hideIfUnauthorised && /authorised clinic administrator or assigned department supervisor/i.test(error.message || "")) {
+            const section = host.closest(".staff-supervisor-attendance-review");
+            if (section) section.hidden = true;
+            return;
+        }
         message.textContent = error.message || "Attendance review queue could not be loaded.";
         message.className = "message error";
     }
