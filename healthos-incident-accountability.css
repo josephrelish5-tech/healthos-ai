@@ -1,0 +1,14 @@
+/* Stage 4D incident accountability — additive, light clinical workspace styling. */
+.healthos-incident-workflow{margin:18px 0;border:1px solid #DCE5EE;border-radius:16px;background:#fff;color:#243449}
+.healthos-incident-workflow h3,.healthos-incident-workflow h4{color:#172B4D}
+.healthos-incident-workflow .stat-card{border-top:3px solid #173B68;background:#F8FAFC}
+.healthos-incident-workflow .stat-card h3{font-size:clamp(24px,3vw,32px)}
+.healthos-incident-workflow .table-wrap{overflow-x:auto}
+.healthos-incident-workflow table{min-width:1150px}
+.healthos-incident-workflow th{background:#173B68!important;color:#fff!important}
+.healthos-incident-workflow td{vertical-align:top;white-space:pre-line;overflow-wrap:anywhere}
+.incident-workflow-overdue{color:#B42318;font-weight:800}
+.incident-workflow-editor{margin-top:18px;padding:16px;border:1px solid #DCE5EE;border-radius:12px;background:#F8FAFC}
+.incident-workflow-actions{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+.incident-workflow-actions button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:600px){.healthos-incident-workflow .healthos-safety-toolbar{display:grid;grid-template-columns:1fr}.healthos-incident-workflow .healthos-safety-toolbar>*{width:100%;box-sizing:border-box}.incident-workflow-actions{display:grid;grid-template-columns:1fr}.incident-workflow-actions button{width:100%}}
