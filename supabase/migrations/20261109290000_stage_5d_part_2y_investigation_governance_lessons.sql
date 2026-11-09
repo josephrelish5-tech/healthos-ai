@@ -161,7 +161,7 @@ declare v_uid uuid:=auth.uid(); v_role text; v_id uuid;
 begin
  if v_uid is null then raise exception 'Authentication required' using errcode='28000'; end if;
  select cm.role into v_role from public.clinic_memberships cm where cm.clinic_id=p_clinic_id and cm.user_id=v_uid and cm.status='active' limit 1;
- if v_role not in ('owner','admin') then raise exception 'Administrator access required' using errcode='42501'; end if;
+ if v_role is null or v_role not in ('owner','admin') then raise exception 'Administrator access required' using errcode='42501'; end if;
  if not exists(select 1 from public.staff_task_investigation_findings f where f.id=p_finding_id and f.clinic_id=p_clinic_id) then
   raise exception 'A human-confirmed root-cause finding in this hospital is required' using errcode='P0002'; end if;
  if length(trim(coalesce(p_title,''))) not between 8 and 240 or length(trim(coalesce(p_detail,''))) not between 30 and 5000
@@ -180,7 +180,7 @@ declare v_uid uuid:=auth.uid(); v_membership text; v_id uuid;
 begin
  if v_uid is null then raise exception 'Authentication required' using errcode='28000'; end if;
  select cm.role into v_membership from public.clinic_memberships cm where cm.clinic_id=p_clinic_id and cm.user_id=v_uid and cm.status='active' limit 1;
- if v_membership not in ('owner','admin') then raise exception 'Administrator access required' using errcode='42501'; end if;
+ if v_membership is null or v_membership not in ('owner','admin') then raise exception 'Administrator access required' using errcode='42501'; end if;
  if not exists(select 1 from public.staff_task_investigation_findings f where f.id=p_finding_id and f.clinic_id=p_clinic_id) then
   raise exception 'Finding not found in this hospital' using errcode='P0002'; end if;
  if p_decision not in ('accept_accountability','assign_management_review','allocate_resources','policy_review','escalate_board','monitor')
@@ -203,7 +203,7 @@ declare v_uid uuid:=auth.uid(); v_role text; v_id uuid;
 begin
  if v_uid is null then raise exception 'Authentication required' using errcode='28000'; end if;
  select cm.role into v_role from public.clinic_memberships cm where cm.clinic_id=p_clinic_id and cm.user_id=v_uid and cm.status='active' limit 1;
- if v_role not in ('owner','admin') then raise exception 'Administrator access required' using errcode='42501'; end if;
+ if v_role is null or v_role not in ('owner','admin') then raise exception 'Administrator access required' using errcode='42501'; end if;
  if not exists(select 1 from public.staff_task_investigation_findings f where f.id=p_finding_id and f.clinic_id=p_clinic_id) then
   raise exception 'Finding not found in this hospital' using errcode='P0002'; end if;
  if length(trim(coalesce(p_recommendation,''))) not between 20 and 4000 or length(trim(coalesce(p_department,''))) not between 2 and 160
@@ -224,7 +224,7 @@ declare v_uid uuid:=auth.uid(); v_role text; v_creator uuid; v_id uuid;
 begin
  if v_uid is null then raise exception 'Authentication required' using errcode='28000'; end if;
  select cm.role into v_role from public.clinic_memberships cm where cm.clinic_id=p_clinic_id and cm.user_id=v_uid and cm.status='active' limit 1;
- if v_role not in ('owner','admin') then raise exception 'Administrator access required' using errcode='42501'; end if;
+ if v_role is null or v_role not in ('owner','admin') then raise exception 'Administrator access required' using errcode='42501'; end if;
  select r.created_by_user_id into v_creator from public.staff_task_investigation_institutional_recommendations r
  where r.id=p_recommendation_id and r.clinic_id=p_clinic_id;
  if not found then raise exception 'Recommendation not found in this hospital' using errcode='P0002'; end if;
