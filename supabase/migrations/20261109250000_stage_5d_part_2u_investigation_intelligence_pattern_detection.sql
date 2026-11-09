@@ -215,7 +215,7 @@ begin
     'window_days',v_window,'generated_at',now(),'signal_count',v_count,
     'signals',v_signals,
     'interpretation',
-      'Signals are explainable review indicators based only on recorded evidence-integrity alerts. They do not establish fault, intent, fraud or misconduct. Do not use them for automatic discipline, employment decisions or clinical decisions. A qualified human investigator must inspect the source records and document context.'
+      'Signals are explainable review indicators based only on recorded evidence-integrity alerts. The indicator score is a simple threshold heuristic, not a probability, prediction of guilt, or measure of an individual's character. Signals do not establish fault, intent, fraud or misconduct. Do not use them for automatic discipline, employment decisions or clinical decisions. A qualified human investigator must inspect the source records and document context.'
   );
 end;
 $function$;
