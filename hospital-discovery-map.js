@@ -152,46 +152,37 @@
         }).addTo(map);
         const vectorMap=vectorBasemapLayer.getMaplibreMap();
 
-        // Distinct, luminous map typography: state names (white), capital cities (pink),
-        // and regional/place labels (peach). Only label symbol layers are touched.
-        let applyingGeographicPalette=false;
-        function applyHealthOSGeographicLabelPalette(){
-          if(applyingGeographicPalette||!vectorMap.isStyleLoaded()) return;
-          applyingGeographicPalette=true;
+        // Apply colors to the exact OpenFreeMap Fiord place-label layers.
+        // State labels are white; capital-city features are pink; other regional
+        // settlements are peach. This deliberately avoids guessing layer names.
+        function setGeographicLabelStyle(layerId,colorExpression){
+          const layer=vectorMap.getStyle()?.layers?.find(item=>item.id===layerId);
+          if(!layer||layer.type!=="symbol"||!layer.layout?.["text-field"]) return false;
           try{
-          const style=vectorMap.getStyle();
-          (style.layers||[]).forEach(layer=>{
-            if(layer.type!=="symbol"||!layer.layout?.["text-field"]) return;
-            const id=String(layer.id||"").toLowerCase();
-            if(!/(state|place|region|capital|settlement|city|town)/.test(id)) return;
-            let color="#FFC6A5";
-            if(/state/.test(id)) color="#FFFFFF";
-            else if(/capital/.test(id)) color="#FF9BCB";
-            const colorExpression=[
-              "case",
-              ["any",
-                ["==",["get","capital"],1],
-                ["==",["get","capital"],2],
-                ["==",["get","capital"],"yes"],
-                ["==",["get","capital"],"primary"]
-              ],"#FF9BCB",
-              ["in",["get","class"],["literal",["state","province","administrative"]]],"#FFFFFF",
-              color
-            ];
-            try{
-              if(JSON.stringify(layer.paint?.["text-color"])!==JSON.stringify(colorExpression))
-                vectorMap.setPaintProperty(layer.id,"text-color",colorExpression);
-              if(layer.paint?.["text-halo-color"]!=="#17243B")
-                vectorMap.setPaintProperty(layer.id,"text-halo-color","#17243B");
-              if(layer.paint?.["text-halo-width"]!==1.7)
-                vectorMap.setPaintProperty(layer.id,"text-halo-width",1.7);
-              if(layer.paint?.["text-halo-blur"]!==0.35)
-                vectorMap.setPaintProperty(layer.id,"text-halo-blur",0.35);
-            }catch(error){console.debug("Skipped unsupported geographic label layer:",layer.id,error);}
-          });
-          }finally{applyingGeographicPalette=false;}
+            vectorMap.setPaintProperty(layerId,"text-color",colorExpression);
+            vectorMap.setPaintProperty(layerId,"text-halo-color","#17243B");
+            vectorMap.setPaintProperty(layerId,"text-halo-width",1.8);
+            vectorMap.setPaintProperty(layerId,"text-halo-blur",0.35);
+            return true;
+          }catch(error){
+            console.warn("HealthOS map label styling skipped:",layerId,error);
+            return false;
+          }
         }
-        vectorMap.on("styledata",applyHealthOSGeographicLabelPalette);
+        function applyHealthOSGeographicLabelPalette(){
+          if(!vectorMap.isStyleLoaded()) return;
+          setGeographicLabelStyle("place_state","#FFFFFF");
+          setGeographicLabelStyle("place_city",[
+            "case",["has","capital"],"#FF9BCB","#FFC6A5"
+          ]);
+          setGeographicLabelStyle("place_city_large",[
+            "case",["has","capital"],"#FF9BCB","#FFC6A5"
+          ]);
+          ["place_town","place_village","place_suburb","place_other"].forEach(id=>
+            setGeographicLabelStyle(id,"#FFC6A5")
+          );
+        }
+        vectorMap.once("load",applyHealthOSGeographicLabelPalette);
         vectorMap.once("load",()=>{
           vectorBasemapActive=true;
           setStatus("Navy vector street map loaded. Search an area or zoom in to explore.");
