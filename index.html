@@ -1237,6 +1237,11 @@
         </article>
     </div>
 
+    <label class="staff-attendance-location-consent">
+        <input type="checkbox" id="staffAttendanceLocationConsent">
+        <span><strong>Share my location for this attendance event (optional).</strong>
+        HealthOS AI will save coordinates and GPS accuracy with this clock-in/out record only when you tick this box and allow browser location access. You can still record attendance without sharing GPS.</span>
+    </label>
     <div class="button-row">
         <button
             id="staffClockInButton"
@@ -1261,6 +1266,20 @@
         role="status"
         aria-live="polite"
     ></p>
+    <section class="staff-attendance-report-form" aria-labelledby="staffAttendanceReportHeading">
+        <h4 id="staffAttendanceReportHeading">Report an attendance issue or change</h4>
+        <label for="staffAttendanceReportType">Issue type</label>
+        <select id="staffAttendanceReportType">
+            <option value="clock_in_issue">Clock-in issue</option>
+            <option value="clock_out_issue">Clock-out issue</option>
+            <option value="location_issue">Location evidence issue</option>
+            <option value="other">Other attendance explanation</option>
+        </select>
+        <label for="staffAttendanceReportExplanation">Explanation</label>
+        <textarea id="staffAttendanceReportExplanation" rows="3" maxlength="2000" placeholder="Explain what happened (minimum 10 characters)."></textarea>
+        <button type="button" class="secondary-button" id="staffAttendanceReportIssueButton">Submit explanation for review</button>
+        <p id="staffAttendanceReportMessage" class="message" role="status" aria-live="polite"></p>
+    </section>
     <!-- END HEALTHOS MEDICAL SYSTEMS: STAFF ATTENDANCE SECTION -->
     <div class="panel-heading">
         <div>
@@ -1853,7 +1872,15 @@
   <article class="stat-card"><p>Upcoming shifts today</p><h3 id="verificationUpcomingToday">—</h3></article>
  </div>
  <div class="staff-verification-boundary">
-  <strong>Evidence boundary:</strong> These figures reflect saved attendance and roster records. They do not independently prove a person's identity or physical location. GPS/location review, staff-submitted change explanations and supervisor verification are not yet enabled in this workflow and must not be inferred from an online heartbeat.
+  <strong>Evidence boundary:</strong> These figures reflect saved attendance and roster records. Consented GPS evidence records the device-reported location and accuracy; it does not independently prove a person's identity or guarantee device authenticity. Online presence is never treated as physical attendance.
+ </div>
+ <div class="staff-attendance-review-section">
+  <div class="panel-heading"><div><h4>Attendance Explanations &amp; Supervisor Review</h4>
+   <p class="muted">Review staff-submitted attendance explanations, inspect consented GPS accuracy evidence and record a decision. Review notes are preserved as immutable events.</p></div>
+   <button type="button" class="secondary-button" id="refreshStaffAttendanceReviewQueue" onclick="if(window.currentClinic&&window.managementVerified){loadStaffAttendanceReviewQueue(window.currentClinic)}">Refresh reports</button>
+  </div>
+  <p id="staffAttendanceReviewQueueMessage" class="message" role="status" aria-live="polite">Attendance explanations will appear here after administrator verification.</p>
+  <div id="staffAttendanceReviewQueue"></div>
  </div>
 </section>
 
