@@ -52,6 +52,9 @@ begin
     'assigned_to_staff_profile_id', sda.staff_profile_id,
     'approved_duty', case when jd.id is null then null else jsonb_build_object(
       'id', jd.id,
+      'assignment_snapshot', t.duty_snapshot,
+      'snapshot_captured_at', t.duty_snapshot_captured_at,
+      'snapshot_source', t.duty_snapshot_source,
       'code', jd.duty_code,
       'title', jd.duty_title,
       'description', jd.duty_description,
@@ -164,6 +167,9 @@ begin
     'review_notes', t.review_notes,
     'approved_duty', case when jd.id is null then null else jsonb_build_object(
       'id', jd.id,
+      'assignment_snapshot', t.duty_snapshot,
+      'snapshot_captured_at', t.duty_snapshot_captured_at,
+      'snapshot_source', t.duty_snapshot_source,
       'code', jd.duty_code,
       'title', jd.duty_title,
       'description', jd.duty_description,
@@ -388,6 +394,9 @@ begin
     'reviewed_by_name', reviewer.full_name,
     'approved_duty', case when jd.id is null then null else jsonb_build_object(
       'id', jd.id,
+      'assignment_snapshot', t.duty_snapshot,
+      'snapshot_captured_at', t.duty_snapshot_captured_at,
+      'snapshot_source', t.duty_snapshot_source,
       'code', jd.duty_code,
       'title', jd.duty_title,
       'description', jd.duty_description,
