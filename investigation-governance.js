@@ -8,11 +8,11 @@
  if(!host||!departments||!lessons||!oversight||!recs)return;
  const el=(tag,txt,cls)=>{const n=document.createElement(tag);if(txt!==undefined)n.textContent=String(txt);if(cls)n.className=cls;return n;};
  const msg=(s,bad)=>{host.textContent=s;host.classList.toggle("error",!!bad);};
- const client=()=>window.supabaseClient||window.supabase;
- function clinic(){return window.currentClinic||window.activeClinic||window.selectedClinic||null;}
+ const client=()=>typeof supabaseClient!=="undefined"?supabaseClient:null;
+ function clinic(){return typeof currentClinic!=="undefined"&&currentClinic?.id?currentClinic:null;}
  function section(title,body){const box=el("article",undefined,"card");box.append(el("h4",title));box.append(body);return box;}
  async function load(){
-  const c=clinic(),sb=client();if(!c?.id||!sb?.rpc){msg("Sign in as a hospital owner or administrator after the Part 2Y migration is deployed.");return;}
+  const c=clinic(),sb=client();if(typeof managementVerified==="undefined"||!managementVerified||!c?.id||!["owner","admin"].includes(String(currentManagementRole||"").toLowerCase())||!sb?.rpc){msg("Verified hospital owner or administrator access is required.");return;}
   const btn=$("refreshInvestigationGovernance");if(btn)btn.disabled=true;
   try{
    const {data,error}=await sb.rpc("get_hospital_investigation_governance_register",{p_clinic_id:c.id});if(error)throw error;
@@ -27,7 +27,7 @@
  }
  $("refreshInvestigationGovernance")?.addEventListener("click",()=>void load());
  $("recordInvestigationLesson")?.addEventListener("click",async()=>{
-  const c=clinic(),sb=client();if(!c?.id||!sb?.rpc)return;
+  const c=clinic(),sb=client();if(typeof managementVerified==="undefined"||!managementVerified||!c?.id||!["owner","admin"].includes(String(currentManagementRole||"").toLowerCase())||!sb?.rpc)return;
   const finding=window.prompt("Paste the confirmed finding ID:");if(!finding)return;
   const title=window.prompt("Lesson title (8–240 characters):");if(!title)return;
   const detail=window.prompt("What should the institution learn? (30–5,000 characters):");if(!detail)return;
