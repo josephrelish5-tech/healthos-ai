@@ -117,6 +117,13 @@ create trigger hospital_incident_report_create_workflow
 after insert on public.hospital_incident_reports
 for each row execute function public.create_hospital_incident_workflow_on_report();
 
+-- Backfill existing intake reports through the same trigger so historical reports
+-- enter triage without changing their original immutable report rows.
+insert into public.hospital_incident_workflows (clinic_id, incident_report_id)
+select h.clinic_id, h.id
+from public.hospital_incident_reports h
+on conflict (clinic_id, incident_report_id) do nothing;
+
 create or replace function public.manage_hospital_incident_workflow(
   p_clinic_id uuid,
   p_incident_report_id uuid,
