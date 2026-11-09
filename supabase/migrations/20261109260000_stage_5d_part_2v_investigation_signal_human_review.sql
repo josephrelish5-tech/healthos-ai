@@ -33,9 +33,8 @@ create table if not exists public.staff_task_investigation_signal_review_approva
 
 create index if not exists staff_task_investigation_signal_approvals_review_idx
   on public.staff_task_investigation_signal_review_approvals(clinic_id, review_id, created_at desc);
-create unique index if not exists staff_task_investigation_signal_one_accepted_approval_idx
-  on public.staff_task_investigation_signal_review_approvals(review_id)
-  where outcome = 'accepted';
+create unique index if not exists staff_task_investigation_signal_one_decision_approval_idx
+  on public.staff_task_investigation_signal_review_approvals(review_id);
 
 alter table public.staff_task_investigation_signal_reviews enable row level security;
 alter table public.staff_task_investigation_signal_review_approvals enable row level security;
@@ -156,8 +155,8 @@ begin
   end if;
   if exists (
     select 1 from public.staff_task_investigation_signal_review_approvals a
-    where a.review_id = p_review_id and a.outcome = 'accepted'
-  ) then raise exception 'This review already has an accepted independent approval' using errcode = '55000'; end if;
+    where a.review_id = p_review_id
+  ) then raise exception 'An independent decision has already been recorded for this review' using errcode = '55000'; end if;
 
   select sp.id into v_profile_id from public.staff_profiles sp
   where sp.clinic_id = p_clinic_id and sp.user_id = v_uid and sp.employment_status = 'active' limit 1;
