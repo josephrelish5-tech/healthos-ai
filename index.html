@@ -1837,6 +1837,26 @@
 <!-- END HEALTHOS MEDICAL SYSTEMS: INDIVIDUAL STAFF ACTIVITY TABLE -->
 </div>
 <div class="workspace-subpage" data-workspace-page="adminShifts" id="adminShiftsPage" hidden><figure class="healthos-section-photo"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/Health%20work.jpg" alt="A Nigerian health worker using protective measures during clinical work." loading="lazy" decoding="async" data-photo-credit="Ricki Vic — CC BY-SA 4.0"><figcaption>A Nigerian health worker using protective measures during clinical work. · Photo: Ricki Vic — CC BY-SA 4.0</figcaption></figure><!-- HEALTHOS MEDICAL SYSTEMS: STAFF SHIFT ASSIGNMENT -->
+<section class="panel staff-verification-command" id="staffVerificationCommandCenter" aria-labelledby="staffVerificationCommandHeading">
+ <div class="panel-heading">
+  <div><p class="eyebrow">STAFF PRESENCE &amp; VERIFICATION</p><h3 id="staffVerificationCommandHeading">Staff Verification Command Center</h3>
+  <p class="muted">Live attendance evidence from assigned shifts and recorded clock-in/out sessions. Portal online status is not treated as physical attendance.</p></div>
+  <button type="button" class="secondary-button" id="refreshStaffVerificationCommand">Refresh verification</button>
+ </div>
+ <p id="staffVerificationCommandMessage" class="message" role="status" aria-live="polite">Attendance verification summary will load after administrator verification.</p>
+ <div class="stats-grid">
+  <article class="stat-card"><p>Clock-ins recorded today</p><h3 id="verificationClockInsToday">—</h3></article>
+  <article class="stat-card"><p>Clock-outs recorded today</p><h3 id="verificationClockOutsToday">—</h3></article>
+  <article class="stat-card"><p>Clock-out capture rate</p><h3 id="verificationClockOutRate">—</h3></article>
+  <article class="stat-card"><p>Late check-ins</p><h3 id="verificationLateToday">—</h3></article>
+  <article class="stat-card"><p>Missed shifts</p><h3 id="verificationMissedToday">—</h3></article>
+  <article class="stat-card"><p>Upcoming shifts today</p><h3 id="verificationUpcomingToday">—</h3></article>
+ </div>
+ <div class="staff-verification-boundary">
+  <strong>Evidence boundary:</strong> These figures reflect saved attendance and roster records. They do not independently prove a person's identity or physical location. GPS/location review, staff-submitted change explanations and supervisor verification are not yet enabled in this workflow and must not be inferred from an online heartbeat.
+ </div>
+</section>
+
 <div class="panel-heading">
     <div>
         <p class="eyebrow">SHIFT MANAGEMENT</p>
