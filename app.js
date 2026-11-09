@@ -739,6 +739,41 @@ async function showStaffProfileSubmission(user, clinic) {
     });
 }
 // HEALTHOS AI: STAFF LOGIN AND ONLINE PRESENCE
+// HEALTHOS AI: CONSENT-BASED ATTENDANCE LOCATION EVIDENCE
+async function recordAttendanceLocationEvidenceIfConsented(sessionId, action) {
+    const consent = document.getElementById("staffAttendanceLocationConsent");
+    if (!consent || !consent.checked) return { saved: false, reason: "not_shared" };
+    if (!sessionId) return { saved: false, reason: "session_missing" };
+    if (!navigator.geolocation) return { saved: false, reason: "geolocation_unavailable" };
+
+    try {
+        const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 12000,
+                maximumAge: 0
+            });
+        });
+        const { data, error } = await supabaseClient.rpc(
+            "staff_record_attendance_location_evidence",
+            {
+                p_session_id: sessionId,
+                p_action: action,
+                p_latitude: position.coords.latitude,
+                p_longitude: position.coords.longitude,
+                p_accuracy_m: position.coords.accuracy,
+                p_captured_at: new Date(position.timestamp).toISOString(),
+                p_consent: true
+            }
+        );
+        if (error) throw error;
+        return { saved: true, data };
+    } catch (error) {
+        console.warn("Attendance location evidence was not saved:", error);
+        return { saved: false, reason: error.message || "location_capture_failed" };
+    }
+}
+
 // HEALTHOS AI: STAFF ATTENDANCE WORKSPACE
 
 async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
@@ -840,6 +875,43 @@ async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
                 ? "Clocked In"
                 : "Not Clocked In";
 
+        const reportButton = document.getElementById("staffAttendanceReportIssueButton");
+        if (reportButton) {
+            reportButton.onclick = async function () {
+                const targetSession = openSession || latestClockInSession;
+                const type = document.getElementById("staffAttendanceReportType");
+                const explanation = document.getElementById("staffAttendanceReportExplanation");
+                const reportMessage = document.getElementById("staffAttendanceReportMessage");
+                if (!targetSession || !type || !explanation || !reportMessage) {
+                    if (reportMessage) reportMessage.textContent = "Record a clock-in before submitting an attendance report.";
+                    return;
+                }
+                if (explanation.value.trim().length < 10) {
+                    reportMessage.textContent = "Please provide at least 10 characters explaining the issue.";
+                    reportMessage.className = "message error";
+                    return;
+                }
+                reportButton.disabled = true;
+                reportMessage.textContent = "Submitting attendance explanation...";
+                try {
+                    const { error } = await supabaseClient.rpc("staff_submit_attendance_change_report", {
+                        p_session_id: targetSession.id,
+                        p_report_type: type.value,
+                        p_explanation: explanation.value.trim()
+                    });
+                    if (error) throw error;
+                    explanation.value = "";
+                    reportMessage.textContent = "Your attendance explanation has been submitted for administrator review.";
+                    reportMessage.className = "message success";
+                } catch (error) {
+                    reportMessage.textContent = error.message || "The attendance explanation could not be submitted.";
+                    reportMessage.className = "message error";
+                } finally {
+                    reportButton.disabled = false;
+                }
+            };
+        }
+
         // Enable only the action appropriate to the current session.
         clockInButton.disabled = Boolean(openSession);
         clockOutButton.disabled = !openSession;
@@ -876,21 +948,18 @@ async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
                     throw clockInError;
                 }
 
-                console.info(
-                    "Staff clock-in recorded:",
-                    clockInResult
+                console.info("Staff clock-in recorded:", clockInResult);
+                const locationEvidence = await recordAttendanceLocationEvidenceIfConsented(
+                    clockInResult?.session_id, "clock_in"
                 );
-
-                messageElement.textContent =
-                    "Clock-in recorded successfully.";
-
-                messageElement.className =
-                    "message success";
-
-                await loadStaffAttendanceWorkspace(
-                    staffProfileId,
-                    clinicId
-                );
+                await loadStaffAttendanceWorkspace(staffProfileId, clinicId);
+                messageElement.textContent = locationEvidence.saved
+                    ? "Clock-in recorded. Consent-based location evidence was saved (" +
+                      Math.round(locationEvidence.data.accuracy_m) + " m accuracy)."
+                    : locationEvidence.reason === "not_shared"
+                        ? "Clock-in recorded. No GPS evidence was shared; attendance was not blocked."
+                        : "Clock-in recorded, but GPS evidence was not saved. Attendance remains recorded; report any issue if needed.";
+                messageElement.className = locationEvidence.saved ? "message success" : "message";
             } catch (error) {
                 console.error(
                     "Staff clock-in failed:",
@@ -936,21 +1005,18 @@ async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
                     throw clockOutError;
                 }
 
-                console.info(
-                    "Staff clock-out recorded:",
-                    clockOutResult
+                console.info("Staff clock-out recorded:", clockOutResult);
+                const locationEvidence = await recordAttendanceLocationEvidenceIfConsented(
+                    clockOutResult?.session_id, "clock_out"
                 );
-
-                messageElement.textContent =
-                    "Clock-out recorded successfully.";
-
-                messageElement.className =
-                    "message success";
-
-                await loadStaffAttendanceWorkspace(
-                    staffProfileId,
-                    clinicId
-                );
+                await loadStaffAttendanceWorkspace(staffProfileId, clinicId);
+                messageElement.textContent = locationEvidence.saved
+                    ? "Clock-out recorded. Consent-based location evidence was saved (" +
+                      Math.round(locationEvidence.data.accuracy_m) + " m accuracy)."
+                    : locationEvidence.reason === "not_shared"
+                        ? "Clock-out recorded. No GPS evidence was shared; attendance was not blocked."
+                        : "Clock-out recorded, but GPS evidence was not saved. Attendance remains recorded; report any issue if needed.";
+                messageElement.className = locationEvidence.saved ? "message success" : "message";
             } catch (error) {
                 console.error(
                     "Staff clock-out failed:",
@@ -4086,10 +4152,124 @@ async function loadStaffAttendanceReport(clinic) {
     if (button && !button.dataset.bound) {
         button.dataset.bound = "true";
         button.addEventListener("click", () => {
-            if (currentClinic && managementVerified) void loadStaffShiftRoster(currentClinic);
+            if (currentClinic && managementVerified) {
+                void loadStaffShiftRoster(currentClinic);
+                void loadStaffAttendanceReviewQueue(currentClinic);
+            }
         });
     }
 })();
+
+async function loadStaffAttendanceReviewQueue(clinic) {
+    const host = document.getElementById("staffAttendanceReviewQueue");
+    const message = document.getElementById("staffAttendanceReviewQueueMessage");
+    if (!host || !message) return;
+    if (!currentUser || !currentClinic || !managementVerified || !clinic || clinic.id !== currentClinic.id) {
+        message.textContent = "Verified clinic administrator access is required.";
+        message.className = "message error";
+        return;
+    }
+    host.replaceChildren();
+    message.textContent = "Loading staff-submitted attendance explanations...";
+    message.className = "message";
+    try {
+        const { data, error } = await supabaseClient.rpc(
+            "staff_get_attendance_change_reports",
+            { p_clinic_id: clinic.id }
+        );
+        if (error) throw error;
+        const reports = Array.isArray(data) ? data : [];
+        if (!reports.length) {
+            message.textContent = "No attendance explanations have been submitted for review.";
+            message.className = "message success";
+            return;
+        }
+        reports.forEach(report => {
+            const card = document.createElement("article");
+            card.className = "staff-attendance-review-card";
+            const heading = document.createElement("h4");
+            heading.textContent = (report.staff_name || "Staff member") + " · " +
+                (report.department || "Department not recorded") + " · " +
+                String(report.report_type || "other").replace(/_/g, " ");
+            const details = document.createElement("p");
+            details.textContent = report.explanation + " · Submitted " +
+                new Date(report.submitted_at).toLocaleString();
+            card.append(heading, details);
+
+            const evidence = Array.isArray(report.location_evidence) ? report.location_evidence : [];
+            const evidenceLine = document.createElement("p");
+            evidenceLine.className = "muted";
+            evidenceLine.textContent = evidence.length
+                ? "GPS evidence: " + evidence.map(item =>
+                    item.action + " · " + Math.round(Number(item.accuracy_m)) +
+                    " m accuracy · " + item.evidence_quality.replace(/_/g, " ")
+                  ).join(" | ")
+                : "GPS evidence: none submitted. This does not invalidate the attendance record.";
+            card.appendChild(evidenceLine);
+
+            if (report.latest_decision) {
+                const prior = document.createElement("p");
+                prior.textContent = "Latest review: " + report.latest_decision.replace(/_/g, " ") +
+                    (report.latest_review_note ? " — " + report.latest_review_note : "");
+                card.appendChild(prior);
+            }
+
+            const controls = document.createElement("div");
+            controls.className = "staff-attendance-review-controls";
+            const decision = document.createElement("select");
+            [["acknowledged","Acknowledge"],["needs_follow_up","Needs follow-up"],["rejected","Reject report"]]
+                .forEach(([value,label]) => {
+                    const option = document.createElement("option");
+                    option.value = value;
+                    option.textContent = label;
+                    decision.appendChild(option);
+                });
+            const note = document.createElement("textarea");
+            note.rows = 2;
+            note.maxLength = 2000;
+            note.placeholder = "Required review note (minimum 5 characters)";
+            const submit = document.createElement("button");
+            submit.type = "button";
+            submit.className = "secondary-button";
+            submit.textContent = "Record supervisor review";
+            submit.onclick = async () => {
+                if (note.value.trim().length < 5) {
+                    message.textContent = "Enter a review note of at least 5 characters.";
+                    message.className = "message error";
+                    return;
+                }
+                submit.disabled = true;
+                try {
+                    const { error: reviewError } = await supabaseClient.rpc(
+                        "staff_review_attendance_change_report",
+                        {
+                            p_report_id: report.report_id,
+                            p_decision: decision.value,
+                            p_review_note: note.value.trim()
+                        }
+                    );
+                    if (reviewError) throw reviewError;
+                    message.textContent = "Review decision recorded in the append-only attendance review history.";
+                    message.className = "message success";
+                    await loadStaffAttendanceReviewQueue(clinic);
+                } catch (error) {
+                    message.textContent = error.message || "Review could not be recorded.";
+                    message.className = "message error";
+                    submit.disabled = false;
+                }
+            };
+            controls.append(decision, note, submit);
+            card.appendChild(controls);
+            host.appendChild(card);
+        });
+        message.textContent = reports.length + " attendance report(s) loaded. Every review is recorded as a new immutable event.";
+        message.className = "message success";
+    } catch (error) {
+        console.error("Attendance review queue failed:", error);
+        message.textContent = error.message || "Attendance review queue could not be loaded.";
+        message.className = "message error";
+    }
+}
 
 async function loadStaffShiftRoster(clinic) {
     const body = document.getElementById("staffShiftRosterBody");
@@ -4198,6 +4378,7 @@ async function loadStaffShiftRoster(clinic) {
         const missed = (shifts || []).filter(s => !s.clocked_in_at && now > new Date(s.ends_at)).length;
         message.textContent = "Today's roster: " + (shifts || []).length + " scheduled · " + late + " late · " + missed + " missed. Late threshold: 10 minutes after shift start.";
         message.className = "message success";
+        await loadStaffAttendanceReviewQueue(clinic);
     } catch (error) {
         console.error("Staff shift roster failed:", error);
         message.textContent = error.message || "Today's shift roster could not be loaded.";
