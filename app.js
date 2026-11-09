@@ -3191,6 +3191,178 @@ await startStaffPresenceTracking(
             await loadDepartmentTaskAssignmentOptions(clinic);
         }
         
+        // HEALTHOS AI: INDIVIDUAL DUTY EXECUTION HISTORY (READ-ONLY)
+        if (myTasksPanel && myTasksPanel.parentElement) {
+            const oldHistoryPanel = document.getElementById("myDutyExecutionHistory");
+            if (oldHistoryPanel) oldHistoryPanel.remove();
+
+            const historyPanel = document.createElement("section");
+            historyPanel.id = "myDutyExecutionHistory";
+            historyPanel.className = "department-workspace";
+            const historyHeading = document.createElement("h3");
+            historyHeading.textContent = "My Duty Execution History";
+            const historyIntro = document.createElement("p");
+            historyIntro.className = "muted";
+            historyIntro.textContent = "A read-only record of duties assigned to you, your submitted evidence, task events and supervisor decisions.";
+            const historyRefresh = document.createElement("button");
+            historyRefresh.type = "button";
+            historyRefresh.className = "secondary-button";
+            historyRefresh.textContent = "Refresh my history";
+            const historyStatus = document.createElement("p");
+            historyStatus.className = "message";
+            historyStatus.setAttribute("role", "status");
+            historyStatus.setAttribute("aria-live", "polite");
+            const historyList = document.createElement("div");
+            historyList.className = "department-workspace-stats";
+            historyPanel.append(historyHeading, historyIntro, historyRefresh, historyStatus, historyList);
+            myTasksPanel.insertAdjacentElement("afterend", historyPanel);
+
+            async function refreshMyDutyExecutionHistory() {
+                historyRefresh.disabled = true;
+                historyStatus.textContent = "Loading your duty execution history...";
+                historyStatus.className = "message";
+                historyList.replaceChildren();
+
+                try {
+                    const { data, error } = await supabaseClient.rpc(
+                        "get_my_duty_execution_history",
+                        { p_clinic_id: clinic.id, p_limit: 100 }
+                    );
+                    if (error) throw error;
+                    if (!data || data.read_only !== true ||
+                        data.scope !== "current_staff_profile_only" ||
+                        String(data.clinic_id) !== String(clinic.id)) {
+                        throw new Error("The returned history did not pass its scope validation.");
+                    }
+
+                    const records = Array.isArray(data.history) ? data.history : [];
+                    historyStatus.textContent =
+                        String(data.records_returned || 0) + " of " +
+                        String(data.records_total || 0) +
+                        " personal task record(s) displayed. This view cannot edit historical records.";
+                    historyStatus.className = "message success";
+
+                    if (!records.length) {
+                        const empty = document.createElement("p");
+                        empty.className = "message";
+                        empty.textContent = "No duty execution history is recorded for your staff profile yet.";
+                        historyList.appendChild(empty);
+                        return;
+                    }
+
+                    records.forEach(function (record) {
+                        const card = document.createElement("article");
+                        card.className = "stat-card";
+                        const title = document.createElement("h4");
+                        title.textContent = record.task_title || "Duty task";
+                        card.appendChild(title);
+
+                        const status = document.createElement("p");
+                        status.className = "muted";
+                        status.textContent =
+                            (record.department_name || "Department") +
+                            (record.unit_name ? " / " + record.unit_name : "") +
+                            " • " + String(record.priority || "normal").toUpperCase() +
+                            " • " + String(record.task_status || "unknown").replace(/_/g, " ");
+                        card.appendChild(status);
+
+                        const snapshot = record.duty_snapshot && typeof record.duty_snapshot === "object"
+                            ? record.duty_snapshot : null;
+                        const duty = document.createElement("p");
+                        duty.textContent = snapshot
+                            ? "Approved duty: " + (snapshot.duty_title || "Linked duty") +
+                                " • Snapshot: " + String(record.duty_snapshot_source || "source unavailable").replace(/_/g, " ")
+                            : (record.duty_id ? "A duty is linked, but no duty snapshot is available." : "No approved duty snapshot was linked to this task.");
+                        card.appendChild(duty);
+
+                        const dates = document.createElement("p");
+                        dates.className = "muted";
+                        const dateParts = [
+                            ["Assigned", record.created_at],
+                            ["Accepted", record.accepted_at],
+                            ["Started", record.started_at],
+                            ["Completed", record.completed_at],
+                            ["Reviewed", record.reviewed_at]
+                        ].filter(function (entry) { return !!entry[1]; })
+                         .map(function (entry) {
+                            return entry[0] + ": " + new Date(entry[1]).toLocaleString();
+                         });
+                        dates.textContent = dateParts.length ? dateParts.join(" • ") : "No task timestamps recorded.";
+                        card.appendChild(dates);
+
+                        if (record.review_status || record.reviewer_name || record.review_notes) {
+                            const review = document.createElement("p");
+                            review.textContent =
+                                "Supervisor decision: " + String(record.review_status || "pending").replace(/_/g, " ") +
+                                (record.reviewer_name ? " • Reviewer: " + record.reviewer_name : "") +
+                                (record.review_notes ? " • Notes: " + record.review_notes : "");
+                            card.appendChild(review);
+                        }
+
+                        const evidence = Array.isArray(record.evidence) ? record.evidence : [];
+                        const evidenceHeading = document.createElement("strong");
+                        evidenceHeading.textContent = "Evidence submitted: " + evidence.length;
+                        card.appendChild(evidenceHeading);
+                        if (evidence.length) {
+                            const evidenceList = document.createElement("ul");
+                            evidence.forEach(function (item) {
+                                const li = document.createElement("li");
+                                li.textContent =
+                                    String(item.evidence_type || "evidence") +
+                                    " • " + (item.captured_at ? new Date(item.captured_at).toLocaleString() : "Capture time unavailable") +
+                                    (item.has_note ? " • note attached" : "") +
+                                    (item.has_reference ? " • reference attached" : "");
+                                evidenceList.appendChild(li);
+                            });
+                            card.appendChild(evidenceList);
+                        }
+
+                        const events = Array.isArray(record.events) ? record.events : [];
+                        const eventHeading = document.createElement("h5");
+                        eventHeading.textContent = "Accountability timeline (" + events.length + ")";
+                        card.appendChild(eventHeading);
+                        if (events.length) {
+                            const eventList = document.createElement("ol");
+                            events.forEach(function (event) {
+                                const li = document.createElement("li");
+                                li.textContent =
+                                    String(event.event_type || "event").replace(/_/g, " ") +
+                                    (event.from_status || event.to_status
+                                        ? " • " + String(event.from_status || "start") +
+                                            " → " + String(event.to_status || "recorded")
+                                        : "") +
+                                    (event.actor_name ? " • " + event.actor_name : "") +
+                                    (event.created_at ? " • " + new Date(event.created_at).toLocaleString() : "") +
+                                    (event.event_notes ? " • " + event.event_notes : "");
+                                eventList.appendChild(li);
+                            });
+                            card.appendChild(eventList);
+                        } else {
+                            const noEvents = document.createElement("p");
+                            noEvents.className = "muted";
+                            noEvents.textContent = "No task event entries are available for this record.";
+                            card.appendChild(noEvents);
+                        }
+
+                        historyList.appendChild(card);
+                    });
+                } catch (historyError) {
+                    console.error("Personal duty execution history failed:", historyError);
+                    historyStatus.textContent =
+                        /function .*get_my_duty_execution_history.* does not exist|could not find the function/i.test(historyError.message || "")
+                            ? "This history feature is committed to GitHub, but its Supabase migration has not been applied. No history data is shown."
+                            : friendlyError(historyError);
+                    historyStatus.className = "message error";
+                } finally {
+                    historyRefresh.disabled = false;
+                }
+            }
+
+            historyRefresh.addEventListener("click", () => void refreshMyDutyExecutionHistory());
+            void refreshMyDutyExecutionHistory();
+        }
+        // END HEALTHOS AI: INDIVIDUAL DUTY EXECUTION HISTORY
+
         // HEALTHOS AI: SUPERVISOR REVIEW & APPROVAL
         const supervisorReviewPanel = document.getElementById("supervisorTaskReviews");
 
