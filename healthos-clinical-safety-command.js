@@ -98,7 +98,7 @@
    $("healthosIncidentOpenCount").textContent=String(active.length);
    $("healthosIncidentCriticalCount").textContent=String(active.filter(e=>String(e.severity||"").toLowerCase()==="critical"||String(e.severity||"").toLowerCase()==="urgent").length);
    $("healthosIncidentUrgentCount").textContent=String(active.filter(e=>["urgent","high","critical"].includes(String(e.severity||"").toLowerCase())).length);
-   $("healthosIncidentSourcesCount").textContent=available.length+" / "+requests.length;
+   $("healthosIncidentSourcesCount").textContent=available.length+" / 5";
    const sev=$("healthosIncidentSeverity")?.value||"all",status=$("healthosIncidentStatus")?.value||"active";
    const filtered=events.filter(e=>(sev==="all"||String(e.severity||"").toLowerCase()===sev)&&(status==="all"||(status==="active"?!done(e):done(e))));
    filtered.sort((a,b)=>new Date(b.at||0)-new Date(a.at||0));
