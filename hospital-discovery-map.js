@@ -154,8 +154,11 @@
 
         // Distinct, luminous map typography: state names (white), capital cities (pink),
         // and regional/place labels (peach). Only label symbol layers are touched.
+        let applyingGeographicPalette=false;
         function applyHealthOSGeographicLabelPalette(){
-          if(!vectorMap.isStyleLoaded()) return;
+          if(applyingGeographicPalette||!vectorMap.isStyleLoaded()) return;
+          applyingGeographicPalette=true;
+          try{
           const style=vectorMap.getStyle();
           (style.layers||[]).forEach(layer=>{
             if(layer.type!=="symbol"||!layer.layout?.["text-field"]) return;
@@ -176,12 +179,17 @@
               color
             ];
             try{
-              vectorMap.setPaintProperty(layer.id,"text-color",colorExpression);
-              vectorMap.setPaintProperty(layer.id,"text-halo-color","#17243B");
-              vectorMap.setPaintProperty(layer.id,"text-halo-width",1.7);
-              vectorMap.setPaintProperty(layer.id,"text-halo-blur",0.35);
+              if(JSON.stringify(layer.paint?.["text-color"])!==JSON.stringify(colorExpression))
+                vectorMap.setPaintProperty(layer.id,"text-color",colorExpression);
+              if(layer.paint?.["text-halo-color"]!=="#17243B")
+                vectorMap.setPaintProperty(layer.id,"text-halo-color","#17243B");
+              if(layer.paint?.["text-halo-width"]!==1.7)
+                vectorMap.setPaintProperty(layer.id,"text-halo-width",1.7);
+              if(layer.paint?.["text-halo-blur"]!==0.35)
+                vectorMap.setPaintProperty(layer.id,"text-halo-blur",0.35);
             }catch(error){console.debug("Skipped unsupported geographic label layer:",layer.id,error);}
           });
+          }finally{applyingGeographicPalette=false;}
         }
         vectorMap.on("styledata",applyHealthOSGeographicLabelPalette);
         vectorMap.once("load",()=>{
