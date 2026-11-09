@@ -7,6 +7,7 @@
     <meta name="theme-color" content="#111828">
     <title>HealthOS Medical Systems | Hospital Management Software</title>
     <link rel="stylesheet" href="styles.css?v=20261109-vector-fiord-v5">\n    <link rel="stylesheet" href="healthos-clinical-safety-command.css?v=20261109-stage4-v1">
+    <link rel="stylesheet" href="healthos-incident-accountability.css?v=20261109-stage4d-v1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.css">
     <script type="importmap">
@@ -27,6 +28,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js?v=20261108-department-staffing-coverage-v1" defer></script>\n    <script src="healthos-clinical-safety-command.js?v=20261109-stage4-v1" defer></script>
+    <script src="healthos-incident-accountability.js?v=20261109-stage4d-v1" defer></script>
     <script src="icu-supervisor-management.js?v=20261108-supervisor-access-v1" defer></script>
     <script src="healthos-directory-admin.js?v=20261106-national-lga-registry-ui-v1" defer></script>
     <script src="healthos-hospital-registration-review.js?v=20261107-risk-flags-ui" defer></script>
@@ -2891,6 +2893,43 @@
   </form>
   <p id="incidentReportMessage" class="message" role="status" aria-live="polite">Reports are recorded as pending triage. No incident is automatically closed or deemed resolved.</p>
   <div class="table-wrap"><table><thead><tr><th>Reference</th><th>Category</th><th>Severity</th><th>Department</th><th>Reported</th><th>Status</th></tr></thead><tbody id="incidentReportRows"><tr><td colspan="6">Submit an incident to see its reference here.</td></tr></tbody></table></div>
+ </section>
+
+ <section class="panel healthos-incident-workflow" id="healthosIncidentAccountability" hidden aria-labelledby="healthosIncidentAccountabilityHeading">
+  <h3 id="healthosIncidentAccountabilityHeading">Hospital Incident Accountability &amp; Human Response</h3>
+  <p class="muted">Administrator oversight for triage, department and staff assignment, acknowledgment, response deadlines, evidence and human-confirmed resolution. This workflow never replaces emergency escalation.</p>
+  <div class="stats-grid">
+   <article class="stat-card"><p>Awaiting triage</p><h3 id="incidentWorkflowTriage">—</h3></article>
+   <article class="stat-card"><p>Assigned / awaiting response</p><h3 id="incidentWorkflowAssigned">—</h3></article>
+   <article class="stat-card"><p>Overdue</p><h3 id="incidentWorkflowOverdue">—</h3></article>
+   <article class="stat-card"><p>Resolved</p><h3 id="incidentWorkflowResolved">—</h3></article>
+  </div>
+  <div class="healthos-safety-toolbar">
+   <label for="incidentWorkflowStatus">Workflow status
+    <select id="incidentWorkflowStatus"><option value="all">All statuses</option><option value="triage_pending">Awaiting triage</option><option value="assigned">Assigned</option><option value="acknowledged">Acknowledged</option><option value="response_in_progress">Response in progress</option><option value="resolved">Resolved</option><option value="closed">Closed</option></select>
+   </label>
+   <button type="button" class="primary-button" id="incidentWorkflowRefresh">Refresh accountability queue</button>
+   <span id="incidentWorkflowUpdated" class="muted">Not yet refreshed</span>
+  </div>
+  <p id="incidentWorkflowMessage" class="message" role="status" aria-live="polite">Administrator verification is required.</p>
+  <div class="table-wrap"><table><thead><tr><th>Reference / incident</th><th>Severity</th><th>Reported department</th><th>Assigned department / staff</th><th>Status</th><th>Due / overdue</th><th>Acknowledged / resolved</th><th>Manage</th></tr></thead><tbody id="incidentWorkflowRows"><tr><td colspan="8">No workflow records loaded.</td></tr></tbody></table></div>
+  <section class="panel incident-workflow-editor" aria-labelledby="incidentWorkflowEditorHeading">
+   <h4 id="incidentWorkflowEditorHeading">Manage selected incident</h4>
+   <p id="incidentWorkflowSelected" class="muted">Select Manage on an incident row to begin.</p>
+   <form id="incidentWorkflowAssignForm" class="auth-form">
+    <label for="incidentWorkflowDepartment">Responsible department</label><select id="incidentWorkflowDepartment" required><option value="">Load departments…</option></select>
+    <label for="incidentWorkflowStaff">Responsible staff member</label><select id="incidentWorkflowStaff" required><option value="">Select a department first</option></select>
+    <label for="incidentWorkflowDue">Response deadline</label><input id="incidentWorkflowDue" type="datetime-local">
+    <button type="submit" class="primary-button" id="incidentWorkflowAssign">Assign / reassign responsible staff</button>
+   </form>
+   <div class="incident-workflow-actions">
+    <button type="button" class="primary-button" id="incidentWorkflowAcknowledge" disabled>Record acknowledgment</button>
+    <button type="button" class="primary-button" id="incidentWorkflowRespond" disabled>Record response</button>
+    <button type="button" class="primary-button" id="incidentWorkflowResolve" disabled>Resolve with evidence</button>
+    <button type="button" class="logout-button" id="incidentWorkflowReopen" disabled>Reopen for review</button>
+   </div>
+   <p class="muted">Response and resolution details are recorded as accountable workflow events. Resolution requires a human administrator, detailed notes and an evidence reference. Urgent clinical matters must still be escalated directly.</p>
+  </section>
  </section>
  <section class="panel" id="offlineDepartmentTaskWorkspace" style="margin:16px 0" aria-labelledby="offlineDepartmentTaskHeading">
   <h3 id="offlineDepartmentTaskHeading">Offline Department Task &amp; Handover Queue</h3>
