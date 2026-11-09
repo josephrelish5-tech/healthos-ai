@@ -176,6 +176,9 @@ begin
   ) then
     raise exception 'An independently verified completed action is required before effectiveness review' using errcode = '55000';
   end if;
+  if exists (select 1 from public.staff_profiles sp where sp.id = v_action.assigned_to_staff_profile_id and sp.user_id = v_uid and sp.clinic_id = p_clinic_id) then
+    raise exception 'The staff member assigned to this preventive action cannot independently assess its effectiveness' using errcode = '42501';
+  end if;
   if p_recurrence_status = 'recurrence_observed' and p_outcome = 'effective' then
     raise exception 'A recurrence observation cannot be recorded as fully effective without explaining a changed scope; use partially effective or ineffective' using errcode = '22023';
   end if;
@@ -210,6 +213,21 @@ begin
   end if;
   if not exists (select 1 from public.staff_task_investigation_findings f where f.id = p_finding_id and f.clinic_id = p_clinic_id) then
     raise exception 'Finding not found in this hospital' using errcode = 'P0002';
+  end if;
+  if p_decision = 'close_monitoring' and (
+    not exists (select 1 from public.staff_task_investigation_preventive_actions pa where pa.finding_id = p_finding_id and pa.clinic_id = p_clinic_id)
+    or exists (
+      select 1 from public.staff_task_investigation_preventive_actions pa
+      where pa.finding_id = p_finding_id and pa.clinic_id = p_clinic_id
+        and (pa.status <> 'completed' or not exists (
+          select 1 from public.staff_task_investigation_action_effectiveness_reviews er
+          where er.action_id = pa.id and er.clinic_id = p_clinic_id
+            and er.outcome = 'effective' and er.recurrence_status = 'none_observed'
+            and er.id = (select er2.id from public.staff_task_investigation_action_effectiveness_reviews er2 where er2.action_id = pa.id and er2.clinic_id = p_clinic_id order by er2.created_at desc,er2.id desc limit 1)
+        ))
+    )
+  ) then
+    raise exception 'Monitoring cannot be closed until every preventive action is independently completed and its latest effectiveness review is effective with no recurrence observed' using errcode = '55000';
   end if;
   insert into public.staff_task_investigation_management_oversight_events(
     clinic_id,finding_id,recorded_by_user_id,oversight_decision,management_note,next_review_date
