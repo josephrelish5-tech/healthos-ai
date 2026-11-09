@@ -17189,6 +17189,72 @@ window.loadHealthOSLaboratoryWorkspace=load;
                 throw new Error("Dossier failed hospital and task scope verification.");
             }
             render(data);
+            // Part 2P: independently request a read-only evidence/accountability integrity assessment.
+            // The audit is additive: if it is unavailable, the existing dossier remains usable.
+            const integrityPanel = document.createElement("section");
+            integrityPanel.className = "panel";
+            integrityPanel.style.marginTop = "12px";
+            integrityPanel.setAttribute("aria-label", "Investigation evidence integrity audit");
+            integrityPanel.appendChild(el("h4", "Investigation evidence integrity & accountability audit"));
+            const integrityStatus = el("p", "Checking evidence metadata and accountability links…", "message");
+            integrityPanel.appendChild(integrityStatus);
+            content.appendChild(integrityPanel);
+            try {
+                const { data: integrity, error: integrityError } = await supabaseClient.rpc(
+                    "get_hospital_investigation_evidence_integrity_audit",
+                    { p_clinic_id: clinicId, p_task_id: taskId }
+                );
+                if (request !== requestVersion || panel.hidden) return;
+                if (integrityError) throw integrityError;
+                if (!integrity || integrity.read_only !== true ||
+                    integrity.task_id !== taskId || integrity.clinic_id !== clinicId) {
+                    throw new Error("Integrity audit failed hospital/task scope verification.");
+                }
+                const summary = integrity.summary || {};
+                integrityStatus.textContent =
+                    "Reviewed " + value(summary.evidence_records_reviewed) + " evidence record(s). " +
+                    value(summary.finding_count) + " integrity finding(s); " +
+                    value(summary.accountability_findings) + " accountability finding(s).";
+                integrityStatus.className = "message " + (Number(summary.finding_count || 0) ? "error" : "success");
+                const findings = Array.isArray(integrity.findings) ? integrity.findings : [];
+                const findingList = document.createElement("ul");
+                findings.forEach(code => {
+                    const item = document.createElement("li");
+                    item.textContent = String(code).replaceAll("_", " ");
+                    findingList.appendChild(item);
+                });
+                if (findings.length) integrityPanel.appendChild(findingList);
+                else integrityPanel.appendChild(el("p", "No configured metadata/accountability checks identified a discrepancy.", "muted"));
+                const evidenceRows = Array.isArray(integrity.evidence_register) ? integrity.evidence_register : [];
+                const evidenceHeading = el("h5", "Evidence metadata checks");
+                integrityPanel.appendChild(evidenceHeading);
+                if (!evidenceRows.length) {
+                    integrityPanel.appendChild(el("p", "No evidence records are attached to this task.", "muted"));
+                } else {
+                    const evidenceList = document.createElement("ul");
+                    evidenceRows.forEach(row => {
+                        const item = document.createElement("li");
+                        item.textContent = value(row.evidence_type) + " · " +
+                            value(row.submitted_by_name) + " · " + date(row.created_at) +
+                            " · Submitter: " + (row.submitter_verified ? "matched" : "not matched") +
+                            " · Payload/reference: " + (row.has_payload_or_reference ? "present" : "missing") +
+                            " · Timestamp order: " + (row.timestamp_order_valid ? "valid" : "review");
+                        evidenceList.appendChild(item);
+                    });
+                    integrityPanel.appendChild(evidenceList);
+                }
+                integrityPanel.appendChild(el("p",
+                    "Scope: metadata and accountability-link checks only. This does not prove that an uploaded file's contents are unchanged; cryptographic file-hash verification is not yet implemented. Raw evidence text and storage paths are never displayed.",
+                    "muted"
+                ));
+            } catch (integrityError) {
+                if (request !== requestVersion || panel.hidden) return;
+                console.error("Investigation evidence integrity audit unavailable", integrityError);
+                integrityStatus.textContent = integrityError?.code === "PGRST202"
+                    ? "Part 2P audit is not yet available in this database. Apply and verify the Part 2P migration."
+                    : (integrityError.message || "Integrity audit unavailable; the read-only dossier remains available.");
+                integrityStatus.className = "message error";
+            }
             status("Read-only dossier loaded. Evidence files and raw evidence text are deliberately excluded.");
         } catch (error) {
             if (request !== requestVersion || panel.hidden) return;
