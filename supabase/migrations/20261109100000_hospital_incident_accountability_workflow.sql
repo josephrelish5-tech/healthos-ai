@@ -124,6 +124,19 @@ select h.clinic_id, h.id
 from public.hospital_incident_reports h
 on conflict (clinic_id, incident_report_id) do nothing;
 
+insert into public.hospital_incident_workflow_events
+  (clinic_id, workflow_id, actor_user_id, event_type, event_note, metadata)
+select w.clinic_id, w.id, h.reporter_id, 'report_received',
+  'Existing incident report imported into the human triage workflow.',
+  jsonb_build_object('incident_reference', h.incident_reference, 'backfilled', true)
+from public.hospital_incident_workflows w
+join public.hospital_incident_reports h
+  on h.id = w.incident_report_id and h.clinic_id = w.clinic_id
+where not exists (
+  select 1 from public.hospital_incident_workflow_events e
+  where e.workflow_id = w.id and e.clinic_id = w.clinic_id
+);
+
 create or replace function public.manage_hospital_incident_workflow(
   p_clinic_id uuid,
   p_incident_report_id uuid,
@@ -298,7 +311,15 @@ begin
       d.department_name as assigned_department, s.full_name as assigned_staff,
       w.workflow_status, w.response_due_at, w.acknowledged_at, w.resolved_at,
       w.created_at, (w.response_due_at is not null and w.response_due_at < now()
-        and w.workflow_status not in ('resolved','closed')) as is_overdue
+        and w.workflow_status not in ('resolved','closed')) as is_overdue,
+      coalesce((
+        select jsonb_agg(jsonb_build_object(
+          'event_type', e.event_type, 'event_note', e.event_note,
+          'actor_user_id', e.actor_user_id, 'created_at', e.created_at
+        ) order by e.created_at asc)
+        from public.hospital_incident_workflow_events e
+        where e.workflow_id = w.id and e.clinic_id = w.clinic_id
+      ), '[]'::jsonb) as events
     from public.hospital_incident_workflows w
     join public.hospital_incident_reports h
       on h.id = w.incident_report_id and h.clinic_id = w.clinic_id
