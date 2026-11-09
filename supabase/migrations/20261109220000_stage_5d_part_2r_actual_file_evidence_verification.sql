@@ -230,8 +230,12 @@ begin
     p_original_file_name, p_uploaded_by_user_id, p_staff_profile_id
   );
 
-  insert into public.staff_task_events (clinic_id, task_id, event_type, actor_staff_profile_id, event_note)
-  values (p_clinic_id, p_task_id, 'evidence_added', p_staff_profile_id, 'Uploaded file evidence registered with SHA-256 integrity baseline');
+  insert into public.staff_task_events (clinic_id, task_id, event_type, actor_staff_profile_id, event_notes, metadata)
+  values (
+    p_clinic_id, p_task_id, 'evidence_added', p_staff_profile_id,
+    'Uploaded file evidence registered with SHA-256 integrity baseline',
+    jsonb_build_object('evidence_id', v_evidence_id, 'evidence_file_integrity', true)
+  );
 
   return v_evidence_id;
 end;
