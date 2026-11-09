@@ -4722,7 +4722,7 @@ async function loadStaffShiftRoster(clinic) {
         if (!shifts || !shifts.length) {
             const row = document.createElement("tr");
             const cell = document.createElement("td");
-            cell.colSpan = 8;
+            cell.colSpan = 9;
             cell.textContent = "No shifts have been assigned for today.";
             row.appendChild(cell);
             body.appendChild(row);
@@ -4837,7 +4837,7 @@ async function loadDepartmentPerformanceDashboard(clinic) {
         if (departments.length === 0) {
             const row = document.createElement("tr");
             const cell = document.createElement("td");
-            cell.colSpan = 8;
+            cell.colSpan = 9;
             cell.textContent = "No active departments are available in this report.";
             row.appendChild(cell);
             body.appendChild(row);
@@ -7602,7 +7602,7 @@ async function loadBillingData(clinic) {
             if (!departmentPayments || departmentPayments.length === 0) {
                 const emptyRow = document.createElement("tr");
                 const emptyCell = document.createElement("td");
-                emptyCell.colSpan = 8;
+                emptyCell.colSpan = 9;
                 emptyCell.textContent = "No department payments recorded yet.";
                 emptyRow.appendChild(emptyCell);
                 departmentPaymentsBody.appendChild(emptyRow);
@@ -7661,7 +7661,7 @@ async function loadBillingData(clinic) {
             if (!auditCases || auditCases.length === 0) {
                 const empty = document.createElement("tr");
                 const cell = document.createElement("td");
-                cell.colSpan = 8;
+                cell.colSpan = 9;
                 cell.textContent = "No open revenue leakage flags. This is not a guarantee that every transaction is settled.";
                 empty.appendChild(cell);
                 auditRows.appendChild(empty);
@@ -17605,7 +17605,7 @@ window.loadHealthOSLaboratoryWorkspace=load;
         if (!visible.length) {
             const tr = document.createElement("tr");
             const td = cell(tr, cachedAlerts.length ? "No alerts match this status filter." : "No investigation tamper alerts have been recorded for this hospital.");
-            td.colSpan = 8;
+            td.colSpan = 9;
             rows.appendChild(tr);
             return;
         }
@@ -17742,7 +17742,7 @@ window.loadHealthOSLaboratoryWorkspace=load;
             rows.replaceChildren();
             const tr = document.createElement("tr");
             const td = cell(tr, "Administrator access is required.");
-            td.colSpan = 8;
+            td.colSpan = 9;
             rows.appendChild(tr);
             return;
         }
