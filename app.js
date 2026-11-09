@@ -17247,6 +17247,55 @@ window.loadHealthOSLaboratoryWorkspace=load;
                     "Scope: metadata and accountability-link checks only. This does not prove that an uploaded file's contents are unchanged; cryptographic file-hash verification is not yet implemented. Raw evidence text and storage paths are never displayed.",
                     "muted"
                 ));
+                // Part 2Q: verify each immutable evidence-record fingerprint against its append-only ledger.
+                const fingerprintHeading = el("h5", "Cryptographic evidence-record fingerprints");
+                integrityPanel.appendChild(fingerprintHeading);
+                const fingerprintStatus = el("p", "Verifying SHA-256 evidence fingerprints…", "message");
+                integrityPanel.appendChild(fingerprintStatus);
+                try {
+                    const { data: fingerprintAudit, error: fingerprintError } = await supabaseClient.rpc(
+                        "get_hospital_investigation_evidence_fingerprint_audit",
+                        { p_clinic_id: clinicId, p_task_id: taskId }
+                    );
+                    if (request !== requestVersion || panel.hidden) return;
+                    if (fingerprintError) throw fingerprintError;
+                    if (!fingerprintAudit || fingerprintAudit.read_only !== true ||
+                        fingerprintAudit.clinic_id !== clinicId || fingerprintAudit.task_id !== taskId) {
+                        throw new Error("Fingerprint audit failed hospital/task scope verification.");
+                    }
+                    const fingerprintSummary = fingerprintAudit.summary || {};
+                    fingerprintStatus.textContent =
+                        value(fingerprintSummary.fingerprints_verified) + " verified · " +
+                        value(fingerprintSummary.fingerprints_missing) + " missing · " +
+                        value(fingerprintSummary.fingerprints_mismatched) + " mismatched · " +
+                        value(fingerprintSummary.orphaned_ledger_entries) + " orphaned ledger entries.";
+                    fingerprintStatus.className = "message " +
+                        (Number(fingerprintSummary.finding_count || 0) ? "error" : "success");
+                    const fingerprintRows = Array.isArray(fingerprintAudit.evidence_register)
+                        ? fingerprintAudit.evidence_register : [];
+                    if (fingerprintRows.length) {
+                        const fingerprintList = document.createElement("ul");
+                        fingerprintRows.forEach(row => {
+                            const item = document.createElement("li");
+                            item.textContent = value(row.evidence_type) + " · " +
+                                value(row.fingerprint_status) + " · SHA-256 " +
+                                value(row.fingerprint_prefix);
+                            fingerprintList.appendChild(item);
+                        });
+                        integrityPanel.appendChild(fingerprintList);
+                    }
+                    integrityPanel.appendChild(el("p",
+                        "Important: these fingerprints verify the database evidence record and its storage object key. They do not verify the bytes inside the uploaded file. File-byte verification requires a trusted storage-side verifier.",
+                        "muted"
+                    ));
+                } catch (fingerprintError) {
+                    if (request !== requestVersion || panel.hidden) return;
+                    console.error("Evidence fingerprint audit unavailable", fingerprintError);
+                    fingerprintStatus.textContent = fingerprintError?.code === "PGRST202"
+                        ? "Part 2Q fingerprint verification is not installed in this database yet."
+                        : (fingerprintError.message || "Fingerprint verification is unavailable.");
+                    fingerprintStatus.className = "message error";
+                }
             } catch (integrityError) {
                 if (request !== requestVersion || panel.hidden) return;
                 console.error("Investigation evidence integrity audit unavailable", integrityError);
