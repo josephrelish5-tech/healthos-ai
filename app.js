@@ -3494,6 +3494,8 @@ await startStaffPresenceTracking(
                                 const row = document.createElement("p");
                                 row.textContent =
                                     String(appointment.leadership_role || "Management role").replace(/_/g, " ") +
+                                    " • " + (appointment.manager_name || "Manager name unavailable") +
+                                    (appointment.manager_staff_id ? " • Staff ID: " + appointment.manager_staff_id : "") +
                                     " • " + String(appointment.assignment_status || "status unavailable") +
                                     (appointment.appointed_by_name ? " • Appointed by: " + appointment.appointed_by_name : "") +
                                     (appointment.effective_from ? " • From: " + appointment.effective_from : "") +
