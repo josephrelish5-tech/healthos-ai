@@ -1833,7 +1833,21 @@
 <button type="button" class="workspace-page-button" data-workspace-target="adminTasks">Task Management</button>
 <button type="button" class="workspace-page-button" data-workspace-target="adminLeadership">Department Leadership</button>
 <button type="button" class="workspace-page-button" data-workspace-target="adminPerformance">Department Performance</button>
+ <button type="button" class="workspace-page-button" data-workspace-target="adminInvestigationAlerts">Investigation Alerts</button>
 </nav>
+<div class="workspace-subpage" data-workspace-page="adminInvestigationAlerts" id="adminInvestigationAlertsPage" hidden>
+ <div class="panel-heading"><div><p class="eyebrow">STAGE 5D · INVESTIGATION ALERTS</p><h3>Evidence Tamper Alert Inbox</h3><p class="muted">Administrator-only inbox for missing or modified investigation evidence. Every acknowledgement, assignment, escalation and resolution is recorded in an append-only action history.</p></div><button type="button" class="primary-button" id="refreshInvestigationAlertInbox">Refresh alerts</button></div>
+ <p id="investigationAlertInboxMessage" class="message" role="status" aria-live="polite">The investigation alert inbox loads after administrator verification.</p>
+ <div class="stats-grid">
+  <article class="stat-card"><p>Total alerts</p><h3 id="investigationAlertTotal">—</h3></article>
+  <article class="stat-card"><p>Open</p><h3 id="investigationAlertOpen">—</h3></article>
+  <article class="stat-card"><p>Acknowledged</p><h3 id="investigationAlertAcknowledged">—</h3></article>
+  <article class="stat-card"><p>Resolved</p><h3 id="investigationAlertResolved">—</h3></article>
+ </div>
+ <div class="form-grid" style="margin-top:14px"><label for="investigationAlertStatusFilter">Filter alerts<select id="investigationAlertStatusFilter"><option value="all">All statuses</option><option value="open">Open</option><option value="acknowledged">Acknowledged</option><option value="resolved">Resolved</option></select></label></div>
+ <div style="overflow-x:auto;margin-top:14px"><table><thead><tr><th>Severity / Type</th><th>Evidence file</th><th>Task</th><th>Status</th><th>Assigned officer</th><th>Raised</th><th>Latest action</th><th>Administrator actions</th></tr></thead><tbody id="investigationAlertInboxRows"><tr><td colspan="8">No alerts loaded.</td></tr></tbody></table></div>
+ <p class="muted">This is an in-app notification inbox. It refreshes when opened and periodically while visible. Email, SMS and push delivery are not enabled by this implementation.</p>
+</div>
 <div class="workspace-subpage" data-workspace-page="adminStaffActivity" id="adminStaffActivityPage" hidden><figure class="healthos-section-photo"><img src="https://commons.wikimedia.org/wiki/Special:FilePath/General%20hospital%2C%20Sabon%20Tasha%2C%20Kaduna%2001.jpg" alt="General Hospital in Sabon Tasha, Kaduna State, Nigeria." loading="lazy" decoding="async" data-photo-credit="Babe, Ishaku — CC BY 4.0"><figcaption>General Hospital in Sabon Tasha, Kaduna State, Nigeria. · Photo: Babe, Ishaku — CC BY 4.0</figcaption></figure><!-- HEALTHOS MEDICAL SYSTEMS: INDIVIDUAL STAFF ACTIVITY TABLE -->
 <div class="panel-heading">
     <div>
