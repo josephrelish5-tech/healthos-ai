@@ -4317,6 +4317,38 @@ async function loadDepartmentWorkspaceTaskBoard(clinic, departmentId, root) {
             (tasks.length === 200 ? " · Showing the latest 200 matching records." : "");
         status.className = "message success";
 
+        // Stage 5D: read-only accountability snapshot from the existing secured task board.
+        // These are indicators, not authorisations or independent evidence of completion.
+        const previousSnapshot = root.querySelector("[data-duty-accountability-snapshot]");
+        if (previousSnapshot) previousSnapshot.remove();
+        const snapshot = document.createElement("section");
+        snapshot.className = "department-workspace-stats";
+        snapshot.setAttribute("data-duty-accountability-snapshot", "");
+        snapshot.setAttribute("aria-label", "Staff duty accountability summary");
+        const isOpen = task => !["completed", "cancelled"].includes(String(task.task_status || ""));
+        const measures = [
+            ["Assigned to staff", tasks.filter(task => !!task.assignee_name || !!task.assignee_staff_id).length],
+            ["Awaiting evidence", tasks.filter(task => isOpen(task) && task.requires_evidence && !(Array.isArray(task.evidence) && task.evidence.length)).length],
+            ["Submitted for review", tasks.filter(task => task.task_status === "submitted").length],
+            ["Overdue open duties", tasks.filter(task => isOpen(task) && task.due_at && new Date(task.due_at).getTime() < Date.now()).length],
+            ["Completed with recorded review", tasks.filter(task => task.task_status === "completed" && !!task.reviewed_at).length]
+        ];
+        measures.forEach(([label, value]) => {
+            const tile = document.createElement("div");
+            tile.className = "stat-card";
+            const caption = document.createElement("p");
+            caption.textContent = label;
+            const count = document.createElement("h3");
+            count.textContent = String(value);
+            tile.append(caption, count);
+            snapshot.appendChild(tile);
+        });
+        const snapshotNote = document.createElement("p");
+        snapshotNote.className = "muted";
+        snapshotNote.textContent = "Counts reflect only the currently selected status filter and the latest 200 returned tasks. Evidence and review indicators require human verification; this panel cannot approve, assign or complete work.";
+        snapshot.appendChild(snapshotNote);
+        list.before(snapshot);
+
         if (!tasks.length) {
             const empty = document.createElement("p");
             empty.className = "muted";
