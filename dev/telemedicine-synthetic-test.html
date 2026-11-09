@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HealthOS — Synthetic Telemedicine Test Bench</title>
+<style>
+:root{font-family:Arial, sans-serif;color:#172033;background:#f4f7fb}
+body{margin:0;padding:20px}.wrap{max-width:900px;margin:auto}
+.banner{background:#fff4d6;border:1px solid #e8c66b;padding:14px 16px;border-radius:12px;margin-bottom:18px}
+.banner strong{display:block;margin-bottom:5px;color:#714d00}
+h1{font-size:clamp(1.5rem,4vw,2.1rem);margin:8px 0}
+.sub{color:#5b6575;line-height:1.5}
+.card{background:white;border:1px solid #dce3ec;border-radius:14px;padding:18px;margin:14px 0}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+label{display:block;font-weight:600;margin:10px 0 5px}
+select,button{font:inherit;padding:10px 12px;border-radius:8px;border:1px solid #cbd5e1}
+button{background:#153b68;color:white;border:0;cursor:pointer}
+button.secondary{background:#e8eef6;color:#172033}
+button:disabled{opacity:.45;cursor:not-allowed}
+.status{padding:10px;border-radius:8px;background:#eef3f8;margin-top:10px}
+.pass{color:#12643a}.fail{color:#a11b1b}
+ul{padding-left:20px;line-height:1.8}.small{font-size:.9rem;color:#687386}
+.pill{display:inline-block;background:#e8eef6;border-radius:30px;padding:5px 9px;font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="banner"><strong>DEVELOPMENT SIMULATOR — FICTIONAL DATA ONLY</strong>
+    This page is an offline test bench. It does not connect to Supabase, Daily, HealthOS production, real patients, or real staff. No video room or meeting token is created.
+  </div>
+  <h1>Telemedicine synthetic test bench</h1>
+  <p class="sub">Use fictional roles to exercise the consent and session-state rules before connecting a separate development provider. All changes exist only in this browser page and disappear when it is refreshed.</p>
+
+  <section class="card">
+    <h2>Test identities</h2>
+    <div class="row">
+      <div><label for="identity">Current test identity</label>
+      <select id="identity">
+        <option value="patient">TEST-PATIENT-001 · Patient</option>
+        <option value="doctor">TEST-DOCTOR-001 · Doctor</option>
+        <option value="nurse">TEST-NURSE-001 · Nurse</option>
+        <option value="admin">TEST-ADMIN-001 · Administrator</option>
+      </select></div>
+      <span class="pill">Synthetic account only</span>
+    </div>
+    <p id="identityInfo" class="status" aria-live="polite"></p>
+  </section>
+
+  <section class="card">
+    <h2>Consultation state</h2>
+    <p>Session: <strong>TEST-SESSION-001</strong></p>
+    <p>Current state: <strong id="sessionState">awaiting_consent</strong></p>
+    <p>Patient consent: <strong id="consentState">not_granted</strong></p>
+    <div class="row">
+      <button id="grant">Patient grants consent</button>
+      <button id="revoke" class="secondary">Patient revokes consent</button>
+      <button id="join" class="secondary">Request simulated join</button>
+      <button id="complete" class="secondary">Complete session</button>
+      <button id="reset" class="secondary">Reset test</button>
+    </div>
+    <p id="result" class="status" aria-live="polite">Waiting for a test action.</p>
+  </section>
+
+  <section class="card">
+    <h2>Automated safety checks</h2>
+    <ul id="checks"><li>Running checks…</li></ul>
+    <p class="small">These checks validate this simulator's rules only. They do not certify the production database, Edge Function, Daily configuration, or clinical workflow.</p>
+  </section>
+</div>
+<script>
+(()=> {
+  "use strict";
+  const $=id=>document.getElementById(id);
+  const state={consent:false,session:"awaiting_consent"};
+  const role=()=>$("identity").value;
+  const allowedStaff=()=>["doctor","nurse","admin"].includes(role());
+  function render(){
+    $("sessionState").textContent=state.session;
+    $("consentState").textContent=state.consent?"granted":"not_granted";
+    $("grant").disabled=role()!=="patient"||state.session==="completed";
+    $("revoke").disabled=role()!=="patient"||!state.consent||state.session==="completed";
+    $("join").disabled=!allowedStaff()||!state.consent||state.session==="completed";
+    $("complete").disabled=!allowedStaff()||state.session==="completed";
+    $("identityInfo").textContent=role()==="patient"?"Patient test identity: may grant or revoke consent for this fictional session.": "Staff test identity: may request a simulated join only after patient consent is granted.";
+  }
+  function message(text,ok=true){$("result").textContent=text;$("result").className="status "+(ok?"pass":"fail");}
+  function checks(){
+    const tests=[
+      ["No consent means no staff join",()=>!(!state.consent&&allowedStaff()&&state.session!=="completed")],
+      ["Patient identity cannot complete a session",()=>role()==="patient"||!$("complete").disabled],
+      ["Completed session cannot be joined",()=>state.session!=="completed"||$("join").disabled],
+      ["Consent controls are patient-only",()=>role()!=="patient"||!$("grant").disabled]
+    ];
+    $("checks").innerHTML=tests.map(([name,fn])=>{let ok=false;try{ok=!!fn()}catch(_e){}return '<li class="'+(ok?"pass":"fail")+'">'+(ok?"PASS — ":"CHECK — ")+name+"</li>";}).join("");
+  }
+  $("identity").addEventListener("change",()=>{render();checks();});
+  $("grant").addEventListener("click",()=>{if(role()!=="patient")return message("Blocked: only the patient test identity can grant consent.",false);state.consent=true;if(state.session==="awaiting_consent")state.session="ready";message("Synthetic consent granted. No real consent record was created.");render();checks();});
+  $("revoke").addEventListener("click",()=>{if(role()!=="patient")return message("Blocked: only the patient test identity can revoke consent.",false);state.consent=false;message("Synthetic consent revoked. Further simulated join requests are blocked.");render();checks();});
+  $("join").addEventListener("click",()=>{if(!allowedStaff())return message("Blocked: this identity is not authorised staff.",false);if(!state.consent)return message("Blocked: patient consent is required.",false);if(state.session==="completed")return message("Blocked: the session is completed.",false);state.session="active";message("Simulated join allowed. No provider room, URL, or token was created.");render();checks();});
+  $("complete").addEventListener("click",()=>{if(!allowedStaff())return message("Blocked: only staff may complete this test session.",false);state.session="completed";message("Synthetic session completed. No production record changed.");render();checks();});
+  $("reset").addEventListener("click",()=>{state.consent=false;state.session="awaiting_consent";message("Test state reset in this browser only.");render();checks();});
+  render();checks();
+})();
+</script>
+</body>
+</html>
