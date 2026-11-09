@@ -126,21 +126,25 @@
     const node=el("hospitalDiscoveryMap");
     if(!node || !window.L || map) return;
     map=L.map(node,{zoomControl:false,scrollWheelZoom:true,preferCanvas:true}).setView(defaultCenter,12);
-    // Three independent street-map providers. Fail over on repeated tile errors
-    // or when a provider produces no tiles at all (common on restricted mobile networks).
+    // Primary: Esri's key-free dark-gray basemap plus its separate readable
+    // reference labels/roads layer. Backups remain the existing OSM/HOT/Esri maps.
     const osmAttribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
     const hotAttribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, HOT';
     const esriAttribution='Tiles &copy; Esri — Sources: Esri, HERE, Garmin, OpenStreetMap contributors';
-    // Use key-free raster providers. The navy treatment is applied to Leaflet's
-    // tile pane with CSS, avoiding CARTO's API-key-gated raster endpoint.
-    baseTileLayer=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+    map.createPane("healthosDarkReferencePane");
+    map.getPane("healthosDarkReferencePane").style.zIndex=450;
+    map.getPane("healthosDarkReferencePane").style.pointerEvents="none";
+    baseTileLayer=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",{
+      maxZoom:19,maxNativeZoom:16,attribution:esriAttribution
+    });
+    const darkReferenceLayer=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",{
+      pane:"healthosDarkReferencePane",maxZoom:19,maxNativeZoom:16,attribution:esriAttribution
+    });
+    fallbackTileLayer=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
       subdomains:["a","b","c"],maxZoom:19,maxNativeZoom:19,attribution:osmAttribution
     });
-    fallbackTileLayer=L.tileLayer("https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",{
+    tertiaryTileLayer=L.tileLayer("https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",{
       subdomains:["a","b","c"],maxZoom:19,maxNativeZoom:19,attribution:hotAttribution
-    });
-    tertiaryTileLayer=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",{
-      maxZoom:19,attribution:esriAttribution
     });
     const tileProviders=[baseTileLayer,fallbackTileLayer,tertiaryTileLayer];
     function activateTileProvider(index,reason){
@@ -153,7 +157,9 @@
       tileErrorCount=0;
       tileProviderStartedAt=Date.now();
       tileProviders.forEach(layer=>{if(map.hasLayer(layer))map.removeLayer(layer);});
+      if(map.hasLayer(darkReferenceLayer))map.removeLayer(darkReferenceLayer);
       tileProviders[index].addTo(map);
+      if(index===0)darkReferenceLayer.addTo(map);
       setStatus(reason || (index===0?"Loading dark navy street map…":index===1?"Primary map unavailable. Loading backup street map…":"Loading final street-map provider…"));
       clearTimeout(tileLoadTimer);
       tileLoadTimer=setTimeout(()=>{
@@ -162,18 +168,22 @@
         }
       },9000);
     }
+    function onProviderTileError(index){
+      if(index!==activeTileProvider)return;
+      tileErrorCount++;
+      if(tileErrorCount>=3)activateTileProvider(index+1,"Map tile errors detected. Switching street-map provider…");
+    }
+    function onProviderTileLoad(index){
+      if(index!==activeTileProvider)return;
+      clearTimeout(tileLoadTimer);
+      setStatus(index===0?"Navy street map loaded. Search an area or zoom in to explore.":index===1?"Street map loaded using OpenStreetMap backup.":"Street map loaded using HOT backup.");
+    }
     tileProviders.forEach((layer,index)=>{
-      layer.on("tileerror",()=>{
-        if(index!==activeTileProvider)return;
-        tileErrorCount++;
-        if(tileErrorCount>=3)activateTileProvider(index+1,"Map tile errors detected. Switching street-map provider…");
-      });
-      layer.on("tileload",()=>{
-        if(index!==activeTileProvider)return;
-        clearTimeout(tileLoadTimer);
-        setStatus(index===0?"Dark navy street map loaded. Search an area or zoom in to explore.":index===1?"Dark navy street map loaded using backup tiles.":"Dark navy street map loaded using Esri backup.");
-      });
+      layer.on("tileerror",()=>onProviderTileError(index));
+      layer.on("tileload",()=>onProviderTileLoad(index));
     });
+    darkReferenceLayer.on("tileerror",()=>onProviderTileError(0));
+    darkReferenceLayer.on("tileload",()=>onProviderTileLoad(0));
     activateTileProvider(0);
     // Make hospital-name labels readable when users zoom in.
     if(!document.getElementById("healthos-hospital-map-label-style")){
