@@ -2024,3 +2024,34 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
 #staffVerificationCommandCenter{margin:18px 0 24px;border:1px solid #d8e3ed;border-radius:16px;background:#fff}
 #staffVerificationCommandCenter .staff-verification-boundary{margin-top:14px;padding:13px 15px;border-left:4px solid #d49a36;border-radius:8px;background:#fff8e8;color:#59451f;font-size:13px;line-height:1.55}
 #staffVerificationCommandCenter .stats-grid{margin-top:14px}
+
+
+/* Hospital discovery map — modestly taller viewport to reveal more surrounding streets. */
+#hospitalMap .healthos-map-stage{
+  min-height:560px!important;
+}
+#hospitalMap #hospitalDiscoveryMap{
+  height:74vh!important;
+  min-height:560px!important;
+  max-height:740px!important;
+}
+@media(max-width:850px){
+  #hospitalMap .healthos-map-stage{
+    min-height:70vh!important;
+  }
+  #hospitalMap #hospitalDiscoveryMap{
+    height:70vh!important;
+    min-height:520px!important;
+    max-height:700px!important;
+  }
+}
+@media(max-width:480px){
+  #hospitalMap .healthos-map-stage{
+    min-height:68vh!important;
+  }
+  #hospitalMap #hospitalDiscoveryMap{
+    height:68vh!important;
+    min-height:520px!important;
+    max-height:680px!important;
+  }
+}
