@@ -147,7 +147,7 @@
     if(typeof window.HealthOSMapLibreGL==="function"){
       try{
         vectorBasemapLayer=window.HealthOSMapLibreGL({
-          style:"https://tiles.openfreemap.org/styles/fiord",
+          style:"https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
           interactive:false
         }).addTo(map);
         const vectorMap=vectorBasemapLayer.getMaplibreMap();
@@ -158,29 +158,29 @@
           const layer=vectorMap.getStyle()?.layers?.find(item=>item.id===layerId);
           if(!layer||layer.type!=="symbol"||!layer.layout?.["text-field"]) return;
           vectorMap.setPaintProperty(layerId,"text-color",colorExpression);
-          vectorMap.setPaintProperty(layerId,"text-halo-color","#17243B");
-          vectorMap.setPaintProperty(layerId,"text-halo-width",1.8);
+          vectorMap.setPaintProperty(layerId,"text-halo-color","#FFFFFF");
+          vectorMap.setPaintProperty(layerId,"text-halo-width",2);
           vectorMap.setPaintProperty(layerId,"text-halo-blur",0.35);
         }
         function applyHealthOSGeographicLabelPalette(){
           if(!vectorMap.isStyleLoaded()) return;
-          styleGeographicLabel("place_state","#FFFFFF");
+          styleGeographicLabel("place_state","#526779");
           const capitalOrRegion=[
             "match",["get","capital"],
-            [1,2,"yes","primary"],"#FF9BCB",
-            "#FFC6A5"
+            [1,2,"yes","primary"],"#D71920",
+            "#F2A0C4"
           ];
           ["place_city","place_city_large"].forEach(id=>
             styleGeographicLabel(id,capitalOrRegion)
           );
           ["place_town","place_village","place_suburb","place_other"].forEach(id=>
-            styleGeographicLabel(id,"#FFC6A5")
+            styleGeographicLabel(id,"#E8A17B")
           );
         }
         vectorMap.once("load",applyHealthOSGeographicLabelPalette);
         vectorMap.once("load",()=>{
           vectorBasemapActive=true;
-          setStatus("Navy vector street map loaded. Search an area or zoom in to explore.");
+          setStatus("Light OpenStreetMap-style map loaded. Search an area or zoom in to explore.");
         });
         vectorMap.on("error",event=>{
           if(!vectorBasemapActive && event && event.error){
@@ -189,15 +189,15 @@
         });
         tileLoadTimer=setTimeout(()=>{
           if(!vectorBasemapActive && map && vectorBasemapLayer && map.hasLayer(vectorBasemapLayer)){
-            activateRasterFallback("The navy vector map did not finish loading. Showing the standard street-map backup; hospital functions remain available.");
+            activateRasterFallback("The light vector map did not finish loading. Showing the standard street-map backup; hospital functions remain available.");
           }
         },15000);
       }catch(error){
         console.error("HealthOS vector basemap initialization failed:",error);
-        activateRasterFallback("Navy vector map could not initialize. Showing the standard street-map backup.");
+        activateRasterFallback("Light vector map could not initialize. Showing the standard street-map backup.");
       }
     }else{
-      activateRasterFallback("Navy vector map library is unavailable. Showing the standard street-map backup.");
+      activateRasterFallback("Vector map library is unavailable. Showing the standard street-map backup.");
     }
     // Make hospital-name labels readable when users zoom in.
     if(!document.getElementById("healthos-hospital-map-label-style")){
