@@ -1908,33 +1908,23 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
   border-radius: 999px !important;
   padding: 10px 14px !important;
 }
-#hospitalMap #hospitalDiscoveryMap {
-  background: #111828 !important;
-}
-#hospitalMap #hospitalDiscoveryMap {
-  background: #1B2D49 !important;
-}
-#hospitalMap #hospitalDiscoveryMap .leaflet-tile-pane {
-  background: #1B2D49 !important;
-  filter: none !important;
-}
+/* White OpenStreetMap-style map surface. The surrounding HealthOS interface is unchanged. */
+#hospitalMap #hospitalDiscoveryMap,
+#hospitalMap #hospitalDiscoveryMap .leaflet-tile-pane,
 #hospitalMap #hospitalDiscoveryMap .leaflet-maplibre-gl-layer,
 #hospitalMap #hospitalDiscoveryMap .maplibregl-map,
 #hospitalMap #hospitalDiscoveryMap .maplibregl-canvas-container,
 #hospitalMap #hospitalDiscoveryMap canvas.maplibregl-canvas {
-  background: #1B2D49 !important;
+  background: #FFFFFF !important;
+  filter: none !important;
 }
-#hospitalMap #hospitalDiscoveryMap .maplibregl-canvas {
-  outline: none !important;
-}
+#hospitalMap #hospitalDiscoveryMap .maplibregl-canvas { outline: none !important; }
 #hospitalMap .healthos-map-stage {
-  background: #111828 !important;
+  background: #FFFFFF !important;
   border-radius: 14px !important;
   padding: 0 !important;
 }
-#hospitalMap #hospitalMapStatus {
-  color: #E2E8F0 !important;
-}
+#hospitalMap #hospitalMapStatus { color: #526579 !important; }
 @media (max-width: 600px) {
   #hospitalMap .hospital-map-panel {
     padding: 13px !important;
@@ -1990,3 +1980,9 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
  #hospitalMap .hospital-cards-panel{max-height:32%}
  #hospitalMap .hospital-discovery-card{flex-basis:86vw}
 }
+
+
+/* Map-only palette: white land, native road styling, retained city/region label accents. */
+#hospitalMap #hospitalDiscoveryMap .leaflet-tile-pane { background:#fff!important; }
+#hospitalMap #hospitalDiscoveryMap .leaflet-control-attribution { background:rgba(255,255,255,.94)!important;color:#526579!important; }
+#hospitalMap #hospitalDiscoveryMap .leaflet-control-attribution a { color:#1769aa!important; }
