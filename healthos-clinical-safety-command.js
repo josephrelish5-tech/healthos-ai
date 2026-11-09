@@ -81,4 +81,54 @@
  $("healthosEscalationStatus")?.addEventListener("change",()=>void loadEscalations());
  window.loadHealthOSDepartmentEscalationMonitor=loadEscalations;
 
+
+ async function loadClinicalIncidents(){
+  const panel=$("healthosClinicalIncidentIntegration");if(!panel)return;
+  const admin=typeof managementVerified!=="undefined"&&managementVerified===true;panel.hidden=!admin;if(!admin)return;
+  const message=$("healthosClinicalIncidentMessage"),button=$("healthosClinicalIncidentRefresh");
+  if(typeof supabaseClient==="undefined"||!supabaseClient||typeof currentClinic==="undefined"||!currentClinic?.id||typeof currentUser==="undefined"||!currentUser?.id){if(message)message.textContent="Sign in with a verified hospital administrator account to load the overview.";return;}
+  const clinicId=currentClinic.id;if(button)button.disabled=true;
+  if(message){message.textContent="Loading permitted incident sources. Database access policies remain in force.";message.className="message";}
+  try{
+   const requests=[
+    ["Hospital incident register",supabaseClient.from("hospital_incident_reports").select("incident_reference,category,severity,department_name,reported_at,status,escalation_required").eq("clinic_id",clinicId).order("reported_at",{ascending:false}).limit(100)],
+    ["Laboratory critical results",supabaseClient.from("laboratory_test_results").select("id,request_id,is_critical,status,entered_at").eq("clinic_id",clinicId).eq("is_critical",true).order("entered_at",{ascending:false}).limit(100)],
+    ["Radiology critical findings",supabaseClient.from("radiology_reports").select("id,request_id,critical_finding,status,entered_at").eq("clinic_id",clinicId).eq("critical_finding",true).order("entered_at",{ascending:false}).limit(100)],
+    ["ICU emergency incidents",supabaseClient.from("icu_emergency_incidents").select("id,incident_type,severity,status,occurred_at,created_at").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(100)],
+    ["Clinical decision-support alerts",supabaseClient.from("clinical_decision_support_alerts").select("id,rule_code,severity,status,created_at").eq("clinic_id",clinicId).order("created_at",{ascending:false}).limit(100)]
+   ];
+   const settled=await Promise.allSettled(requests.map(x=>x[1]));
+   if(typeof currentClinic==="undefined"||currentClinic?.id!==clinicId)throw new Error("Hospital context changed during loading. Refresh to load the correct clinic.");
+   const events=[],available=[],restricted=[],makeRef=(p,id)=>p+" · "+String(id||"").slice(0,8);
+   settled.forEach((result,index)=>{
+    const source=requests[index][0];if(result.status!=="fulfilled"||result.value.error){restricted.push(source);return;}available.push(source);
+    (result.value.data||[]).forEach(row=>{let e=null;
+     if(index===0)e={source,reference:row.incident_reference,department:row.department_name||"Hospital incident",kind:String(row.category||"incident").replaceAll("_"," "),severity:row.severity,status:row.status,at:row.reported_at};
+     if(index===1)e={source,reference:makeRef("LAB",row.id),department:"Laboratory",kind:"Critical test result",severity:"critical",status:row.status,at:row.entered_at};
+     if(index===2)e={source,reference:makeRef("RAD",row.id),department:"Radiology",kind:"Critical imaging finding",severity:"critical",status:row.status,at:row.entered_at};
+     if(index===3)e={source,reference:makeRef("ICU",row.id),department:"ICU",kind:String(row.incident_type||"emergency").replaceAll("_"," "),severity:row.severity,status:row.status,at:row.occurred_at||row.created_at};
+     if(index===4)e={source,reference:makeRef("CDS",row.id),department:"Clinical decision support",kind:String(row.rule_code||"clinical alert").replaceAll("_"," "),severity:row.severity,status:row.status,at:row.created_at};
+     if(e)events.push(e);
+    });
+   });
+   const done=e=>["resolved","closed","released"].includes(String(e.status||"").toLowerCase()),active=events.filter(e=>!done(e));
+   $("healthosIncidentOpenCount").textContent=String(active.length);
+   $("healthosIncidentCriticalCount").textContent=String(active.filter(e=>String(e.severity||"").toLowerCase()==="critical").length);
+   $("healthosIncidentUrgentCount").textContent=String(active.filter(e=>["urgent","high"].includes(String(e.severity||"").toLowerCase())).length);
+   $("healthosIncidentSourcesCount").textContent=available.length+" / "+requests.length;
+   const sev=$("healthosIncidentSeverity")?.value||"all",status=$("healthosIncidentStatus")?.value||"active";
+   const filtered=events.filter(e=>(sev==="all"||String(e.severity||"").toLowerCase()===sev)&&(status==="all"||(status==="active"?!done(e):done(e))));
+   filtered.sort((a,b)=>new Date(b.at||0)-new Date(a.at||0));
+   const body=$("healthosClinicalIncidentRows");if(body){body.replaceChildren();if(!filtered.length){const tr=body.insertRow(),td=tr.insertCell();td.colSpan=6;td.textContent="No permitted incident records match these filters. This is not proof that no clinical risk exists.";}filtered.forEach(e=>{const tr=body.insertRow(),put=v=>{const td=tr.insertCell();td.textContent=String(v??"—");return td;};put(e.at?new Date(e.at).toLocaleString():"—");put(e.source);put(e.reference);put([e.department,e.kind].filter(Boolean).join(" · "));const sv=put(String(e.severity||"unrated").toUpperCase());sv.className="healthos-safety-severity healthos-safety-"+String(e.severity||"").toLowerCase();put(String(e.status||"—").replaceAll("_"," "));});}
+   const updated=$("healthosIncidentUpdated");if(updated)updated.textContent="Updated "+new Date().toLocaleTimeString();
+   if(message){message.textContent="Loaded "+events.length+" event(s) from "+available.length+" permitted source(s)."+(restricted.length?" Restricted by existing database permissions: "+restricted.join(", ")+".":" All five sources were accessible.");message.className=restricted.length?"message":"message success";}
+  }catch(error){console.error("Clinical incident integration failed",error);if(message){message.textContent=error?.message||"Could not load the incident overview. No clinical record was changed.";message.className="message error";}}
+  finally{if(button)button.disabled=false;}
+ }
+ $("healthosClinicalIncidentRefresh")?.addEventListener("click",()=>void loadClinicalIncidents());
+ $("healthosIncidentSeverity")?.addEventListener("change",()=>void loadClinicalIncidents());
+ $("healthosIncidentStatus")?.addEventListener("change",()=>void loadClinicalIncidents());
+ window.loadHealthOSClinicalIncidentIntegration=loadClinicalIncidents;
+ setInterval(()=>{if(!document.hidden&&typeof currentClinic!=="undefined"&&currentClinic?.id&&typeof managementVerified!=="undefined"&&managementVerified===true)void loadClinicalIncidents();},90000);
+
 })();
