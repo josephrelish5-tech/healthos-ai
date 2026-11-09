@@ -322,7 +322,7 @@ Deno.serve(async (req: Request) => {
           severity: "critical",
           alert_status: "open",
         });
-        if (alertInsertError) {
+        if (alertInsertError && alertInsertError.code !== "23505") {
           console.error("Evidence tamper alert could not be persisted.");
           return json(req, 503, { error: "Tamper alert could not be safely recorded. File retrieval has been blocked." });
         }
