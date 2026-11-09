@@ -16917,7 +16917,7 @@ window.loadHealthOSLaboratoryWorkspace=load;
         rows.replaceChildren();
         const row = document.createElement("tr");
         const td = document.createElement("td");
-        td.colSpan = 5;
+        td.colSpan = 6;
         td.textContent = text;
         row.appendChild(td);
         rows.appendChild(row);
@@ -16994,6 +16994,22 @@ window.loadHealthOSLaboratoryWorkspace=load;
                     cell(row, item.task_title || "Untitled task");
                     cell(row, String(item.status || "—").replaceAll("_", " ").toUpperCase());
                     cell(row, formatDate(item.created_at));
+                    const action = document.createElement("td");
+                    if (item.task_id && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(String(item.task_id))) {
+                        const open = document.createElement("button");
+                        open.type = "button";
+                        open.className = "secondary-button";
+                        open.textContent = "View dossier";
+                        open.addEventListener("click", () => {
+                            if (typeof window.openHospitalInvestigationDossier === "function") {
+                                void window.openHospitalInvestigationDossier(item.task_id);
+                            }
+                        });
+                        action.appendChild(open);
+                    } else {
+                        action.textContent = "Task reference unavailable";
+                    }
+                    row.appendChild(action);
                     rows.appendChild(row);
                 });
             }
@@ -17026,3 +17042,169 @@ window.loadHealthOSLaboratoryWorkspace=load;
     window.loadHospitalAccountabilityCommandCentre = load;
 })();
 // END STAGE 5D PART 2N
+
+
+// STAGE 5D PART 2O-B: READ-ONLY HOSPITAL INVESTIGATION DOSSIER INTERFACE
+(function initHospitalInvestigationDossier() {
+    const $ = id => document.getElementById(id);
+    const panel = $("hospitalInvestigationDossierPanel");
+    const message = $("hospitalInvestigationDossierMessage");
+    const content = $("hospitalInvestigationDossierContent");
+    const close = $("closeHospitalInvestigationDossier");
+    if (!panel || !message || !content || !close || close.dataset.bound === "1") return;
+    close.dataset.bound = "1";
+    let requestVersion = 0;
+    const date = value => {
+        if (!value) return "—";
+        const d = new Date(value);
+        return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+    };
+    const value = x => x === null || x === undefined || x === "" ? "—" : String(x);
+    function status(text, error = false) {
+        message.textContent = text;
+        message.className = error ? "message error" : "message";
+    }
+    function el(tag, text, className) {
+        const node = document.createElement(tag);
+        if (text !== undefined) node.textContent = value(text);
+        if (className) node.className = className;
+        return node;
+    }
+    function field(container, label, val) {
+        const line = el("p");
+        const title = el("strong", label + ": ");
+        line.appendChild(title);
+        line.appendChild(document.createTextNode(value(val)));
+        container.appendChild(line);
+    }
+    function section(title, items, render) {
+        const wrap = el("section", undefined, "panel");
+        wrap.style.marginTop = "12px";
+        wrap.appendChild(el("h4", title));
+        if (!items.length) {
+            wrap.appendChild(el("p", "No records available."));
+        } else {
+            const list = el("ol");
+            for (const item of items) {
+                const li = el("li");
+                render(li, item);
+                list.appendChild(li);
+            }
+            wrap.appendChild(list);
+        }
+        content.appendChild(wrap);
+    }
+    function render(data) {
+        content.replaceChildren();
+        const task = data.task || {};
+        const overview = el("section", undefined, "panel");
+        overview.appendChild(el("h4", "Task and duty assignment"));
+        field(overview, "Task", task.title);
+        field(overview, "Task reference", task.task_id);
+        field(overview, "Status", task.status);
+        field(overview, "Priority", task.priority);
+        field(overview, "Created", date(task.created_at));
+        field(overview, "Due", date(task.due_at));
+        field(overview, "Completed", date(task.completed_at));
+        field(overview, "Review", task.review_status);
+        field(overview, "Reviewed at", date(task.reviewed_at));
+        field(overview, "Duty reference", task.duty_id);
+        field(overview, "Duty snapshot source", task.duty_snapshot_source);
+        field(overview, "Duty snapshot captured", date(task.duty_snapshot_captured_at));
+        const snapshot = task.duty_snapshot;
+        if (snapshot && typeof snapshot === "object") {
+            const allowed = ["duty_name", "duty_title", "title", "duty_code", "job_profile_name", "department_name", "role_name"];
+            allowed.forEach(key => {
+                if (typeof snapshot[key] === "string" || typeof snapshot[key] === "number") {
+                    field(overview, key.replaceAll("_", " "), snapshot[key]);
+                }
+            });
+            overview.appendChild(el("p", "Only selected duty-snapshot labels are shown; original snapshot remains preserved in the database.", "muted"));
+        }
+        content.appendChild(overview);
+
+        const people = data.people || {};
+        const peoplePanel = el("section", undefined, "panel");
+        peoplePanel.style.marginTop = "12px";
+        peoplePanel.appendChild(el("h4", "Accountable people"));
+        for (const [key, label] of Object.entries({
+            assignee: "Assigned staff", assigning_supervisor: "Assigning supervisor",
+            requester: "Requester", direct_supervisor: "Direct supervisor", reviewer: "Reviewer"
+        })) {
+            const person = people[key];
+            field(peoplePanel, label, person ? (value(person.name) + " · Staff ID " + value(person.staff_id)) : "Not recorded");
+        }
+        content.appendChild(peoplePanel);
+
+        section("Task action timeline", Array.isArray(data.task_timeline) ? data.task_timeline : [], (li, x) => {
+            li.textContent = date(x.occurred_at) + " — " + value(x.event_type) +
+                " (" + value(x.from_status) + " → " + value(x.to_status) + ")" +
+                " · " + value(x.actor_name);
+        });
+        section("Evidence register (metadata only)", Array.isArray(data.evidence_register) ? data.evidence_register : [], (li, x) => {
+            li.textContent = value(x.evidence_type) + " · " + value(x.submitted_by_name) +
+                " · " + date(x.created_at) + " · Uploaded file: " + (x.has_uploaded_file ? "recorded" : "not recorded") +
+                " · Text entry: " + (x.has_text_entry ? "recorded" : "not recorded") +
+                " · Source reference: " + (x.has_source_reference ? "recorded" : "not recorded");
+        });
+        section("Escalation records", Array.isArray(data.escalations) ? data.escalations : [], (li, x) => {
+            li.textContent = date(x.created_at) + " — " + value(x.severity) + " / " + value(x.status) +
+                " · " + value(x.reason) + " · Resolution: " + date(x.resolved_at);
+        });
+        section("Escalation event history", Array.isArray(data.escalation_events) ? data.escalation_events : [], (li, x) => {
+            li.textContent = date(x.occurred_at) + " — " + value(x.action) +
+                " · Actor user ID: " + value(x.actor_user_id);
+        });
+        section("Investigation and independent resolution actions",
+            Array.isArray(data.investigation_actions) ? data.investigation_actions : [], (li, x) => {
+                li.textContent = date(x.created_at) + " — " + value(x.action_type) +
+                    " · Cycle " + value(x.cycle_no) + " · " + value(x.actor_name) +
+                    " · Evidence reference: " + (x.has_evidence_reference ? "recorded" : "not recorded") +
+                    (x.action_notes ? " · Notes: " + value(x.action_notes) : "");
+            });
+    }
+    async function open(taskId) {
+        if (!currentUser || !currentClinic?.id) {
+            status("Sign in and select an active hospital first.", true);
+            return;
+        }
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(taskId))) {
+            status("A valid task reference is required.", true);
+            return;
+        }
+        const request = ++requestVersion;
+        const clinicId = currentClinic.id;
+        panel.hidden = false;
+        content.replaceChildren();
+        status("Loading the restricted investigation dossier. Hospital and management permissions are checked by the database.");
+        panel.scrollIntoView({ behavior: "smooth", block: "start" });
+        try {
+            const { data, error } = await supabaseClient.rpc("get_hospital_accountability_investigation_dossier", {
+                p_clinic_id: clinicId, p_task_id: taskId
+            });
+            if (request !== requestVersion || panel.hidden) return;
+            if (error) throw error;
+            if (!data || data.read_only !== true || data.dossier_type !== "hospital_accountability_investigation" ||
+                data.task?.clinic_id !== clinicId || data.task?.task_id !== taskId) {
+                throw new Error("Dossier failed hospital and task scope verification.");
+            }
+            render(data);
+            status("Read-only dossier loaded. Evidence files and raw evidence text are deliberately excluded.");
+        } catch (error) {
+            if (request !== requestVersion || panel.hidden) return;
+            console.error("Investigation dossier could not be loaded", error);
+            content.replaceChildren();
+            status(error?.code === "PGRST202"
+                ? "Investigation dossier is not yet available on this database. Apply and verify the Part 2O-A migration first."
+                : (error.message || "Dossier unavailable. Confirm hospital management permissions and migration status."), true);
+        }
+    }
+    close.addEventListener("click", () => {
+        requestVersion++;
+        panel.hidden = true;
+        content.replaceChildren();
+        status("Select an incident to view its dossier.");
+    });
+    window.openHospitalInvestigationDossier = open;
+})();
+// END STAGE 5D PART 2O-B
