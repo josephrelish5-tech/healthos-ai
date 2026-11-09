@@ -61,7 +61,10 @@ begin
       'job_profile_id', jp.id,
       'job_title', jp.job_title,
       'job_profile_validation_status', jp.validation_status,
-      'department_role_id', dr.id
+      'department_role_id', dr.id,
+      'duty_department_id', dr.department_id,
+      'duty_department_name', duty_department.department_name,
+      'department_matches_task_department', dr.department_id = t.department_id
     ) end,
     'evidence_count', coalesce(ev.evidence_count, 0)
   ) order by
@@ -82,6 +85,8 @@ begin
     on jp.id = jd.job_profile_id and jp.clinic_id = jd.clinic_id
   left join public.clinic_department_roles dr
     on dr.id = jp.department_role_id and dr.clinic_id = jp.clinic_id
+  left join public.clinic_departments duty_department
+    on duty_department.id = dr.department_id and duty_department.clinic_id = dr.clinic_id
   left join lateral (
     select count(*)::integer as evidence_count
     from public.staff_task_evidence e
@@ -168,7 +173,10 @@ begin
       'job_profile_id', jp.id,
       'job_title', jp.job_title,
       'job_profile_validation_status', jp.validation_status,
-      'department_role_id', dr.id
+      'department_role_id', dr.id,
+      'duty_department_id', dr.department_id,
+      'duty_department_name', duty_department.department_name,
+      'department_matches_task_department', dr.department_id = t.department_id
     ) end,
     'evidence', coalesce(ev.items, '[]'::jsonb),
     'events', coalesce(evt.items, '[]'::jsonb)
@@ -193,6 +201,8 @@ begin
     on jp.id = jd.job_profile_id and jp.clinic_id = jd.clinic_id
   left join public.clinic_department_roles dr
     on dr.id = jp.department_role_id and dr.clinic_id = jp.clinic_id
+  left join public.clinic_departments duty_department
+    on duty_department.id = dr.department_id and duty_department.clinic_id = dr.clinic_id
   left join lateral (
     select jsonb_agg(jsonb_build_object(
       'id', e.id, 'type', e.evidence_type, 'text', e.evidence_text,
@@ -387,7 +397,10 @@ begin
       'job_profile_id', jp.id,
       'job_title', jp.job_title,
       'job_profile_validation_status', jp.validation_status,
-      'department_role_id', dr.id
+      'department_role_id', dr.id,
+      'duty_department_id', dr.department_id,
+      'duty_department_name', duty_department.department_name,
+      'department_matches_task_department', dr.department_id = t.department_id
     ) end,
     'evidence', coalesce(ev.items, '[]'::jsonb),
     'events', coalesce(evt.items, '[]'::jsonb)
@@ -416,6 +429,8 @@ begin
     on jp.id = jd.job_profile_id and jp.clinic_id = jd.clinic_id
   left join public.clinic_department_roles dr
     on dr.id = jp.department_role_id and dr.clinic_id = jp.clinic_id
+  left join public.clinic_departments duty_department
+    on duty_department.id = dr.department_id and duty_department.clinic_id = dr.clinic_id
   left join lateral (
     select jsonb_agg(jsonb_build_object(
       'id', e.id, 'evidence_type', e.evidence_type,
