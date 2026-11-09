@@ -1968,6 +1968,8 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
 #hospitalMap .hospital-verified-badge{display:inline-flex;max-width:100%;white-space:normal;font-size:10px}
 #hospitalMap .hospital-map-panel>#hospitalMapStatus{margin:8px 5px 2px;font-size:12px}
 #hospitalMap .hospital-discovery-layout.cards-view-active .healthos-map-stage{min-height:0;overflow:visible}
+#hospitalMap .hospital-discovery-layout.cards-view-active .healthos-map-stage>#hospitalDiscoveryMap,
+#hospitalMap .hospital-discovery-layout.cards-view-active .healthos-map-floating-controls{display:none!important}
 #hospitalMap .hospital-discovery-layout.cards-view-active .hospital-cards-panel{position:static;max-height:none;overflow:visible;margin-top:14px;box-shadow:none;backdrop-filter:none}
 #hospitalMap .hospital-discovery-layout.cards-view-active .hospital-discovery-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));overflow:visible}
 #hospitalMap .hospital-discovery-layout.cards-view-active .hospital-discovery-group{display:contents}
