@@ -16,6 +16,7 @@ create table if not exists public.staff_task_investigation_pattern_signals (
   signal_type text not null check (signal_type in (
     'repeat_evidence_integrity_alerts_by_uploader',
     'repeat_alerts_on_same_task',
+    'repeat_corrective_action_rework',
     'hospital_wide_alert_spike'
   )),
   subject_type text not null check (subject_type in ('staff_profile','task','clinic')),
@@ -154,6 +155,25 @@ begin
     group by b.task_id
     having count(distinct b.alert_id) >= 2
   ),
+  corrective_rework_patterns as (
+    select 'repeat_corrective_action_rework'::text signal_type,
+      'task'::text subject_type,
+      null::uuid subject_staff_profile_id,
+      h.task_id subject_task_id,
+      count(*)::integer event_count,
+      min(h.created_at) first_event_at,
+      max(h.created_at) last_event_at,
+      array_agg(distinct h.alert_id) source_alert_ids,
+      case when count(*) >= 5 then 'priority_review'
+           when count(*) >= 3 then 'elevated' else 'watch' end review_priority,
+      least(100, count(*) * 20)::integer indicator_score
+    from public.staff_task_investigation_corrective_action_history h
+    where h.clinic_id = p_clinic_id
+      and h.action_type in ('reopened','cancelled')
+      and h.created_at >= now() - make_interval(days => v_window)
+    group by h.task_id
+    having count(*) >= 2
+  ),
   clinic_pattern as (
     select 'hospital_wide_alert_spike'::text signal_type,
       'clinic'::text subject_type,
@@ -174,6 +194,7 @@ begin
   detected as (
     select * from staff_patterns
     union all select * from task_patterns
+    union all select * from corrective_rework_patterns
     union all select * from clinic_pattern
   )
   insert into public.staff_task_investigation_pattern_signals(
@@ -189,6 +210,8 @@ begin
         'The same evidence uploader profile is linked to multiple distinct evidence-integrity alerts in the selected window. This is an indicator for independent review, not evidence of intent or misconduct.'
       when 'repeat_alerts_on_same_task' then
         'Multiple distinct evidence-integrity alerts are linked to the same hospital task in the selected window. Review the task history, evidence chain and operational context.'
+      when 'repeat_corrective_action_rework' then
+        'Corrective actions linked to this task were repeatedly reopened or cancelled in the selected window. Review whether the original corrective plan, resources, ownership or process controls are adequate.'
       else
         'The hospital recorded at least three evidence-integrity alerts in the last 30 days. Review whether a shared process, storage, training or operational issue explains the increase.'
     end
