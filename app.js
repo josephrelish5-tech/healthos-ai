@@ -2856,11 +2856,30 @@ await startStaffPresenceTracking(
                             auditStats.setAttribute("data-integrity-stats", "");
                             const auditFindings = document.createElement("div");
                             auditFindings.setAttribute("data-integrity-findings", "");
-                            departmentPanel.append(departmentHeading, roles, auditRefresh, auditStatus, auditStats, auditFindings);
+                            const escalationHeading = document.createElement("h5");
+                            escalationHeading.textContent = "Escalations & Exceptions";
+                            const escalationIntro = document.createElement("p");
+                            escalationIntro.className = "muted";
+                            escalationIntro.textContent = "Read-only exception queue. It identifies records requiring human attention; it does not send notifications or prove misconduct.";
+                            const escalationRefresh = document.createElement("button");
+                            escalationRefresh.type = "button";
+                            escalationRefresh.className = "secondary-button";
+                            escalationRefresh.textContent = "Refresh escalations";
+                            const escalationStatus = document.createElement("p");
+                            escalationStatus.className = "message";
+                            escalationStatus.setAttribute("role", "status");
+                            const escalationStats = document.createElement("div");
+                            escalationStats.className = "department-workspace-stats";
+                            const escalationFindings = document.createElement("div");
+                            departmentPanel.append(departmentHeading, roles, auditRefresh, auditStatus, auditStats, auditFindings,
+                                escalationHeading, escalationIntro, escalationRefresh, escalationStatus, escalationStats, escalationFindings);
                             managerAuditList.appendChild(departmentPanel);
                             auditRefresh.addEventListener("click", () =>
                                 void loadDepartmentTaskIntegrityAudit(clinic, department.department_id, departmentPanel));
+                            escalationRefresh.addEventListener("click", () =>
+                                void loadDepartmentTaskEscalations(clinic, department.department_id, escalationStatus, escalationStats, escalationFindings, escalationRefresh));
                             void loadDepartmentTaskIntegrityAudit(clinic, department.department_id, departmentPanel);
+                            void loadDepartmentTaskEscalations(clinic, department.department_id, escalationStatus, escalationStats, escalationFindings, escalationRefresh);
                         });
                         managerAuditStatus.textContent = managedDepartments.length +
                             " appointed department(s) found. Only these department IDs were requested; audit access is revalidated by Supabase.";
@@ -4925,6 +4944,82 @@ async function loadDepartmentTaskIntegrityAudit(clinic, departmentId, panel) {
         console.error("Department task integrity audit unavailable:", error);
         status.textContent = /function .*get_department_task_integrity_audit.* does not exist|could not find the function/i.test(error.message || "")
             ? "Accountability audit is prepared in GitHub but its Supabase migration has not been applied yet. No audit totals are being presented."
+            : friendlyError(error);
+        status.className = "message error";
+    } finally {
+        if (refresh) refresh.disabled = false;
+    }
+}
+
+async function loadDepartmentTaskEscalations(clinic, departmentId, status, stats, findings, refresh) {
+    if (!clinic || !departmentId || !status || !stats || !findings ||
+        !currentUser || !currentClinic || clinic.id !== currentClinic.id) return;
+    if (refresh) refresh.disabled = true;
+    status.textContent = "Checking department escalation conditions...";
+    status.className = "message";
+    stats.replaceChildren();
+    findings.replaceChildren();
+    try {
+        const { data, error } = await supabaseClient.rpc("get_department_task_escalations", {
+            p_clinic_id: clinic.id, p_department_id: departmentId, p_limit: 100
+        });
+        if (error) throw error;
+        if (!data || data.read_only !== true || data.department_id !== departmentId ||
+            data.clinic_id !== clinic.id || data.scope !== "appointed_department_or_hospital_admin") {
+            throw new Error("The escalation response failed its clinic, department or read-only scope checks.");
+        }
+        const summary = data.summary || {};
+        [
+            ["Tasks assessed", summary.tasks_assessed],
+            ["Tasks with escalations", summary.tasks_with_escalations],
+            ["Overdue tasks", summary.overdue_tasks],
+            ["Review overdue (24h+)", summary.review_overdue],
+            ["Repeated corrections (2+)", summary.repeated_corrections],
+            ["Missing required evidence", summary.missing_required_evidence],
+            ["Approval exceptions", summary.approval_exceptions],
+            ["Missing accountability records", summary.missing_accountability_records]
+        ].forEach(([label, value]) => healthOSAppendAuditStat(stats, label, value));
+        const rows = Array.isArray(data.escalations) ? data.escalations : [];
+        if (!rows.length) {
+            const empty = document.createElement("p");
+            empty.className = "muted";
+            empty.textContent = "No escalation conditions were detected in the assessed task records.";
+            findings.appendChild(empty);
+        } else {
+            rows.forEach(item => {
+                const card = document.createElement("article");
+                card.className = "department-workspace-role";
+                const title = document.createElement("h5");
+                title.textContent = item.task_title || "Untitled task";
+                const detail = document.createElement("p");
+                detail.className = "muted";
+                detail.textContent = (item.assignee_name || "Unassigned / unknown staff") +
+                    " · " + String(item.task_status || "unknown").replace(/_/g, " ") +
+                    " · " + String(item.severity || "review").toUpperCase();
+                const reasons = document.createElement("p");
+                reasons.textContent = "Detected conditions: " +
+                    (Array.isArray(item.conditions) ? item.conditions.map(value => String(value).replace(/_/g, " ")).join("; ") : "Review required");
+                const route = document.createElement("p");
+                route.textContent = "Recommended escalation: " +
+                    String(item.recommended_recipient || "Department management").replace(/_/g, " ") +
+                    (item.escalation_reason ? " · " + item.escalation_reason : "");
+                const timing = document.createElement("p");
+                timing.className = "stat-note";
+                const age = item.review_wait_hours == null ? "" : " · Waiting for review: " + Number(item.review_wait_hours).toFixed(1) + " hour(s)";
+                timing.textContent = (item.due_at ? "Due: " + new Date(item.due_at).toLocaleString() : "No due date recorded") +
+                    age + " · Correction returns: " + Number(item.correction_count || 0);
+                card.append(title, detail, reasons, route, timing);
+                findings.appendChild(card);
+            });
+        }
+        status.textContent = "Read-only escalation queue refreshed. " +
+            Number(summary.tasks_with_escalations || 0) + " task(s) require human review; " +
+            Number(summary.escalations_returned || rows.length) + " are displayed. No alerts or notifications were sent.";
+        status.className = "message success";
+    } catch (error) {
+        console.error("Department escalation queue unavailable:", error);
+        status.textContent = /function .*get_department_task_escalations.* does not exist|could not find the function/i.test(error.message || "")
+            ? "The escalation queue is committed to GitHub, but its Supabase migration has not been applied. No escalation totals are being presented."
             : friendlyError(error);
         status.className = "message error";
     } finally {
