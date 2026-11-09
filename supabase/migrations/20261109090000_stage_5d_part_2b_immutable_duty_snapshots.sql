@@ -85,6 +85,8 @@ begin
 end;
 $function$;
 
+revoke all on function public.protect_staff_task_duty_snapshot() from public, anon, authenticated;
+
 drop trigger if exists staff_tasks_protect_duty_snapshot
   on public.staff_tasks;
 
