@@ -46,7 +46,8 @@ function signatureMatches(mime: string, bytes: Uint8Array) {
     new TextDecoder().decode(bytes.slice(8, 12)) === "WEBP";
   return false;
 }
-function isMissingStorageObject(error: unknown) {
+function isMissingStorageObject(error: unknown, objectPresent: boolean) {
+  if (!objectPresent) return true;
   const e = error as { statusCode?: string; status?: number; message?: string };
   return e?.statusCode === "404" || e?.status === 404 || /not found|object not found/i.test(e?.message || "");
 }
@@ -126,7 +127,6 @@ Deno.serve(async (req: Request) => {
       .eq("status", "active")
       .maybeSingle();
     if (membershipResult.error || !membershipResult.data) return json(req, 403, { error: "Active hospital membership is required." });
-    const role = membershipResult.data.role;
     const profileId = profileByClinic.get(clinicId) || null;
 
     if (action === "upload") {
@@ -244,7 +244,7 @@ Deno.serve(async (req: Request) => {
     let errorCode: string | null = null;
 
     if (downloadError || !object) {
-      verificationResult = isMissingStorageObject(downloadError) ? "file_missing" : "verification_error";
+      verificationResult = isMissingStorageObject(downloadError, Boolean(object)) ? "file_missing" : "verification_error";
       errorCode = verificationResult === "file_missing" ? "STORAGE_OBJECT_MISSING" : "STORAGE_READ_FAILED";
     } else {
       fileBytes = new Uint8Array(await object.arrayBuffer());
@@ -282,7 +282,7 @@ Deno.serve(async (req: Request) => {
       verificationResult === "hash_mismatch" ? "hash_mismatch" :
       verificationResult === "file_missing" ? "file_missing" : "error";
 
-    await adminClient.from("staff_task_evidence_file_access_log").insert({
+    const { error: accessLogError } = await adminClient.from("staff_task_evidence_file_access_log").insert({
       clinic_id: clinicId,
       task_id: taskId,
       evidence_id: evidenceId,
@@ -292,17 +292,40 @@ Deno.serve(async (req: Request) => {
       outcome: accessOutcome,
       verification_id: verification.id,
     });
+    if (accessLogError) {
+      console.error("Evidence access audit could not be recorded.");
+      return json(req, 503, { error: "Access history could not be safely recorded. File retrieval has been blocked." });
+    }
 
     if (verificationResult === "hash_mismatch" || verificationResult === "file_missing") {
-      await adminClient.from("staff_task_evidence_file_tamper_alerts").insert({
-        clinic_id: clinicId,
-        task_id: taskId,
-        evidence_id: evidenceId,
-        verification_id: verification.id,
-        alert_type: verificationResult === "hash_mismatch" ? "uploaded_file_hash_mismatch" : "uploaded_file_missing",
-        severity: "critical",
-        alert_status: "open",
-      });
+      const { data: existingAlert, error: alertLookupError } = await adminClient
+        .from("staff_task_evidence_file_tamper_alerts")
+        .select("id")
+        .eq("clinic_id", clinicId)
+        .eq("task_id", taskId)
+        .eq("evidence_id", evidenceId)
+        .eq("alert_status", "open")
+        .limit(1)
+        .maybeSingle();
+      if (alertLookupError) {
+        console.error("Evidence tamper alert lookup failed.");
+        return json(req, 503, { error: "Tamper alert status could not be confirmed. File retrieval has been blocked." });
+      }
+      if (!existingAlert) {
+        const { error: alertInsertError } = await adminClient.from("staff_task_evidence_file_tamper_alerts").insert({
+          clinic_id: clinicId,
+          task_id: taskId,
+          evidence_id: evidenceId,
+          verification_id: verification.id,
+          alert_type: verificationResult === "hash_mismatch" ? "uploaded_file_hash_mismatch" : "uploaded_file_missing",
+          severity: "critical",
+          alert_status: "open",
+        });
+        if (alertInsertError) {
+          console.error("Evidence tamper alert could not be persisted.");
+          return json(req, 503, { error: "Tamper alert could not be safely recorded. File retrieval has been blocked." });
+        }
+      }
     }
 
     if (verificationResult !== "verified" || !fileBytes) {
