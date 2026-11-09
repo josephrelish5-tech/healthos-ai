@@ -17907,3 +17907,64 @@ window.loadHealthOSLaboratoryWorkspace=load;
         finally { button.disabled = false; }
     });
 })();
+
+
+// STAGE 5D PART 2W: ROOT-CAUSE FINDINGS AND PREVENTIVE ACTIONS
+(function initInvestigationRootCauseRegister() {
+ const refresh=document.getElementById("refreshInvestigationRootCauseRegister"),message=document.getElementById("investigationRootCauseMessage"),eligibleHost=document.getElementById("investigationRootCauseEligible"),findingsHost=document.getElementById("investigationRootCauseFindings");
+ if(!refresh||!message||!eligibleHost||!findingsHost||refresh.dataset.bound==="1")return;
+ refresh.dataset.bound="1";
+ const categories=["process_gap","training_gap","staffing_capacity","equipment_or_infrastructure","system_or_technology","policy_or_governance","communication_handoff","documentation_or_data_quality","external_dependency","other"];
+ const setMessage=(v,e=false)=>{message.textContent=v;message.className=e?"message error":"message";};
+ const el=(tag,value,cls)=>{const n=document.createElement(tag);if(cls)n.className=cls;n.textContent=value==null?"—":String(value);return n;};
+ const authorised=()=>Boolean(managementVerified&&currentClinic?.id&&["owner","admin"].includes(String(currentManagementRole||"").toLowerCase()));
+ async function load(){
+  if(!authorised()){setMessage("Verified hospital owner or administrator access is required.",true);eligibleHost.replaceChildren();findingsHost.replaceChildren();return;}
+  refresh.disabled=true;setMessage("Loading accepted findings and preventive actions…");
+  try{
+   const [rr,sr]=await Promise.all([supabaseClient.rpc("get_hospital_investigation_root_cause_register",{p_clinic_id:currentClinic.id}),supabaseClient.from("staff_profiles").select("id,full_name,professional_role").eq("clinic_id",currentClinic.id).eq("employment_status","active").order("full_name",{ascending:true})]);
+   if(rr.error)throw rr.error;const data=rr.data;
+   if(!data||data.read_only!==true||data.clinic_id!==currentClinic.id||!Array.isArray(data.eligible_reviews)||!Array.isArray(data.findings))throw new Error("Root-cause register failed hospital-scope verification.");
+   const staff=sr.error?[]:(sr.data||[]);eligibleHost.replaceChildren();eligibleHost.appendChild(el("h4","Accepted reviews ready for findings ("+data.eligible_reviews.length+")"));
+   if(!data.eligible_reviews.length)eligibleHost.appendChild(el("p","No independently accepted review is awaiting root-cause documentation.","muted"));
+   data.eligible_reviews.forEach(review=>{
+    const card=document.createElement("article");card.className="panel";card.style.margin="8px 0";card.appendChild(el("p","Signal: "+review.signal_type+" · Independent approval: "+review.approval_outcome));card.appendChild(el("p",review.explanation));
+    const btn=document.createElement("button");btn.type="button";btn.className="btn btn-secondary";btn.textContent="Document root-cause finding";
+    btn.addEventListener("click",async()=>{
+     const category=String(window.prompt("Root-cause category (exact value):\n"+categories.join(", "),"process_gap")||"").trim();if(!categories.includes(category))return;
+     const summary=window.prompt("Finding summary (15–2,000 characters):");if(!summary||summary.trim().length<15)return;
+     const analysis=window.prompt("Root-cause analysis (30–5,000 characters):");if(!analysis||analysis.trim().length<30)return;
+     const department=window.prompt("Accountable department (2–160 characters):");if(!department||department.trim().length<2)return;
+     const evidence=window.prompt("Supporting records/evidence reviewed (10–3,000 characters):");if(!evidence||evidence.trim().length<10)return;
+     btn.disabled=true;try{const res=await supabaseClient.rpc("record_hospital_investigation_root_cause_finding",{p_clinic_id:currentClinic.id,p_review_id:review.review_id,p_root_cause_category:category,p_root_cause_analysis:analysis.trim(),p_finding_summary:summary.trim(),p_accountable_department:department.trim(),p_supporting_evidence_note:evidence.trim()});if(res.error)throw res.error;if(!res.data?.success||!res.data.finding_id)throw new Error("Finding creation was not confirmed.");setMessage("Evidence-backed finding recorded. Preventive actions can now be assigned.");await load();}catch(e){setMessage(e?.message||"Finding could not be recorded.",true);btn.disabled=false;}
+    });card.appendChild(btn);eligibleHost.appendChild(card);
+   });
+   findingsHost.replaceChildren();findingsHost.appendChild(el("h4","Findings and recurrence-prevention actions ("+data.findings.length+")"));
+   if(!data.findings.length)findingsHost.appendChild(el("p","No root-cause findings recorded yet.","muted"));
+   data.findings.forEach(f=>{
+    const card=document.createElement("article");card.className="panel";card.style.margin="10px 0";card.appendChild(el("h4",f.finding_summary));card.appendChild(el("p","Root cause: "+f.root_cause_category.replaceAll("_"," ")+" · Department: "+f.accountable_department));card.appendChild(el("p",f.root_cause_analysis));card.appendChild(el("p","Evidence reviewed: "+f.supporting_evidence_note));
+    const add=document.createElement("button");add.type="button";add.className="btn btn-secondary";add.textContent="Create preventive action";
+    add.addEventListener("click",async()=>{
+     if(!staff.length){setMessage("No active staff profiles are available for assignment.",true);return;}
+     const description=window.prompt("Preventive action (15–3,000 characters):");if(!description||description.trim().length<15)return;
+     const dept=window.prompt("Accountable department:",f.accountable_department);if(!dept||dept.trim().length<2)return;
+     const roster=staff.map((p,i)=>(i+1)+". "+p.full_name+(p.professional_role?" — "+p.professional_role:"")).join("\n");
+     const chosen=Number(window.prompt("Choose active assignee by number:\n"+roster,"1"));if(!Number.isInteger(chosen)||chosen<1||chosen>staff.length)return;
+     const due=window.prompt("Optional due date YYYY-MM-DD (blank for none):","");if(due&&!/^\d{4}-\d{2}-\d{2}$/.test(due)){setMessage("Use YYYY-MM-DD for the due date.",true);return;}
+     add.disabled=true;try{const res=await supabaseClient.rpc("create_hospital_investigation_preventive_action",{p_clinic_id:currentClinic.id,p_finding_id:f.finding_id,p_action_description:description.trim(),p_accountable_department:dept.trim(),p_assigned_to_staff_profile_id:staff[chosen-1].id,p_due_date:due||null});if(res.error)throw res.error;if(!res.data?.success||!res.data.action_id)throw new Error("Action creation was not confirmed.");setMessage("Preventive action assigned and history recorded.");await load();}catch(e){setMessage(e?.message||"Preventive action could not be created.",true);add.disabled=false;}
+    });card.appendChild(add);
+    (f.actions||[]).forEach(a=>{
+     const box=document.createElement("div");box.className="panel";box.style.margin="8px 0";box.appendChild(el("p",a.action_description));box.appendChild(el("p","Department: "+a.accountable_department+" · Owner: "+(a.assignee_name||"Active staff")+" · Due: "+(a.due_date||"Not set")+" · Status: "+a.status));
+     (a.events||[]).forEach(ev=>box.appendChild(el("p","History: "+(ev.previous_status||"created")+" → "+ev.new_status+" · "+ev.event_note+(ev.verified_by_name?" · Verified by "+ev.verified_by_name:""))));
+     if(!["completed","cancelled"].includes(a.status)){const upd=document.createElement("button");upd.type="button";upd.className="btn btn-secondary";upd.textContent="Update action status";upd.addEventListener("click",async()=>{
+      const choices=["planned","in_progress","blocked","completed","cancelled"];const status=String(window.prompt("New status:\n"+choices.join(", "),a.status)||"").trim();if(!choices.includes(status))return;
+      const note=window.prompt(status==="completed"?"Independent verification note (10–3,000 characters). Assigned staff cannot verify their own completion:":"Explain this status change (10–3,000 characters):");if(!note||note.trim().length<10)return;
+      upd.disabled=true;try{const res=await supabaseClient.rpc("update_hospital_investigation_preventive_action",{p_clinic_id:currentClinic.id,p_action_id:a.action_id,p_new_status:status,p_event_note:note.trim()});if(res.error)throw res.error;if(!res.data?.success||res.data.status!==status)throw new Error("Action status change was not confirmed.");setMessage(status==="completed"?"Action completion independently verified and recorded.":"Preventive action history updated.");await load();}catch(e){setMessage(e?.message||"Action update failed.",true);upd.disabled=false;}
+     });box.appendChild(upd);}card.appendChild(box);
+    });findingsHost.appendChild(card);
+   });
+   setMessage("Loaded "+data.findings.length+" finding(s) and "+data.eligible_reviews.length+" accepted review(s).");
+  }catch(e){console.error("Investigation root-cause register failed",e);setMessage(e?.message||"Root-cause register could not be loaded.",true);}finally{refresh.disabled=false;}
+ }
+ refresh.addEventListener("click",()=>void load());window.loadInvestigationRootCauseRegister=load;
+})();
