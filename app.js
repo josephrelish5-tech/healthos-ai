@@ -4158,6 +4158,13 @@ async function loadStaffAttendanceReport(clinic) {
             }
         });
     }
+    const queueButton = document.getElementById("refreshStaffAttendanceReviewQueue");
+    if (queueButton && !queueButton.dataset.bound) {
+        queueButton.dataset.bound = "true";
+        queueButton.addEventListener("click", () => {
+            if (currentClinic && managementVerified) void loadStaffAttendanceReviewQueue(currentClinic);
+        });
+    }
 })();
 
 async function loadStaffAttendanceReviewQueue(clinic) {
