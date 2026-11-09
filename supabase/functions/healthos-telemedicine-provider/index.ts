@@ -117,7 +117,8 @@ Deno.serve(async (req: Request) => {
       session_id: sessionId,
       provider: "daily",
       session_status: "ready",
-      join_url: "https://" + dailyDomain + "/" + roomName + "?t=" + encodeURIComponent(tokenData.token),
+      room_url: "https://" + dailyDomain + "/" + roomName,
+      meeting_token: tokenData.token,
       expires_at: new Date(tokenExpiry * 1000).toISOString(),
       recording_enabled: false
     });
