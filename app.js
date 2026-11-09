@@ -4722,7 +4722,7 @@ async function loadStaffShiftRoster(clinic) {
         if (!shifts || !shifts.length) {
             const row = document.createElement("tr");
             const cell = document.createElement("td");
-            cell.colSpan = 8;
+            cell.colSpan = 9;
             cell.textContent = "No shifts have been assigned for today.";
             row.appendChild(cell);
             body.appendChild(row);
@@ -4837,7 +4837,7 @@ async function loadDepartmentPerformanceDashboard(clinic) {
         if (departments.length === 0) {
             const row = document.createElement("tr");
             const cell = document.createElement("td");
-            cell.colSpan = 8;
+            cell.colSpan = 9;
             cell.textContent = "No active departments are available in this report.";
             row.appendChild(cell);
             body.appendChild(row);
@@ -7602,7 +7602,7 @@ async function loadBillingData(clinic) {
             if (!departmentPayments || departmentPayments.length === 0) {
                 const emptyRow = document.createElement("tr");
                 const emptyCell = document.createElement("td");
-                emptyCell.colSpan = 8;
+                emptyCell.colSpan = 9;
                 emptyCell.textContent = "No department payments recorded yet.";
                 emptyRow.appendChild(emptyCell);
                 departmentPaymentsBody.appendChild(emptyRow);
@@ -7661,7 +7661,7 @@ async function loadBillingData(clinic) {
             if (!auditCases || auditCases.length === 0) {
                 const empty = document.createElement("tr");
                 const cell = document.createElement("td");
-                cell.colSpan = 8;
+                cell.colSpan = 9;
                 cell.textContent = "No open revenue leakage flags. This is not a guarantee that every transaction is settled.";
                 empty.appendChild(cell);
                 auditRows.appendChild(empty);
@@ -17519,6 +17519,7 @@ window.loadHealthOSLaboratoryWorkspace=load;
     refresh.dataset.bound = "1";
 
     let cachedAlerts = [];
+    let actionRegisters = {};
     let activeStaff = [];
     let refreshTimer = null;
 
@@ -17604,7 +17605,7 @@ window.loadHealthOSLaboratoryWorkspace=load;
         if (!visible.length) {
             const tr = document.createElement("tr");
             const td = cell(tr, cachedAlerts.length ? "No alerts match this status filter." : "No investigation tamper alerts have been recorded for this hospital.");
-            td.colSpan = 8;
+            td.colSpan = 9;
             rows.appendChild(tr);
             return;
         }
@@ -17634,6 +17635,37 @@ window.loadHealthOSLaboratoryWorkspace=load;
                 latest.appendChild(note);
             }
             tr.appendChild(latest);
+            const actionCell = document.createElement("td");
+            const register = actionRegisters[alertRow.alert_id] || { corrective_actions: [], latest_closure_verification: null };
+            const correctiveActions = Array.isArray(register.corrective_actions) ? register.corrective_actions : [];
+            if (!correctiveActions.length) { const none = document.createElement("p"); none.className = "muted"; none.textContent = "No corrective actions recorded."; actionCell.appendChild(none); }
+            correctiveActions.forEach(item => {
+                const box = document.createElement("div"); box.style.borderBottom = "1px solid var(--border-color, #d5dce8)"; box.style.padding = "6px 0";
+                const title = document.createElement("strong"); title.textContent = safeText(item.description) + " · " + safeText(item.status); box.appendChild(title);
+                const owner = document.createElement("div"); owner.className = "muted"; owner.textContent = "Responsible: " + safeText(item.assigned_to_name) + (item.due_date ? " · Due: " + item.due_date : ""); box.appendChild(owner);
+                if (item.completion_note) { const note = document.createElement("div"); note.textContent = "Completion: " + item.completion_note; box.appendChild(note); }
+                if (alertRow.alert_status !== "resolved" && item.status !== "completed" && item.status !== "cancelled") {
+                    const operation = item.status === "planned" ? "start" : "complete";
+                    const button = document.createElement("button"); button.type = "button"; button.className = "btn btn-secondary"; button.textContent = operation === "start" ? "Start action" : "Mark completed";
+                    button.addEventListener("click", async () => {
+                        const completion = operation === "complete" ? window.prompt("Describe completion (at least 5 characters):") : null;
+                        if (operation === "complete" && (!completion || completion.trim().length < 5)) return;
+                        button.disabled = true;
+                        try {
+                            const result = await supabaseClient.rpc("manage_hospital_investigation_corrective_action", { p_clinic_id: currentClinic.id, p_alert_id: alertRow.alert_id, p_action: operation, p_action_id: item.action_id, p_description: null, p_assigned_to_staff_profile_id: null, p_due_date: null, p_note: completion });
+                            if (result.error) throw result.error;
+                            if (!result.data || result.data.success !== true) throw new Error("Corrective-action update was not confirmed.");
+                            setMessage("Corrective-action status recorded in the immutable history."); await load();
+                        } catch (error) { setMessage(error?.message || "Corrective action could not be updated.", true); button.disabled = false; }
+                    });
+                    box.appendChild(button);
+                }
+                actionCell.appendChild(box);
+            });
+            const closure = register.latest_closure_verification;
+            const closureLine = document.createElement("p"); closureLine.className = "muted";
+            closureLine.textContent = closure ? "Independent closure check: " + safeText(closure.outcome) + " by " + safeText(closure.verified_by_name) + " · " + displayDate(closure.verified_at) : "Independent closure check: not yet recorded.";
+            actionCell.appendChild(closureLine); tr.appendChild(actionCell);
 
             const controls = document.createElement("td");
             controls.style.minWidth = "260px";
@@ -17662,8 +17694,39 @@ window.loadHealthOSLaboratoryWorkspace=load;
                 assigneeSelect.style.width = "100%";
                 controls.appendChild(assigneeSelect);
                 controls.appendChild(actionButton("Assign", "assigned", alertRow, { assigneeSelect }));
+                const addCorrective = document.createElement("button"); addCorrective.type = "button"; addCorrective.className = "btn btn-secondary"; addCorrective.textContent = "Add corrective action";
+                addCorrective.addEventListener("click", async () => {
+                    const description = window.prompt("Describe corrective action (5–2,000 characters):"); if (!description || description.trim().length < 5) return;
+                    if (!assigneeSelect.value) { setMessage("Select an active staff member responsible for this corrective action.", true); assigneeSelect.focus(); return; }
+                    const dueText = window.prompt("Optional due date YYYY-MM-DD. Leave blank if none:") || "";
+                    addCorrective.disabled = true;
+                    try {
+                        const result = await supabaseClient.rpc("manage_hospital_investigation_corrective_action", { p_clinic_id: currentClinic.id, p_alert_id: alertRow.alert_id, p_action: "create", p_action_id: null, p_description: description.trim(), p_assigned_to_staff_profile_id: assigneeSelect.value, p_due_date: /^\d{4}-\d{2}-\d{2}$/.test(dueText) ? dueText : null, p_note: null });
+                        if (result.error) throw result.error;
+                        if (!result.data || result.data.success !== true) throw new Error("Corrective-action creation was not confirmed.");
+                        setMessage("Corrective action created and assigned."); await load();
+                    } catch (error) { setMessage(error?.message || "Corrective action could not be created.", true); addCorrective.disabled = false; }
+                });
+                controls.appendChild(addCorrective);
                 if (alertRow.alert_status === "open") controls.appendChild(actionButton("Acknowledge", "acknowledged", alertRow));
                 controls.appendChild(actionButton("Escalate", "escalated", alertRow, { noteInput }));
+                if (correctiveActions.length > 0 && correctiveActions.every(item => item.status === "completed")) {
+                    const verifyClosure = document.createElement("button"); verifyClosure.type = "button"; verifyClosure.className = "btn btn-secondary"; verifyClosure.textContent = "Independent verify closure";
+                    verifyClosure.addEventListener("click", async () => {
+                        const findings = window.prompt("Independent closure findings (10–3,000 characters):"); if (!findings || findings.trim().length < 10) return;
+                        verifyClosure.disabled = true;
+                        try {
+                            const fileCheck = await supabaseClient.functions.invoke("healthos-investigation-evidence", { body: { action: "verify", clinic_id: currentClinic.id, task_id: alertRow.task_id, evidence_id: alertRow.evidence_id } });
+                            if (fileCheck.error) throw fileCheck.error;
+                            if (!fileCheck.data || fileCheck.data.success !== true || fileCheck.data.verification_result !== "verified") throw new Error(fileCheck.data?.message || "Fresh actual-file verification failed. Closure is blocked.");
+                            const result = await supabaseClient.rpc("verify_hospital_investigation_alert_closure", { p_clinic_id: currentClinic.id, p_alert_id: alertRow.alert_id, p_findings_summary: findings.trim() });
+                            if (result.error) throw result.error;
+                            if (!result.data || result.data.success !== true || result.data.verification_outcome !== "accepted") throw new Error("Independent closure verification was not accepted.");
+                            setMessage("Independent closure verification recorded. A different administrator must perform final resolution."); await load();
+                        } catch (error) { setMessage(error?.message || "Independent closure verification failed.", true); verifyClosure.disabled = false; }
+                    });
+                    controls.appendChild(verifyClosure);
+                }
                 controls.appendChild(actionButton("Resolve", "resolved", alertRow, { noteInput }));
             } else {
                 controls.appendChild(actionButton("Reopen", "reopened", alertRow, { noteInput }));
@@ -17679,7 +17742,7 @@ window.loadHealthOSLaboratoryWorkspace=load;
             rows.replaceChildren();
             const tr = document.createElement("tr");
             const td = cell(tr, "Administrator access is required.");
-            td.colSpan = 8;
+            td.colSpan = 9;
             rows.appendChild(tr);
             return;
         }
@@ -17704,6 +17767,13 @@ window.loadHealthOSLaboratoryWorkspace=load;
             }
             activeStaff = staffResult.error ? [] : (staffResult.data || []);
             cachedAlerts = inbox.alerts;
+            actionRegisters = {};
+            await Promise.all(cachedAlerts.map(async alertRow => {
+                const result = await supabaseClient.rpc("get_hospital_investigation_corrective_action_register", { p_clinic_id: currentClinic.id, p_alert_id: alertRow.alert_id });
+                if (result.error) throw result.error;
+                if (!result.data || result.data.read_only !== true || result.data.clinic_id !== currentClinic.id || result.data.alert_id !== alertRow.alert_id) throw new Error("Corrective-action register failed hospital/alert scope verification.");
+                actionRegisters[alertRow.alert_id] = result.data;
+            }));
             updateSummary(inbox.summary || {});
             render();
             setMessage("Loaded " + cachedAlerts.length + " investigation alert(s). This in-app inbox refreshes every 60 seconds while visible.");
