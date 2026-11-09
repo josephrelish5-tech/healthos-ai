@@ -36,7 +36,7 @@
  }
  $("healthosSafetyRefresh")?.addEventListener("click",()=>void load());
  $("healthosSafetySeverity")?.addEventListener("change",render);$("healthosSafetyStatus")?.addEventListener("change",render);
- let seen=null;setInterval(()=>{const id=typeof currentClinic!=="undefined"?currentClinic?.id||null:null;if(id&&id!==seen){seen=id;void load();void loadEscalations();}else if(!id&&seen){seen=null;state.clinicId=null;state.alerts=[];render();msg("Sign in to an authorised hospital workspace to load clinical safety alerts.");}},1500);
+ let seen=null;setInterval(()=>{const id=typeof currentClinic!=="undefined"?currentClinic?.id||null:null;if(id&&id!==seen){seen=id;void load();void loadEscalations();void loadClinicalIncidents();}else if(!id&&seen){seen=null;state.clinicId=null;state.alerts=[];render();msg("Sign in to an authorised hospital workspace to load clinical safety alerts.");}},1500);
  setInterval(()=>{if(!document.hidden&&state.clinicId)void load();},60000);
  setInterval(()=>{if(!document.hidden&&state.clinicId)void loadEscalations();},60000);
  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.clinicId)void load();});
