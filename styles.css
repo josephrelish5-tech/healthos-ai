@@ -1941,3 +1941,23 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
     border-radius: 15px !important;
   }
 }
+
+
+/* Hospital Discovery map canvas: restore a clean white OSM-style surface.
+   These rules affect the map canvas only; surrounding panels retain their theme. */
+#hospitalMap #hospitalDiscoveryMap,
+#hospitalMap #hospitalDiscoveryMap .leaflet-pane,
+#hospitalMap #hospitalDiscoveryMap .leaflet-tile-pane,
+#hospitalMap #hospitalDiscoveryMap .leaflet-maplibre-gl-layer,
+#hospitalMap #hospitalDiscoveryMap .maplibregl-map,
+#hospitalMap #hospitalDiscoveryMap .maplibregl-canvas-container,
+#hospitalMap #hospitalDiscoveryMap canvas.maplibregl-canvas,
+#hospitalMap #hospitalDiscoveryMap .maplibregl-canvas {
+  background: #ffffff !important;
+}
+#hospitalMap #hospitalDiscoveryMap .leaflet-tile-pane {
+  filter: none !important;
+}
+#hospitalMap #hospitalMapStatus {
+  color: #526779 !important;
+}
