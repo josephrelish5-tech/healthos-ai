@@ -501,6 +501,8 @@
     const mapPanel=el("hospitalMapViewPanel"),cardsPanel=el("hospitalCardsViewPanel");
     const mapButton=el("hospitalMapViewButton"),cardsButton=el("hospitalCardsViewButton");
     const showMap=view!=="cards";
+    const layout=mapPanel?.closest(".hospital-discovery-layout");
+    if(layout){layout.classList.toggle("map-view-active",showMap);layout.classList.toggle("cards-view-active",!showMap);}
     if(mapPanel)mapPanel.hidden=false;
     if(cardsPanel)cardsPanel.hidden=false;
     if(mapButton){mapButton.classList.toggle("is-active",showMap);mapButton.setAttribute("aria-pressed",String(showMap));}
