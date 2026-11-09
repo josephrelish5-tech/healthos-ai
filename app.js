@@ -4539,6 +4539,73 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                         });
                         detail.appendChild(stats);
 
+                        // Stage 5B: show only independently reviewed, published guidance for this department.
+                        // This is read-only and deliberately does not turn draft duties into authorised instructions.
+                        const guidanceHeading = document.createElement("h4");
+                        guidanceHeading.textContent = "Approved departmental duties & operating guidance";
+                        const guidancePanel = document.createElement("section");
+                        guidancePanel.className = "panel";
+                        guidancePanel.style.margin = "18px 0";
+                        const guidanceIntro = document.createElement("p");
+                        guidanceIntro.className = "muted";
+                        guidanceIntro.textContent = "Only published guidance with an approved independent review is shown here. Drafts and unreviewed instructions are excluded.";
+                        const guidanceStatus = document.createElement("p");
+                        guidanceStatus.className = "message";
+                        guidanceStatus.setAttribute("role", "status");
+                        guidanceStatus.setAttribute("aria-live", "polite");
+                        const guidanceList = document.createElement("div");
+                        guidancePanel.append(guidanceIntro, guidanceStatus, guidanceList);
+                        detail.append(guidanceHeading, guidancePanel);
+                        try {
+                            const { data: guidanceRows, error: guidanceError } = await supabaseClient
+                                .from("department_knowledge_articles")
+                                .select("id,article_type,title,summary,content,version,updated_at,review_due_at")
+                                .eq("clinic_id", clinic.id)
+                                .eq("department_id", department.id)
+                                .eq("status", "published")
+                                .eq("review_status", "approved")
+                                .order("updated_at", { ascending: false })
+                                .limit(50);
+                            if (guidanceError) throw guidanceError;
+                            const guidance = Array.isArray(guidanceRows) ? guidanceRows : [];
+                            guidanceStatus.textContent = guidance.length
+                                ? guidance.length + " approved guidance item(s) available for this department."
+                                : "No independently reviewed departmental guidance has been published yet.";
+                            guidanceStatus.className = "message " + (guidance.length ? "success" : "");
+                            guidance.forEach(article => {
+                                const card = document.createElement("article");
+                                card.className = "department-workspace-role";
+                                const title = document.createElement("h5");
+                                title.textContent = article.title || "Department guidance";
+                                const meta = document.createElement("p");
+                                meta.className = "muted";
+                                meta.textContent = String(article.article_type || "guidance").replace(/_/g, " ") +
+                                    " · Version " + String(article.version ?? "—") +
+                                    " · Updated " + formatDate(article.updated_at);
+                                const summary = document.createElement("p");
+                                summary.textContent = article.summary || "No summary supplied.";
+                                const reader = document.createElement("details");
+                                const readerTitle = document.createElement("summary");
+                                readerTitle.textContent = "Read approved instruction";
+                                const body = document.createElement("p");
+                                body.textContent = article.content || "No instruction content supplied.";
+                                body.style.whiteSpace = "pre-wrap";
+                                reader.append(readerTitle, body);
+                                card.append(title, meta, summary, reader);
+                                if (article.review_due_at && article.review_due_at < new Date().toISOString().slice(0, 10)) {
+                                    const overdueNote = document.createElement("p");
+                                    overdueNote.className = "message error";
+                                    overdueNote.textContent = "Review date has passed. Confirm this instruction remains current with the department owner.";
+                                    card.appendChild(overdueNote);
+                                }
+                                guidanceList.appendChild(card);
+                            });
+                        } catch (guidanceError) {
+                            console.error("Approved department guidance could not be loaded:", guidanceError);
+                            guidanceStatus.textContent = "Approved guidance could not be loaded. Existing task and supervisor workflows remain available.";
+                            guidanceStatus.className = "message error";
+                        }
+
                         const taskBoardHeading = document.createElement("h4");
                         taskBoardHeading.textContent = "Department task management & execution";
                         const taskBoard = document.createElement("section");
