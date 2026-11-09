@@ -4081,6 +4081,16 @@ async function loadStaffAttendanceReport(clinic) {
 }
 
 /* HEALTHOS AI: LIVE HOSPITAL-WIDE SHIFT ROSTER */
+(function bindStaffVerificationRefresh() {
+    const button = document.getElementById("refreshStaffVerificationCommand");
+    if (button && !button.dataset.bound) {
+        button.dataset.bound = "true";
+        button.addEventListener("click", () => {
+            if (currentClinic && managementVerified) void loadStaffShiftRoster(currentClinic);
+        });
+    }
+})();
+
 async function loadStaffShiftRoster(clinic) {
     const body = document.getElementById("staffShiftRosterBody");
     const message = document.getElementById("staffShiftRosterMessage");
@@ -4104,6 +4114,40 @@ async function loadStaffShiftRoster(clinic) {
             .eq("shift_date", localDate)
             .order("starts_at", { ascending: true });
         if (shiftError) throw shiftError;
+        // Populate the Staff Verification Command Center from existing roster records.
+        const verificationSet = (id, value) => {
+            const node = document.getElementById(id);
+            if (node) node.textContent = String(value);
+        };
+        const clockedIn = (shifts || []).filter(s => Boolean(s.clocked_in_at));
+        const clockedOut = clockedIn.filter(s => Boolean(s.clocked_out_at));
+        const lateCount = (shifts || []).filter(s =>
+            !s.clocked_in_at &&
+            now > new Date(new Date(s.starts_at).getTime() + 10 * 60000) &&
+            now <= new Date(s.ends_at)
+        ).length;
+        const missedCount = (shifts || []).filter(s =>
+            !s.clocked_in_at && now > new Date(s.ends_at)
+        ).length;
+        const upcomingCount = (shifts || []).filter(s =>
+            !s.clocked_in_at && now < new Date(s.starts_at)
+        ).length;
+        const clockOutRate = clockedIn.length
+            ? Math.round((clockedOut.length / clockedIn.length) * 100) + "%"
+            : "—";
+        verificationSet("verificationClockInsToday", clockedIn.length);
+        verificationSet("verificationClockOutsToday", clockedOut.length);
+        verificationSet("verificationClockOutRate", clockOutRate);
+        verificationSet("verificationLateToday", lateCount);
+        verificationSet("verificationMissedToday", missedCount);
+        verificationSet("verificationUpcomingToday", upcomingCount);
+        const verificationMessage = document.getElementById("staffVerificationCommandMessage");
+        if (verificationMessage) {
+            verificationMessage.textContent = "Attendance summary updated from " + (shifts || []).length +
+                " scheduled shift record(s). Clock-out capture rate uses shifts with a recorded clock-in as its denominator.";
+            verificationMessage.className = "message success";
+        }
+
         const ids = [...new Set((shifts || []).map(s => s.staff_profile_id).filter(Boolean))];
         let profiles = [];
         if (ids.length) {
