@@ -147,7 +147,7 @@
     if(typeof window.HealthOSMapLibreGL==="function"){
       try{
         vectorBasemapLayer=window.HealthOSMapLibreGL({
-          style:"https://tiles.openfreemap.org/styles/fiord",
+          style:"https://tiles.openfreemap.org/styles/positron",
           interactive:false
         }).addTo(map);
         const vectorMap=vectorBasemapLayer.getMaplibreMap();
@@ -158,29 +158,29 @@
           const layer=vectorMap.getStyle()?.layers?.find(item=>item.id===layerId);
           if(!layer||layer.type!=="symbol"||!layer.layout?.["text-field"]) return;
           vectorMap.setPaintProperty(layerId,"text-color",colorExpression);
-          vectorMap.setPaintProperty(layerId,"text-halo-color","#17243B");
-          vectorMap.setPaintProperty(layerId,"text-halo-width",1.8);
+          vectorMap.setPaintProperty(layerId,"text-halo-color","#FFFFFF");
+          vectorMap.setPaintProperty(layerId,"text-halo-width",2);
           vectorMap.setPaintProperty(layerId,"text-halo-blur",0.35);
         }
         function applyHealthOSGeographicLabelPalette(){
           if(!vectorMap.isStyleLoaded()) return;
-          styleGeographicLabel("place_state","#FFFFFF");
+          styleGeographicLabel("place_state","#596579");
           const capitalOrRegion=[
             "match",["get","capital"],
-            [1,2,"yes","primary"],"#FF9BCB",
-            "#FFC6A5"
+            [1,2,"yes","primary"],"#E84A75",
+            "#F2A078"
           ];
           ["place_city","place_city_large"].forEach(id=>
             styleGeographicLabel(id,capitalOrRegion)
           );
           ["place_town","place_village","place_suburb","place_other"].forEach(id=>
-            styleGeographicLabel(id,"#FFC6A5")
+            styleGeographicLabel(id,"#F2A078")
           );
         }
         vectorMap.once("load",applyHealthOSGeographicLabelPalette);
         vectorMap.once("load",()=>{
           vectorBasemapActive=true;
-          setStatus("Navy vector street map loaded. Search an area or zoom in to explore.");
+          setStatus("OpenStreetMap-style map loaded. Search an area or zoom in to explore.");
         });
         vectorMap.on("error",event=>{
           if(!vectorBasemapActive && event && event.error){
