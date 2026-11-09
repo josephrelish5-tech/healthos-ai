@@ -17766,6 +17766,7 @@ window.loadHealthOSLaboratoryWorkspace=load;
                 throw new Error("The investigation alert inbox failed hospital-scope verification.");
             }
             activeStaff = staffResult.error ? [] : (staffResult.data || []);
+            window.HealthOSInvestigationActiveStaff = activeStaff;
             cachedAlerts = inbox.alerts;
             actionRegisters = {};
             await Promise.all(cachedAlerts.map(async alertRow => {
@@ -17794,3 +17795,55 @@ window.loadHealthOSLaboratoryWorkspace=load;
     }, 60000);
 })();
 
+
+ 
+// STAGE 5D PART 2U: EXPLAINABLE INVESTIGATION PATTERN ANALYSIS
+(function initInvestigationPatternAnalysis() {
+    const button = document.getElementById("runInvestigationPatternAnalysis");
+    const message = document.getElementById("investigationPatternMessage");
+    const results = document.getElementById("investigationPatternResults");
+    const windowSelect = document.getElementById("investigationPatternWindow");
+    if (!button || !message || !results || button.dataset.bound === "1") return;
+    button.dataset.bound = "1";
+    const setMessage = (value, error = false) => { message.textContent = value; message.className = error ? "message error" : "message"; };
+    const safe = value => value === null || value === undefined || value === "" ? "—" : String(value);
+    const date = value => { const parsed = value ? new Date(value) : null; return parsed && !Number.isNaN(parsed.getTime()) ? parsed.toLocaleString() : "—"; };
+    const titles = {
+        repeat_evidence_integrity_alerts_by_uploader: "Repeated evidence-integrity alerts linked to one uploader profile",
+        repeat_alerts_on_same_task: "Repeated alerts linked to one hospital task",
+        repeat_corrective_action_rework: "Repeated corrective-action rework on one hospital task",
+        hospital_wide_alert_spike: "Hospital-wide evidence-integrity alert increase"
+    };
+    button.addEventListener("click", async () => {
+        if (!managementVerified || !currentClinic?.id || !["owner", "admin"].includes(String(currentManagementRole || "").toLowerCase())) {
+            setMessage("Verified hospital owner or administrator access is required.", true); return;
+        }
+        button.disabled = true; results.replaceChildren(); setMessage("Analysing recorded evidence-integrity alerts…");
+        try {
+            const days = Number(windowSelect.value) === 30 ? 30 : 90;
+            const { data, error } = await supabaseClient.rpc("run_hospital_investigation_pattern_analysis", { p_clinic_id: currentClinic.id, p_window_days: days });
+            if (error) throw error;
+            if (!data || data.read_only_analysis !== true || data.clinic_id !== currentClinic.id || !Array.isArray(data.signals)) throw new Error("Pattern analysis failed hospital-scope or response verification.");
+            if (!data.signals.length) {
+                const empty = document.createElement("p"); empty.className = "muted"; empty.textContent = "No patterns met the current review thresholds in this analysis window."; results.appendChild(empty);
+            } else {
+                const staffById = new Map((window.HealthOSInvestigationActiveStaff || []).map(staff => [staff.id, staff]));
+                data.signals.forEach(signal => {
+                    const card = document.createElement("article"); card.className = "panel"; card.style.margin = "10px 0";
+                    const heading = document.createElement("h4"); heading.textContent = titles[signal.signal_type] || "Investigation pattern signal"; card.appendChild(heading);
+                    const priority = document.createElement("p"); priority.textContent = "Review priority: " + safe(signal.review_priority).replaceAll("_", " ").toUpperCase() + " · Indicator score: " + safe(signal.indicator_score) + "/100"; card.appendChild(priority);
+                    const subject = document.createElement("p");
+                    if (signal.subject_type === "staff_profile") { const staff = staffById.get(signal.subject_staff_profile_id); subject.textContent = "Linked uploader profile: " + (staff?.full_name || "Staff profile") + (staff?.professional_role ? " · " + staff.professional_role : ""); }
+                    else if (signal.subject_type === "task") subject.textContent = "Hospital task: " + safe(signal.subject_task_id);
+                    else subject.textContent = "Scope: entire hospital";
+                    card.appendChild(subject);
+                    const count = document.createElement("p"); count.textContent = "Distinct alerts: " + safe(signal.event_count) + " · Window: " + safe(signal.window_days) + " days · First: " + date(signal.first_event_at) + " · Latest: " + date(signal.last_event_at); card.appendChild(count);
+                    const explanation = document.createElement("p"); explanation.textContent = safe(signal.explanation); card.appendChild(explanation); results.appendChild(card);
+                });
+            }
+            const disclaimer = document.createElement("p"); disclaimer.className = "disclaimer"; disclaimer.textContent = safe(data.interpretation); results.appendChild(disclaimer);
+            setMessage("Analysis run " + safe(data.run_id) + " recorded. " + safe(data.signal_count) + " review signal(s) returned.");
+        } catch (error) { console.error("Investigation pattern analysis failed", error); setMessage(error?.message || "Pattern analysis could not be completed.", true); }
+        finally { button.disabled = false; }
+    });
+})();
