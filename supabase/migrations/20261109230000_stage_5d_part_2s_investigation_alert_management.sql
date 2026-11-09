@@ -220,7 +220,7 @@ begin
     and cm.user_id = v_uid
     and cm.status = 'active'
   limit 1;
-  if v_role not in ('owner','admin') then
+  if v_role is null or v_role not in ('owner','admin') then
     raise exception 'Only active hospital owners and administrators may manage investigation alerts'
       using errcode = '42501';
   end if;
