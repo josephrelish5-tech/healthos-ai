@@ -39,6 +39,20 @@
   $("incidentWorkflowOverdue").textContent=state.items.filter(x=>x.is_overdue).length;
   $("incidentWorkflowResolved").textContent=state.items.filter(x=>["resolved","closed"].includes(x.workflow_status)).length;
  }
+ function renderTimeline(x){
+  const list=$("incidentWorkflowTimeline");if(!list)return;
+  list.replaceChildren();
+  const events=Array.isArray(x?.events)?x.events:[];
+  if(!events.length){const li=document.createElement("li");li.textContent="No event history is available for this workflow.";list.append(li);return;}
+  const labels={report_received:"Incident received",assigned:"Department and staff assigned",reassigned:"Assignment changed",acknowledged:"Staff acknowledgment",response_recorded:"Response recorded",resolved:"Human administrator resolved incident",reopened:"Incident reopened",note_added:"Workflow note added"};
+  events.forEach(ev=>{
+   const li=document.createElement("li"),title=document.createElement("strong"),detail=document.createElement("p"),meta=document.createElement("small");
+   title.textContent=labels[ev.event_type]||String(ev.event_type||"Workflow event").replaceAll("_"," ");
+   detail.textContent=ev.event_note||"No additional note recorded.";
+   meta.textContent=fmt(ev.created_at)+" · Actor account: "+(ev.actor_user_id||"System");
+   li.append(title,detail,meta);list.append(li);
+  });
+ }
  function select(x){
   state.selected=x;
   $("incidentWorkflowSelected").textContent=x.incident_reference+" · "+x.incident_title+" · "+x.workflow_status.replaceAll("_"," ");
@@ -50,6 +64,7 @@
   $("incidentWorkflowRespond").disabled=!["acknowledged","response_in_progress"].includes(status);
   $("incidentWorkflowResolve").disabled=!["acknowledged","response_in_progress"].includes(status);
   $("incidentWorkflowReopen").disabled=status!=="resolved";
+  renderTimeline(x);
   render();
  }
  async function load(){
