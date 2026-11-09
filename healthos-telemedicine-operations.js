@@ -16,8 +16,8 @@ async function ensureDailySdk(){
  if(!window.DailyIframe)throw Error("Video-call library did not initialise.");
  return window.DailyIframe;
 }
-async function joinEmbeddedCall(sessionId){
- const d=await provider({session_id:sessionId});
+async function joinEmbeddedCall(sessionId,prepared){
+ const d=prepared||await provider({session_id:sessionId});
  if(!d.room_url||!d.meeting_token)throw Error("Video provider returned incomplete meeting credentials.");
  const Daily=await ensureDailySdk();
  const overlay=document.createElement("div");overlay.className="telemed-call-overlay";
@@ -57,7 +57,7 @@ async function loadStaff(){
   rows.forEach(s=>{const card=document.createElement("article");card.className="telemed-card";const consent=s.consent_status||"not recorded";card.innerHTML='<h4>'+esc(String(s.channel).toUpperCase())+' consultation · '+esc(new Date(s.scheduled_at).toLocaleString())+'</h4><p>Status: <strong>'+esc(s.session_status)+'</strong> · Patient consent: <strong>'+esc(consent)+'</strong></p><p class="telemed-muted">Session reference: '+esc(s.id)+'</p><div class="telemed-actions"></div><div class="telemed-workspace"></div>';
    const actions=card.querySelector(".telemed-actions");
    if(consent==="granted"&&["awaiting_provider","ready","active"].includes(s.session_status)){
-    const join=document.createElement("button");join.className="primary-button";join.textContent=s.session_status==="awaiting_provider"?"Prepare private video room":"Join consultation";join.addEventListener("click",async()=>{join.disabled=true;try{await provider({session_id:s.id});await rpc("healthos_mark_telemedicine_session_active",{p_session_id:s.id});await joinEmbeddedCall(s.id);say("telemedOpsMessage","Joined the private consultation. Recording is disabled; meeting credentials expire after one hour.");await loadStaff();}catch(e){say("telemedOpsMessage",e.message,true);join.disabled=false;}});actions.append(join);
+    const join=document.createElement("button");join.className="primary-button";join.textContent=s.session_status==="awaiting_provider"?"Prepare private video room":"Join consultation";join.addEventListener("click",async()=>{join.disabled=true;try{const prepared=await provider({session_id:s.id});await rpc("healthos_mark_telemedicine_session_active",{p_session_id:s.id});await joinEmbeddedCall(s.id,prepared);say("telemedOpsMessage","Joined the private consultation. Recording is disabled; meeting credentials expire after one hour.");await loadStaff();}catch(e){say("telemedOpsMessage",e.message,true);join.disabled=false;}});actions.append(join);
    }
    const view=document.createElement("button");view.className="workspace-launch-button";view.textContent="Load clinical workspace";view.addEventListener("click",()=>loadSessionWorkspace(s.id,card.querySelector(".telemed-workspace"),false));actions.append(view);
    if(!["completed","cancelled","expired"].includes(s.session_status)){const complete=document.createElement("button");complete.className="logout-button";complete.textContent="Complete consultation";complete.addEventListener("click",async()=>{if(!confirm("Mark this consultation completed? This closes the session workflow."))return;try{await rpc("healthos_complete_telemedicine_session",{p_session_id:s.id});say("telemedOpsMessage","Consultation marked completed.");await loadStaff();}catch(e){say("telemedOpsMessage",e.message,true);}});actions.append(complete);}
