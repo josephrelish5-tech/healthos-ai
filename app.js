@@ -2787,6 +2787,7 @@ await startStaffPresenceTracking(
                 const managerAuditSection = document.createElement("section");
                 managerAuditSection.className = "panel";
                 managerAuditSection.style.margin = "20px 0";
+                managerAuditSection.hidden = true;
                 const managerAuditHeading = document.createElement("h3");
                 managerAuditHeading.textContent = "My appointed department accountability";
                 const managerAuditIntro = document.createElement("p");
@@ -2823,10 +2824,10 @@ await startStaffPresenceTracking(
                         const managedDepartments = Array.isArray(managerData.departments)
                             ? managerData.departments : [];
                         if (!managedDepartments.length) {
-                            managerAuditStatus.textContent = "No active department management appointments were found for this account. Your ordinary staff workspace remains available.";
-                            managerAuditStatus.className = "message";
+                            managerAuditSection.hidden = true;
                             return;
                         }
+                        managerAuditSection.hidden = false;
                         managedDepartments.forEach(department => {
                             if (!department.department_id || !department.department_name) return;
                             const departmentPanel = document.createElement("section");
