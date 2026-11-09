@@ -3428,6 +3428,139 @@ await startStaffPresenceTracking(
                     card.appendChild(evidence);
                 });
 
+                // HEALTHOS AI: SUPERVISOR-TO-STAFF ACCOUNTABILITY CHAIN
+                const chainToggle = document.createElement("button");
+                chainToggle.type = "button";
+                chainToggle.className = "btn btn-secondary";
+                chainToggle.textContent = "View accountability chain";
+                const chainPanel = document.createElement("div");
+                chainPanel.className = "stat-card";
+                chainPanel.hidden = true;
+                const chainStatus = document.createElement("p");
+                chainStatus.className = "muted";
+                chainPanel.appendChild(chainStatus);
+                chainToggle.addEventListener("click", async function () {
+                    if (!chainPanel.hidden) {
+                        chainPanel.hidden = true;
+                        chainToggle.textContent = "View accountability chain";
+                        return;
+                    }
+                    chainPanel.hidden = false;
+                    chainToggle.disabled = true;
+                    chainToggle.textContent = "Loading accountability chain...";
+                    chainStatus.textContent = "Checking task-level authorisation and retrieving the recorded responsibility chain...";
+                    chainPanel.replaceChildren(chainStatus);
+                    try {
+                        const { data: chainResult, error: chainError } = await supabaseClient.rpc(
+                            "get_task_accountability_chain",
+                            { p_clinic_id: clinic.id, p_task_id: task.id }
+                        );
+                        if (chainError) throw chainError;
+                        if (!chainResult || chainResult.read_only !== true ||
+                            String(chainResult.clinic_id) !== String(clinic.id) ||
+                            String(chainResult.task_id) !== String(task.id) ||
+                            !chainResult.accountability_chain) {
+                            throw new Error("The accountability chain failed scope validation.");
+                        }
+
+                        const chain = chainResult.accountability_chain;
+                        const roles = [
+                            ["Assigned staff member", chain.assignee],
+                            ["Assigning supervisor", chain.assigning_supervisor],
+                            ["Requesting staff member", chain.requesting_staff],
+                            ["Direct supervisor", chain.direct_supervisor],
+                            ["Reviewer / approver", chain.reviewer]
+                        ];
+                        const chainHeading = document.createElement("h4");
+                        chainHeading.textContent = "Responsibility and approval chain";
+                        chainPanel.appendChild(chainHeading);
+                        roles.forEach(function (entry) {
+                            const row = document.createElement("p");
+                            const person = entry[1];
+                            row.textContent = entry[0] + ": " +
+                                (person ? (person.full_name || "Name unavailable") +
+                                    (person.staff_id ? " • Staff ID: " + person.staff_id : "") +
+                                    (person.professional_role ? " • " + person.professional_role : "") : "Not recorded");
+                            chainPanel.appendChild(row);
+                        });
+
+                        const appointments = Array.isArray(chain.current_management_appointments)
+                            ? chain.current_management_appointments : [];
+                        const appointmentHeading = document.createElement("h5");
+                        appointmentHeading.textContent = "Current department leadership appointments";
+                        chainPanel.appendChild(appointmentHeading);
+                        if (appointments.length) {
+                            appointments.forEach(function (appointment) {
+                                const row = document.createElement("p");
+                                row.textContent =
+                                    String(appointment.leadership_role || "Management role").replace(/_/g, " ") +
+                                    " • " + String(appointment.assignment_status || "status unavailable") +
+                                    (appointment.appointed_by_name ? " • Appointed by: " + appointment.appointed_by_name : "") +
+                                    (appointment.effective_from ? " • From: " + appointment.effective_from : "") +
+                                    (appointment.effective_to ? " • To: " + appointment.effective_to : "");
+                                chainPanel.appendChild(row);
+                            });
+                        } else {
+                            const none = document.createElement("p");
+                            none.className = "muted";
+                            none.textContent = "No current department management appointment was found for this task's scope.";
+                            chainPanel.appendChild(none);
+                        }
+
+                        const evidence = chain.evidence_summary || {};
+                        const evidenceSummary = document.createElement("p");
+                        evidenceSummary.textContent =
+                            "Evidence records: " + String(evidence.evidence_count || 0) +
+                            " • Submitted by assigned staff member: " + String(evidence.assignee_submitted_count || 0);
+                        chainPanel.appendChild(evidenceSummary);
+
+                        const timelineHeading = document.createElement("h5");
+                        const timeline = Array.isArray(chain.event_timeline) ? chain.event_timeline : [];
+                        timelineHeading.textContent = "Recorded task event timeline (" + timeline.length + ")";
+                        chainPanel.appendChild(timelineHeading);
+                        if (timeline.length) {
+                            const list = document.createElement("ol");
+                            timeline.forEach(function (event) {
+                                const item = document.createElement("li");
+                                item.textContent =
+                                    String(event.event_type || "event").replace(/_/g, " ") +
+                                    (event.actor_name ? " • " + event.actor_name : " • Actor not identified") +
+                                    (event.created_at ? " • " + new Date(event.created_at).toLocaleString() : "") +
+                                    (event.from_status || event.to_status
+                                        ? " • " + String(event.from_status || "start") +
+                                            " → " + String(event.to_status || "recorded") : "") +
+                                    (event.event_notes ? " • " + event.event_notes : "");
+                                list.appendChild(item);
+                            });
+                            chainPanel.appendChild(list);
+                        } else {
+                            const none = document.createElement("p");
+                            none.className = "muted";
+                            none.textContent = "No event timeline entries are recorded.";
+                            chainPanel.appendChild(none);
+                        }
+                        const scopeNote = document.createElement("small");
+                        scopeNote.className = "muted";
+                        scopeNote.textContent = "Access scope: " +
+                            String(chainResult.scope || "authorised task scope").replace(/_/g, " ") +
+                            ". This report is read-only and does not itself grant approval authority.";
+                        chainPanel.appendChild(scopeNote);
+                        chainToggle.textContent = "Hide accountability chain";
+                    } catch (chainError) {
+                        console.error("Task accountability chain could not be loaded:", chainError);
+                        chainStatus.textContent =
+                            /function .*get_task_accountability_chain.* does not exist|could not find the function/i.test(chainError.message || "")
+                                ? "The accountability-chain RPC is committed to GitHub, but its Supabase migration has not been applied."
+                                : friendlyError(chainError);
+                        chainStatus.className = "message error";
+                        chainToggle.textContent = "Retry accountability chain";
+                    } finally {
+                        chainToggle.disabled = false;
+                    }
+                });
+                card.append(chainToggle, chainPanel);
+                // END HEALTHOS AI: SUPERVISOR-TO-STAFF ACCOUNTABILITY CHAIN
+
                 const reviewNotes = document.createElement("textarea");
                 reviewNotes.rows = 2;
                 reviewNotes.maxLength = 3000;
