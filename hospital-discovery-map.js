@@ -129,15 +129,15 @@
     // Three independent street-map providers. Fail over on repeated tile errors
     // or when a provider produces no tiles at all (common on restricted mobile networks).
     const osmAttribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-    const cartoAttribution='&copy; <a href="https://carto.com/attributions">CARTO</a> &copy; OpenStreetMap contributors';
+    const hotAttribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, HOT';
     const esriAttribution='Tiles &copy; Esri — Sources: Esri, HERE, Garmin, OpenStreetMap contributors';
-    // Dark navy CARTO basemap is the primary style, matching the approved reference.
-    // Keep independent light OSM and Esri providers as automatic fallbacks.
-    baseTileLayer=L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png",{
-      subdomains:["a","b","c","d"],maxZoom:20,attribution:cartoAttribution
-    });
-    fallbackTileLayer=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+    // Use key-free raster providers. The navy treatment is applied to Leaflet's
+    // tile pane with CSS, avoiding CARTO's API-key-gated raster endpoint.
+    baseTileLayer=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
       subdomains:["a","b","c"],maxZoom:19,maxNativeZoom:19,attribution:osmAttribution
+    });
+    fallbackTileLayer=L.tileLayer("https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",{
+      subdomains:["a","b","c"],maxZoom:19,maxNativeZoom:19,attribution:hotAttribution
     });
     tertiaryTileLayer=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",{
       maxZoom:19,attribution:esriAttribution
@@ -154,7 +154,7 @@
       tileProviderStartedAt=Date.now();
       tileProviders.forEach(layer=>{if(map.hasLayer(layer))map.removeLayer(layer);});
       tileProviders[index].addTo(map);
-      setStatus(reason || (index===0?"Loading dark navy street map…":index===1?"Dark map unavailable. Loading OpenStreetMap backup…":"Loading final street-map provider…"));
+      setStatus(reason || (index===0?"Loading dark navy street map…":index===1?"Primary map unavailable. Loading backup street map…":"Loading final street-map provider…"));
       clearTimeout(tileLoadTimer);
       tileLoadTimer=setTimeout(()=>{
         if(activeTileProvider===index && Date.now()-tileProviderStartedAt>=9000){
@@ -171,7 +171,7 @@
       layer.on("tileload",()=>{
         if(index!==activeTileProvider)return;
         clearTimeout(tileLoadTimer);
-        setStatus(index===0?"Dark navy street map loaded. Search an area or zoom in to explore.":index===1?"Street map loaded using OpenStreetMap backup.":"Street map loaded using Esri backup.");
+        setStatus(index===0?"Dark navy street map loaded. Search an area or zoom in to explore.":index===1?"Dark navy street map loaded using backup tiles.":"Dark navy street map loaded using Esri backup.");
       });
     });
     activateTileProvider(0);
