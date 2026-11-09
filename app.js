@@ -5294,6 +5294,31 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                             void loadDepartmentTaskIntegrityAudit(clinic, department.id, integrityPanel));
                         void loadDepartmentTaskIntegrityAudit(clinic, department.id, integrityPanel);
 
+                        const directoryEscalationHeading = document.createElement("h4");
+                        directoryEscalationHeading.textContent = "Escalations & Exceptions";
+                        const directoryEscalationPanel = document.createElement("section");
+                        directoryEscalationPanel.className = "panel";
+                        directoryEscalationPanel.style.margin = "18px 0";
+                        const directoryEscalationIntro = document.createElement("p");
+                        directoryEscalationIntro.className = "muted";
+                        directoryEscalationIntro.textContent = "Read-only exception queue for authorised department management and hospital administrators. It recommends a review route but does not send notifications or prove misconduct.";
+                        const directoryEscalationRefresh = document.createElement("button");
+                        directoryEscalationRefresh.type = "button";
+                        directoryEscalationRefresh.className = "secondary-button";
+                        directoryEscalationRefresh.textContent = "Refresh escalations";
+                        const directoryEscalationStatus = document.createElement("p");
+                        directoryEscalationStatus.className = "message";
+                        directoryEscalationStatus.setAttribute("role", "status");
+                        directoryEscalationStatus.setAttribute("aria-live", "polite");
+                        const directoryEscalationStats = document.createElement("div");
+                        directoryEscalationStats.className = "department-workspace-stats";
+                        const directoryEscalationFindings = document.createElement("div");
+                        directoryEscalationPanel.append(directoryEscalationIntro, directoryEscalationRefresh, directoryEscalationStatus, directoryEscalationStats, directoryEscalationFindings);
+                        detail.append(directoryEscalationHeading, directoryEscalationPanel);
+                        directoryEscalationRefresh.addEventListener("click", () =>
+                            void loadDepartmentTaskEscalations(clinic, department.id, directoryEscalationStatus, directoryEscalationStats, directoryEscalationFindings, directoryEscalationRefresh));
+                        void loadDepartmentTaskEscalations(clinic, department.id, directoryEscalationStatus, directoryEscalationStats, directoryEscalationFindings, directoryEscalationRefresh);
+
                         taskBoardFilter.addEventListener("change", () => {
                             void loadDepartmentWorkspaceTaskBoard(clinic, department.id, taskBoard);
                         });
