@@ -131,11 +131,13 @@
     const osmAttribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
     const cartoAttribution='&copy; <a href="https://carto.com/attributions">CARTO</a> &copy; OpenStreetMap contributors';
     const esriAttribution='Tiles &copy; Esri — Sources: Esri, HERE, Garmin, OpenStreetMap contributors';
-    baseTileLayer=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-      subdomains:["a","b","c"],maxZoom:19,maxNativeZoom:19,attribution:osmAttribution
-    });
-    fallbackTileLayer=L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{
+    // Dark navy CARTO basemap is the primary style, matching the approved reference.
+    // Keep independent light OSM and Esri providers as automatic fallbacks.
+    baseTileLayer=L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png",{
       subdomains:["a","b","c","d"],maxZoom:20,attribution:cartoAttribution
+    });
+    fallbackTileLayer=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+      subdomains:["a","b","c"],maxZoom:19,maxNativeZoom:19,attribution:osmAttribution
     });
     tertiaryTileLayer=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",{
       maxZoom:19,attribution:esriAttribution
@@ -152,7 +154,7 @@
       tileProviderStartedAt=Date.now();
       tileProviders.forEach(layer=>{if(map.hasLayer(layer))map.removeLayer(layer);});
       tileProviders[index].addTo(map);
-      setStatus(reason || (index===0?"Loading OpenStreetMap streets…":index===1?"Loading backup street map…":"Loading final street-map provider…"));
+      setStatus(reason || (index===0?"Loading dark navy street map…":index===1?"Dark map unavailable. Loading OpenStreetMap backup…":"Loading final street-map provider…"));
       clearTimeout(tileLoadTimer);
       tileLoadTimer=setTimeout(()=>{
         if(activeTileProvider===index && Date.now()-tileProviderStartedAt>=9000){
@@ -169,7 +171,7 @@
       layer.on("tileload",()=>{
         if(index!==activeTileProvider)return;
         clearTimeout(tileLoadTimer);
-        setStatus(index===0?"Street map loaded. Search an area or zoom in to explore.":index===1?"Street map loaded using CARTO backup.":"Street map loaded using Esri backup.");
+        setStatus(index===0?"Dark navy street map loaded. Search an area or zoom in to explore.":index===1?"Street map loaded using OpenStreetMap backup.":"Street map loaded using Esri backup.");
       });
     });
     activateTileProvider(0);
