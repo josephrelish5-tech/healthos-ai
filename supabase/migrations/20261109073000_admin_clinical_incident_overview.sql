@@ -45,7 +45,7 @@ begin
       replace(h.category, '_', ' ') as kind,
       h.severity,
       h.status,
-      h.reported_at as occurred_at
+      h.occurred_at as occurred_at
     from public.hospital_incident_reports h
     where h.clinic_id = p_clinic_id
 
