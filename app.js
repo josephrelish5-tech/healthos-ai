@@ -3380,6 +3380,130 @@ await startStaffPresenceTracking(
             historyRefresh.addEventListener("click", () => void refreshMyDutyExecutionHistory());
             void refreshMyDutyExecutionHistory();
         }
+
+        
+        // STAGE 5D PART 2K: SECURE IN-APP ESCALATION NOTIFICATION INBOX
+        // This inbox only reads notifications routed by the trusted service-role process.
+        // Marking a notification as read does NOT acknowledge or resolve the underlying escalation.
+        if (myTasksPanel && myTasksPanel.parentElement) {
+            const oldInbox = document.getElementById("myDepartmentTaskNotificationInbox");
+            if (oldInbox) oldInbox.remove();
+
+            const inbox = document.createElement("section");
+            inbox.id = "myDepartmentTaskNotificationInbox";
+            inbox.className = "department-workspace";
+            const inboxHeading = document.createElement("h3");
+            inboxHeading.textContent = "Hospital Alerts & Escalation Inbox";
+            const inboxIntro = document.createElement("p");
+            inboxIntro.className = "muted";
+            inboxIntro.textContent = "Secure in-app alerts routed to your signed-in hospital account. Reading an alert does not acknowledge, investigate or resolve its escalation.";
+            const inboxRefresh = document.createElement("button");
+            inboxRefresh.type = "button";
+            inboxRefresh.className = "secondary-button";
+            inboxRefresh.textContent = "Refresh alerts";
+            const inboxStatus = document.createElement("p");
+            inboxStatus.className = "message";
+            inboxStatus.setAttribute("role", "status");
+            inboxStatus.setAttribute("aria-live", "polite");
+            const inboxList = document.createElement("div");
+            inboxList.className = "department-workspace-stats";
+            inbox.append(inboxHeading, inboxIntro, inboxRefresh, inboxStatus, inboxList);
+            const historyPanel = document.getElementById("myDutyExecutionHistory");
+            (historyPanel || myTasksPanel).insertAdjacentElement("afterend", inbox);
+
+            async function refreshDepartmentTaskNotificationInbox() {
+                inboxRefresh.disabled = true;
+                inboxStatus.textContent = "Loading your hospital alerts...";
+                inboxStatus.className = "message";
+                inboxList.replaceChildren();
+                try {
+                    const { data, error } = await supabaseClient.rpc(
+                        "get_my_department_task_notifications",
+                        { p_clinic_id: clinic.id, p_limit: 50, p_unread_only: false }
+                    );
+                    if (error) throw error;
+                    if (!data || String(data.clinic_id) !== String(clinic.id) ||
+                        !Array.isArray(data.notifications)) {
+                        throw new Error("The notification response failed clinic-scope validation.");
+                    }
+
+                    const unread = Number(data.unread_count || 0);
+                    inboxStatus.textContent = unread + " unread alert(s). " +
+                        data.notifications.length + " recent notification(s) displayed.";
+                    inboxStatus.className = "message success";
+
+                    if (!data.notifications.length) {
+                        const empty = document.createElement("p");
+                        empty.className = "message";
+                        empty.textContent = "There are no in-app escalation notifications in your inbox yet.";
+                        inboxList.appendChild(empty);
+                        return;
+                    }
+
+                    data.notifications.forEach(function (notification) {
+                        const card = document.createElement("article");
+                        card.className = "stat-card";
+                        const title = document.createElement("h4");
+                        title.textContent = notification.title || "Hospital alert";
+                        const message = document.createElement("p");
+                        message.textContent = notification.message || "Open the escalation workspace to review this alert.";
+                        const meta = document.createElement("p");
+                        meta.className = "muted";
+                        meta.textContent =
+                            (notification.status || "status unavailable").replace(/_/g, " ") +
+                            " • " + (notification.created_at ? new Date(notification.created_at).toLocaleString() : "Time unavailable") +
+                            (notification.read_at ? " • Read" : " • Unread");
+                        card.append(title, message, meta);
+
+                        if (notification.escalation_id) {
+                            const reference = document.createElement("p");
+                            reference.className = "muted";
+                            reference.textContent = "Escalation reference: " + notification.escalation_id;
+                            card.appendChild(reference);
+                        }
+
+                        if (!notification.read_at && notification.id) {
+                            const markRead = document.createElement("button");
+                            markRead.type = "button";
+                            markRead.className = "secondary-button";
+                            markRead.textContent = "Mark notification as read";
+                            markRead.addEventListener("click", async function () {
+                                markRead.disabled = true;
+                                try {
+                                    const { error: markError } = await supabaseClient.rpc(
+                                        "mark_department_task_notification_read",
+                                        { p_clinic_id: clinic.id, p_notification_id: notification.id }
+                                    );
+                                    if (markError) throw markError;
+                                    await refreshDepartmentTaskNotificationInbox();
+                                } catch (markError) {
+                                    console.error("Mark notification read failed:", markError);
+                                    inboxStatus.textContent = friendlyError(markError);
+                                    inboxStatus.className = "message error";
+                                    markRead.disabled = false;
+                                }
+                            });
+                            card.appendChild(markRead);
+                        }
+                        inboxList.appendChild(card);
+                    });
+                } catch (inboxError) {
+                    console.error("Department task notification inbox failed:", inboxError);
+                    inboxStatus.textContent =
+                        /function .*get_my_department_task_notifications.* does not exist|could not find the function/i.test(inboxError.message || "")
+                            ? "The secure notification inbox RPC is not available in this database yet. No alerts are displayed."
+                            : friendlyError(inboxError);
+                    inboxStatus.className = "message error";
+                } finally {
+                    inboxRefresh.disabled = false;
+                }
+            }
+
+            inboxRefresh.addEventListener("click", () => void refreshDepartmentTaskNotificationInbox());
+            void refreshDepartmentTaskNotificationInbox();
+        }
+        // END STAGE 5D PART 2K: SECURE IN-APP ESCALATION NOTIFICATION INBOX
+
         // END HEALTHOS AI: INDIVIDUAL DUTY EXECUTION HISTORY
 
         // HEALTHOS AI: SUPERVISOR REVIEW & APPROVAL
