@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#111828">
     <title>HealthOS Medical Systems | Hospital Management Software</title>
-    <link rel="stylesheet" href="styles.css?v=20261109-vector-fiord-v5">
+    <link rel="stylesheet" href="styles.css?v=20261109-vector-fiord-v5">\n    <link rel="stylesheet" href="healthos-clinical-safety-command.css?v=20261109-stage4-v1">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.css">
     <script type="importmap">
@@ -26,7 +26,7 @@
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js?v=20261108-department-staffing-coverage-v1" defer></script>
+    <script src="app.js?v=20261108-department-staffing-coverage-v1" defer></script>\n    <script src="healthos-clinical-safety-command.js?v=20261109-stage4-v1" defer></script>
     <script src="icu-supervisor-management.js?v=20261108-supervisor-access-v1" defer></script>
     <script src="healthos-directory-admin.js?v=20261106-national-lga-registry-ui-v1" defer></script>
     <script src="healthos-hospital-registration-review.js?v=20261107-risk-flags-ui" defer></script>
@@ -839,6 +839,34 @@
  </div>
  <div class="panel"><h3>My authorised nursing tasks</h3><p class="muted">Tasks assigned to your active staff assignments. Use the existing task workflow to accept, start, block, submit evidence and obtain supervisor review.</p><div id="nursingTasksList" class="stats-grid"><p class="muted">Refresh to load assigned tasks.</p></div></div>
  <p class="stat-note">Clinical safety: urgent care must never be delayed for data entry. This workspace records observations; it does not calculate diagnoses, prescribe treatment or replace hospital protocols. Access is enforced by existing Supabase row-level security and clinical-record permissions.</p>
+</section>
+<!-- HEALTHOS STAGE 4: HOSPITAL-WIDE CLINICAL SAFETY COMMAND CENTRE -->
+<section class="panel healthos-safety-command" id="healthosSafetyCommandCentre" aria-labelledby="healthosSafetyCommandHeading">
+ <div class="panel-heading"><div><p class="eyebrow">HOSPITAL-WIDE CLINICAL GOVERNANCE</p><h2 id="healthosSafetyCommandHeading">Clinical Safety Command Centre</h2><p class="muted">Clinic-scoped overview of recorded rule-based safety alerts across authorised encounters.</p></div><button type="button" class="secondary-button" id="healthosSafetyRefresh">Refresh alerts</button></div>
+ <p id="healthosSafetyMessage" class="message" role="status" aria-live="polite">Sign in to an authorised hospital workspace to load clinical safety alerts.</p>
+ <div class="stats-grid"><article class="stat-card"><p>Urgent alerts</p><h3 id="healthosSafetyCritical">—</h3></article><article class="stat-card"><p>Review alerts</p><h3 id="healthosSafetyHigh">—</h3></article><article class="stat-card"><p>Awaiting review</p><h3 id="healthosSafetyPending">—</h3></article><article class="stat-card"><p>Resolved alerts</p><h3 id="healthosSafetyReviewed">—</h3></article></div>
+ <div class="healthos-safety-toolbar"><label>Severity<select id="healthosSafetySeverity"><option value="all">All severities</option><option value="urgent">Urgent</option><option value="review">Review</option></select></label><label>Review status<select id="healthosSafetyStatus"><option value="all">All statuses</option><option value="open">Awaiting review</option><option value="resolved">Resolved</option></select></label><span id="healthosSafetyUpdated" class="muted">Not yet refreshed</span></div>
+ <div class="table-wrap"><table><thead><tr><th>Detected</th><th>Severity</th><th>Rule</th><th>Observation</th><th>Alert detail</th><th>Encounter reference</th><th>Status</th><th>Review note</th></tr></thead><tbody id="healthosSafetyRows"><tr><td colspan="8">Sign in to load authorised alerts.</td></tr></tbody></table></div>
+ <p class="stat-note">This command centre displays recorded alerts for authorised staff review. It does not diagnose, prescribe, change treatment or replace direct clinical assessment and emergency protocols. Use the existing encounter-level review workflow to record clinical decisions. Urgent care must never wait for this dashboard.</p>
+</section>
+<!-- HEALTHOS STAGE 4B: EXISTING DEPARTMENT ESCALATION ENGINE — ADMIN MONITORING -->
+<section class="panel healthos-safety-command healthos-escalation-command" id="healthosDepartmentEscalationPanel" aria-labelledby="healthosDepartmentEscalationHeading" hidden>
+ <div class="panel-heading"><div><p class="eyebrow">ADMINISTRATOR-ONLY · OPERATIONAL ACCOUNTABILITY</p><h2 id="healthosDepartmentEscalationHeading">Department Escalation & Response Monitor</h2><p class="muted">Live view of overdue and blocked department tasks already processed by the HealthOS escalation engine.</p></div><button type="button" class="secondary-button" id="healthosEscalationRefresh">Refresh escalations</button></div>
+ <p id="healthosEscalationMessage" class="message" role="status" aria-live="polite">Administrator verification is required to view hospital-wide escalations.</p>
+ <div class="stats-grid"><article class="stat-card"><p>Open</p><h3 id="healthosEscalationOpen">—</h3></article><article class="stat-card"><p>Acknowledged</p><h3 id="healthosEscalationAcknowledged">—</h3></article><article class="stat-card"><p>Critical</p><h3 id="healthosEscalationCritical">—</h3></article><article class="stat-card"><p>Urgent</p><h3 id="healthosEscalationUrgent">—</h3></article></div>
+ <div class="healthos-safety-toolbar"><label>Severity<select id="healthosEscalationSeverity"><option value="all">All severities</option><option value="critical">Critical</option><option value="urgent">Urgent</option><option value="high">High</option><option value="normal">Normal</option></select></label><label>Status<select id="healthosEscalationStatus"><option value="active">Open / acknowledged</option><option value="all">All statuses</option><option value="open">Open</option><option value="acknowledged">Acknowledged</option><option value="resolved">Resolved</option><option value="dismissed">Dismissed</option></select></label><span id="healthosEscalationUpdated" class="muted">Not yet refreshed</span></div>
+ <div class="table-wrap"><table><thead><tr><th>Raised</th><th>Department / Unit</th><th>Task</th><th>Severity</th><th>Escalation status</th><th>Due</th><th>Reason</th><th>Latest response / resolution</th><th>Event history</th></tr></thead><tbody id="healthosEscalationRows"><tr><td colspan="9">Refresh to load authorised escalation records.</td></tr></tbody></table></div>
+ <p class="stat-note">This is an administrator-only monitoring view. Department supervisors and appointed managers must use their existing scoped escalation inbox and authorised acknowledgement/resolution actions. This panel is read-only: it does not change task or escalation status.</p>
+</section>
+
+<!-- HEALTHOS STAGE 4C: READ-ONLY HOSPITAL-WIDE CLINICAL INCIDENT INTEGRATION -->
+<section class="panel healthos-safety-command healthos-incident-command" id="healthosClinicalIncidentIntegration" aria-labelledby="healthosClinicalIncidentHeading" hidden>
+ <div class="panel-heading"><div><p class="eyebrow">ADMINISTRATOR-ONLY · PATIENT SAFETY OVERSIGHT</p><h2 id="healthosClinicalIncidentHeading">Hospital-Wide Clinical Incident Overview</h2><p class="muted">A consolidated, read-only view of existing patient-safety incidents and critical clinical events across authorised departments.</p></div><button type="button" class="secondary-button" id="healthosClinicalIncidentRefresh">Refresh clinical incidents</button></div>
+ <p id="healthosClinicalIncidentMessage" class="message" role="status" aria-live="polite">Administrator verification is required. Department-level permissions remain enforced by the database.</p>
+ <div class="stats-grid"><article class="stat-card"><p>Open / unclosed events</p><h3 id="healthosIncidentOpenCount">—</h3></article><article class="stat-card"><p>Critical events</p><h3 id="healthosIncidentCriticalCount">—</h3></article><article class="stat-card"><p>Urgent events</p><h3 id="healthosIncidentUrgentCount">—</h3></article><article class="stat-card"><p>Sources available</p><h3 id="healthosIncidentSourcesCount">—</h3></article></div>
+ <div class="healthos-safety-toolbar"><label>Severity<select id="healthosIncidentSeverity"><option value="all">All severities</option><option value="critical">Critical</option><option value="urgent">Urgent</option><option value="high">High</option><option value="moderate">Moderate</option><option value="low">Low</option><option value="review">Review</option></select></label><label>Event status<select id="healthosIncidentStatus"><option value="active">Open / active</option><option value="all">All statuses</option><option value="resolved">Resolved / closed</option></select></label><span id="healthosIncidentUpdated" class="muted">Not yet refreshed</span></div>
+ <div class="table-wrap"><table><thead><tr><th>Recorded</th><th>Source</th><th>Reference</th><th>Department / event</th><th>Severity</th><th>Status</th></tr></thead><tbody id="healthosClinicalIncidentRows"><tr><td colspan="6">Refresh to load permitted incident records.</td></tr></tbody></table></div>
+ <p class="stat-note">Read-only management overview. It does not acknowledge, assign, resolve or alter clinical records. Patient names, identifiers and clinical narrative are deliberately excluded. A source marked restricted must be reviewed through its authorised departmental workspace. This dashboard does not replace direct emergency communication or clinical assessment.</p>
 </section>
 <!-- HEALTHOS ICU WORKSPACE: READ-ONLY INTEGRATION WITH EXISTING ADMISSIONS, BEDS AND VITALS -->
 <section class="panel" id="icuWorkspace" aria-labelledby="icuWorkspaceHeading">
