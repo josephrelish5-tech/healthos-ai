@@ -17346,6 +17346,137 @@ window.loadHealthOSLaboratoryWorkspace=load;
                         : (fingerprintError.message || "Fingerprint verification is unavailable.");
                     fingerprintStatus.className = "message error";
                 }
+
+                // Part 2R: verify actual stored file bytes and offer controlled retrieval.
+                const fileAuditPanel = document.createElement("section");
+                fileAuditPanel.className = "panel";
+                fileAuditPanel.style.marginTop = "12px";
+                fileAuditPanel.setAttribute("aria-label", "Uploaded investigation file integrity");
+                fileAuditPanel.appendChild(el("h5", "Actual uploaded-file integrity verification"));
+                const fileAuditStatus = el("p", "Checking uploaded file fingerprints…", "message");
+                fileAuditPanel.appendChild(fileAuditStatus);
+                integrityPanel.appendChild(fileAuditPanel);
+                try {
+                    const { data: fileAudit, error: fileAuditError } = await supabaseClient.rpc(
+                        "get_hospital_investigation_file_integrity_audit",
+                        { p_clinic_id: clinicId, p_task_id: taskId }
+                    );
+                    if (request !== requestVersion || panel.hidden) return;
+                    if (fileAuditError) throw fileAuditError;
+                    if (!fileAudit || fileAudit.read_only !== true ||
+                        fileAudit.clinic_id !== clinicId || fileAudit.task_id !== taskId) {
+                        throw new Error("Uploaded-file audit failed hospital/task scope verification.");
+                    }
+                    const fileSummary = fileAudit.summary || {};
+                    fileAuditStatus.textContent =
+                        value(fileSummary.files_registered) + " file(s) registered · " +
+                        value(fileSummary.files_verified) + " verified · " +
+                        value(fileSummary.files_modified_or_replaced) + " modified/replaced · " +
+                        value(fileSummary.files_missing) + " missing · " +
+                        value(fileSummary.open_tamper_alerts) + " open tamper alert(s).";
+                    fileAuditStatus.className = "message " +
+                        (Number(fileSummary.files_modified_or_replaced || 0) +
+                         Number(fileSummary.files_missing || 0) +
+                         Number(fileSummary.open_tamper_alerts || 0) > 0 ? "error" : "success");
+
+                    const fileRows = Array.isArray(fileAudit.files) ? fileAudit.files : [];
+                    if (!fileRows.length) {
+                        fileAuditPanel.appendChild(el("p", "No uploaded binary evidence files are registered for this task. Existing note and reference evidence remains unchanged.", "muted"));
+                    } else {
+                        const fileList = document.createElement("div");
+                        fileRows.forEach(fileRow => {
+                            const fileCard = document.createElement("article");
+                            fileCard.className = "stat-card";
+                            fileCard.style.marginTop = "8px";
+                            fileCard.appendChild(el("strong", value(fileRow.file_name)));
+                            fileCard.appendChild(el("p",
+                                value(fileRow.mime_type) + " · " +
+                                value(Math.round(Number(fileRow.byte_size || 0) / 1024)) + " KB · Uploaded " +
+                                date(fileRow.uploaded_at), "muted"));
+                            fileCard.appendChild(el("p",
+                                "Latest verification: " + value(fileRow.latest_verification) +
+                                " · Open alerts: " + value(fileRow.open_tamper_alerts)));
+                            const actions = document.createElement("div");
+                            actions.className = "button-group";
+
+                            const verifyButton = el("button", "Verify file now", "btn btn-secondary");
+                            verifyButton.type = "button";
+                            verifyButton.addEventListener("click", async () => {
+                                verifyButton.disabled = true;
+                                const { data: result, error } = await supabaseClient.functions.invoke(
+                                    "healthos-investigation-evidence",
+                                    { body: { action: "verify", clinic_id: clinicId, task_id: taskId, evidence_id: fileRow.evidence_id } }
+                                );
+                                if (error || !result?.success) {
+                                    alert(error ? error.message : (result?.message || result?.error || "File verification failed."));
+                                    verifyButton.disabled = false;
+                                    return;
+                                }
+                                alert("File verified. The actual stored bytes match the original SHA-256 fingerprint.");
+                                await open(taskId);
+                            });
+                            actions.appendChild(verifyButton);
+
+                            const retrieveButton = el("button", "Retrieve verified file", "btn btn-secondary");
+                            retrieveButton.type = "button";
+                            retrieveButton.addEventListener("click", async () => {
+                                retrieveButton.disabled = true;
+                                try {
+                                    const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+                                    const session = sessionData?.session;
+                                    if (sessionError || !session?.access_token) throw new Error("Your session has expired. Sign in again.");
+                                    const response = await fetch(
+                                        supabaseClient.supabaseUrl + "/functions/v1/healthos-investigation-evidence",
+                                        {
+                                            method: "POST",
+                                            headers: {
+                                                "Authorization": "Bearer " + session.access_token,
+                                                "apikey": supabaseClient.supabaseKey,
+                                                "Content-Type": "application/json"
+                                            },
+                                            body: JSON.stringify({
+                                                action: "retrieve", clinic_id: clinicId,
+                                                task_id: taskId, evidence_id: fileRow.evidence_id
+                                            })
+                                        }
+                                    );
+                                    if (!response.ok) {
+                                        let failure = {};
+                                        try { failure = await response.json(); } catch (_) {}
+                                        throw new Error(failure.message || failure.error || "The file failed integrity verification and was not released.");
+                                    }
+                                    const blob = await response.blob();
+                                    const objectUrl = URL.createObjectURL(blob);
+                                    const link = document.createElement("a");
+                                    link.href = objectUrl;
+                                    link.download = String(fileRow.file_name || "verified-evidence").replace(/[^a-zA-Z0-9._-]/g, "_");
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    link.remove();
+                                    setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+                                } catch (error) {
+                                    alert(error.message || "Verified file retrieval failed.");
+                                } finally {
+                                    retrieveButton.disabled = false;
+                                }
+                            });
+                            actions.appendChild(retrieveButton);
+                            fileCard.appendChild(actions);
+                            fileList.appendChild(fileCard);
+                        });
+                        fileAuditPanel.appendChild(fileList);
+                    }
+                    fileAuditPanel.appendChild(el("p",
+                        "Every verification recalculates SHA-256 from the actual stored bytes. A mismatch or missing object creates a tamper alert and blocks retrieval. Storage paths and full hashes are never exposed here.",
+                        "muted"));
+                } catch (fileAuditError) {
+                    if (request !== requestVersion || panel.hidden) return;
+                    console.error("Actual uploaded-file integrity audit unavailable", fileAuditError);
+                    fileAuditStatus.textContent = fileAuditError?.code === "PGRST202"
+                        ? "Part 2R file verification is not installed yet. Existing investigation records remain available."
+                        : (fileAuditError.message || "Actual file verification is unavailable.");
+                    fileAuditStatus.className = "message error";
+                }
             } catch (integrityError) {
                 if (request !== requestVersion || panel.hidden) return;
                 console.error("Investigation evidence integrity audit unavailable", integrityError);
