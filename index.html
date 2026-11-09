@@ -1660,6 +1660,35 @@
 
                         </div>
 
+<section class="panel" id="hospitalAccountabilityCommandCentre" style="margin-top:24px" aria-labelledby="hospitalAccountabilityCommandHeading">
+ <div class="panel-heading">
+  <div><p class="eyebrow">STAGE 5D · ACCOUNTABILITY COMMAND</p><h3 id="hospitalAccountabilityCommandHeading">Hospital Accountability Command Centre</h3>
+  <p class="muted">One administrator view of active escalation risks and response performance. Detailed department records remain in their existing workspaces.</p></div>
+  <button type="button" class="secondary-button" id="refreshHospitalAccountabilityCommand">Refresh command centre</button>
+ </div>
+ <p id="hospitalAccountabilityCommandMessage" class="message" role="status" aria-live="polite">Refresh to retrieve administrator-scoped accountability indicators.</p>
+ <div class="stats-grid">
+  <article class="stat-card"><p>Open escalations</p><h3 id="commandOpenEscalations">—</h3></article>
+  <article class="stat-card"><p>Awaiting acknowledgement</p><h3 id="commandAcknowledgedEscalations">—</h3></article>
+  <article class="stat-card"><p>Critical unresolved</p><h3 id="commandCriticalEscalations">—</h3></article>
+  <article class="stat-card"><p>Urgent unresolved</p><h3 id="commandUrgentEscalations">—</h3></article>
+  <article class="stat-card"><p>Escalations in reporting period</p><h3 id="commandPeriodEscalations">—</h3></article>
+  <article class="stat-card"><p>Average resolution time</p><h3 id="commandAverageResolution">—</h3></article>
+ </div>
+ <div class="panel" style="margin-top:16px">
+  <h4>Priority incidents requiring management attention</h4>
+  <p class="muted">Shows unresolved incidents returned by the administrator-only escalation monitor. This is an operational oversight list, not a clinical triage tool.</p>
+  <div style="overflow-x:auto"><table><thead><tr><th>Severity</th><th>Department / Unit</th><th>Task</th><th>Status</th><th>Raised</th></tr></thead>
+   <tbody id="hospitalCommandPriorityRows"><tr><td colspan="5">No command-centre data loaded.</td></tr></tbody></table></div>
+ </div>
+ <div class="form-grid" style="margin-top:16px">
+  <button type="button" class="secondary-button" data-command-jump="hospitalEscalationMonitoringPanel">Open escalation monitoring</button>
+  <button type="button" class="secondary-button" data-command-jump="departmentEscalationPerformancePanel">Open response performance</button>
+  <button type="button" class="secondary-button" data-command-jump="departmentWorkspaceDirectoryPanel">Open department workspaces</button>
+ </div>
+ <p class="stat-note">Notification delivery health will be added after the Part 2M database migration is safely validated and applied. Existing notification inbox and escalation-resolution workflows are not replaced by this overview.</p>
+</section>
+
 <div class="panel" id="hospitalDepartmentCommandPanel" style="margin-top:24px">
  <div class="panel-heading">
   <div><p class="eyebrow">HOSPITAL COMMAND</p><h3>Department Operations Overview</h3>
