@@ -5470,12 +5470,6 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                                             item.appendChild(meta);
                                         }
 
-                                        if (duty.clinical_or_regulated_scope) {
-                                            const boundary = document.createElement("p");
-                                            boundary.className = "message";
-                                            boundary.textContent = "Regulated or clinical responsibility: perform only within verified credentials, current authorization, hospital policy and applicable professional scope. This duty display does not grant clinical authority.";
-                                            item.appendChild(boundary);
-                                        }
                                         dutyList.appendChild(item);
                                     });
                                 }
