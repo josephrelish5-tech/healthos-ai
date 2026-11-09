@@ -28,6 +28,10 @@ create table if not exists public.staff_task_escalation_actions (
 create index if not exists staff_task_escalation_actions_scope_idx
   on public.staff_task_escalation_actions(clinic_id, department_id, task_id, cycle_no, created_at);
 
+-- Prevent concurrent duplicate stage submissions within the same escalation cycle.
+create unique index if not exists staff_task_escalation_actions_stage_unique_idx
+  on public.staff_task_escalation_actions(clinic_id, task_id, cycle_no, action_type);
+
 alter table public.staff_task_escalation_actions enable row level security;
 revoke all on table public.staff_task_escalation_actions from public, anon, authenticated;
 
