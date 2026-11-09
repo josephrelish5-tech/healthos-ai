@@ -5009,6 +5009,155 @@ async function loadDepartmentTaskEscalations(clinic, departmentId, status, stats
                 timing.textContent = (item.due_at ? "Due: " + new Date(item.due_at).toLocaleString() : "No due date recorded") +
                     age + " · Correction returns: " + Number(item.correction_count || 0);
                 card.append(title, detail, reasons, route, timing);
+
+                const followupToggle = document.createElement("button");
+                followupToggle.type = "button";
+                followupToggle.className = "secondary-button";
+                followupToggle.textContent = "Open resolution follow-up";
+                const followupPanel = document.createElement("section");
+                followupPanel.className = "panel";
+                followupPanel.hidden = true;
+                followupPanel.style.marginTop = "12px";
+                const followupStatus = document.createElement("p");
+                followupStatus.className = "message";
+                followupStatus.setAttribute("role", "status");
+                const followupHistory = document.createElement("div");
+                const followupForm = document.createElement("form");
+                const actionLabel = document.createElement("label");
+                actionLabel.textContent = "Follow-up action";
+                const actionSelect = document.createElement("select");
+                actionSelect.required = true;
+                [
+                    ["acknowledged", "Acknowledge escalation"],
+                    ["investigation_started", "Start investigation (you become the recorded investigator)"],
+                    ["corrective_action_authorized", "Authorise corrective action"],
+                    ["resolution_submitted", "Submit resolution"],
+                    ["resolution_verified", "Independently verify resolution"],
+                    ["reopened", "Reopen a previously verified resolution"]
+                ].forEach(([value, label]) => {
+                    const option = document.createElement("option");
+                    option.value = value;
+                    option.textContent = label;
+                    actionSelect.appendChild(option);
+                });
+                actionLabel.appendChild(actionSelect);
+                const notesLabel = document.createElement("label");
+                notesLabel.textContent = "Action notes (operational details only)";
+                const notesInput = document.createElement("textarea");
+                notesInput.required = true;
+                notesInput.maxLength = 4000;
+                notesInput.rows = 3;
+                notesInput.placeholder = "Record the decision, investigation step or resolution summary. Do not enter patient identifiers or unnecessary clinical details.";
+                notesLabel.appendChild(notesInput);
+                const evidenceLabel = document.createElement("label");
+                evidenceLabel.textContent = "Evidence reference (required for resolution submission)";
+                const evidenceInput = document.createElement("input");
+                evidenceInput.type = "text";
+                evidenceInput.maxLength = 1000;
+                evidenceInput.placeholder = "Approved document or evidence reference; do not paste sensitive patient data";
+                evidenceLabel.appendChild(evidenceInput);
+                const saveAction = document.createElement("button");
+                saveAction.type = "submit";
+                saveAction.className = "primary-button";
+                saveAction.textContent = "Record follow-up action";
+                followupForm.append(actionLabel, notesLabel, evidenceLabel, saveAction);
+                const followupHint = document.createElement("p");
+                followupHint.className = "muted";
+                followupHint.textContent = "Actions are append-only. The database enforces the sequence. Independent verification must be performed by someone other than the assignee, assigning supervisor, investigator and resolution submitter.";
+                followupPanel.append(followupStatus, followupHistory, followupForm, followupHint);
+                followupToggle.addEventListener("click", async () => {
+                    followupPanel.hidden = !followupPanel.hidden;
+                    followupToggle.textContent = followupPanel.hidden ? "Open resolution follow-up" : "Close resolution follow-up";
+                    if (!followupPanel.hidden) await refreshEscalationFollowupHistory();
+                });
+                async function refreshEscalationFollowupHistory() {
+                    followupStatus.textContent = "Loading append-only follow-up history...";
+                    followupStatus.className = "message";
+                    followupHistory.replaceChildren();
+                    try {
+                        const { data: historyData, error: historyError } = await supabaseClient.rpc(
+                            "get_department_task_escalation_followups",
+                            { p_clinic_id: clinic.id, p_department_id: departmentId, p_task_id: item.task_id }
+                        );
+                        if (historyError) throw historyError;
+                        if (!historyData || historyData.read_only !== true ||
+                            historyData.scope !== "appointed_department_or_hospital_admin" ||
+                            historyData.clinic_id !== clinic.id ||
+                            historyData.department_id !== departmentId ||
+                            historyData.task_id !== item.task_id) {
+                            throw new Error("The follow-up history failed its clinic, department or task scope checks.");
+                        }
+                        const historyRows = Array.isArray(historyData.history) ? historyData.history : [];
+                        if (!historyRows.length) {
+                            const emptyHistory = document.createElement("p");
+                            emptyHistory.className = "muted";
+                            emptyHistory.textContent = "No follow-up actions have been recorded for this escalation.";
+                            followupHistory.appendChild(emptyHistory);
+                        } else {
+                            historyRows.forEach(action => {
+                                const entry = document.createElement("article");
+                                entry.className = "department-workspace-role";
+                                const heading = document.createElement("strong");
+                                heading.textContent = "Cycle " + Number(action.cycle_no || 1) + " · " +
+                                    String(action.action_type || "action").replace(/_/g, " ");
+                                const actor = document.createElement("p");
+                                actor.textContent = "Recorded by: " + (action.actor_name || "Authorised hospital account") +
+                                    " · " + (action.created_at ? new Date(action.created_at).toLocaleString() : "Time unavailable");
+                                const note = document.createElement("p");
+                                note.textContent = action.action_notes || "";
+                                entry.append(heading, actor, note);
+                                if (action.evidence_reference) {
+                                    const evidenceRef = document.createElement("p");
+                                    evidenceRef.textContent = "Evidence reference: " + action.evidence_reference;
+                                    entry.appendChild(evidenceRef);
+                                }
+                                followupHistory.appendChild(entry);
+                            });
+                        }
+                        followupStatus.textContent = historyRows.length + " immutable follow-up action(s) recorded.";
+                        followupStatus.className = "message success";
+                    } catch (historyError) {
+                        console.error("Escalation follow-up history unavailable:", historyError);
+                        followupStatus.textContent = /function .*get_department_task_escalation_followups.* does not exist|could not find the function/i.test(historyError.message || "")
+                            ? "Resolution tracking is committed to GitHub but its Supabase migration has not been applied. No follow-up history is shown."
+                            : friendlyError(historyError);
+                        followupStatus.className = "message error";
+                    }
+                }
+                followupForm.addEventListener("submit", async event => {
+                    event.preventDefault();
+                    saveAction.disabled = true;
+                    followupStatus.textContent = "Recording the authorised follow-up action...";
+                    followupStatus.className = "message";
+                    try {
+                        const { data: actionResult, error: actionError } = await supabaseClient.rpc(
+                            "record_department_task_escalation_action",
+                            {
+                                p_clinic_id: clinic.id,
+                                p_department_id: departmentId,
+                                p_task_id: item.task_id,
+                                p_action_type: actionSelect.value,
+                                p_action_notes: notesInput.value.trim(),
+                                p_evidence_reference: evidenceInput.value.trim() || null
+                            }
+                        );
+                        if (actionError) throw actionError;
+                        if (!actionResult || actionResult.success !== true ||
+                            actionResult.action_type !== actionSelect.value) {
+                            throw new Error("The database did not confirm the requested follow-up action.");
+                        }
+                        notesInput.value = "";
+                        evidenceInput.value = "";
+                        await refreshEscalationFollowupHistory();
+                    } catch (actionError) {
+                        console.error("Escalation follow-up action failed:", actionError);
+                        followupStatus.textContent = friendlyError(actionError);
+                        followupStatus.className = "message error";
+                    } finally {
+                        saveAction.disabled = false;
+                    }
+                });
+                card.append(followupToggle, followupPanel);
                 findings.appendChild(card);
             });
         }
