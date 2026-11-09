@@ -285,7 +285,7 @@ begin
   select coalesce(jsonb_agg(to_jsonb(x) order by x.created_at desc), '[]'::jsonb)
   into v_rows
   from (
-    select w.id as workflow_id, h.incident_reference, h.category, h.severity,
+    select w.id as workflow_id, w.incident_report_id, h.incident_reference, h.category, h.severity,
       h.department_name as reported_department, h.incident_title,
       w.department_id, w.assigned_staff_profile_id,
       d.department_name as assigned_department, s.full_name as assigned_staff,
