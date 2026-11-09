@@ -126,55 +126,52 @@
     const node=el("hospitalDiscoveryMap");
     if(!node || !window.L || map) return;
     map=L.map(node,{zoomControl:false,scrollWheelZoom:true,preferCanvas:true}).setView(defaultCenter,12);
-    // Use standard, key-free street tiles and apply a balanced navy night
-    // treatment in CSS. This keeps roads, labels and place names from OSM.
+    // Vector basemap: MapLibre draws the style while Leaflet continues to own
+    // the map, controls, hospital markers, clusters, GPS and place markers.
     const osmAttribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
     const hotAttribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, HOT';
     const esriAttribution='Tiles &copy; Esri — Sources: Esri, HERE, Garmin, OpenStreetMap contributors';
-    baseTileLayer=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-      subdomains:["a","b","c"],maxZoom:19,maxNativeZoom:19,attribution:osmAttribution
-    });
-    fallbackTileLayer=L.tileLayer("https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",{
-      subdomains:["a","b","c"],maxZoom:19,maxNativeZoom:19,attribution:hotAttribution
-    });
-    tertiaryTileLayer=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",{
-      maxZoom:19,attribution:esriAttribution
-    });
-    const tileProviders=[baseTileLayer,fallbackTileLayer,tertiaryTileLayer];
-    function activateTileProvider(index,reason){
-      if(index>=tileProviders.length){
-        clearTimeout(tileLoadTimer);
-        setStatus("Street-map tiles could not be loaded from the available providers. Check your connection or disable any data-saving/content-blocking setting, then reload.");
-        return;
+    let vectorBasemapLayer=null;
+    let vectorBasemapActive=false;
+    function activateRasterFallback(reason){
+      if(vectorBasemapLayer && map.hasLayer(vectorBasemapLayer)) map.removeLayer(vectorBasemapLayer);
+      vectorBasemapActive=false;
+      if(!baseTileLayer){
+        baseTileLayer=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+          subdomains:["a","b","c"],maxZoom:19,maxNativeZoom:19,attribution:osmAttribution
+        });
       }
-      activeTileProvider=index;
-      tileErrorCount=0;
-      tileProviderStartedAt=Date.now();
-      tileProviders.forEach(layer=>{if(map.hasLayer(layer))map.removeLayer(layer);});
-      tileProviders[index].addTo(map);
-      setStatus(reason || (index===0?"Loading dark navy street map…":index===1?"Primary map unavailable. Loading backup street map…":"Loading final street-map provider…"));
-      clearTimeout(tileLoadTimer);
-      tileLoadTimer=setTimeout(()=>{
-        if(activeTileProvider===index && Date.now()-tileProviderStartedAt>=9000){
-          activateTileProvider(index+1,"Map provider did not return tiles. Trying the next provider…");
-        }
-      },9000);
+      baseTileLayer.addTo(map);
+      setStatus(reason || "Vector map style unavailable. Showing the standard street-map backup.");
     }
-    function onProviderTileError(index){
-      if(index!==activeTileProvider)return;
-      tileErrorCount++;
-      if(tileErrorCount>=3)activateTileProvider(index+1,"Map tile errors detected. Switching street-map provider…");
+    if(typeof window.HealthOSMapLibreGL==="function"){
+      try{
+        vectorBasemapLayer=window.HealthOSMapLibreGL({
+          style:"https://tiles.openfreemap.org/styles/fiord",
+          interactive:false
+        }).addTo(map);
+        const vectorMap=vectorBasemapLayer.getMaplibreMap();
+        vectorMap.once("load",()=>{
+          vectorBasemapActive=true;
+          setStatus("Navy vector street map loaded. Search an area or zoom in to explore.");
+        });
+        vectorMap.on("error",event=>{
+          if(!vectorBasemapActive && event && event.error){
+            console.warn("HealthOS vector basemap error:",event.error);
+          }
+        });
+        tileLoadTimer=setTimeout(()=>{
+          if(!vectorBasemapActive && map && vectorBasemapLayer && map.hasLayer(vectorBasemapLayer)){
+            activateRasterFallback("The navy vector map did not finish loading. Showing the standard street-map backup; hospital functions remain available.");
+          }
+        },15000);
+      }catch(error){
+        console.error("HealthOS vector basemap initialization failed:",error);
+        activateRasterFallback("Navy vector map could not initialize. Showing the standard street-map backup.");
+      }
+    }else{
+      activateRasterFallback("Navy vector map library is unavailable. Showing the standard street-map backup.");
     }
-    function onProviderTileLoad(index){
-      if(index!==activeTileProvider)return;
-      clearTimeout(tileLoadTimer);
-      setStatus(index===0?"Navy street map loaded. Search an area or zoom in to explore.":index===1?"Street map loaded using OpenStreetMap backup.":"Street map loaded using HOT backup.");
-    }
-    tileProviders.forEach((layer,index)=>{
-      layer.on("tileerror",()=>onProviderTileError(index));
-      layer.on("tileload",()=>onProviderTileLoad(index));
-    });
-    activateTileProvider(0);
     // Make hospital-name labels readable when users zoom in.
     if(!document.getElementById("healthos-hospital-map-label-style")){
       const style=document.createElement("style"); style.id="healthos-hospital-map-label-style";
