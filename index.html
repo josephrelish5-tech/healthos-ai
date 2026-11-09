@@ -1848,8 +1848,14 @@
   <div id="investigationPatternResults" aria-live="polite"></div>
   <p class="muted">Analysis uses recorded evidence-integrity alerts only. Every run is logged. A qualified human investigator must inspect source records and operational context.</p>
  </section>
+ <section class="panel" aria-labelledby="investigationRootCauseHeading" style="margin:14px 0">
+  <div class="panel-heading"><div><p class="eyebrow">STAGE 5D · PART 2W</p><h3 id="investigationRootCauseHeading">Root-Cause Findings &amp; Preventive Actions</h3><p class="muted">Only independently accepted human conclusions can become findings. Findings and action history are preserved; completion requires independent verification.</p></div><button type="button" class="btn btn-secondary" id="refreshInvestigationRootCauseRegister">Refresh register</button></div>
+  <p id="investigationRootCauseMessage" class="message" role="status" aria-live="polite">The root-cause register loads after administrator verification and migration deployment.</p>
+  <div id="investigationRootCauseEligible"></div>
+  <div id="investigationRootCauseFindings"></div>
+ </section>
  <div class="stats-grid">
-  <article class="stat-card"><p>Total alerts</p><h3 id="investigationAlertTotal">—</h3></article>
+  <article class="stat-card"><p>Total alerts</p><h3 id="investigationAlertTotal"><h3 id="investigationAlertTotal">—</h3></article>
   <article class="stat-card"><p>Open</p><h3 id="investigationAlertOpen">—</h3></article>
   <article class="stat-card"><p>Acknowledged</p><h3 id="investigationAlertAcknowledged">—</h3></article>
   <article class="stat-card"><p>Resolved</p><h3 id="investigationAlertResolved">—</h3></article>
