@@ -5447,11 +5447,35 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                                 } else {
                                     duties.forEach(duty => {
                                         const item = document.createElement("li");
-                                        item.textContent = (duty.duty_title || "Duty") +
-                                            (duty.expected_frequency ? " — " + duty.expected_frequency : "") +
-                                            (duty.evidence_required ? " · Evidence required" : "") +
-                                            (duty.supervisor_review_required ? " · Supervisor review" : "") +
-                                            (duty.separate_approval_required ? " · Separate approval" : "");
+                                        const title = document.createElement("strong");
+                                        title.textContent = duty.duty_title || "Approved duty";
+                                        item.appendChild(title);
+
+                                        if (duty.duty_description) {
+                                            const description = document.createElement("p");
+                                            description.textContent = duty.duty_description;
+                                            item.appendChild(description);
+                                        }
+
+                                        const controls = [];
+                                        if (duty.duty_category) controls.push("Category: " + String(duty.duty_category).replace(/_/g, " "));
+                                        if (duty.expected_frequency) controls.push("Expected frequency: " + duty.expected_frequency);
+                                        if (duty.evidence_required) controls.push("Evidence must be recorded");
+                                        if (duty.supervisor_review_required) controls.push("Supervisor review required");
+                                        if (duty.separate_approval_required) controls.push("Separate approval required");
+                                        if (controls.length) {
+                                            const meta = document.createElement("p");
+                                            meta.className = "muted";
+                                            meta.textContent = controls.join(" · ");
+                                            item.appendChild(meta);
+                                        }
+
+                                        if (duty.clinical_or_regulated_scope) {
+                                            const boundary = document.createElement("p");
+                                            boundary.className = "message";
+                                            boundary.textContent = "Regulated or clinical responsibility: perform only within verified credentials, current authorization, hospital policy and applicable professional scope. This duty display does not grant clinical authority.";
+                                            item.appendChild(boundary);
+                                        }
                                         dutyList.appendChild(item);
                                     });
                                 }
