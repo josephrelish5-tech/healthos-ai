@@ -181,6 +181,7 @@ begin
             or s.review_status is distinct from 'approved')
           then 'supervisor_approval_incomplete' end,
         case when s.task_status = 'completed'
+          and s.requires_supervisor_review
           and s.review_status is distinct from 'approved'
           then 'completion_without_approved_review' end,
         case when s.task_status = 'completed'
