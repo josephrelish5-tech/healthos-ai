@@ -1888,7 +1888,7 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
 .department-workspace-stats .stat-card { min-width: 0; }
 
 
-/* Hospital discovery map — deep navy surround, light map tiles preserved */
+/* Hospital discovery map — deep navy surround and dark navy basemap */
 #hospitalMap .hospital-map-panel {
   background: #111828 !important;
   color: #FFFFFF !important;
@@ -1907,6 +1907,12 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
   border: 1px solid #C6E9D7 !important;
   border-radius: 999px !important;
   padding: 10px 14px !important;
+}
+#hospitalMap #hospitalDiscoveryMap {
+  background: #111828 !important;
+}
+#hospitalMap #hospitalDiscoveryMap .leaflet-tile-pane {
+  background: #111828 !important;
 }
 #hospitalMap .healthos-map-stage {
   background: #111828 !important;
