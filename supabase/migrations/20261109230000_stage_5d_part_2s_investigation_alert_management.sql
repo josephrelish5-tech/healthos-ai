@@ -85,7 +85,7 @@ begin
     and cm.status = 'active'
   limit 1;
 
-  if v_role not in ('owner','admin') then
+  if v_role is null or v_role not in ('owner','admin') then
     raise exception 'Only active hospital owners and administrators may access the investigation alert inbox'
       using errcode = '42501';
   end if;
@@ -204,7 +204,7 @@ begin
   if p_clinic_id is null or p_alert_id is null then
     raise exception 'Hospital and alert identifiers are required' using errcode = '22023';
   end if;
-  if p_action not in ('acknowledged','assigned','escalated','resolved','reopened','note_added') then
+  if p_action is null or p_action not in ('acknowledged','assigned','escalated','resolved','reopened','note_added') then
     raise exception 'Unsupported investigation alert action' using errcode = '22023';
   end if;
   if length(coalesce(v_note,'')) > 2000 then
