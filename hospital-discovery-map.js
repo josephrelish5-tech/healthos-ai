@@ -151,6 +151,39 @@
           interactive:false
         }).addTo(map);
         const vectorMap=vectorBasemapLayer.getMaplibreMap();
+
+        // Distinct, luminous map typography: state names (white), capital cities (pink),
+        // and regional/place labels (peach). Only label symbol layers are touched.
+        function applyHealthOSGeographicLabelPalette(){
+          if(!vectorMap.isStyleLoaded()) return;
+          const style=vectorMap.getStyle();
+          (style.layers||[]).forEach(layer=>{
+            if(layer.type!=="symbol"||!layer.layout?.["text-field"]) return;
+            const id=String(layer.id||"").toLowerCase();
+            if(!/(state|place|region|capital|settlement|city|town)/.test(id)) return;
+            let color="#FFC6A5";
+            if(/state/.test(id)) color="#FFFFFF";
+            else if(/capital/.test(id)) color="#FF9BCB";
+            const colorExpression=[
+              "case",
+              ["any",
+                ["==",["get","capital"],1],
+                ["==",["get","capital"],2],
+                ["==",["get","capital"],"yes"],
+                ["==",["get","capital"],"primary"]
+              ],"#FF9BCB",
+              ["in",["get","class"],["literal",["state","province","administrative"]]],"#FFFFFF",
+              color
+            ];
+            try{
+              vectorMap.setPaintProperty(layer.id,"text-color",colorExpression);
+              vectorMap.setPaintProperty(layer.id,"text-halo-color","#17243B");
+              vectorMap.setPaintProperty(layer.id,"text-halo-width",1.7);
+              vectorMap.setPaintProperty(layer.id,"text-halo-blur",0.35);
+            }catch(error){console.debug("Skipped unsupported geographic label layer:",layer.id,error);}
+          });
+        }
+        vectorMap.on("styledata",applyHealthOSGeographicLabelPalette);
         vectorMap.once("load",()=>{
           vectorBasemapActive=true;
           setStatus("Navy vector street map loaded. Search an area or zoom in to explore.");
