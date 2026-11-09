@@ -17811,6 +17811,7 @@ window.loadHealthOSLaboratoryWorkspace=load;
     const titles = {
         repeat_evidence_integrity_alerts_by_uploader: "Repeated evidence-integrity alerts linked to one uploader profile",
         repeat_alerts_on_same_task: "Repeated alerts linked to one hospital task",
+        repeat_corrective_action_rework: "Repeated corrective-action rework on one hospital task",
         hospital_wide_alert_spike: "Hospital-wide evidence-integrity alert increase"
     };
     button.addEventListener("click", async () => {
