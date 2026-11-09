@@ -910,7 +910,7 @@ async function loadStaffAttendanceWorkspace(staffProfileId, clinicId) {
                     });
                     if (error) throw error;
                     explanation.value = "";
-                    reportMessage.textContent = "Your attendance explanation has been submitted for administrator review.";
+                    reportMessage.textContent = "Your attendance explanation has been submitted for review by your assigned supervisor or an authorised clinic administrator.";
                     reportMessage.className = "message success";
                 } catch (error) {
                     reportMessage.textContent = error.message || "The attendance explanation could not be submitted.";
@@ -4221,8 +4221,12 @@ async function loadStaffAttendanceReviewQueue(clinic, hostId = "staffAttendanceR
             evidenceLine.className = "muted";
             evidenceLine.textContent = evidence.length
                 ? "GPS evidence: " + evidence.map(item =>
-                    item.action + " · " + Math.round(Number(item.accuracy_m)) +
-                    " m accuracy · " + item.evidence_quality.replace(/_/g, " ")
+                    item.action + " · " + Number(item.latitude).toFixed(5) + ", " +
+                    Number(item.longitude).toFixed(5) + " · " +
+                    Math.round(Number(item.accuracy_m)) + " m accuracy · " +
+                    (item.evidence_quality === "low_accuracy_review"
+                        ? "LOCATION REVIEW REQUIRED"
+                        : "within 100 m accuracy")
                   ).join(" | ")
                 : "GPS evidence: none submitted. This does not invalidate the attendance record.";
             card.appendChild(evidenceLine);
