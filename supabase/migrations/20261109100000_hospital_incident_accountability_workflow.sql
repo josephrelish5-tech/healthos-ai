@@ -287,6 +287,7 @@ begin
   from (
     select w.id as workflow_id, h.incident_reference, h.category, h.severity,
       h.department_name as reported_department, h.incident_title,
+      w.department_id, w.assigned_staff_profile_id,
       d.department_name as assigned_department, s.full_name as assigned_staff,
       w.workflow_status, w.response_due_at, w.acknowledged_at, w.resolved_at,
       w.created_at, (w.response_due_at is not null and w.response_due_at < now()
