@@ -2055,3 +2055,15 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
     max-height:680px!important;
   }
 }
+
+/* Consent-based attendance evidence and supervisor review workspace. */
+.staff-attendance-location-consent{display:flex;align-items:flex-start;gap:10px;margin:14px 0;padding:13px 15px;border:1px solid #d8e3ed;border-radius:12px;background:#f7fafc;color:#294257;font-size:13px;line-height:1.55}
+.staff-attendance-location-consent input{width:20px;height:20px;flex:0 0 auto;margin-top:2px}
+.staff-attendance-report-form,.staff-attendance-review-section{margin:18px 0;padding:16px;border:1px solid #d8e3ed;border-radius:14px;background:#fff}
+.staff-attendance-report-form label{display:block;margin:10px 0 5px;font-weight:700}
+.staff-attendance-report-form textarea,.staff-attendance-report-form select,.staff-attendance-review-controls textarea,.staff-attendance-review-controls select{width:100%;box-sizing:border-box;margin:4px 0 10px;padding:10px;border:1px solid #cbd8e5;border-radius:9px;background:#fff;color:#183247}
+.staff-attendance-review-card{margin:12px 0;padding:14px;border:1px solid #dce5ee;border-radius:12px;background:#f9fbfd}
+.staff-attendance-review-card h4{margin:0 0 8px;color:#183247}
+.staff-attendance-review-card p{line-height:1.5}
+.staff-attendance-review-controls{display:grid;grid-template-columns:minmax(140px,.7fr) minmax(180px,1.5fr) auto;gap:10px;align-items:center}
+@media(max-width:640px){.staff-attendance-review-controls{grid-template-columns:1fr}.staff-attendance-report-form,.staff-attendance-review-section{padding:12px}}
