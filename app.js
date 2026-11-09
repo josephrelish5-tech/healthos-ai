@@ -4297,6 +4297,7 @@ async function loadDepartmentWorkspaceTaskBoard(clinic, departmentId, root) {
     status.textContent = "Loading department task records...";
     status.className = "message";
     list.replaceChildren();
+    root.querySelector("[data-duty-accountability-snapshot]")?.remove();
 
     try {
         const { data, error } = await supabaseClient.rpc("get_department_task_board", {
