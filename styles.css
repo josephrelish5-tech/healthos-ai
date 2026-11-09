@@ -1911,11 +1911,21 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
 #hospitalMap #hospitalDiscoveryMap {
   background: #111828 !important;
 }
+#hospitalMap #hospitalDiscoveryMap {
+  background: #1B2D49 !important;
+}
 #hospitalMap #hospitalDiscoveryMap .leaflet-tile-pane {
   background: #1B2D49 !important;
-  /* Balanced night-map conversion: navy land, blue-grey minor roads,
-     bright readable labels and naturally prominent major-road colours. */
-  filter: invert(1) hue-rotate(180deg) brightness(1.12) saturate(1.28) contrast(0.88) !important;
+  filter: none !important;
+}
+#hospitalMap #hospitalDiscoveryMap .leaflet-maplibre-gl-layer,
+#hospitalMap #hospitalDiscoveryMap .maplibregl-map,
+#hospitalMap #hospitalDiscoveryMap .maplibregl-canvas-container,
+#hospitalMap #hospitalDiscoveryMap canvas.maplibregl-canvas {
+  background: #1B2D49 !important;
+}
+#hospitalMap #hospitalDiscoveryMap .maplibregl-canvas {
+  outline: none !important;
 }
 #hospitalMap .healthos-map-stage {
   background: #111828 !important;
