@@ -47,7 +47,8 @@ function signatureMatches(mime: string, bytes: Uint8Array) {
   return false;
 }
 function isMissingStorageObject(error: unknown, objectPresent: boolean) {
-  if (!objectPresent) return true;
+  if (objectPresent) return false;
+  if (!error) return true;
   const e = error as { statusCode?: string; status?: number; message?: string };
   return e?.statusCode === "404" || e?.status === 404 || /not found|object not found/i.test(e?.message || "");
 }
