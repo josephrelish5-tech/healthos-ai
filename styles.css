@@ -1961,3 +1961,60 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
 #hospitalMap #hospitalMapStatus {
   color: #526779 !important;
 }
+
+
+/* Stage: Hospital Discovery map-first responsive experience.
+   Preserve Leaflet/MapLibre, search, GPS, marker and directory logic. */
+#hospitalMap .hospital-discovery-layout{display:block;position:relative;margin:14px 0 22px}
+#hospitalMap .hospital-map-panel{position:relative;width:100%;padding:12px;border-radius:20px;border:1px solid #d9e4f1;background:#f7faff;box-shadow:0 14px 36px rgba(16,42,67,.09)}
+#hospitalMap .hospital-map-heading{padding:4px 5px 10px}
+#hospitalMap .hospital-map-heading h3{font-size:19px;color:#102b46;margin:0}
+#hospitalMap .hospital-map-heading span{background:#e9f3ff;color:#174d80}
+#hospitalMap .healthos-map-stage{position:relative;border-radius:16px;overflow:hidden;background:#e9f0f7;min-height:520px}
+#hospitalMap #hospitalDiscoveryMap{height:68vh!important;min-height:520px!important;max-height:680px!important;border-radius:16px}
+#hospitalMap .healthos-map-floating-controls{position:absolute;right:14px;top:14px;z-index:650;display:flex;gap:8px}
+#hospitalMap .healthos-map-locate{position:relative;right:auto;top:auto;min-height:42px;padding:9px 13px;border:1px solid #d7e4f2;border-radius:24px;background:#fff;color:#12385d;box-shadow:0 5px 18px rgba(15,43,74,.18);font-weight:700}
+#hospitalMap .healthos-map-stage .hospital-cards-panel{position:absolute;z-index:620;left:24px;right:24px;bottom:14px;width:auto;max-height:36%;overflow:hidden;padding:12px 14px;border:1px solid rgba(222,232,243,.96);border-radius:18px;background:rgba(255,255,255,.97);box-shadow:0 14px 34px rgba(15,43,74,.20);backdrop-filter:blur(12px)}
+#hospitalMap .hospital-results-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 8px}
+#hospitalMap .hospital-results-title h3{margin:0;color:#102b46;font-size:16px}
+#hospitalMap .hospital-results-title p:not(.eyebrow){display:none}
+#hospitalMap .hospital-discovery-cards{display:flex;gap:10px;max-height:none;overflow-x:auto;overflow-y:hidden;padding:2px 2px 8px;scroll-snap-type:x mandatory}
+#hospitalMap .hospital-discovery-group{display:contents}
+#hospitalMap .hospital-discovery-group>h2{display:none}
+#hospitalMap .hospital-discovery-card{flex:0 0 min(310px,82vw);min-width:0;max-height:220px;overflow:auto;padding:12px;border-radius:13px;scroll-snap-align:start;box-shadow:0 3px 12px rgba(16,42,67,.07)}
+#hospitalMap .hospital-discovery-card h3{font-size:15px;line-height:1.3}
+#hospitalMap .hospital-discovery-card p{font-size:12px;margin:5px 0}
+#hospitalMap .hospital-discovery-card .hospital-card-actions{gap:6px;margin-top:8px}
+#hospitalMap .hospital-card-actions .primary-button,#hospitalMap .hospital-card-actions .secondary-button{padding:7px 9px;font-size:11px;min-height:34px}
+#hospitalMap .hospital-verified-badge{display:inline-flex;max-width:100%;white-space:normal;font-size:10px}
+#hospitalMap .hospital-map-panel>#hospitalMapStatus{margin:8px 5px 2px;font-size:12px}
+#hospitalMap .hospital-discovery-layout.cards-view-active .healthos-map-stage{min-height:0;overflow:visible}
+#hospitalMap .hospital-discovery-layout.cards-view-active .healthos-map-stage>#hospitalDiscoveryMap,
+#hospitalMap .hospital-discovery-layout.cards-view-active .healthos-map-floating-controls{display:none!important}
+#hospitalMap .hospital-discovery-layout.cards-view-active .hospital-cards-panel{position:static;max-height:none;overflow:visible;margin-top:14px;box-shadow:none;backdrop-filter:none}
+#hospitalMap .hospital-discovery-layout.cards-view-active .hospital-discovery-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));overflow:visible}
+#hospitalMap .hospital-discovery-layout.cards-view-active .hospital-discovery-group{display:contents}
+#hospitalMap .hospital-discovery-layout.cards-view-active .hospital-discovery-group>h2{display:block;grid-column:1/-1}
+#hospitalMap .hospital-discovery-layout.cards-view-active .hospital-discovery-card{max-height:none}
+#hospitalMap .hospital-discovery-layout.cards-view-active #hospitalDiscoveryMap{height:260px!important;min-height:260px!important;max-height:260px!important}
+@media(max-width:850px){
+ #hospitalMap .hospital-map-panel{padding:8px;border-radius:16px}
+ #hospitalMap .healthos-map-stage{min-height:62vh}
+ #hospitalMap #hospitalDiscoveryMap{height:62vh!important;min-height:460px!important;max-height:620px!important}
+ #hospitalMap .hospital-cards-panel{left:10px;right:10px;bottom:18px;max-height:34%;padding:10px;border-radius:15px}
+ #hospitalMap .hospital-results-title h3{font-size:14px}
+ #hospitalMap .hospital-discovery-card{flex-basis:82vw;max-height:190px}
+ #hospitalMap .hospital-map-heading span{font-size:10px}
+}
+@media(max-width:420px){
+ #hospitalMap .hospital-search-form{grid-template-columns:1fr}
+ #hospitalMap .hospital-cards-panel{max-height:32%}
+ #hospitalMap .hospital-discovery-card{flex-basis:86vw}
+}
+
+
+/* Map-only palette: white land, native road styling, retained city/region label accents. */
+#hospitalMap #hospitalDiscoveryMap .leaflet-tile-pane { background:#fff!important; }
+#hospitalMap #hospitalDiscoveryMap .leaflet-control-attribution { background:rgba(255,255,255,.94)!important;color:#526579!important; }
+#hospitalMap #hospitalDiscoveryMap .leaflet-control-attribution a { color:#1769aa!important; }
+
