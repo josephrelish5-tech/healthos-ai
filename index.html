@@ -1678,9 +1678,18 @@
  <div class="panel" style="margin-top:16px">
   <h4>Priority incidents requiring management attention</h4>
   <p class="muted">Shows unresolved incidents returned by the administrator-only escalation monitor. This is an operational oversight list, not a clinical triage tool.</p>
-  <div style="overflow-x:auto"><table><thead><tr><th>Severity</th><th>Department / Unit</th><th>Task</th><th>Status</th><th>Raised</th></tr></thead>
-   <tbody id="hospitalCommandPriorityRows"><tr><td colspan="5">No command-centre data loaded.</td></tr></tbody></table></div>
+  <div style="overflow-x:auto"><table><thead><tr><th>Severity</th><th>Department / Unit</th><th>Task</th><th>Status</th><th>Raised</th><th>Investigation</th></tr></thead>
+   <tbody id="hospitalCommandPriorityRows"><tr><td colspan="6">No command-centre data loaded.</td></tr></tbody></table></div>
  </div>
+ <section class="panel" id="hospitalInvestigationDossierPanel" style="margin-top:16px" aria-labelledby="hospitalInvestigationDossierHeading" hidden>
+  <div class="panel-heading">
+   <div><p class="eyebrow">STAGE 5D · INVESTIGATION DOSSIER</p><h4 id="hospitalInvestigationDossierHeading">Accountability investigation dossier</h4>
+   <p class="muted">Authorised, read-only reconstruction. Evidence content and private storage paths are not displayed.</p></div>
+   <button type="button" class="secondary-button" id="closeHospitalInvestigationDossier">Close dossier</button>
+  </div>
+  <p id="hospitalInvestigationDossierMessage" class="message" role="status" aria-live="polite">Select an incident to view its dossier.</p>
+  <div id="hospitalInvestigationDossierContent"></div>
+ </section>
  <div class="form-grid" style="margin-top:16px">
   <button type="button" class="secondary-button" data-command-jump="hospitalEscalationMonitoringPanel">Open escalation monitoring</button>
   <button type="button" class="secondary-button" data-command-jump="departmentEscalationPerformancePanel">Open response performance</button>
