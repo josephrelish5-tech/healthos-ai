@@ -36,8 +36,49 @@
  }
  $("healthosSafetyRefresh")?.addEventListener("click",()=>void load());
  $("healthosSafetySeverity")?.addEventListener("change",render);$("healthosSafetyStatus")?.addEventListener("change",render);
- let seen=null;setInterval(()=>{const id=typeof currentClinic!=="undefined"?currentClinic?.id||null:null;if(id&&id!==seen){seen=id;void load();}else if(!id&&seen){seen=null;state.clinicId=null;state.alerts=[];render();msg("Sign in to an authorised hospital workspace to load clinical safety alerts.");}},1500);
+ let seen=null;setInterval(()=>{const id=typeof currentClinic!=="undefined"?currentClinic?.id||null:null;if(id&&id!==seen){seen=id;void load();void loadEscalations();}else if(!id&&seen){seen=null;state.clinicId=null;state.alerts=[];render();msg("Sign in to an authorised hospital workspace to load clinical safety alerts.");}},1500);
  setInterval(()=>{if(!document.hidden&&state.clinicId)void load();},60000);
+ setInterval(()=>{if(!document.hidden&&state.clinicId)void loadEscalations();},60000);
  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.clinicId)void load();});
  window.loadHealthOSSafetyCommandCentre=load;
+ async function loadEscalations(){
+  const panel=$("healthosDepartmentEscalationPanel");
+  if(!panel)return;
+  const admin=typeof managementVerified!=="undefined"&&managementVerified===true;
+  panel.hidden=!admin;
+  if(!admin)return;
+  if(typeof supabaseClient==="undefined"||!supabaseClient||typeof currentClinic==="undefined"||!currentClinic?.id||typeof currentUser==="undefined"||!currentUser?.id){
+   const m=$("healthosEscalationMessage");if(m)m.textContent="Sign in with a verified hospital administrator account to load escalation monitoring.";return;
+  }
+  const clinicId=currentClinic.id,button=$("healthosEscalationRefresh");
+  if(button)button.disabled=true;
+  const message=$("healthosEscalationMessage");if(message){message.textContent="Loading hospital-wide escalation records…";message.className="message";}
+  try{
+   const {data,error}=await supabaseClient.rpc("get_department_task_escalation_monitoring",{p_clinic_id:clinicId,p_status:null,p_severity:null,p_limit:200});
+   if(error)throw error;
+   if(typeof currentClinic==="undefined"||currentClinic?.id!==clinicId)throw new Error("Hospital context changed during loading. Refresh to load the correct clinic.");
+   const result=data||{},counts=result.counts||{};
+   ["open","acknowledged","critical","urgent"].forEach(k=>{const el=$("healthosEscalation"+k[0].toUpperCase()+k.slice(1));if(el)el.textContent=String(counts[k]??0);});
+   const items=Array.isArray(result.items)?result.items:[];
+   const severity=$("healthosEscalationSeverity")?.value||"all",status=$("healthosEscalationStatus")?.value||"active";
+   const filtered=items.filter(x=>(severity==="all"||String(x.severity||"").toLowerCase()===severity)&&(status==="all"||status==="active"?status==="all"||["open","acknowledged"].includes(String(x.status||"").toLowerCase()):String(x.status||"").toLowerCase()===status));
+   const body=$("healthosEscalationRows");if(body){body.replaceChildren();
+    if(!filtered.length){const tr=body.insertRow(),td=tr.insertCell();td.colSpan=9;td.textContent="No escalation records match the selected filters.";}
+    filtered.forEach(x=>{const tr=body.insertRow();const put=v=>{const td=tr.insertCell();td.textContent=String(v??"—");return td;};
+     put(x.created_at?new Date(x.created_at).toLocaleString():"—");put([x.department_name,x.unit_name].filter(Boolean).join(" / ")||"—");put(x.task_title||"—");
+     const sev=put(String(x.severity||"—").toUpperCase());sev.className="healthos-safety-severity healthos-safety-"+String(x.severity||"").toLowerCase();
+     put(String(x.status||"—").replaceAll("_"," "));put(x.due_at?new Date(x.due_at).toLocaleString():"—");put(x.reason||"—");put(x.resolution_notes||"No resolution recorded");
+     const events=Array.isArray(x.events)?x.events:[];put(events.length?events.map(e=>[e.created_at?new Date(e.created_at).toLocaleString():"",String(e.action||"").replaceAll("_"," "),e.notes||""].filter(Boolean).join(" — ")).join("\n"):"No response events recorded");
+    });
+   }
+   const updated=$("healthosEscalationUpdated");if(updated)updated.textContent="Updated "+new Date().toLocaleTimeString();
+   if(message){message.textContent="Loaded "+items.length+" escalation record(s). Server-side owner/administrator verification and clinic scope were applied.";message.className="message success";}
+  }catch(error){console.error("Department escalation monitoring failed",error);if(message){message.textContent=error?.message||"Could not load escalation records. No task or escalation status was changed.";message.className="message error";}const body=$("healthosEscalationRows");if(body){body.replaceChildren();const tr=body.insertRow(),td=tr.insertCell();td.colSpan=9;td.textContent="Escalation monitoring could not be loaded. Check administrator access and retry.";}}
+  finally{if(button)button.disabled=false;}
+ }
+ $("healthosEscalationRefresh")?.addEventListener("click",()=>void loadEscalations());
+ $("healthosEscalationSeverity")?.addEventListener("change",()=>void loadEscalations());
+ $("healthosEscalationStatus")?.addEventListener("change",()=>void loadEscalations());
+ window.loadHealthOSDepartmentEscalationMonitor=loadEscalations;
+
 })();
