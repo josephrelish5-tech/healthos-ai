@@ -1913,6 +1913,9 @@ input, select, textarea { border-color: #C9D6E3; accent-color: #111828; }
 }
 #hospitalMap #hospitalDiscoveryMap .leaflet-tile-pane {
   background: #111828 !important;
+  /* Convert the key-free light street tiles into a dark navy map.
+     This affects map tiles only, not hospital pins, clusters or controls. */
+  filter: invert(1) hue-rotate(180deg) brightness(0.72) saturate(0.72) contrast(1.05);
 }
 #hospitalMap .healthos-map-stage {
   background: #111828 !important;
