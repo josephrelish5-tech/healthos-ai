@@ -17838,7 +17838,67 @@ window.loadHealthOSLaboratoryWorkspace=load;
                     else subject.textContent = "Scope: entire hospital";
                     card.appendChild(subject);
                     const count = document.createElement("p"); count.textContent = "Distinct alerts: " + safe(signal.event_count) + " · Window: " + safe(signal.window_days) + " days · First: " + date(signal.first_event_at) + " · Latest: " + date(signal.last_event_at); card.appendChild(count);
-                    const explanation = document.createElement("p"); explanation.textContent = safe(signal.explanation); card.appendChild(explanation); results.appendChild(card);
+                    const explanation = document.createElement("p"); explanation.textContent = safe(signal.explanation); card.appendChild(explanation);
+                    const reviewControls = document.createElement("div"); reviewControls.style.display = "grid"; reviewControls.style.gap = "8px";
+                    const reviewStatus = document.createElement("p"); reviewStatus.className = "muted"; reviewStatus.textContent = "Human assessment: not yet loaded."; reviewControls.appendChild(reviewStatus);
+                    const reviewList = document.createElement("div"); reviewControls.appendChild(reviewList);
+                    const reviewButton = document.createElement("button"); reviewButton.type = "button"; reviewButton.className = "btn btn-secondary"; reviewButton.textContent = "Record human assessment";
+                    async function loadSignalReviews() {
+                        const register = await supabaseClient.rpc("get_hospital_investigation_signal_review_register", { p_clinic_id: currentClinic.id, p_signal_id: signal.signal_id });
+                        if (register.error) throw register.error;
+                        if (!register.data || register.data.read_only !== true || register.data.clinic_id !== currentClinic.id || register.data.signal_id !== signal.signal_id || !Array.isArray(register.data.reviews)) throw new Error("Human review register failed hospital/signal scope verification.");
+                        reviewList.replaceChildren();
+                        const reviews = register.data.reviews;
+                        reviewStatus.textContent = reviews.length ? reviews.length + " human assessment(s) recorded. Previous decisions are preserved." : "No human assessment has been recorded for this signal.";
+                        reviews.forEach(review => {
+                            const item = document.createElement("div"); item.className = "panel"; item.style.margin = "6px 0";
+                            const decision = document.createElement("p"); decision.textContent = "Decision: " + safe(review.decision).replaceAll("_", " ") + " · Reviewer: " + safe(review.reviewed_by_name) + " · " + date(review.reviewed_at); item.appendChild(decision);
+                            const rationale = document.createElement("p"); rationale.textContent = safe(review.rationale); item.appendChild(rationale);
+                            if (review.decision === "confirmed_operational_weakness") {
+                                const approval = review.approval;
+                                const approvalLine = document.createElement("p"); approvalLine.textContent = approval ? "Independent approval: " + safe(approval.outcome) + " · " + safe(approval.approved_by_name) + " · " + date(approval.approved_at) : "Independent approval: pending."; item.appendChild(approvalLine);
+                                if (!approval) {
+                                    const approve = document.createElement("button"); approve.type = "button"; approve.className = "btn btn-secondary"; approve.textContent = "Independently approve conclusion";
+                                    approve.addEventListener("click", async () => {
+                                        const note = window.prompt("Independent approval/rejection rationale (10–2,000 characters):");
+                                        if (!note || note.trim().length < 10) return;
+                                        const outcomeInput = window.prompt("Enter ACCEPT to approve or REJECT to reject:", "ACCEPT");
+                                        const outcome = String(outcomeInput || "").trim().toLowerCase() === "accept" ? "accepted" : String(outcomeInput || "").trim().toLowerCase() === "reject" ? "rejected" : "";
+                                        if (!outcome) { setMessage("Enter ACCEPT or REJECT. No decision was recorded.", true); return; }
+                                        approve.disabled = true;
+                                        try {
+                                            const result = await supabaseClient.rpc("approve_hospital_investigation_signal_review", { p_clinic_id: currentClinic.id, p_review_id: review.review_id, p_outcome: outcome, p_approval_note: note.trim() });
+                                            if (result.error) throw result.error;
+                                            if (!result.data || result.data.success !== true || result.data.review_id !== review.review_id) throw new Error("Independent approval was not confirmed.");
+                                            setMessage("Independent review decision recorded."); await loadSignalReviews();
+                                        } catch (error) { setMessage(error?.message || "Independent approval failed. The original reviewer cannot approve their own conclusion.", true); approve.disabled = false; }
+                                    });
+                                    item.appendChild(approve);
+                                }
+                            }
+                            reviewList.appendChild(item);
+                        });
+                    }
+                    reviewButton.addEventListener("click", async () => {
+                        const choices = "confirmed_operational_weakness, requires_further_investigation, false_positive, insufficient_evidence";
+                        const decisionInput = window.prompt("Choose one exact decision:\n" + choices, "requires_further_investigation");
+                        const decision = String(decisionInput || "").trim();
+                        if (!choices.split(", ").includes(decision)) { if (decisionInput !== null) setMessage("No valid review decision selected.", true); return; }
+                        const rationale = window.prompt("Document the human assessment and supporting context (10–3,000 characters):");
+                        if (!rationale || rationale.trim().length < 10) return;
+                        reviewButton.disabled = true;
+                        try {
+                            const result = await supabaseClient.rpc("record_hospital_investigation_signal_review", { p_clinic_id: currentClinic.id, p_signal_id: signal.signal_id, p_decision: decision, p_rationale: rationale.trim() });
+                            if (result.error) throw result.error;
+                            if (!result.data || result.data.success !== true || result.data.signal_id !== signal.signal_id) throw new Error("Human assessment was not confirmed.");
+                            setMessage(decision === "confirmed_operational_weakness" ? "Assessment recorded. A different administrator must independently approve this conclusion." : "Human assessment recorded and preserved.");
+                            await loadSignalReviews();
+                        } catch (error) { setMessage(error?.message || "Human assessment could not be recorded.", true); }
+                        finally { reviewButton.disabled = false; }
+                    });
+                    reviewControls.appendChild(reviewButton); card.appendChild(reviewControls);
+                    void loadSignalReviews().catch(error => { reviewStatus.textContent = error?.message || "Human review history is unavailable."; });
+                    results.appendChild(card);
                 });
             }
             const disclaimer = document.createElement("p"); disclaimer.className = "disclaimer"; disclaimer.textContent = safe(data.interpretation); results.appendChild(disclaimer);
