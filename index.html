@@ -312,6 +312,14 @@
                 <p class="healthos-care-disclaimer">These are platform capability areas. Availability of individual virtual-care services depends on implementation, clinical governance and hospital configuration.</p>
             </section>
 
+            <section id="publicVirtualConsultation" class="panel" aria-labelledby="publicVirtualConsultationHeading" style="margin:22px 0;padding:22px;border:1px solid #dce5f0;border-radius:14px;background:#fff">
+                <p class="eyebrow">PUBLIC VIRTUAL CARE ACCESS</p>
+                <h2 id="publicVirtualConsultationHeading">Request a virtual consultation</h2>
+                <p>Need to speak with a healthcare professional remotely? Start a request with a participating HealthOS hospital. You will sign in or create a patient account, connect to an approved hospital, and choose an audio or video consultation. The hospital must review and confirm your request before a consultation is arranged.</p>
+                <button id="publicRequestVirtualConsultationButton" class="primary-button" type="button" onclick="document.getElementById('openPatientAccessButton').click()">Request a virtual consultation</button>
+                <p class="stat-note" style="margin-top:10px">Virtual consultations are subject to hospital availability and provider readiness. This service is not for medical emergencies; seek immediate local emergency care when needed.</p>
+            </section>
+
             <h2 id="authHeading">Welcome to HealthOS Medical Systems</h2>
             <p id="authDescription">
                 Sign in to access your secure hospital workspace.
@@ -473,7 +481,7 @@
                 <h3>Medical record access requests</h3>
                 <p class="muted">A hospital requesting your records must be connected to your patient account. Review each request and approve or reject it. Approval here authorises a request only; records are not released until the secure verification and release stage is completed.</p>
                 <div id="patientRecordShareAccessRequests" class="stats-grid"><p class="muted">No record-access requests loaded.</p></div>
-                <h3>Book an appointment</h3>
+                <h3 id="patientAppointmentHeading">Book an appointment</h3>
                 <p class="muted">Requests can be sent only to hospitals that have approved your connection. The hospital must confirm the requested time.</p>
                 <form id="patientAppointmentForm" class="auth-form">
                     <label>Connected hospital<select id="patientAppointmentClinic" required><option value="">Loading connected hospitals...</option></select></label>
