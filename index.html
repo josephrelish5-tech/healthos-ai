@@ -28,6 +28,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js?v=20261108-department-staffing-coverage-v1" defer></script>
     <script src="healthos-telemedicine-operations.js?v=20261109-telemedicine-complete-v1" defer></script>
+    <script src="healthos-telemedicine-demo.js?v=20261110-synthetic-demo-v1" defer></script>
     <script src="staff-evidence-correction-workspace.js?v=20261109-part2v-v1" defer></script>
     <script src="icu-supervisor-management.js?v=20261108-supervisor-access-v1" defer></script>
     <script src="healthos-directory-admin.js?v=20261106-national-lga-registry-ui-v1" defer></script>
@@ -309,6 +310,18 @@
                         <figcaption>A Nigerian nurse attending to a patient at work. · Photo: Jamie Tubers — CC BY-SA 4.0</figcaption>
                     </figure>
                 </div>
+                <section class="public-discovery-hero" aria-labelledby="publicTelemedicineHeading" style="margin-top:18px">
+                    <p class="eyebrow">VIRTUAL CARE · PATIENT ACCESS</p>
+                    <h2 id="publicTelemedicineHeading">Need to speak with a healthcare professional remotely?</h2>
+                    <p>Patients can create or sign in to a HealthOS patient account, find a connected hospital, request an audio or video appointment, and follow its approval and scheduling process. A private consultation link appears only after the hospital accepts the request, an authorised clinician prepares the session, and the required consent and provider checks are complete.</p>
+                    <button type="button" class="primary-button" id="publicRequestVirtualConsultationButton">Request a virtual consultation</button>
+                    <p class="muted">Emergency warning: do not use online consultation for an emergency. Contact local emergency services or attend the nearest emergency department.</p>
+                </section>
+                <script>
+                document.getElementById("publicRequestVirtualConsultationButton")?.addEventListener("click", () => {
+                    document.getElementById("openPatientAccessButton")?.click();
+                });
+                </script>
                 <p class="healthos-care-disclaimer">These are platform capability areas. Availability of individual virtual-care services depends on implementation, clinical governance and hospital configuration.</p>
             </section>
 
