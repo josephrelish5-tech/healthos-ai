@@ -42,8 +42,11 @@ async function loadStaff(){
  if(!clinic()||!user()){say("telemedOpsMessage","Sign in to an active hospital first.",true);return;}
  say("telemedOpsMessage","Loading accepted requests and session records…");
  try{
+  const departmentSelect=$("staffDepartmentContextSelect");
+  const departmentId=departmentSelect?.selectedOptions?.[0]?.dataset.departmentId||"";
+  if(!departmentId){$("telemedAcceptedRequests").textContent="Choose one of your active assigned departments in My Department Assignments to view accepted remote requests.";const sessions=await rpc("healthos_get_clinic_telemedicine_sessions",{p_clinic_id:clinic()});const box=$("telemedClinicSessions");box.replaceChildren();const rows=sessions?.sessions||[];if(!rows.length)box.innerHTML='<p class="telemed-muted">No prepared consultation sessions are available to your active department assignments.</p>';say("telemedOpsMessage",rows.length+" authorised consultation session(s) loaded. Select a department to view accepted requests.");return;}
   const [{data:req,error:reqErr},sessions]=await Promise.all([
-   db().from("healthos_patient_appointment_requests").select("id,patient_user_id,requested_at,reason,visit_type,status").eq("clinic_id",clinic()).in("visit_type",["audio","video"]).eq("status","accepted").order("requested_at",{ascending:true}).limit(100),
+   db().from("healthos_patient_appointment_requests").select("id,patient_user_id,department_id,requested_at,reason,visit_type,status").eq("clinic_id",clinic()).eq("department_id",departmentId).in("visit_type",["audio","video"]).eq("status","accepted").order("requested_at",{ascending:true}).limit(100),
    rpc("healthos_get_clinic_telemedicine_sessions",{p_clinic_id:clinic()})
   ]);
   if(reqErr)throw reqErr;
