@@ -7,7 +7,8 @@ const db=()=>typeof supabaseClient!=="undefined"?supabaseClient:null;
 const user=()=>typeof currentUser!=="undefined"&&currentUser?currentUser:null;
 const say=(id,s,b=false)=>{const e=$(id);if(e){e.textContent=s;e.className="message"+(b?" error":" success");}};
 async function rpc(name,args){if(!db())throw Error("Sign in again; database is not ready.");const {data,error}=await db().rpc(name,args);if(error)throw error;return data;}
-async function provider(body){const {data,error}=await db().functions.invoke("healthos-telemedicine-provider",{body});if(error)throw error; if(data?.error)throw Error(data.error);return data;}\nasync function revokeConsent(sessionId){const {data,error}=await db().functions.invoke("healthos-telemedicine-revoke-consent",{body:{session_id:sessionId}});if(error)throw error;if(data?.error)throw Error(data.error);return data;}
+async function provider(body){const {data,error}=await db().functions.invoke("healthos-telemedicine-provider",{body});if(error)throw error; if(data?.error)throw Error(data.error);return data;}
+async function revokeConsent(sessionId){const {data,error}=await db().functions.invoke("healthos-telemedicine-revoke-consent",{body:{session_id:sessionId}});if(error)throw error;if(data?.error)throw Error(data.error);return data;}
 async function ensureDailySdk(){
  if(window.DailyIframe)return window.DailyIframe;
  await new Promise((resolve,reject)=>{
