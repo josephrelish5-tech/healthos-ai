@@ -48,8 +48,16 @@ Deno.serve(async (req: Request) => {
 
     const isPatient = session.patient_user_id === userData.user.id;
     if (!isPatient) {
-      const { error: accessError } = await userClient.rpc("healthos_get_telemedicine_workspace", { p_session_id: sessionId });
-      if (accessError) return reply({ error: "You are not authorised for this consultation." }, 403);
+      // Hospital owners/admins may oversee operational status, but must never
+      // receive a clinician meeting token. Joining requires a verified,
+      // currently assigned clinical professional for this department.
+      const { data: clinicianAuthorised, error: accessError } = await userClient.rpc(
+        "healthos_user_is_authorised_telemedicine_clinician",
+        { p_clinic_id: session.clinic_id, p_department_id: session.department_id }
+      );
+      if (accessError || clinicianAuthorised !== true) {
+        return reply({ error: "Only the patient or a currently verified clinician assigned to this department may join." }, 403);
+      }
     }
     if (["completed", "cancelled", "expired"].includes(session.session_status)) {
       return reply({ error: "This consultation has been closed." }, 409);
