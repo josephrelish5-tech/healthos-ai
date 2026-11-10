@@ -46,7 +46,7 @@ as $function$
           and lower(btrim(cr.professional_role)) in
               (lower(btrim(cpr.role_name)), lower(btrim(cpr.role_code)))
           and cr.verification_status = 'verified'
-          and cr.competency_outcome = 'competent'
+          and (cpr.registration_required = true or cr.competency_outcome = 'competent')
           and (cr.expiry_date is null or cr.expiry_date >= current_date)
           and (
             (
@@ -54,6 +54,8 @@ as $function$
               and cr.record_type = 'professional_license'
               and nullif(btrim(sp.professional_registration_number), '') is not null
               and cr.registration_number = sp.professional_registration_number
+              and (cpr.registration_body is null or cr.professional_body = cpr.registration_body
+                   or cr.issuing_authority = cpr.registration_body)
             )
             or
             (
