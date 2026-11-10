@@ -96,6 +96,47 @@ Deno.serve(async (req: Request) => {
       if (updateError) return reply({ error: "Private room was created but the hospital session could not be updated. Contact the administrator." }, 500);
     }
 
+    // Consent can be withdrawn while Daily is creating a room. Re-read the
+    // latest consent immediately before issuing a token; fail closed if the
+    // read fails or a revocation has become the newest consent event.
+    const { data: latestConsent, error: latestConsentError } = await adminClient
+      .from("healthos_telemedicine_consents")
+      .select("consent_status,revoked_at")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (
+      latestConsentError ||
+      !latestConsent ||
+      latestConsent.consent_status !== "granted" ||
+      latestConsent.revoked_at
+    ) {
+      // If this request created the room, terminate it rather than leave an
+      // unreferenced room behind after a concurrent consent withdrawal.
+      if (session.provider_key !== "daily" || !session.provider_meeting_reference) {
+        const cleanup = await fetch(
+          "https://api.daily.co/v1/rooms/" + encodeURIComponent(roomName),
+          { method: "DELETE", headers: { Authorization: "Bearer " + dailyKey } }
+        );
+        if (cleanup.ok || cleanup.status === 404) {
+          await adminClient.from("healthos_telemedicine_sessions")
+            .update({
+              provider_key: "unconfigured",
+              provider_meeting_reference: null,
+              session_status: "cancelled",
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", sessionId)
+            .eq("provider_meeting_reference", roomName);
+        }
+      }
+      return reply({
+        error: "Consent was withdrawn or could not be verified. No meeting token was issued."
+      }, 409);
+    }
+
     const tokenExpiry = Math.floor((Date.now() + 60 * 60 * 1000) / 1000);
     const tokenResponse = await fetch("https://api.daily.co/v1/meeting-tokens", {
       method: "POST",
