@@ -1,67 +1,83 @@
 # HealthOS Telemedicine — Synthetic Test Plan
 
-**Environment:** GitHub development branch `telemedicine-synthetic-dev`  
+**Environment:** Development branch `telemedicine-synthetic-dev`  
 **Test page:** `dev/telemedicine-synthetic-test.html`  
-**Data classification:** Fictional test data only  
-**Production impact:** None. This plan and the browser-only simulator do not call Supabase, Daily, Render, or any production endpoint.
+**Data:** Fictional identities and in-memory state only  
+**Production impact:** None. The test page does not call Supabase, Daily, Render, or a production endpoint.
 
-## Purpose
+## Objective
+Complete a bounded synthetic workflow test, then begin real-account preparation for a pilot hospital. The entire HealthOS blueprint does not need to be finished first. Real registration must remain gated on identity, clinic isolation, permissions, auditability, privacy, and recovery controls.
 
-Validate the intended consultation consent and session workflow before any real patient video feature is enabled. The simulator is a workflow demonstration, not a security certification or an integration test.
-
-## Test identities
-
+## Synthetic identities
 - `TEST-PATIENT-001` — fictional patient
 - `TEST-DOCTOR-001` — fictional doctor
 - `TEST-NURSE-001` — fictional nurse
 - `TEST-ADMIN-001` — fictional administrator
 
-These are selectable labels, not authenticated accounts. They must never be treated as real HealthOS users.
+These are role labels in a browser simulator, not authenticated accounts. They must never be treated as actual HealthOS users.
 
-## Acceptance test cases
+## Automated acceptance tests
+Run all tests using **Run all tests** in the development test bench.
 
-| ID | Scenario | Expected result |
-|---|---|---|
-| TM-SYN-01 | Doctor requests join before consent | Join is blocked. |
-| TM-SYN-02 | Nurse requests join before consent | Join is blocked. |
-| TM-SYN-03 | Patient grants consent | Consent becomes granted in browser memory only. |
-| TM-SYN-04 | Doctor requests join after consent | Simulated join is allowed. |
-| TM-SYN-05 | Nurse requests join after consent | Simulated join is allowed. |
-| TM-SYN-06 | Doctor attempts to grant/revoke consent | Action is blocked. |
-| TM-SYN-07 | Patient revokes consent | Further join requests are blocked. |
-| TM-SYN-08 | Patient attempts to complete session | Action is blocked. |
-| TM-SYN-09 | Staff completes session | Session becomes completed. |
-| TM-SYN-10 | Staff requests join after completion | Action is blocked. |
-| TM-SYN-11 | Browser page is refreshed | Synthetic state resets; no server record exists. |
-| TM-SYN-12 | Admin role is selected | It remains a simulator role only; no production privileges are granted. |
+| Test | Expected result |
+|---|---|
+| Doctor joins before consent | Blocked |
+| Nurse joins before consent | Blocked |
+| Patient grants consent | Consent granted in simulator memory |
+| Doctor joins after consent | Allowed in simulator |
+| Nurse joins after consent | Allowed in simulator |
+| Doctor attempts to grant consent | Blocked |
+| Doctor attempts to revoke consent | Blocked |
+| Patient revokes consent during active session | Consent removed and session terminated in simulator |
+| Patient attempts to complete session | Blocked |
+| Doctor completes active session | Allowed in simulator |
+| Staff attempts to rejoin completed session | Blocked |
+| Administrator attempts clinical join/completion | Blocked; admin does not automatically receive clinical access |
 
-## Required production safeguards before real consultations
+The test page's pass result validates only its in-memory rules model. It is not evidence that the deployed application, database, RPCs, RLS, Edge Functions, or video provider enforce the same rules.
 
-Do not enable real patient video until all items below have been reviewed and approved:
+## Real-account preparation — minimum pilot gate
 
-1. Confirm the selected video provider's current healthcare terms, pricing, data-processing terms, and any required signed BAA. Do not assume an API key alone enables healthcare-compliant use.
-2. Keep the existing Edge Function provider gate in place until the provider/compliance decision is documented. Do not set healthcare flags to true just to test.
-3. Review every telemedicine `SECURITY DEFINER` RPC for `auth.uid()`, clinic membership, patient/staff relationship, role authorization, and session-state checks.
-4. Verify RLS and RPC access together. RLS being enabled does not protect a table from an unsafe `SECURITY DEFINER` function.
-5. Restrict CORS to the actual HealthOS application origins; do not leave wildcard CORS for a production credential-bearing endpoint unless a documented security review approves it.
-6. Review who may create, join, complete, cancel, or view a session. Apply least privilege; administrator status must not automatically imply clinical access.
-7. Require explicit, current patient consent before issuing meeting credentials. Re-check consent immediately before credential issuance and define what happens if consent is revoked during a consultation.
-8. Keep recording disabled unless a separate legal, clinical, security, retention, and consent review approves it.
-9. Confirm audit events for consent grant/revocation, credential issuance, joins/leaves, session completion, and failed authorization. Do not log API keys, meeting tokens, or unnecessary clinical content.
-10. Test with a separate development provider/project and fictional data. Do not use production patient records for testing.
-11. Complete a documented end-to-end test on Android, including low-bandwidth and interrupted-network scenarios.
-12. Obtain explicit operational approval from the hospital before enabling the feature for real patients.
+### A. Hospital and clinic tenancy
+- A hospital/clinic must be created and approved before users are attached to it.
+- Every doctor, nurse, patient, appointment, consultation, and clinical record must be scoped to the correct clinic.
+- Cross-clinic access must be denied and tested, including direct API/RPC attempts.
+
+### B. Identity and registration
+- Hospital administrator creates the first doctor and nurse using verified email or another approved identity-verification process.
+- Staff receive a secure invitation or one-time setup flow; no shared default passwords.
+- Users set their own password and complete recovery setup.
+- Doctor/nurse role, department, professional registration details, and account status are validated before clinical privileges are granted.
+- First patient registration collects only necessary information, records the registering clinic, and avoids exposing patient data in public directories.
+
+### C. Authorization and audit
+- Verify authentication on every protected route and server-side function.
+- Review RLS and every privileged RPC together, including `SECURITY DEFINER` functions.
+- Enforce clinic membership and least-privilege role checks on the server, not only in the browser.
+- Separate administrator operations from clinical access.
+- Log account creation, invitation, role changes, access denials, consent actions, and relevant record changes without logging secrets or unnecessary clinical content.
+
+### D. Privacy, recovery and operations
+- Confirm privacy notice, lawful processing basis, consent wording where required, retention/deletion process, incident response, and NDPA responsibilities with the pilot hospital.
+- Test password reset, suspended/deactivated users, lost access, and administrator handover.
+- Confirm backups and a tested restore process before real clinical records are entered.
+- Complete Android testing and low-bandwidth/interrupted-network checks.
+
+### E. Telemedicine-specific release gate
+- Review provider healthcare terms, data-processing terms, pricing, and any required signed BAA before enabling real video.
+- An API key alone is not evidence of healthcare-compliant configuration.
+- Keep provider credentials and real video disabled until the review is complete.
+- Require explicit, current patient consent before issuing meeting credentials; define and test revocation during a call.
+- Keep recording disabled unless separately approved.
+- Test using a separate development provider/project and fictional data first.
 
 ## Cost and deployment guardrails
-
-- Do not create paid Supabase branches, projects, add-ons, or provider resources without showing the price and receiving explicit approval.
-- Do not enable Daily healthcare features or real video credentials without the required provider/compliance checks.
-- This simulator is local browser behavior only; opening it does not create a video call or incur video participant-minute charges.
-- Keep this work on the development branch. Do not merge to `main` or deploy to Render as part of this test-plan step.
+- No paid Supabase branches, projects, add-ons, Daily healthcare features, or provider resources without showing the cost and receiving explicit approval.
+- No production database changes, real patient records, live video, merge to `main`, or Render deployment as part of synthetic testing.
+- Keep the test work isolated on `telemedicine-synthetic-dev`.
 
 ## Current status
-
-- Synthetic browser test bench exists on `telemedicine-synthetic-dev`.
-- This checklist documents the expected tests and production release gates.
-- Production telemedicine tables were empty at the time of the prior inspection.
-- No production database, Edge Function, provider setting, or live website change is authorized by this development-only test plan.
+- Browser-only synthetic test bench exists and its role/consent test model has been strengthened.
+- Automated tests have been added, but they still need to be run in a browser and the results reported.
+- Production authorization, database, and provider controls have not been certified by these tests.
+- Next step after the synthetic suite passes: a read-only audit of the actual Supabase schema, RLS policies, RPCs, and relevant Edge Functions, followed by a minimum real-account readiness checklist. Do not create real users until that audit passes.
