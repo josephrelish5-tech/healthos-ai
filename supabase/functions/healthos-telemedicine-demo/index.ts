@@ -2,7 +2,6 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const ROOM_NAME = "xZO3M6Da0UjiqtvDdRqY";
-const EXPECTED_DOMAIN = "healthos-team.daily.co";
 const TOKEN_LIFETIME_SECONDS = 15 * 60;
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -30,8 +29,8 @@ Deno.serve(async (req: Request) => {
   if (!supabaseUrl || !anonKey || !serviceKey) {
     return reply({ error: "Server authentication configuration is incomplete." }, 500);
   }
-  if (!dailyKey || dailyDomain !== EXPECTED_DOMAIN) {
-    return reply({ error: "The configured Daily domain is not authorised for this demonstration." }, 503);
+  if (!dailyKey || !dailyDomain) {
+    return reply({ error: "The Daily API key and configured Daily domain are required." }, 503);
   }
 
   const userClient = createClient(supabaseUrl, anonKey, {
@@ -76,17 +75,21 @@ Deno.serve(async (req: Request) => {
     );
     const room = await roomResponse.json();
     if (!roomResponse.ok) return reply({ error: "Daily could not verify the demonstration room." }, 502);
-    if (room.name !== ROOM_NAME || room.privacy !== "private" || room.config?.max_participants !== 2) {
-      return reply({ error: "Room security check failed. Expected the registered private room with a two-person limit." }, 409);
+
+    const roomUrl = typeof room.url === "string" ? room.url : "";
+    let roomHost = "";
+    try { roomHost = new URL(roomUrl).hostname.toLowerCase(); } catch (_) {}
+    if (room.name !== ROOM_NAME || room.privacy !== "private" ||
+        room.config?.max_participants !== 2 || roomHost !== dailyDomain) {
+      return reply({ error: "Room security check failed. Expected the registered private room, matching configured Daily domain and a two-person limit." }, 409);
     }
-    if (room.config?.enable_recording === true || room.config?.enable_recording === "cloud") {
+    if (room.config?.enable_recording) {
       return reply({ error: "Recording must remain disabled for this synthetic demonstration." }, 409);
     }
 
     const expiresAt = Math.floor(Date.now() / 1000) + TOKEN_LIFETIME_SECONDS;
-    const roomUrl = "https://" + EXPECTED_DOMAIN + "/" + ROOM_NAME;
 
-    async function issueToken(userName: string, isOwner: boolean) {
+    async function issueToken(userName: string) {
       const response = await fetch("https://api.daily.co/v1/meeting-tokens", {
         method: "POST",
         headers: {
@@ -100,7 +103,7 @@ Deno.serve(async (req: Request) => {
             eject_at_token_exp: true,
             user_name: userName,
             user_id: crypto.randomUUID(),
-            is_owner: isOwner
+            is_owner: false
           }
         })
       });
@@ -112,8 +115,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const [doctorToken, patientToken] = await Promise.all([
-      issueToken("Dr Demo (Fictional)", true),
-      issueToken("Patient Demo (Fictional)", false)
+      issueToken("Dr Demo (Fictional)"),
+      issueToken("Patient Demo (Fictional)")
     ]);
 
     console.info("Synthetic telemedicine demo tokens issued", {
