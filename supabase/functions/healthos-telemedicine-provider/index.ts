@@ -137,9 +137,24 @@ Deno.serve(async (req: Request) => {
           })
           .eq("id", sessionId)
           .eq("provider_meeting_reference", roomName);
+      } else {
+        // Keep the provider reference for an administrator retry, but close
+        // the session so it cannot be prepared again as an active consultation.
+        await adminClient.from("healthos_telemedicine_sessions")
+          .update({
+            session_status: "cancelled",
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", sessionId)
+          .eq("provider_meeting_reference", roomName);
+        console.error("Daily room cleanup after consent withdrawal needs retry", {
+          session_id: sessionId,
+          provider_status: cleanup.status
+        });
       }
       return reply({
-        error: "Consent was withdrawn or could not be verified. No meeting token was issued."
+        error: "Consent was withdrawn or could not be verified. No meeting token was issued.",
+        room_termination: cleanup.ok || cleanup.status === 404 ? "terminated" : "retry_required"
       }, 409);
     }
 
