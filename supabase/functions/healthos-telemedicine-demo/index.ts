@@ -23,8 +23,9 @@ Deno.serve(async (req: Request) => {
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const dailyKey = Deno.env.get("DAILY_API_KEY") ?? "";
-  const dailyDomain = (Deno.env.get("DAILY_DOMAIN") ?? "")
-    .replace(/^https?:\/\//, "").replace(/\/$/, "").toLowerCase();
+  const dailyDomainRaw = Deno.env.get("DAILY_DOMAIN") ?? "";
+  let dailyDomain = "";
+  try { dailyDomain = new URL(dailyDomainRaw.includes("://") ? dailyDomainRaw : "https://" + dailyDomainRaw).hostname.toLowerCase(); } catch (_) {}
 
   if (!supabaseUrl || !anonKey || !serviceKey) {
     return reply({ error: "Server authentication configuration is incomplete." }, 500);
