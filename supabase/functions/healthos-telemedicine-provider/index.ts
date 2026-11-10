@@ -48,8 +48,16 @@ Deno.serve(async (req: Request) => {
 
     const isPatient = session.patient_user_id === userData.user.id;
     if (!isPatient) {
-      const { error: accessError } = await userClient.rpc("healthos_get_telemedicine_workspace", { p_session_id: sessionId });
-      if (accessError) return reply({ error: "You are not authorised for this consultation." }, 403);
+      // Hospital owners/admins may oversee operational status, but must never
+      // receive a clinician meeting token. Joining requires a verified,
+      // currently assigned clinical professional for this department.
+      const { data: clinicianAuthorised, error: accessError } = await userClient.rpc(
+        "healthos_user_is_authorised_telemedicine_clinician",
+        { p_clinic_id: session.clinic_id, p_department_id: session.department_id }
+      );
+      if (accessError || clinicianAuthorised !== true) {
+        return reply({ error: "Only the patient or a currently verified clinician assigned to this department may join." }, 403);
+      }
     }
     if (["completed", "cancelled", "expired"].includes(session.session_status)) {
       return reply({ error: "This consultation has been closed." }, 409);
@@ -93,7 +101,69 @@ Deno.serve(async (req: Request) => {
       const { error: updateError } = await adminClient.from("healthos_telemedicine_sessions")
         .update({ provider_key: "daily", provider_meeting_reference: room.name, session_status: "ready", updated_at: new Date().toISOString() })
         .eq("id", sessionId);
-      if (updateError) return reply({ error: "Private room was created but the hospital session could not be updated. Contact the administrator." }, 500);
+      if (updateError) {
+        // Do not leave a provider room orphaned if its session reference could
+        // not be persisted; no meeting token has been issued at this point.
+        await fetch(
+          "https://api.daily.co/v1/rooms/" + encodeURIComponent(roomName),
+          { method: "DELETE", headers: { Authorization: "Bearer " + dailyKey } }
+        ).catch(() => undefined);
+        return reply({ error: "Private room could not be safely linked to the hospital session. The room cleanup was attempted; contact the administrator if the problem continues." }, 500);
+      }
+    }
+
+    // Consent can be withdrawn while Daily is creating a room. Re-read the
+    // latest consent immediately before issuing a token; fail closed if the
+    // read fails or a revocation has become the newest consent event.
+    const { data: latestConsent, error: latestConsentError } = await adminClient
+      .from("healthos_telemedicine_consents")
+      .select("consent_status,revoked_at")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (
+      latestConsentError ||
+      !latestConsent ||
+      latestConsent.consent_status !== "granted" ||
+      latestConsent.revoked_at
+    ) {
+      // Terminate the room even if it existed before this request. A revoked
+      // consent must not leave a previously prepared room joinable.
+      const cleanup = await fetch(
+        "https://api.daily.co/v1/rooms/" + encodeURIComponent(roomName),
+        { method: "DELETE", headers: { Authorization: "Bearer " + dailyKey } }
+      );
+      if (cleanup.ok || cleanup.status === 404) {
+        await adminClient.from("healthos_telemedicine_sessions")
+          .update({
+            provider_key: "unconfigured",
+            provider_meeting_reference: null,
+            session_status: "cancelled",
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", sessionId)
+          .eq("provider_meeting_reference", roomName);
+      } else {
+        // Keep the provider reference for an administrator retry, but close
+        // the session so it cannot be prepared again as an active consultation.
+        await adminClient.from("healthos_telemedicine_sessions")
+          .update({
+            session_status: "cancelled",
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", sessionId)
+          .eq("provider_meeting_reference", roomName);
+        console.error("Daily room cleanup after consent withdrawal needs retry", {
+          session_id: sessionId,
+          provider_status: cleanup.status
+        });
+      }
+      return reply({
+        error: "Consent was withdrawn or could not be verified. No meeting token was issued.",
+        room_termination: cleanup.ok || cleanup.status === 404 ? "terminated" : "retry_required"
+      }, 409);
     }
 
     const tokenExpiry = Math.floor((Date.now() + 60 * 60 * 1000) / 1000);
