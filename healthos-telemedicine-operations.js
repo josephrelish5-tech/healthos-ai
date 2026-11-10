@@ -44,7 +44,7 @@ async function loadStaff(){
  try{
   const departmentSelect=$("staffDepartmentContextSelect");
   const departmentId=departmentSelect?.selectedOptions?.[0]?.dataset.departmentId||"";
-  if(!departmentId){$("telemedAcceptedRequests").textContent="Choose one of your active assigned departments in My Department Assignments to view accepted remote requests.";const sessions=await rpc("healthos_get_clinic_telemedicine_sessions",{p_clinic_id:clinic()});const box=$("telemedClinicSessions");box.replaceChildren();const rows=sessions?.sessions||[];if(!rows.length)box.innerHTML='<p class="telemed-muted">No prepared consultation sessions are available to your active department assignments.</p>';say("telemedOpsMessage",rows.length+" authorised consultation session(s) loaded. Select a department to view accepted requests.");return;}
+  if(!departmentId){$("telemedAcceptedRequests").textContent="Choose one of your active assigned departments in My Department Assignments to view accepted remote requests."; $("telemedClinicSessions").innerHTML='<p class="telemed-muted">Select an assigned department to load your consultation sessions.</p>';say("telemedOpsMessage","Select one of your active assigned departments to load virtual-care work.");return;}
   const [{data:req,error:reqErr},sessions]=await Promise.all([
    db().from("healthos_patient_appointment_requests").select("id,patient_user_id,department_id,requested_at,reason,visit_type,status").eq("clinic_id",clinic()).eq("department_id",departmentId).in("visit_type",["audio","video"]).eq("status","accepted").order("requested_at",{ascending:true}).limit(100),
    rpc("healthos_get_clinic_telemedicine_sessions",{p_clinic_id:clinic()})
@@ -91,7 +91,7 @@ async function loadPatient(){
   say("patientTelemedMessage",rows.length+" virtual consultation(s) loaded. Consent is managed separately for each visit.");
  }catch(e){say("patientTelemedMessage",e.message||"Could not load patient consultations.",true);}
 }
-function boot(){addStyles();mountStaff();mountPatient();$("telemedOpsRefresh")?.addEventListener("click",loadStaff);}
+function boot(){addStyles();mountStaff();mountPatient();$("telemedOpsRefresh")?.addEventListener("click",loadStaff);document.addEventListener("change",event=>{if(event.target?.id==="staffDepartmentContextSelect")void loadStaff();});}
 document.addEventListener("DOMContentLoaded",boot);
 const observer=new MutationObserver(()=>{addStyles();mountStaff();mountPatient();const root=$("staffWorkspace");if(root&&!root.hidden&&user()&&clinic()&&root.dataset.telemedAutoLoaded!=="true"){root.dataset.telemedAutoLoaded="true";void loadStaff();}else if(root&&root.hidden)root.dataset.telemedAutoLoaded="false";});observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:["hidden"]});
 window.HealthOSTelemedicine={refreshHospital:loadStaff,refreshPatient:loadPatient};
