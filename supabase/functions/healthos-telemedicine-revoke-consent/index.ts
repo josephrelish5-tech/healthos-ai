@@ -66,6 +66,9 @@ Deno.serve(async (req: Request) => {
     if (session.provider_key === "daily" && session.provider_meeting_reference) {
       if (!dailyKey) {
         roomTermination = "pending_provider_configuration";
+        await adminClient.from("healthos_telemedicine_sessions")
+          .update({ session_status: "cancelled", updated_at: new Date().toISOString() })
+          .eq("id", sessionId);
         console.error("Telemedicine consent revoked but Daily room termination key is unavailable", {
           session_id: sessionId
         });
@@ -86,6 +89,9 @@ Deno.serve(async (req: Request) => {
       // there is no active room left to join.
       if (!deleteResponse.ok && deleteResponse.status !== 404) {
         const providerMessage = await deleteResponse.text().catch(() => "");
+        await adminClient.from("healthos_telemedicine_sessions")
+          .update({ session_status: "cancelled", updated_at: new Date().toISOString() })
+          .eq("id", sessionId);
         console.error("Daily room termination failed after consent withdrawal", {
           session_id: sessionId,
           provider_status: deleteResponse.status,
