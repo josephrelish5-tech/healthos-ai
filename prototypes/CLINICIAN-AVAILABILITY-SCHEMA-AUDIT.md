@@ -34,12 +34,43 @@ Existing tables:
 - `staff_shift_assignments`: staff_profile_id, clinic_id, shift_type, starts_at, ends_at, status.
 - `staff_shifts`: another shift representation with staff_profile_id, shift_date, shift_type, starts_at, ends_at, attendance status.
 
-Important: both shift tables exist. Their current production use, RLS, and source-of-truth relationship must be established before availability is calculated from either. Do not create a third shift system.
+### Latest production evidence: shift source and row counts
+Read-only production counts at inspection time:
+- appointments: 25 existing records
+- healthos_patient_appointment_requests: 0
+- healthos_telemedicine_sessions: 0
+- staff_shift_assignments: 0
+- staff_shifts: 1
+- staff_credential_competency_records: 0
 
-### Telemedicine session
-`healthos_telemedicine_sessions` already links appointment_request_id, clinic, department, patient, linked appointment, channel and scheduled_at. It enforces one session per appointment request. Keep this linkage.
+This indicates `staff_shifts` is the only one of the two shift tables currently holding a row, but a single row does not prove it is the authoritative source. Before choosing it, inspect its triggers, writers, UI consumers, audit events, and whether `staff_shift_assignments` is an older or newer parallel implementation. Do not create a third shift system or migrate rows automatically.
 
-## 2. Key architectural conclusion
+### RLS and grants observed
+RLS is enabled on all inspected scheduling, staff and credential tables.
+- `appointments` has clinic-member read controls and role-scoped insert/update policies.
+- `healthos_patient_appointment_requests` has patient-own read/create policies and hospital/assigned-department review policies.
+- `staff_shifts` has admin management and staff-own read policies.
+- `staff_shift_assignments` has an admin-management policy.
+- `staff_profiles` has self/admin read and admin write policies.
+- `staff_credential_competency_records` currently allows clinic-member read and pending submission; verification must be separately authorised.
+- Several staff/credential tables show no direct table grants to ordinary authenticated users; access may be mediated by RPCs.
+
+The grants query needs a second, role-specific confirmation before any migration. Do not loosen table grants as a shortcut.
+
+## 2. Important production security finding — telemedicine RPCs
+
+The current production definitions were inspected and are older than the proposed changes on the unmerged development PR.
+
+At present:
+- `healthos_get_telemedicine_workspace` treats clinic owner/admin and any user assigned to the department as staff-authorised to retrieve consultation workspace data.
+- `healthos_mark_telemedicine_session_active` allows owner/admin or a department-assigned user to activate a session after checking provider reference and patient consent; it does not itself require the dedicated verified-clinician predicate.
+- `healthos_send_telemedicine_message` uses the same broad owner/admin/department-assignment pattern for non-patient users.
+- `healthos_complete_telemedicine_session` also allows owner/admin or department-assigned users to complete a session.
+- `healthos_accept_patient_appointment_request` accepts a department-assigned reviewer without verifying that the reviewer is the assigned, credential-verified clinician.
+
+This is a production observation, not a change. PR #16 contains proposed tighter clinician boundaries for some of these operations, but it remains unmerged and unvalidated. Before any live telemedicine release, review and close every affected RPC path consistently, including complete-session and message access, not only provider-token issuance.
+
+## 3. Key architectural conclusion
 
 The existing schema is a strong foundation, but it is not yet a complete clinician slot-booking system. A safe additive design should:
 - use verified staff profiles + active department/role assignments + valid credentials to determine eligible clinicians;
@@ -48,7 +79,7 @@ The existing schema is a strong foundation, but it is not yet a complete clinici
 - extend the appointment request with a clinician assignment and explicit end time only after checking dependent code, constraints and policies;
 - prevent overlapping confirmed bookings at the database level, not only in the browser.
 
-## 3. Proposed target model (not yet a migration)
+## 4. Proposed target model (not yet a migration)
 
 ### Clinician availability
 A clinic/department/staff-profile availability record with:
@@ -79,21 +110,20 @@ When a booking is confirmed:
 
 All steps must succeed or roll back together. Do not create duplicate appointment rows on retry.
 
-## 4. Outstanding schema checks before implementation
+## 5. Remaining checks before implementation
 
-- Determine which of `staff_shift_assignments` and `staff_shifts` is authoritative and how changes are audited.
-- Inspect RLS policies and grants for all scheduling and staff tables.
-- Inspect full definitions of `healthos_accept_patient_appointment_request`, appointment creation RPCs, and appointment update/cancel RPCs.
-- Check whether other appointment tables or calendars exist under different names.
+- Inspect triggers, writers, UI consumers and audit history for both shift tables to select the canonical source.
+- Confirm all table grants separately for anon/authenticated and service roles.
+- Inspect full definitions and grants for appointment cancel/reschedule RPCs and any additional appointment tables/calendars.
 - Check clinic timezone storage and standardise display/slot generation.
-- Inspect current status transitions and linked appointment side effects.
-- Confirm existing credential verifier workflow can populate verified clinical roles; fail closed until it can.
-- Confirm the appointment request's current CHECK constraint prevents adding statuses such as `rescheduled` without a deliberate migration.
+- Inspect request status constraints and linked appointment side effects.
+- Confirm credential verifier workflow can populate verified clinical roles; fail closed until it can.
+- Review every telemedicine RPC for verified-clinician enforcement and patient-only consent authority.
 
-## 5. Build and test order
+## 6. Build and test order
 
-1. Finish read-only schema/policy/RPC audit.
-2. Select the canonical staff shift source.
+1. Finish the remaining read-only schema/RPC audit.
+2. Select the canonical staff shift source based on writers, consumers and audit evidence, not row count alone.
 3. Write an additive migration on the development branch only.
 4. Implement secure RPCs for publish availability, list patient-facing slots, hold slot, confirm booking, propose alternative, cancel and reschedule.
 5. Enforce overlap prevention and idempotency in PostgreSQL.
@@ -102,7 +132,7 @@ All steps must succeed or roll back together. Do not create duplicate appointmen
 8. Run synthetic tests for double booking, expiry, role/credential/shift revocation, clinic isolation, cancellation, rescheduling and concurrent requests.
 9. Only after passing isolated tests, consider review for production rollout.
 
-## 6. Explicit non-actions
+## 7. Explicit non-actions
 
 - No production migration applied.
 - No production function or policy changed.
