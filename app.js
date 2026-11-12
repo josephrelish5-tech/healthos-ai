@@ -4551,6 +4551,7 @@ async function loadDepartmentWorkspaceTaskBoard(clinic, departmentId, root) {
     status.textContent = "Loading department task records...";
     status.className = "message";
     list.replaceChildren();
+    root.querySelector("[data-duty-accountability-snapshot]")?.remove();
 
     try {
         const { data, error } = await supabaseClient.rpc("get_department_task_board", {
@@ -4570,6 +4571,38 @@ async function loadDepartmentWorkspaceTaskBoard(clinic, departmentId, root) {
             Object.entries(counts).map(([key, value]) => value + " " + key.replace(/_/g, " ")).join(" · ") +
             (tasks.length === 200 ? " · Showing the latest 200 matching records." : "");
         status.className = "message success";
+
+        // Stage 5D: read-only accountability snapshot from the existing secured task board.
+        // These are indicators, not authorisations or independent evidence of completion.
+        const previousSnapshot = root.querySelector("[data-duty-accountability-snapshot]");
+        if (previousSnapshot) previousSnapshot.remove();
+        const snapshot = document.createElement("section");
+        snapshot.className = "department-workspace-stats";
+        snapshot.setAttribute("data-duty-accountability-snapshot", "");
+        snapshot.setAttribute("aria-label", "Staff duty accountability summary");
+        const isOpen = task => !["completed", "cancelled"].includes(String(task.task_status || ""));
+        const measures = [
+            ["Assigned to staff", tasks.filter(task => !!task.assignee_name || !!task.assignee_staff_id).length],
+            ["Awaiting evidence", tasks.filter(task => isOpen(task) && task.requires_evidence && !(Array.isArray(task.evidence) && task.evidence.length)).length],
+            ["Submitted for review", tasks.filter(task => task.task_status === "submitted").length],
+            ["Overdue open duties", tasks.filter(task => isOpen(task) && task.due_at && new Date(task.due_at).getTime() < Date.now()).length],
+            ["Completed with recorded review", tasks.filter(task => task.task_status === "completed" && !!task.reviewed_at).length]
+        ];
+        measures.forEach(([label, value]) => {
+            const tile = document.createElement("div");
+            tile.className = "stat-card";
+            const caption = document.createElement("p");
+            caption.textContent = label;
+            const count = document.createElement("h3");
+            count.textContent = String(value);
+            tile.append(caption, count);
+            snapshot.appendChild(tile);
+        });
+        const snapshotNote = document.createElement("p");
+        snapshotNote.className = "muted";
+        snapshotNote.textContent = "Counts reflect only the currently selected status filter and the latest 200 returned tasks. Evidence and review indicators require human verification; this panel cannot approve, assign or complete work.";
+        snapshot.appendChild(snapshotNote);
+        list.before(snapshot);
 
         if (!tasks.length) {
             const empty = document.createElement("p");
@@ -4792,6 +4825,73 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                             stats.appendChild(item);
                         });
                         detail.appendChild(stats);
+
+                        // Stage 5B: show only independently reviewed, published guidance for this department.
+                        // This is read-only and deliberately does not turn draft duties into authorised instructions.
+                        const guidanceHeading = document.createElement("h4");
+                        guidanceHeading.textContent = "Approved departmental duties & operating guidance";
+                        const guidancePanel = document.createElement("section");
+                        guidancePanel.className = "panel";
+                        guidancePanel.style.margin = "18px 0";
+                        const guidanceIntro = document.createElement("p");
+                        guidanceIntro.className = "muted";
+                        guidanceIntro.textContent = "Only published guidance with an approved independent review is shown here. Drafts and unreviewed instructions are excluded.";
+                        const guidanceStatus = document.createElement("p");
+                        guidanceStatus.className = "message";
+                        guidanceStatus.setAttribute("role", "status");
+                        guidanceStatus.setAttribute("aria-live", "polite");
+                        const guidanceList = document.createElement("div");
+                        guidancePanel.append(guidanceIntro, guidanceStatus, guidanceList);
+                        detail.append(guidanceHeading, guidancePanel);
+                        try {
+                            const { data: guidanceRows, error: guidanceError } = await supabaseClient
+                                .from("department_knowledge_articles")
+                                .select("id,article_type,title,summary,content,version,updated_at,review_due_at")
+                                .eq("clinic_id", clinic.id)
+                                .eq("department_id", department.id)
+                                .eq("status", "published")
+                                .eq("review_status", "approved")
+                                .order("updated_at", { ascending: false })
+                                .limit(50);
+                            if (guidanceError) throw guidanceError;
+                            const guidance = Array.isArray(guidanceRows) ? guidanceRows : [];
+                            guidanceStatus.textContent = guidance.length
+                                ? guidance.length + " approved guidance item(s) available for this department."
+                                : "No independently reviewed departmental guidance has been published yet.";
+                            guidanceStatus.className = "message " + (guidance.length ? "success" : "");
+                            guidance.forEach(article => {
+                                const card = document.createElement("article");
+                                card.className = "department-workspace-role";
+                                const title = document.createElement("h5");
+                                title.textContent = article.title || "Department guidance";
+                                const meta = document.createElement("p");
+                                meta.className = "muted";
+                                meta.textContent = String(article.article_type || "guidance").replace(/_/g, " ") +
+                                    " · Version " + String(article.version ?? "—") +
+                                    " · Updated " + formatDate(article.updated_at);
+                                const summary = document.createElement("p");
+                                summary.textContent = article.summary || "No summary supplied.";
+                                const reader = document.createElement("details");
+                                const readerTitle = document.createElement("summary");
+                                readerTitle.textContent = "Read approved instruction";
+                                const body = document.createElement("p");
+                                body.textContent = article.content || "No instruction content supplied.";
+                                body.style.whiteSpace = "pre-wrap";
+                                reader.append(readerTitle, body);
+                                card.append(title, meta, summary, reader);
+                                if (article.review_due_at && article.review_due_at < new Date().toISOString().slice(0, 10)) {
+                                    const overdueNote = document.createElement("p");
+                                    overdueNote.className = "message error";
+                                    overdueNote.textContent = "Review date has passed. Confirm this instruction remains current with the department owner.";
+                                    card.appendChild(overdueNote);
+                                }
+                                guidanceList.appendChild(card);
+                            });
+                        } catch (guidanceError) {
+                            console.error("Approved department guidance could not be loaded:", guidanceError);
+                            guidanceStatus.textContent = "Approved guidance could not be loaded. Existing task and supervisor workflows remain available.";
+                            guidanceStatus.className = "message error";
+                        }
 
                         const taskBoardHeading = document.createElement("h4");
                         taskBoardHeading.textContent = "Department task management & execution";
@@ -5634,11 +5734,29 @@ async function loadDepartmentWorkspaceDirectory(clinic, performanceRows) {
                                 } else {
                                     duties.forEach(duty => {
                                         const item = document.createElement("li");
-                                        item.textContent = (duty.duty_title || "Duty") +
-                                            (duty.expected_frequency ? " — " + duty.expected_frequency : "") +
-                                            (duty.evidence_required ? " · Evidence required" : "") +
-                                            (duty.supervisor_review_required ? " · Supervisor review" : "") +
-                                            (duty.separate_approval_required ? " · Separate approval" : "");
+                                        const title = document.createElement("strong");
+                                        title.textContent = duty.duty_title || "Approved duty";
+                                        item.appendChild(title);
+
+                                        if (duty.duty_description) {
+                                            const description = document.createElement("p");
+                                            description.textContent = duty.duty_description;
+                                            item.appendChild(description);
+                                        }
+
+                                        const controls = [];
+                                        if (duty.duty_category) controls.push("Category: " + String(duty.duty_category).replace(/_/g, " "));
+                                        if (duty.expected_frequency) controls.push("Expected frequency: " + duty.expected_frequency);
+                                        if (duty.evidence_required) controls.push("Evidence must be recorded");
+                                        if (duty.supervisor_review_required) controls.push("Supervisor review required");
+                                        if (duty.separate_approval_required) controls.push("Separate approval required");
+                                        if (controls.length) {
+                                            const meta = document.createElement("p");
+                                            meta.className = "muted";
+                                            meta.textContent = controls.join(" · ");
+                                            item.appendChild(meta);
+                                        }
+
                                         dutyList.appendChild(item);
                                     });
                                 }
